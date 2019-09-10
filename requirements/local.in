@@ -1,0 +1,29 @@
+-r ./base.txt
+
+Werkzeug
+ipdb
+Sphinx
+psycopg2 --no-binary psycopg2
+
+# Testing
+# ------------------------------------------------------------------------------
+mypy
+pytest
+pytest-sugar
+
+# Code quality
+# ------------------------------------------------------------------------------
+flake8
+coverage
+black
+pylint-django
+pylint-celery
+
+# Django
+# ------------------------------------------------------------------------------
+factory-boy
+
+django-debug-toolbar
+django-extensions
+django-coverage-plugin
+pytest-django

@@ -1,0 +1,11 @@
+-r ./base.txt
+
+gunicorn
+psycopg2 --no-binary psycopg2
+Collectfast
+sentry-sdk
+
+# Django
+# ------------------------------------------------------------------------------
+django-storages[boto3]
+django-anymail[mailgun]

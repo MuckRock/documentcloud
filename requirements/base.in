@@ -1,0 +1,20 @@
+pytz
+python-slugify
+Pillow
+rcssmin
+argon2-cffi
+redis
+celery
+django-celery-beat
+
+# Django
+# ------------------------------------------------------------------------------
+django
+django-environ
+django-model-utils
+django-compressor
+django-redis
+
+# Django REST Framework
+djangorestframework
+coreapi
