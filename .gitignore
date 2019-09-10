@@ -4,9 +4,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
 # Distribution / packaging
 .Python
 build/
@@ -61,6 +58,7 @@ target/
 
 # pyenv
 .python-version
+.ipython
 
 # celery beat schedule file
 celerybeat-schedule
@@ -79,6 +77,9 @@ ENV/
 # mypy
 .mypy_cache/
 
+# Pyre
+.pyre
+.pyre_configuration
 
 ### Node template
 # Logs
@@ -121,6 +122,9 @@ typings/
 
 # Optional npm cache directory
 .npm
+
+# npm package lock file
+package-lock.json
 
 # Optional eslint cache
 .eslintcache
@@ -224,6 +228,7 @@ Temporary Items
 
 # Workspace files are user-specific
 *.sublime-workspace
+.vscode
 
 # Project files should be checked into the repository, unless a significant
 # proportion of contributors will probably not be using Sublime Text
@@ -265,14 +270,24 @@ Session.vim
 # Auto-generated tag files
 tags
 
+# Local vimrc
+.lvimrc
+
 
 ### Project template
 
 documentcloud/media/
 
 .pytest_cache/
-
-
-.ipython/
 .env
 .envs/*
+
+# Generated test reports
+reports/
+
+# Test PDFs
+compose/local/pdfium/test_pdfs/*
+
+# Compiled AWS lambda functions
+awsbin/
+packaged.yaml
