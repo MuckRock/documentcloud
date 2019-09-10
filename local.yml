@@ -1,0 +1,97 @@
+version: '3'
+
+volumes:
+  local_postgres_data: {}
+  local_postgres_data_backups: {}
+
+services:
+
+  documentcloud_django: &django
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: documentcloud_local_django
+    depends_on:
+      - documentcloud_postgres
+      - documentcloud_redis
+      - documentcloud_processing_redis
+      #- documentcloud_frontend
+      #- documentcloud_solr
+    volumes:
+      - .:/app
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    ports:
+      - "8000:8000"
+    command: /start
+    networks:
+      default:
+        aliases:
+          - dev.documentcloud.org
+      squarelet_default:
+        aliases:
+          - dev.documentcloud.org
+
+  #documentcloud_frontend:
+  #  build:
+  #    context: .
+  #    dockerfile: ./compose/local/vue/Dockerfile
+  #  image: documentcloud_local_frontend
+  #  environment:
+  #    - CHOKIDAR_USEPOLLING=true
+  #  volumes:
+  #    - ./frontend:/frontend
+  #  networks:
+  #    default:
+  #      aliases:
+  #        - vue.documentcloud
+
+  documentcloud_postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: documentcloud_production_postgres
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data
+      - local_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.local/.postgres
+
+  documentcloud_redis:
+    image: redis:5.0
+
+  documentcloud_processing_redis:
+    image: redis:5.0
+
+  # add solr and test solr images in
+
+  documentcloud_celeryworker:
+    <<: *django
+    image: documentcloud_local_celeryworker
+    depends_on:
+      - documentcloud_redis
+      - documentcloud_processing_redis
+      - documentcloud_postgres
+    ports: []
+    command: /start-celeryworker
+    networks:
+      - default
+      - squarelet_default
+
+  documentcloud_celerybeat:
+    <<: *django
+    image: documentcloud_local_celerybeat
+    depends_on:
+      - documentcloud_redis
+      - documentcloud_processing_redis
+      - documentcloud_postgres
+    ports: []
+    command: /start-celerybeat
+    networks:
+      - default
+      - squarelet_default
+
+networks:
+  squarelet_default:
+    external: true
