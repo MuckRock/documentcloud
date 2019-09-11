@@ -6,6 +6,7 @@ argon2-cffi
 redis
 celery
 django-celery-beat
+python-redis-lock[django]
 
 # Django
 # ------------------------------------------------------------------------------
@@ -18,3 +19,4 @@ django-redis
 # Django REST Framework
 djangorestframework
 coreapi
+rest-social-auth

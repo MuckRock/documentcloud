@@ -2,6 +2,7 @@
 Base settings to build other settings files upon.
 """
 
+# Third Party
 import environ
 
 ROOT_DIR = (
@@ -65,10 +66,13 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "django_celery_beat",
+    "social_django",
+    "rest_social_auth",
 ]
 
 LOCAL_APPS = [
-    #"documentcloud.users.apps.UsersConfig",
+    "documentcloud.users",
+    "documentcloud.organizations",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -78,10 +82,35 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
 AUTHENTICATION_BACKENDS = [
+    "documentcloud.squarelet.backends.SquareletBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
-#AUTH_USER_MODEL = "users.User"
+AUTH_USER_MODEL = "users.User"
+
+# SQUARELET AUTHENTICATION
+# ------------------------------------------------------------------------------
+SOCIAL_AUTH_POSTGRES_JSONFIELD = True
+SOCIAL_AUTH_SQUARELET_KEY = env("SQUARELET_KEY")
+SOCIAL_AUTH_SQUARELET_SECRET = SQUARELET_SECRET = env("SQUARELET_SECRET")
+SOCIAL_AUTH_SQUARELET_SCOPE = ["uuid", "organizations", "preferences"]
+SOCIAL_AUTH_TRAILING_SLASH = False
+
+SOCIAL_AUTH_PIPELINE = (
+    "social_core.pipeline.social_auth.social_details",
+    "social_core.pipeline.social_auth.social_uid",
+    "social_core.pipeline.social_auth.auth_allowed",
+    "social_core.pipeline.social_auth.social_user",
+    "social_core.pipeline.user.get_username",
+    "documentcloud.squarelet.pipeline.associate_by_uuid",
+    "social_core.pipeline.user.create_user",
+    "documentcloud.squarelet.pipeline.save_info",
+    "documentcloud.squarelet.pipeline.save_session_data",
+    "social_core.pipeline.social_auth.associate_user",
+    "social_core.pipeline.social_auth.load_extra_data",
+    "social_core.pipeline.user.user_details",
+)
+SOCIAL_AUTH_LOGIN_ERROR_URL = "/"
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
@@ -174,6 +203,22 @@ TEMPLATES = [
 # https://docs.djangoproject.com/en/dev/ref/settings/#fixture-dirs
 FIXTURE_DIRS = (str(APPS_DIR.path("fixtures")),)
 
+# CACHES
+# ------------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "redis_lock.django_cache.RedisCache",
+        "LOCATION": env("REDIS_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # Mimicing memcache behavior.
+            # http://niwinz.github.io/django-redis/latest/#_memcached_exceptions_behavior
+            "IGNORE_EXCEPTIONS": True,
+        },
+    }
+}
+DEFAULT_CACHE_TIMEOUT = 15 * 60
+
 # SECURITY
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
@@ -256,5 +301,16 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # https://django-compressor.readthedocs.io/en/latest/quickstart/#installation
 INSTALLED_APPS += ["compressor"]
 STATICFILES_FINDERS += ["compressor.finders.CompressorFinder"]
+
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# first party urls
+# ------------------------------------------------------------------------------
+SQUARELET_URL = env("SQUARELET_URL", default="http://dev.squarelet.com")
+MUCKROCK_URL = env("MUCKROCK_URL", default="http://dev.muckrock.com")
+FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="http://dev.foiamachine.org")
+DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://dev.documentcloud.org")
+
+# this allows communication from muckrock to squarelet to bypass rate limiting
+BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
