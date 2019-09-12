@@ -73,6 +73,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "documentcloud.users",
     "documentcloud.organizations",
+    "documentcloud.documents",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -314,3 +315,6 @@ DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://dev.documentcloud.org")
 
 # this allows communication from muckrock to squarelet to bypass rate limiting
 BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
+
+# bucket to store files in
+BUCKET = env("BUCKET", default="")

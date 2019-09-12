@@ -15,8 +15,12 @@ django-environ
 django-model-utils
 django-compressor
 django-redis
+django-choices
+django-autoslug
+rules
 
 # Django REST Framework
 djangorestframework
 coreapi
 rest-social-auth
+social-auth-core[openidconnect]

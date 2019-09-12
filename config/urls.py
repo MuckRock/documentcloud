@@ -4,11 +4,18 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
+from rest_framework import routers
+
+# DocumentCloud
+from documentcloud.documents.views import DocumentViewSet
+
+router = routers.DefaultRouter()
+router.register("documents", DocumentViewSet)
 
 urlpatterns = [
-    path("api/login/", include("rest_social_auth.urls_session")),
-    # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
+    path("api/login/", include("rest_social_auth.urls_session")),
+    path("api/", include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

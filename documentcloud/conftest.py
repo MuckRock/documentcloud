@@ -1,20 +1,30 @@
-import pytest
-from django.conf import settings
+# Django
 from django.test import RequestFactory
+from rest_framework.test import APIClient
 
-#from documentcloud.users.tests.factories import UserFactory
+# Third Party
+import pytest
 
-
-@pytest.fixture(autouse=True)
-def media_storage(settings, tmpdir):
-    settings.MEDIA_ROOT = tmpdir.strpath
+# DocumentCloud
+from documentcloud.documents.tests.factories import DocumentFactory
+from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.fixture
-def user() -> settings.AUTH_USER_MODEL:
+def user():
     return UserFactory()
 
 
 @pytest.fixture
-def request_factory() -> RequestFactory:
+def request_factory():
     return RequestFactory()
+
+
+@pytest.fixture
+def client():
+    return APIClient()
+
+
+@pytest.fixture
+def document():
+    return DocumentFactory()
