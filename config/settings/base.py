@@ -68,6 +68,7 @@ THIRD_PARTY_APPS = [
     "django_celery_beat",
     "social_django",
     "rest_social_auth",
+    "reversion",
 ]
 
 LOCAL_APPS = [
@@ -145,6 +146,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "reversion.middleware.RevisionMiddleware",
 ]
 
 # STATIC

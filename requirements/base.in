@@ -17,6 +17,7 @@ django-compressor
 django-redis
 django-choices
 django-autoslug
+django-reversion
 rules
 
 # Django REST Framework
