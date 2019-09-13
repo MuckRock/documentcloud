@@ -83,7 +83,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def organization(self):
         """Get the user's active organization"""
-        return self.memberships.get(active=True).organization
+        return (
+            self.memberships.select_related("organization")
+            .get(active=True)
+            .organization
+        )
 
     @organization.setter
     def organization(self, organization):

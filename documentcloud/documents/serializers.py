@@ -15,12 +15,12 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
+            "id",
             "access",
             "created_at",
             "description",
             "file",
             "file_url",
-            "id",
             "language",
             "organization",
             "page_count",

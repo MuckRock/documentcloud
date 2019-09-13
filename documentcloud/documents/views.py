@@ -63,6 +63,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
         organization = django_filters.NumberFilter()
         access = django_filters.NumberFilter()
         status = django_filters.NumberFilter()
+        created_at = django_filters.IsoDateTimeFilter()
+        page_count = django_filters.NumberFilter()
 
     filter_class = Filter
     ordering_fields = ("created_at", "page_count", "title", "source")

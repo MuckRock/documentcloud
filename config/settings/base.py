@@ -64,19 +64,19 @@ DJANGO_APPS = [
     "django.contrib.admin",
 ]
 THIRD_PARTY_APPS = [
-    "rest_framework",
     "django_celery_beat",
-    "social_django",
+    "django_filters",
+    "rest_framework",
     "rest_social_auth",
     "reversion",
     "rules.apps.AutodiscoverRulesConfig",
+    "social_django",
 ]
 
 LOCAL_APPS = [
-    "documentcloud.users",
-    "documentcloud.organizations",
     "documentcloud.documents",
-    # Your stuff: custom apps go here
+    "documentcloud.organizations",
+    "documentcloud.users",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

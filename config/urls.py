@@ -8,9 +8,13 @@ from rest_framework import routers
 
 # DocumentCloud
 from documentcloud.documents.views import DocumentViewSet
+from documentcloud.organizations.views import OrganizationViewSet
+from documentcloud.users.views import UserViewSet
 
 router = routers.DefaultRouter()
 router.register("documents", DocumentViewSet)
+router.register("users", UserViewSet)
+router.register("organizations", OrganizationViewSet)
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),

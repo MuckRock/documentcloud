@@ -9,7 +9,7 @@ from documentcloud.documents.choices import Access
 
 
 class DocumentQuerySet(models.QuerySet):
-    """Object manager for documents"""
+    """Custom queryset for documents"""
 
     def get_viewable(self, user):
         if user.is_authenticated:

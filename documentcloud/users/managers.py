@@ -11,11 +11,12 @@ import logging
 
 # DocumentCloud
 from documentcloud.organizations.models import Membership, Organization
+from documentcloud.users.querysets import UserQuerySet
 
 logger = logging.getLogger(__name__)
 
 
-class UserManager(AuthUserManager):
+class BaseUserManager(AuthUserManager):
     """Object manager for users"""
 
     # pylint: disable=no-self-use
@@ -125,3 +126,7 @@ class UserManager(AuthUserManager):
             user.organizations.order_by("-individual", "name"),
             settings.DEFAULT_CACHE_TIMEOUT,
         )
+
+
+class UserManager(BaseUserManager.from_queryset(UserQuerySet)):
+    pass
