@@ -7,10 +7,10 @@ from rest_framework import parsers, viewsets
 import os
 
 # Third Party
+import django_filters
 import environ
 
 # DocumentCloud
-from documentcloud.core.permissions import Permissions
 from documentcloud.documents.models import Document
 from documentcloud.documents.serializers import DocumentSerializer
 
@@ -20,11 +20,12 @@ env = environ.Env()
 class DocumentViewSet(viewsets.ModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     serializer_class = DocumentSerializer
-    permissions = (Permissions,)
     queryset = Document.objects.none()
 
     def get_queryset(self):
-        return Document.objects.select_related("user", "organization")
+        return Document.objects.get_viewable(self.request.user).select_related(
+            "user", "organization"
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -56,3 +57,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
         transaction.on_commit(
             lambda: httpsub.post(env("DOC_PROCESSING_URL"), json=options)
         )
+
+    class Filter(django_filters.FilterSet):
+        user = django_filters.NumberFilter()
+        organization = django_filters.NumberFilter()
+        access = django_filters.NumberFilter()
+        status = django_filters.NumberFilter()
+
+    filter_class = Filter
+    ordering_fields = ("created_at", "page_count", "title", "source")
+    ordering = ("-created_at",)

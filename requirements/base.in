@@ -18,6 +18,7 @@ django-redis
 django-choices
 django-autoslug
 django-reversion
+django-filter
 rules
 
 # Django REST Framework

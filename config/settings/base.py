@@ -69,6 +69,7 @@ THIRD_PARTY_APPS = [
     "social_django",
     "rest_social_auth",
     "reversion",
+    "rules.apps.AutodiscoverRulesConfig",
 ]
 
 LOCAL_APPS = [
@@ -84,6 +85,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
 AUTHENTICATION_BACKENDS = [
+    "rules.permissions.ObjectPermissionBackend",
     "documentcloud.squarelet.backends.SquareletBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
@@ -304,6 +306,21 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # https://django-compressor.readthedocs.io/en/latest/quickstart/#installation
 INSTALLED_APPS += ["compressor"]
 STATICFILES_FINDERS += ["compressor.finders.CompressorFinder"]
+
+# Rest Framework
+# ------------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    "DEFAULT_PERMISSION_CLASSES": ["documentcloud.core.permissions.Permissions"],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "PAGE_SIZE": 100,
+    "HTML_SELECT_CUTOFF": 20,
+}
 
 # Your stuff...
 # ------------------------------------------------------------------------------

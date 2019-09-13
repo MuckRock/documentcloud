@@ -21,8 +21,10 @@ class Document(models.Model):
     access = models.IntegerField(choices=Access.choices)
     status = models.IntegerField(choices=Status.choices, default=Status.pending)
 
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, db_index=True)
     slug = AutoSlugField(populate_from="title", unique=True)
+
+    page_count = models.IntegerField(default=0, db_index=True)
 
     language = models.CharField(
         max_length=3,
@@ -33,13 +35,16 @@ class Document(models.Model):
     )
 
     source = models.CharField(
-        max_length=1000, blank=True, help_text="The source who produced the document"
+        max_length=1000,
+        blank=True,
+        db_index=True,
+        help_text="The source who produced the document",
     )
     description = models.TextField(
         blank=True, help_text="A paragraph of detailed description"
     )
-    created_at = AutoCreatedField(blank=True, null=True)
-    updated_at = AutoLastModifiedField(blank=True, null=True)
+    created_at = AutoCreatedField(db_index=True)
+    updated_at = AutoLastModifiedField()
 
     objects = DocumentQuerySet.as_manager()
 

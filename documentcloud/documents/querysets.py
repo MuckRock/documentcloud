@@ -25,6 +25,6 @@ class DocumentQuerySet(models.QuerySet):
                 # XXX freelancer
                 | Q(access=Access.organization, organization=user.organization)
             )
-            return self.exclude(access=Access.invisible).filter(query).distinct()
+            return self.exclude(access=Access.invisible).filter(query)
         else:
             return self.filter(access=Access.public)

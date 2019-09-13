@@ -35,6 +35,6 @@ can_change = is_authenticated & (
 can_view = has_access(Access.public) | can_change
 can_delete = can_change
 
-add_perm("document.view_document", can_view)
-add_perm("document.change_document", can_change)
-add_perm("document.delete_document", can_delete)
+add_perm("documents.view_document", can_view)
+add_perm("documents.change_document", can_change)
+add_perm("documents.delete_document", can_delete)
