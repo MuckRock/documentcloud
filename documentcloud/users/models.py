@@ -25,7 +25,9 @@ from documentcloud.users.managers import UserManager
 class User(AbstractBaseUser, PermissionsMixin):
     """User model for DocumentCloud"""
 
-    uuid = models.UUIDField(unique=True, editable=False, default=uuid4, db_index=True)
+    uuid = models.UUIDField(
+        _("UUID"), unique=True, editable=False, default=uuid4, db_index=True
+    )
     name = models.CharField(_("name of user"), max_length=255)
     email = CIEmailField(_("email"), unique=True, null=True)
     username = CICharField(_("username"), max_length=150, unique=True)

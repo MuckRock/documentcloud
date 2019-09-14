@@ -19,8 +19,6 @@ logger = logging.getLogger(__name__)
 class BaseUserManager(AuthUserManager):
     """Object manager for users"""
 
-    # pylint: disable=no-self-use
-
     @transaction.atomic
     def squarelet_update_or_create(self, uuid, data):
         """Update or create records based on data from squarelet"""

@@ -3,7 +3,6 @@ from rest_framework import serializers
 
 # DocumentCloud
 from documentcloud.organizations.models import Organization
-from documentcloud.users.models import User
 
 
 class OrganizationSerializer(serializers.ModelSerializer):

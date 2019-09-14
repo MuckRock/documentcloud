@@ -35,10 +35,7 @@ class Document(models.Model):
     )
 
     source = models.CharField(
-        max_length=1000,
-        blank=True,
-        db_index=True,
-        help_text="The source who produced the document",
+        max_length=1000, blank=True, help_text="The source who produced the document"
     )
     description = models.TextField(
         blank=True, help_text="A paragraph of detailed description"

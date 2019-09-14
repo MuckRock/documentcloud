@@ -9,4 +9,7 @@ class UserQuerySet(models.QuerySet):
 
     def get_viewable(self, user):
         """You may view other users in your organization"""
-        return self.filter(organizations__in=user.organizations.all()).distinct()
+        if user.is_authenticated:
+            return self.filter(organizations__in=user.organizations.all()).distinct()
+        else:
+            return self.none()

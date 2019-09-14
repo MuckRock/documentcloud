@@ -1,6 +1,9 @@
 # Django
 from rest_framework import viewsets
 
+# Third Party
+import django_filters
+
 # DocumentCloud
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
@@ -11,4 +14,11 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.none()
 
     def get_queryset(self):
-        return self.request.user.organizations.all()
+        return Organization.objects.get_viewable(self.request.user)
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = Organization
+            fields = ["individual", "slug", "uuid"]
+
+    filterset_class = Filter

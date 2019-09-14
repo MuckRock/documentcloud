@@ -42,7 +42,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "source": {"required": False},
             "status": {"read_only": True},
             "updated_at": {"read_only": True},
-            "user": {"read_only": True},
+            "user": {"read_only": True, "style": {"base_template": "input.html"}},
         }
 
     def validate(self, attrs):

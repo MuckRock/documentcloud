@@ -1,4 +1,5 @@
 # Django
+from django import forms
 from django.conf import settings
 from django.db import transaction
 from rest_framework import parsers, viewsets
@@ -11,8 +12,11 @@ import django_filters
 import environ
 
 # DocumentCloud
+from documentcloud.core.filters import ModelChoiceFilter
 from documentcloud.documents.models import Document
 from documentcloud.documents.serializers import DocumentSerializer
+from documentcloud.organizations.models import Organization
+from documentcloud.users.models import User
 
 env = environ.Env()
 
@@ -59,13 +63,21 @@ class DocumentViewSet(viewsets.ModelViewSet):
         )
 
     class Filter(django_filters.FilterSet):
-        user = django_filters.NumberFilter()
-        organization = django_filters.NumberFilter()
-        access = django_filters.NumberFilter()
-        status = django_filters.NumberFilter()
-        created_at = django_filters.IsoDateTimeFilter()
-        page_count = django_filters.NumberFilter()
+        ordering = django_filters.OrderingFilter(
+            fields=("created_at", "page_count", "title", "source")
+        )
+        user = ModelChoiceFilter(model=User)
+        organization = ModelChoiceFilter(model=Organization)
 
-    filter_class = Filter
-    ordering_fields = ("created_at", "page_count", "title", "source")
-    ordering = ("-created_at",)
+        class Meta:
+            model = Document
+            fields = {
+                "user": ["exact"],
+                "organization": ["exact"],
+                "access": ["exact"],
+                "status": ["exact"],
+                "created_at": ["lt", "gt"],
+                "page_count": ["exact", "lt", "gt"],
+            }
+
+    filterset_class = Filter

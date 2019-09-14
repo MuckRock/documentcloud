@@ -40,3 +40,9 @@ class OrganizationQuerySet(models.QuerySet):
         organization.update_data(data)
 
         return organization, created
+
+    def get_viewable(self, user):
+        if user.is_authenticated:
+            return self.filter(users=user)
+        else:
+            return self.none()

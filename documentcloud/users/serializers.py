@@ -14,7 +14,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "avatar_url",
-            "email",
             "name",
             "organization",
             "organizations",
@@ -23,7 +22,6 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "avatar_url": {"read_only": True},
-            "email": {"read_only": True},
             "name": {"read_only": True},
             "organizations": {"read_only": True},
             "username": {"read_only": True},

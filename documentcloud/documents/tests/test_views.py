@@ -12,8 +12,6 @@ from documentcloud.documents.tests.factories import DocumentFactory
 
 @pytest.mark.django_db()
 class TestDocumentAPI:
-    # pylint: disable=no-self-use
-
     def test_list(self, client):
         size = 10
         DocumentFactory.create_batch(size)
