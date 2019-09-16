@@ -12,7 +12,7 @@ SECRET_KEY = env(
     default="FhLwGIYi6qw371QQtXYK6nN40KG01W7E1d7MxL9ySF0zbHIzDNv0brKvge2s8nJA",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "dev.documentcloud.org"]
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "dev.api-documentcloud.org"]
 
 # EMAIL
 # ------------------------------------------------------------------------------

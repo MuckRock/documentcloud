@@ -15,7 +15,6 @@ services:
       - documentcloud_postgres
       - documentcloud_redis
       - documentcloud_processing_redis
-      #- documentcloud_frontend
       #- documentcloud_solr
     volumes:
       - .:/app
@@ -28,24 +27,10 @@ services:
     networks:
       default:
         aliases:
-          - dev.documentcloud.org
+          - dev.api-documentcloud.org
       squarelet_default:
         aliases:
-          - dev.documentcloud.org
-
-  #documentcloud_frontend:
-  #  build:
-  #    context: .
-  #    dockerfile: ./compose/local/vue/Dockerfile
-  #  image: documentcloud_local_frontend
-  #  environment:
-  #    - CHOKIDAR_USEPOLLING=true
-  #  volumes:
-  #    - ./frontend:/frontend
-  #  networks:
-  #    default:
-  #      aliases:
-  #        - vue.documentcloud
+          - dev.api-documentcloud.org
 
   documentcloud_postgres:
     build:

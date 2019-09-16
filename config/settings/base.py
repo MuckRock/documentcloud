@@ -329,6 +329,7 @@ SQUARELET_URL = env("SQUARELET_URL", default="http://dev.squarelet.com")
 MUCKROCK_URL = env("MUCKROCK_URL", default="http://dev.muckrock.com")
 FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="http://dev.foiamachine.org")
 DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://dev.documentcloud.org")
+DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://dev.api-documentcloud.org")
 
 # this allows communication from muckrock to squarelet to bypass rate limiting
 BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
