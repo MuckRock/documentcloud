@@ -1,8 +1,9 @@
 # Django
-from rest_framework import viewsets
+from rest_framework import mixins, viewsets
 
 # Third Party
 import django_filters
+import rest_social_auth.views
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
@@ -11,7 +12,12 @@ from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
     serializer_class = UserSerializer
     queryset = User.objects.none()
 
@@ -35,3 +41,7 @@ class UserViewSet(viewsets.ModelViewSet):
             fields = ["organizations", "name", "username", "uuid"]
 
     filterset_class = Filter
+
+
+class SocialSessionAuthView(rest_social_auth.views.SocialSessionAuthView):
+    serializer_class = UserSerializer

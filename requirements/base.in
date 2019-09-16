@@ -26,3 +26,4 @@ djangorestframework
 coreapi
 rest-social-auth
 social-auth-core[openidconnect]
+drf-yasg

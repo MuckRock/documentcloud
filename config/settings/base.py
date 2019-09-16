@@ -66,6 +66,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "django_celery_beat",
     "django_filters",
+    "drf_yasg",
     "rest_framework",
     "rest_social_auth",
     "reversion",

@@ -44,6 +44,7 @@ django-timezone-field==3.0
 django==2.2.5
 djangorestframework==3.10.3
 docutils==0.15.2          # via sphinx
+drf-yasg==1.16.1
 ecdsa==0.13.2
 entrypoints==0.3          # via flake8
 factory-boy==2.12.0
@@ -53,6 +54,7 @@ future==0.17.1
 idna==2.8
 imagesize==1.1.0          # via sphinx
 importlib-metadata==0.21
+inflection==0.3.1
 ipdb==0.12.2
 ipython-genutils==0.2.0   # via traitlets
 ipython==7.8.0            # via ipdb
@@ -106,6 +108,8 @@ requests==2.22.0
 rest-social-auth==2.2.0
 rjsmin==1.1.0
 rsa==4.0
+ruamel.yaml.clib==0.1.2
+ruamel.yaml==0.16.5
 rules==2.1
 six==1.12.0
 snowballstemmer==1.9.1    # via sphinx

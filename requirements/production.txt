@@ -35,11 +35,13 @@ django-timezone-field==3.0
 django==2.2.5
 djangorestframework==3.10.3
 docutils==0.15.2          # via botocore
+drf-yasg==1.16.1
 ecdsa==0.13.2
 future==0.17.1
 gunicorn==19.9.0
 idna==2.8
 importlib-metadata==0.21
+inflection==0.3.1
 itypes==1.1.0
 jinja2==2.10.1
 jmespath==0.9.4           # via boto3, botocore
@@ -66,6 +68,8 @@ requests==2.22.0
 rest-social-auth==2.2.0
 rjsmin==1.1.0
 rsa==4.0
+ruamel.yaml.clib==0.1.2
+ruamel.yaml==0.16.5
 rules==2.1
 s3transfer==0.2.1         # via boto3
 sentry-sdk==0.11.2

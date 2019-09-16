@@ -9,7 +9,7 @@ from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 
 
-class OrganizationViewSet(viewsets.ModelViewSet):
+class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.none()
 

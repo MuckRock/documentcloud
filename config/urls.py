@@ -4,12 +4,28 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
-from rest_framework import routers
+from rest_framework import permissions, routers
+
+# Third Party
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
 
 # DocumentCloud
 from documentcloud.documents.views import DocumentViewSet
 from documentcloud.organizations.views import OrganizationViewSet
-from documentcloud.users.views import UserViewSet
+from documentcloud.users.views import SocialSessionAuthView, UserViewSet
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="DocumentCloud API",
+        default_version="v1",
+        description="API for Document Cloud",
+        terms_of_service="https://www.documentcloud.org/tos/",
+        contact=openapi.Contact(email="dylan@documentcloud.org"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
 
 router = routers.DefaultRouter()
 router.register("documents", DocumentViewSet)
@@ -18,8 +34,20 @@ router.register("organizations", OrganizationViewSet)
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
-    path("api/login/", include("rest_social_auth.urls_session")),
+    path(
+        "api/login/social/session/<provider>/",
+        SocialSessionAuthView.as_view(),
+        name="login_social_session",
+    ),
     path("api/", include(router.urls)),
+    path(
+        "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
+    ),
+    path(
+        "swagger/",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
