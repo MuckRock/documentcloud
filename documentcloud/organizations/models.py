@@ -21,31 +21,76 @@ logger = logging.getLogger(__name__)
 class Organization(models.Model):
     """An orginization users can belong to"""
 
-    # pylint: disable=too-many-instance-attributes
-
     objects = OrganizationQuerySet.as_manager()
 
     uuid = models.UUIDField(
-        "UUID", unique=True, editable=False, default=uuid4, db_index=True
+        _("UUID"),
+        unique=True,
+        editable=False,
+        default=uuid4,
+        db_index=True,
+        help_text=_("Unique ID to link organizations across MuckRock's sites"),
     )
 
     users = models.ManyToManyField(
-        "users.User", through="organizations.Membership", related_name="organizations"
+        verbose_name=_("users"),
+        to="users.User",
+        through="organizations.Membership",
+        related_name="organizations",
+        help_text=_("The users who are members of this organization"),
     )
 
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(max_length=255, unique=True)
-    private = models.BooleanField(default=False)
-    individual = models.BooleanField(default=True)
-    plan = models.ForeignKey("organizations.Plan", on_delete=models.PROTECT, null=True)
-    card = models.CharField(max_length=255, blank=True)
-    avatar_url = models.URLField(max_length=255, blank=True)
+    name = models.CharField(
+        _("name"), max_length=255, help_text=_("Name of the organization")
+    )
+    slug = models.SlugField(
+        _("slug"),
+        max_length=255,
+        unique=True,
+        help_text=_("Unique slug for the organization which may be used in a URL"),
+    )
+    private = models.BooleanField(
+        _("private"),
+        default=False,
+        help_text=_(
+            "Whether or not to keep this organization and its membership list private"
+        ),
+    )
+    individual = models.BooleanField(
+        _("individual"),
+        default=True,
+        help_text=_("Is this an organization for an individual user?"),
+    )
+    plan = models.ForeignKey(
+        verbose_name=_("plan"),
+        to="organizations.Plan",
+        on_delete=models.PROTECT,
+        null=True,
+        help_text=_("The subscription type for this organization"),
+    )
+    card = models.CharField(
+        _("card"),
+        max_length=255,
+        blank=True,
+        help_text=_(
+            "The brand and last 4 digits of the default credit card on file for this "
+            "organization, for display purposes"
+        ),
+    )
+    avatar_url = models.URLField(
+        _("avatar url"),
+        max_length=255,
+        blank=True,
+        help_text=_("A URL which points to an avatar for the organization"),
+    )
 
     pages_per_month = models.IntegerField(
+        _("pages per month"),
         default=0,
         help_text=_("How many monthly pages this organization gets each month"),
     )
     monthly_pages = models.IntegerField(
+        _("monthly pages"),
         default=0,
         help_text=_(
             "How many recurring monthly pages are left for this month - these do "
@@ -53,15 +98,26 @@ class Organization(models.Model):
         ),
     )
     number_pages = models.IntegerField(
+        _("number pages"),
         default=0,
         help_text=_(
             "How many individually purchased pages this organization has - "
             "these never expire and are unaffected by the monthly roll over"
         ),
     )
-    date_update = models.DateField(null=True)
+    date_update = models.DateField(
+        _("date update"),
+        null=True,
+        help_text=_("The date when this organizations monthly pages will be refreshed"),
+    )
 
-    payment_failed = models.BooleanField(default=False)
+    payment_failed = models.BooleanField(
+        _("payment failed"),
+        default=False,
+        help_text=_(
+            "This organizations payment method has failed and should be updated"
+        ),
+    )
 
     def __str__(self):
         if self.individual:
@@ -134,13 +190,29 @@ class Membership(models.Model):
     """Through table for organization membership"""
 
     user = models.ForeignKey(
-        "users.User", on_delete=models.CASCADE, related_name="memberships"
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        help_text=_("A user being linked to an organization"),
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="memberships"
+        verbose_name=_("organization"),
+        to="organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="memberships",
+        help_text=_("An organization being linked to a user"),
     )
-    active = models.BooleanField(default=False)
-    admin = models.BooleanField(default=False)
+    active = models.BooleanField(
+        _("active"),
+        default=False,
+        help_text=_("The user is currently working on behalf of this organization"),
+    )
+    admin = models.BooleanField(
+        _("admin"),
+        default=False,
+        help_text=_("The user is an administrator for this organization"),
+    )
 
     class Meta:
         unique_together = ("user", "organization")
@@ -152,13 +224,32 @@ class Membership(models.Model):
 class Plan(models.Model):
     """Plans that organizations can subscribe to"""
 
-    name = models.CharField(max_length=255, unique=True)
-    slug = models.SlugField(max_length=255, unique=True)
+    name = models.CharField(_("name"), max_length=255, unique=True)
+    slug = models.SlugField(_("slug"), max_length=255, unique=True)
 
-    minimum_users = models.PositiveSmallIntegerField(default=1)
-    base_pages = models.PositiveSmallIntegerField(default=0)
-    pages_per_user = models.PositiveSmallIntegerField(default=0)
-    feature_level = models.PositiveSmallIntegerField(default=0)
+    minimum_users = models.PositiveSmallIntegerField(
+        _("minimum users"),
+        default=1,
+        help_text=_("The minimum number of users included with this plan"),
+    )
+    base_pages = models.PositiveSmallIntegerField(
+        _("base pages"),
+        default=0,
+        help_text=_("The number of monthly pages included by default with this plan"),
+    )
+    pages_per_user = models.PositiveSmallIntegerField(
+        _("pages per user"),
+        default=0,
+        help_text=_(
+            "The number of additional pages per month included with this plan for each "
+            "user over the minimum"
+        ),
+    )
+    feature_level = models.PositiveSmallIntegerField(
+        _("feature level"),
+        default=0,
+        help_text=_("The level of premium features included with this plan"),
+    )
 
     def __str__(self):
         return self.name

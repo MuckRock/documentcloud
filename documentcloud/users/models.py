@@ -26,12 +26,34 @@ class User(AbstractBaseUser, PermissionsMixin):
     """User model for DocumentCloud"""
 
     uuid = models.UUIDField(
-        _("UUID"), unique=True, editable=False, default=uuid4, db_index=True
+        _("UUID"),
+        unique=True,
+        editable=False,
+        default=uuid4,
+        db_index=True,
+        help_text=_("Unique ID to link users across MuckRock's sites"),
     )
-    name = models.CharField(_("name of user"), max_length=255)
-    email = CIEmailField(_("email"), unique=True, null=True)
-    username = CICharField(_("username"), max_length=150, unique=True)
-    avatar_url = models.URLField(_("avatar url"), blank=True, max_length=255)
+    name = models.CharField(
+        _("full name"), max_length=255, help_text=_("The user's full name")
+    )
+    email = CIEmailField(
+        _("email"),
+        unique=True,
+        null=True,
+        help_text=_("The user's primary email address"),
+    )
+    username = CICharField(
+        _("username"),
+        max_length=150,
+        unique=True,
+        help_text=_("A unique public identifier for the user"),
+    )
+    avatar_url = models.URLField(
+        _("avatar url"),
+        blank=True,
+        max_length=255,
+        help_text=_("A URL which points to an avatar for the user"),
+    )
     is_staff = models.BooleanField(
         _("staff status"),
         default=False,
@@ -52,8 +74,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text=_("Has an email we sent to this user's email address failed?"),
     )
 
-    created_at = AutoCreatedField(_("created at"))
-    updated_at = AutoLastModifiedField(_("updated at"))
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the user was created")
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"), help_text=_("Timestamp of when the user was last updated")
+    )
 
     # preferences
     use_autologin = models.BooleanField(

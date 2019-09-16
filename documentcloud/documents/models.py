@@ -1,5 +1,6 @@
 # Django
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 
 # Third Party
 from autoslug import AutoSlugField
@@ -12,21 +13,55 @@ from documentcloud.documents.querysets import DocumentQuerySet
 
 
 class Document(models.Model):
+    """A document uploaded to DocumentCloud"""
+
+    objects = DocumentQuerySet.as_manager()
+
     user = models.ForeignKey(
-        "users.User", on_delete=models.PROTECT, related_name="documents"
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="documents",
+        help_text=_("The user who created this document"),
     )
     organization = models.ForeignKey(
-        "organizations.Organization", on_delete=models.PROTECT, related_name="documents"
+        verbose_name=_("organization"),
+        to="organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="documents",
+        help_text=_("The organization this document was created within"),
     )
-    access = models.IntegerField(choices=Access.choices)
-    status = models.IntegerField(choices=Status.choices, default=Status.pending)
+    access = models.IntegerField(
+        _("access"),
+        choices=Access.choices,
+        help_text=_("Designates who may access this document by default"),
+    )
+    status = models.IntegerField(
+        _("status"),
+        choices=Status.choices,
+        default=Status.pending,
+        help_text=_("The processing status of this document"),
+    )
 
-    title = models.CharField(max_length=255, db_index=True)
-    slug = AutoSlugField(populate_from="title", unique=True)
+    title = models.CharField(
+        _("title"), max_length=255, db_index=True, help_text=_("The document's title")
+    )
+    slug = AutoSlugField(
+        _("slug"),
+        populate_from="title",
+        unique=True,
+        help_text=_("A unique slug for the document which may be used in a URL"),
+    )
 
-    page_count = models.IntegerField(default=0, db_index=True)
+    page_count = models.IntegerField(
+        _("page count"),
+        default=0,
+        db_index=True,
+        help_text=_("Number of pages in this document"),
+    )
 
     language = models.CharField(
+        _("language"),
         max_length=3,
         choices=Language.choices,
         blank=True,
@@ -35,15 +70,22 @@ class Document(models.Model):
     )
 
     source = models.CharField(
-        max_length=1000, blank=True, help_text="The source who produced the document"
+        _("source"),
+        max_length=1000,
+        blank=True,
+        help_text="The source who produced the document",
     )
     description = models.TextField(
-        blank=True, help_text="A paragraph of detailed description"
+        _("description"), blank=True, help_text="A paragraph of detailed description"
     )
-    created_at = AutoCreatedField(db_index=True)
-    updated_at = AutoLastModifiedField()
-
-    objects = DocumentQuerySet.as_manager()
+    created_at = AutoCreatedField(
+        _("created at"),
+        db_index=True,
+        help_text=_("Timestamp of when the document was created"),
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"), help_text=_("Timestamp of when the document was last updated")
+    )
 
     @property
     def thumbnail(self):
@@ -61,12 +103,22 @@ class Document(models.Model):
 
 
 class Page(models.Model):
+    """A single page in a document"""
+
     document = models.ForeignKey(
-        "documents.Document", on_delete=models.CASCADE, related_name="pages"
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="pages",
+        help_text=_("The document this page belongs to"),
     )
-    page_number = models.IntegerField(db_index=True)
-    text = models.TextField()
-    aspect_ratio = models.FloatField(blank=True, null=True)
+    page_number = models.IntegerField(
+        _("page number"), db_index=True, help_text=_("The page number")
+    )
+    text = models.TextField(_("text"), help_text=_("The text on this page"))
+    aspect_ratio = models.FloatField(
+        blank=True, null=True, help_text=_("The aspect ratio for displaying this page")
+    )
 
     class Meta:
         ordering = ("document", "page_number")
