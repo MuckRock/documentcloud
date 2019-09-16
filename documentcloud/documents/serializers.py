@@ -1,4 +1,5 @@
 # Django
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 # DocumentCloud
@@ -9,8 +10,21 @@ from documentcloud.documents.models import Document
 
 class DocumentSerializer(serializers.ModelSerializer):
 
-    file = serializers.FileField(write_only=True, required=False)
-    file_url = serializers.URLField(write_only=True, required=False)
+    file = serializers.FileField(
+        label=_("File"),
+        write_only=True,
+        required=False,
+        help_text=_("The file to upload - use this field or `file_url`"),
+    )
+    file_url = serializers.URLField(
+        label=_("File URL"),
+        write_only=True,
+        required=False,
+        help_text=_(
+            "A publically accessible URL to the file to upload - use this field or "
+            "`file`"
+        ),
+    )
 
     class Meta:
         model = Document

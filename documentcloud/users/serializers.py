@@ -1,4 +1,5 @@
 # Django
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 # DocumentCloud
@@ -7,7 +8,14 @@ from documentcloud.users.models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
-    organization = serializers.IntegerField(source="organization.pk")
+    organization = serializers.IntegerField(
+        source="organization.pk",
+        label=_("Active Organization"),
+        help_text=_(
+            "This is the user's current organization - it must be set to one of the "
+            "organiations they are a member of"
+        ),
+    )
 
     class Meta:
         model = User
