@@ -49,8 +49,7 @@ class Document(models.Model):
     slug = AutoSlugField(
         _("slug"),
         populate_from="title",
-        unique=True,
-        help_text=_("A unique slug for the document which may be used in a URL"),
+        help_text=_("A slug for the document which may be used in a URL"),
     )
 
     page_count = models.IntegerField(
