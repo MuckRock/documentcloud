@@ -73,6 +73,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text=_("Has an email we sent to this user's email address failed?"),
     )
+    email_verified = models.BooleanField(
+        _("email verified"),
+        default=False,
+        help_text=_("Has this user's email address been verified?"),
+    )
 
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the user was created")

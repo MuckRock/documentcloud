@@ -39,10 +39,10 @@ class BaseUserManager(AuthUserManager):
         user_map = {
             "preferred_username": "username",
             "email": "email",
-            "name": "full_name",
+            "name": "name",
             "picture": "avatar_url",
             "email_failed": "email_failed",
-            "email_verified": "email_confirmed",
+            "email_verified": "email_verified",
             "use_autologin": "use_autologin",
         }
         user_defaults = {
