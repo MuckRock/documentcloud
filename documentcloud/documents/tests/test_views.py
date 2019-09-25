@@ -17,6 +17,8 @@ from documentcloud.documents.serializers import (
 )
 from documentcloud.documents.tests.factories import (
     DocumentFactory,
+    EntityDateFactory,
+    EntityFactory,
     NoteFactory,
     SectionFactory,
 )
@@ -315,3 +317,27 @@ class TestSectionAPI:
             f"/api/documents/{section.document.pk}/sections/{section.pk}/"
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db()
+class TestEntityAPI:
+    def test_list(self, client, document):
+        """List the entities of a document"""
+        size = 10
+        EntityFactory.create_batch(size, document=document)
+        response = client.get(f"/api/documents/{document.pk}/entities/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == size
+
+
+@pytest.mark.django_db()
+class TestEntityDateAPI:
+    def test_list(self, client, document):
+        """List the entitie dates of a document"""
+        size = 10
+        EntityDateFactory.create_batch(size, document=document)
+        response = client.get(f"/api/documents/{document.pk}/dates/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == size

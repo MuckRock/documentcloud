@@ -1,3 +1,6 @@
+# Standard Library
+from random import random
+
 # Third Party
 import factory
 
@@ -57,3 +60,37 @@ class SectionFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "documents.Section"
+
+
+class EntityFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    kind = factory.Iterator(
+        [
+            "person",
+            "organization",
+            "place",
+            "term",
+            "email",
+            "phone",
+            "city",
+            "state",
+            "country",
+        ]
+    )
+    value = factory.Sequence(lambda n: f"Value {n}")
+    relevance = factory.LazyFunction(random)
+
+    class Meta:
+        model = "documents.Entity"
+
+
+class EntityDateFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    date = factory.Faker("date")
+
+    class Meta:
+        model = "documents.EntityDate"

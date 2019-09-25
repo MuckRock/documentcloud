@@ -5,7 +5,7 @@ from rest_framework import serializers
 # DocumentCloud
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document, Note, Section
+from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -149,3 +149,15 @@ class SectionSerializer(serializers.ModelSerializer):
                 "You may only create sections on documents you have edit access to"
             )
         return attrs
+
+
+class EntitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Entity
+        fields = ["kind", "value", "relevance", "occurrences"]
+
+
+class EntityDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EntityDate
+        fields = ["date", "occurrences"]

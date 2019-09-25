@@ -2,7 +2,7 @@
 from django import forms
 from django.conf import settings
 from django.db import transaction
-from rest_framework import parsers, viewsets
+from rest_framework import mixins, parsers, viewsets
 from rest_framework.generics import get_object_or_404
 
 # Standard Library
@@ -14,9 +14,11 @@ import environ
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.documents.models import Document, Note, Section
+from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 from documentcloud.documents.serializers import (
     DocumentSerializer,
+    EntityDateSerializer,
+    EntitySerializer,
     NoteSerializer,
     SectionSerializer,
 )
@@ -125,3 +127,29 @@ class SectionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Specify the document"""
         serializer.save(document_id=self.kwargs["document_pk"])
+
+
+class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = EntitySerializer
+    queryset = Entity.objects.none()
+
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return document.entities.all()
+
+
+class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = EntityDateSerializer
+    queryset = EntityDate.objects.none()
+
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return document.dates.all()

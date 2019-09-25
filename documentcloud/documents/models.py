@@ -210,3 +210,69 @@ class Section(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Entity(models.Model):
+    """An entity within a document"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="entities",
+        help_text=_("The document this entity belongs to"),
+    )
+    kind = models.CharField(
+        _("kind"),
+        max_length=40,
+        choices=[
+            ("person", "Person"),
+            ("organization", "Organization"),
+            ("place", "Place"),
+            ("term", "Term"),
+            ("email", "Email"),
+            ("phone", "Phone"),
+            ("city", "City"),
+            ("state", "State"),
+            ("country", "Country"),
+        ],
+        help_text=_("The kind of entity"),
+    )
+    value = models.CharField(
+        _("value"), max_length=255, help_text=_("The value of this entity")
+    )
+    relevance = models.FloatField(
+        _("relevance"), default=0.0, help_text=_("The relevance of this entity")
+    )
+    calais_id = models.CharField(
+        _("calais id"),
+        max_length=40,
+        blank=True,
+        help_text=_("The ID from open calais"),
+    )
+    occurrences = models.TextField(
+        _("occurrences"),
+        blank=True,
+        help_text=_("Where this entity occurs in the document"),
+    )
+
+
+class EntityDate(models.Model):
+    """A date within a document"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="dates",
+        help_text=_("The document this entity belongs to"),
+    )
+    date = models.DateField(_("date"), help_text=_("The date"))
+    occurrences = models.TextField(
+        _("occurrences"),
+        blank=True,
+        help_text=_("Where this entity occurs in the document"),
+    )
+
+    class Meta:
+        unique_together = (("document", "date"),)
