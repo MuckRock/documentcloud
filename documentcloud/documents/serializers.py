@@ -118,12 +118,12 @@ class NoteSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def validate(self, data):
+    def validate(self, attrs):
         """Check the access level"""
         request = self.context.get("request")
         view = self.context.get("view")
         document = Document.objects.get(pk=view.kwargs["document_pk"])
-        if data.get("access") in (
+        if attrs.get("access") in (
             Access.public,
             Access.organization,
         ) and not request.user.has_perm("documents.change_document", document):
@@ -131,4 +131,4 @@ class NoteSerializer(serializers.ModelSerializer):
                 "You may only create public or draft notes on documents you have "
                 "edit access to"
             )
-        return data
+        return attrs
