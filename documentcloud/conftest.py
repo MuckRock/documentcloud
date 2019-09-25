@@ -6,7 +6,11 @@ from rest_framework.test import APIClient
 import pytest
 
 # DocumentCloud
-from documentcloud.documents.tests.factories import DocumentFactory, NoteFactory
+from documentcloud.documents.tests.factories import (
+    DocumentFactory,
+    NoteFactory,
+    SectionFactory,
+)
 from documentcloud.users.tests.factories import UserFactory
 
 
@@ -33,3 +37,8 @@ def document():
 @pytest.fixture
 def note():
     return NoteFactory()
+
+
+@pytest.fixture
+def section():
+    return SectionFactory()

@@ -14,8 +14,12 @@ import environ
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.documents.models import Document, Note
-from documentcloud.documents.serializers import DocumentSerializer, NoteSerializer
+from documentcloud.documents.models import Document, Note, Section
+from documentcloud.documents.serializers import (
+    DocumentSerializer,
+    NoteSerializer,
+    SectionSerializer,
+)
 from documentcloud.organizations.models import Organization
 from documentcloud.users.models import User
 
@@ -104,3 +108,20 @@ class NoteViewSet(viewsets.ModelViewSet):
             user=self.request.user,
             organization=self.request.user.organization,
         )
+
+
+class SectionViewSet(viewsets.ModelViewSet):
+    serializer_class = SectionSerializer
+    queryset = Section.objects.none()
+
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return document.sections.all()
+
+    def perform_create(self, serializer):
+        """Specify the document"""
+        serializer.save(document_id=self.kwargs["document_pk"])

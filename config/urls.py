@@ -12,7 +12,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested import routers
 
 # DocumentCloud
-from documentcloud.documents.views import DocumentViewSet, NoteViewSet
+from documentcloud.documents.views import DocumentViewSet, NoteViewSet, SectionViewSet
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.users.views import SocialSessionAuthView, UserViewSet
 
@@ -35,6 +35,7 @@ router.register("organizations", OrganizationViewSet)
 
 documents_router = routers.NestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
+documents_router.register("sections", SectionViewSet)
 
 
 urlpatterns = [

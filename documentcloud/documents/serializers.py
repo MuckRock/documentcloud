@@ -5,7 +5,7 @@ from rest_framework import serializers
 # DocumentCloud
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document, Note
+from documentcloud.documents.models import Document, Note, Section
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -130,5 +130,22 @@ class NoteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "You may only create public or draft notes on documents you have "
                 "edit access to"
+            )
+        return attrs
+
+
+class SectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Section
+        fields = ["id", "page_number", "title"]
+
+    def validate(self, attrs):
+        """Check the permissions"""
+        request = self.context.get("request")
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if not request.user.has_perm("documents.change_document", document):
+            raise serializers.ValidationError(
+                "You may only create sections on documents you have edit access to"
             )
         return attrs

@@ -191,3 +191,22 @@ class Note(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Section(models.Model):
+    """A section of a document"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="sections",
+        help_text=_("The document this section belongs to"),
+    )
+    page_number = models.IntegerField(
+        _("page number"), help_text=_("Which page this section appears on")
+    )
+    title = models.TextField(_("title"), help_text=_("A title for the section"))
+
+    def __str__(self):
+        return self.title

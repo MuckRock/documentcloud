@@ -46,3 +46,14 @@ class NoteFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "documents.Note"
+
+
+class SectionFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    page_number = factory.Sequence(lambda n: n)
+    title = factory.Sequence(lambda n: f"Section #{n}")
+
+    class Meta:
+        model = "documents.Section"

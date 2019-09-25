@@ -1,3 +1,6 @@
+# Django
+from rest_framework import status
+
 # Standard Library
 import json
 
@@ -6,9 +9,17 @@ import pytest
 
 # DocumentCloud
 from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document, Note
-from documentcloud.documents.serializers import DocumentSerializer, NoteSerializer
-from documentcloud.documents.tests.factories import DocumentFactory, NoteFactory
+from documentcloud.documents.models import Document, Note, Section
+from documentcloud.documents.serializers import (
+    DocumentSerializer,
+    NoteSerializer,
+    SectionSerializer,
+)
+from documentcloud.documents.tests.factories import (
+    DocumentFactory,
+    NoteFactory,
+    SectionFactory,
+)
 
 
 @pytest.mark.django_db()
@@ -18,7 +29,7 @@ class TestDocumentAPI:
         size = 10
         DocumentFactory.create_batch(size)
         response = client.get(f"/api/documents/")
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
 
@@ -28,7 +39,7 @@ class TestDocumentAPI:
         DocumentFactory.create_batch(size)
         DocumentFactory.create_batch(size, user=user)
         response = client.get(f"/api/documents/", {"user": user.pk})
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
 
@@ -38,7 +49,7 @@ class TestDocumentAPI:
         DocumentFactory(page_count=1)
         DocumentFactory(page_count=2)
         response = client.get(f"/api/documents/", {"ordering": "page_count"})
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert [j["page_count"] for j in response_json["results"]] == [1, 2, 3]
 
@@ -49,14 +60,14 @@ class TestDocumentAPI:
             f"/api/documents/",
             {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
         )
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)
         assert Document.objects.filter(pk=response_json["id"]).exists()
 
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         serializer = DocumentSerializer(document)
         assert response_json == serializer.data
@@ -65,14 +76,14 @@ class TestDocumentAPI:
         """Test retrieving a document you do not have access to"""
         document = DocumentFactory(access=Access.private)
         response = client.get(f"/api/documents/{document.pk}/")
-        assert response.status_code == 404
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update(self, client, document):
         """Test updating a document"""
         client.force_authenticate(user=document.user)
         title = "New Title"
         response = client.patch(f"/api/documents/{document.pk}/", {"title": title})
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.title == title
 
@@ -80,7 +91,7 @@ class TestDocumentAPI:
         """Test destroying a document"""
         client.force_authenticate(user=document.user)
         response = client.delete(f"/api/documents/{document.pk}/")
-        assert response.status_code == 204
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Document.objects.filter(pk=document.pk).exists()
 
 
@@ -91,7 +102,7 @@ class TestNoteAPI:
         size = 10
         NoteFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/notes/")
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
 
@@ -111,7 +122,7 @@ class TestNoteAPI:
                 "access": Access.public,
             },
         )
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)
         assert Note.objects.filter(pk=response_json["id"]).exists()
 
@@ -131,7 +142,7 @@ class TestNoteAPI:
                 "access": Access.public,
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_private(self, client, user, document):
         """Create a private note"""
@@ -149,7 +160,7 @@ class TestNoteAPI:
                 "access": Access.private,
             },
         )
-        assert response.status_code == 201
+        assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)
         assert Note.objects.filter(pk=response_json["id"]).exists()
 
@@ -157,7 +168,7 @@ class TestNoteAPI:
         """Test retrieving a note"""
 
         response = client.get(f"/api/documents/{note.document.pk}/notes/{note.pk}/")
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         serializer = NoteSerializer(note)
         assert response_json == serializer.data
@@ -167,14 +178,14 @@ class TestNoteAPI:
 
         note = NoteFactory(access=Access.private)
         response = client.get(f"/api/documents/{note.document.pk}/notes/{note.pk}/")
-        assert response.status_code == 404
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_retrieve_bad_document(self, client):
-        """Test retrieving a note"""
+        """Test retrieving a note on a document you do not have access to"""
 
         note = NoteFactory(document__access=Access.private)
         response = client.get(f"/api/documents/{note.document.pk}/notes/{note.pk}/")
-        assert response.status_code == 404
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update(self, client, note):
         """Test updating a note"""
@@ -183,7 +194,7 @@ class TestNoteAPI:
         response = client.patch(
             f"/api/documents/{note.document.pk}/notes/{note.pk}/", {"title": title}
         )
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         note.refresh_from_db()
         assert note.title == title
 
@@ -194,7 +205,7 @@ class TestNoteAPI:
             f"/api/documents/{note.document.pk}/notes/{note.pk}/",
             {"access": Access.organization},
         )
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         note.refresh_from_db()
         assert note.access == Access.organization
 
@@ -205,11 +216,102 @@ class TestNoteAPI:
             f"/api/documents/{note.document.pk}/notes/{note.pk}/",
             {"access": Access.private},
         )
-        assert response.status_code == 400
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_destroy(self, client, note):
         """Test destroying a document"""
         client.force_authenticate(user=note.user)
         response = client.delete(f"/api/documents/{note.document.pk}/notes/{note.pk}/")
-        assert response.status_code == 204
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Note.objects.filter(pk=note.pk).exists()
+
+
+@pytest.mark.django_db()
+class TestSectionAPI:
+    def test_list(self, client, document):
+        """List the sections of a document"""
+        size = 10
+        SectionFactory.create_batch(size, document=document)
+        response = client.get(f"/api/documents/{document.pk}/sections/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == size
+
+    def test_create(self, client, document):
+        """Create a section"""
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/sections/",
+            {"title": "Test", "page_number": 1},
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = json.loads(response.content)
+        assert Section.objects.filter(pk=response_json["id"]).exists()
+
+    def test_create_bad(self, client, user, document):
+        """You may only create sections on documents you can edit"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/{document.pk}/sections/",
+            {"title": "Test", "page_number": 1},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_retrieve(self, client, section):
+        """Test retrieving a section"""
+
+        response = client.get(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        serializer = SectionSerializer(section)
+        assert response_json == serializer.data
+
+    def test_retrieve_bad_document(self, client):
+        """Test retrieving a section on a document you do not have access to"""
+
+        section = SectionFactory(document__access=Access.private)
+        response = client.get(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_update(self, client, section):
+        """Test updating a section"""
+        client.force_authenticate(user=section.document.user)
+        title = "New Title"
+        response = client.patch(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/",
+            {"title": title},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        section.refresh_from_db()
+        assert section.title == title
+
+    def test_update_bad(self, client, user, section):
+        """You may not update a section on a document you do not have edit access to"""
+        client.force_authenticate(user=user)
+        title = "New Title"
+        response = client.patch(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/",
+            {"title": title},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_destroy(self, client, section):
+        """Test destroying a section"""
+        client.force_authenticate(user=section.document.user)
+        response = client.delete(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/"
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not Section.objects.filter(pk=section.pk).exists()
+
+    def test_destroy_bad(self, client, user, section):
+        """You may not destroy a section on a document you do now have edit access to"""
+        client.force_authenticate(user=user)
+        response = client.delete(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
