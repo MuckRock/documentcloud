@@ -3,6 +3,7 @@ from django import forms
 from django.conf import settings
 from django.db import transaction
 from rest_framework import parsers, viewsets
+from rest_framework.generics import get_object_or_404
 
 # Standard Library
 import os
@@ -13,8 +14,8 @@ import environ
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.documents.models import Document
-from documentcloud.documents.serializers import DocumentSerializer
+from documentcloud.documents.models import Document, Note
+from documentcloud.documents.serializers import DocumentSerializer, NoteSerializer
 from documentcloud.organizations.models import Organization
 from documentcloud.users.models import User
 
@@ -58,6 +59,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             options["url"] = file_url
 
         # XXX httpsub
+        # XXX this should be a config setting instead of direct env access
         transaction.on_commit(
             lambda: httpsub.post(env("DOC_PROCESSING_URL"), json=options)
         )
@@ -81,3 +83,24 @@ class DocumentViewSet(viewsets.ModelViewSet):
             }
 
     filterset_class = Filter
+
+
+class NoteViewSet(viewsets.ModelViewSet):
+    serializer_class = NoteSerializer
+    queryset = Note.objects.none()
+
+    def get_queryset(self):
+        """Only fetch both documents and notes viewable to this user"""
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return document.notes.get_viewable(self.request.user)
+
+    def perform_create(self, serializer):
+        """Specify the document, user and organization"""
+        serializer.save(
+            document_id=self.kwargs["document_pk"],
+            user=self.request.user,
+            organization=self.request.user.organization,
+        )

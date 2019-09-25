@@ -27,3 +27,4 @@ coreapi
 rest-social-auth
 social-auth-core[openidconnect]
 drf-yasg
+drf-nested-routers

@@ -27,3 +27,22 @@ class PageFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "documents.Page"
+
+
+class NoteFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    user = factory.LazyAttribute(lambda obj: obj.document.user)
+    organization = factory.LazyAttribute(lambda obj: obj.document.user.organization)
+    page_number = factory.Sequence(lambda n: n)
+    title = factory.Sequence(lambda n: f"Note #{n}")
+    content = factory.Faker("text")
+    access = Access.public
+    top = 10
+    left = 20
+    bottom = 100
+    right = 50
+
+    class Meta:
+        model = "documents.Note"

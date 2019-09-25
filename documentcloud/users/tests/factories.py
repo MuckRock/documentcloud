@@ -11,7 +11,7 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     name = factory.Faker("name")
     email = factory.Faker("email")
-    username = factory.Sequence(lambda n: "user_%d" % n)
+    username = factory.Sequence(lambda n: f"user_{n}")
     membership = factory.RelatedFactory(
         "documentcloud.organizations.tests.factories.MembershipFactory",
         "user",

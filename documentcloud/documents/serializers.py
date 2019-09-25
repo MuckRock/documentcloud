@@ -5,7 +5,7 @@ from rest_framework import serializers
 # DocumentCloud
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document
+from documentcloud.documents.models import Document, Note
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -71,3 +71,64 @@ class DocumentSerializer(serializers.ModelSerializer):
                 "You must not pass in both file and file_url"
             )
         return attrs
+
+
+class NoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
+        fields = [
+            "id",
+            "user",
+            "organization",
+            "page_number",
+            "access",
+            "title",
+            "content",
+            "top",
+            "left",
+            "bottom",
+            "right",
+            "created_at",
+            "updated_at",
+        ]
+        extra_kwargs = {
+            "access": {"default": Access.private},
+            "created_at": {"read_only": True},
+            "organization": {"read_only": True},
+            "updated_at": {"read_only": True},
+            "user": {"read_only": True, "style": {"base_template": "input.html"}},
+        }
+
+    def validate_access(self, value):
+        if (
+            self.instance
+            and self.instance.access == Access.private
+            and value != Access.private
+        ):
+            raise serializers.ValidationError(
+                "May not make a private note public or draft"
+            )
+        if (
+            self.instance
+            and self.instance.access != Access.private
+            and value == Access.private
+        ):
+            raise serializers.ValidationError(
+                "May not make a public or draft note private"
+            )
+        return value
+
+    def validate(self, data):
+        """Check the access level"""
+        request = self.context.get("request")
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if data.get("access") in (
+            Access.public,
+            Access.organization,
+        ) and not request.user.has_perm("documents.change_document", document):
+            raise serializers.ValidationError(
+                "You may only create public or draft notes on documents you have "
+                "edit access to"
+            )
+        return data

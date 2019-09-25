@@ -4,14 +4,15 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
-from rest_framework import permissions, routers
+from rest_framework import permissions
 
 # Third Party
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
+from rest_framework_nested import routers
 
 # DocumentCloud
-from documentcloud.documents.views import DocumentViewSet
+from documentcloud.documents.views import DocumentViewSet, NoteViewSet
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.users.views import SocialSessionAuthView, UserViewSet
 
@@ -32,6 +33,10 @@ router.register("documents", DocumentViewSet)
 router.register("users", UserViewSet)
 router.register("organizations", OrganizationViewSet)
 
+documents_router = routers.NestedDefaultRouter(router, "documents", lookup="document")
+documents_router.register("notes", NoteViewSet)
+
+
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path(
@@ -40,6 +45,7 @@ urlpatterns = [
         name="login_social_session",
     ),
     path("api/", include(router.urls)),
+    path("api/", include(documents_router.urls)),
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
     ),

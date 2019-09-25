@@ -21,10 +21,27 @@ class DocumentQuerySet(models.QuerySet):
                 # you may see documents in your projects
                 # | Q(projects__collaborators=user)
                 # you can see organization level documents in your
-                # organization if you are not a freelancer
-                # XXX freelancer
+                # organization
                 | Q(access=Access.organization, organization=user.organization)
             )
             return self.exclude(access=Access.invisible).filter(query)
+        else:
+            return self.filter(access=Access.public)
+
+
+class NoteQuerySet(models.QuerySet):
+    """Custom queryset for notes"""
+
+    def get_viewable(self, user):
+        if user.is_authenticated:
+            return self.filter(
+                # you may see public notes
+                Q(access=Access.public)
+                # you can see notes you own
+                | Q(user=user)
+                # you can see organization level notes in your
+                # organization
+                | Q(access=Access.organization, organization=user.organization)
+            )
         else:
             return self.filter(access=Access.public)

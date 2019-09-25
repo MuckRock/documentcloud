@@ -35,6 +35,7 @@ django-timezone-field==3.0
 django==2.2.5
 djangorestframework==3.10.3
 docutils==0.15.2          # via botocore
+drf-nested-routers==0.91
 drf-yasg==1.16.1
 ecdsa==0.13.2
 future==0.17.1
