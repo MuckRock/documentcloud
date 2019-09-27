@@ -11,6 +11,7 @@ from documentcloud.documents.tests.factories import (
     NoteFactory,
     SectionFactory,
 )
+from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.tests.factories import UserFactory
 
 
@@ -42,3 +43,8 @@ def note():
 @pytest.fixture
 def section():
     return SectionFactory()
+
+
+@pytest.fixture
+def project():
+    return ProjectFactory()

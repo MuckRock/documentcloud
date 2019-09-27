@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 # Third Party
-from autoslug import AutoSlugField
+from autoslug.fields import AutoSlugField
 
 # DocumentCloud
 from documentcloud.core.choices import Language

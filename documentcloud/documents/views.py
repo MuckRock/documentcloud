@@ -23,6 +23,7 @@ from documentcloud.documents.serializers import (
     SectionSerializer,
 )
 from documentcloud.organizations.models import Organization
+from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 
 env = environ.Env()
@@ -76,12 +77,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
         )
         user = ModelChoiceFilter(model=User)
         organization = ModelChoiceFilter(model=Organization)
+        project = ModelChoiceFilter(model=Project, field_name="projects")
 
         class Meta:
             model = Document
             fields = {
                 "user": ["exact"],
                 "organization": ["exact"],
+                "project": ["exact"],
                 "access": ["exact"],
                 "status": ["exact"],
                 "created_at": ["lt", "gt"],

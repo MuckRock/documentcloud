@@ -59,17 +59,26 @@ class DocumentSerializer(serializers.ModelSerializer):
             "user": {"read_only": True, "style": {"base_template": "input.html"}},
         }
 
+    def validate_access(self, value):
+        if value == Access.invisible:
+            raise serializers.ValidationError("Invalid value for `access`")
+        return value
+
     def validate(self, attrs):
-        if self.partial:
-            return attrs
-        if "file" not in attrs and "file_url" not in attrs:
-            raise serializers.ValidationError(
-                "You must pass in either file or file_url"
-            )
-        if "file" in attrs and "file_url" in attrs:
-            raise serializers.ValidationError(
-                "You must not pass in both file and file_url"
-            )
+        if self.instance:
+            if "file" in attrs:
+                raise serializers.ValidationError("You may not update `file`")
+            if "file_url" in attrs:
+                raise serializers.ValidationError("You may not update `file_url`")
+        else:
+            if "file" not in attrs and "file_url" not in attrs:
+                raise serializers.ValidationError(
+                    "You must pass in either file or file_url"
+                )
+            if "file" in attrs and "file_url" in attrs:
+                raise serializers.ValidationError(
+                    "You must not pass in both file and file_url"
+                )
         return attrs
 
 
@@ -100,6 +109,8 @@ class NoteSerializer(serializers.ModelSerializer):
         }
 
     def validate_access(self, value):
+        if value == Access.invisible:
+            raise serializers.ValidationError("Invalid value for `access`")
         if (
             self.instance
             and self.instance.access == Access.private

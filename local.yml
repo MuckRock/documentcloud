@@ -26,8 +26,6 @@ services:
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
-    ports:
-      - "8000:8000"
     command: /start
     networks:
       default:
@@ -80,7 +78,6 @@ services:
       - documentcloud_redis
       - documentcloud_processing_redis
       - documentcloud_postgres
-    ports: []
     command: /start-celeryworker
     networks:
       - default
@@ -93,7 +90,6 @@ services:
       - documentcloud_redis
       - documentcloud_processing_redis
       - documentcloud_postgres
-    ports: []
     command: /start-celerybeat
     networks:
       - default

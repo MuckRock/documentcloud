@@ -20,6 +20,11 @@ from documentcloud.documents.views import (
     SectionViewSet,
 )
 from documentcloud.organizations.views import OrganizationViewSet
+from documentcloud.projects.views import (
+    CollaborationViewSet,
+    ProjectMembershipViewSet,
+    ProjectViewSet,
+)
 from documentcloud.users.views import SocialSessionAuthView, UserViewSet
 
 schema_view = get_schema_view(
@@ -36,14 +41,19 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter()
 router.register("documents", DocumentViewSet)
-router.register("users", UserViewSet)
 router.register("organizations", OrganizationViewSet)
+router.register("projects", ProjectViewSet)
+router.register("users", UserViewSet)
 
 documents_router = routers.NestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
+
+projects_router = routers.NestedDefaultRouter(router, "projects", lookup="project")
+projects_router.register("documents", ProjectMembershipViewSet)
+projects_router.register("users", CollaborationViewSet)
 
 
 urlpatterns = [
@@ -55,6 +65,7 @@ urlpatterns = [
     ),
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
+    path("api/", include(projects_router.urls)),
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
     ),

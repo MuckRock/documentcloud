@@ -1,4 +1,5 @@
 # Django
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
 # Standard Library
@@ -38,6 +39,7 @@ class TestDocumentAPI:
     def test_list_filter(self, client, user):
         """List a subset of documents"""
         size = 5
+        client.force_authenticate(user=user)
         DocumentFactory.create_batch(size)
         DocumentFactory.create_batch(size, user=user)
         response = client.get(f"/api/documents/", {"user": user.pk})
@@ -66,6 +68,25 @@ class TestDocumentAPI:
         response_json = json.loads(response.content)
         assert Document.objects.filter(pk=response_json["id"]).exists()
 
+    def test_create_bad_file_and_url(self, client, user):
+        """May not specify `file` and `file_url`"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/",
+            {
+                "title": "Test",
+                "file": SimpleUploadedFile("hello.txt", b"123"),
+                "file_url": "http://www.example.com/test.pdf",
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_no_file(self, client, user):
+        """May not specify `file` and `file_url`"""
+        client.force_authenticate(user=user)
+        response = client.post(f"/api/documents/", {"title": "Test"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")
@@ -88,6 +109,15 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.title == title
+
+    def test_update_bad(self, client, document):
+        """You may not update the file"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"file_url": "https://www.example.com/2.pdf"},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_destroy(self, client, document):
         """Test destroying a document"""
