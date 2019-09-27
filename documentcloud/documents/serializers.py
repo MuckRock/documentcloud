@@ -4,7 +4,8 @@ from rest_framework import serializers
 
 # DocumentCloud
 from documentcloud.core.choices import Language
-from documentcloud.documents.choices import Access
+from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 
 
@@ -24,6 +25,14 @@ class DocumentSerializer(serializers.ModelSerializer):
             "A publically accessible URL to the file to upload - use this field or "
             "`file`"
         ),
+    )
+    access = ChoiceField(
+        Access,
+        default=Access.private,
+        help_text=Document._meta.get_field("access").help_text,
+    )
+    status = ChoiceField(
+        Status, read_only=True, help_text=Document._meta.get_field("status").help_text
     )
 
     class Meta:
@@ -46,7 +55,6 @@ class DocumentSerializer(serializers.ModelSerializer):
             "user",
         ]
         extra_kwargs = {
-            "access": {"default": Access.private},
             "created_at": {"read_only": True},
             "description": {"required": False},
             "language": {"default": Language.english},
@@ -54,15 +62,9 @@ class DocumentSerializer(serializers.ModelSerializer):
             "page_count": {"read_only": True},
             "slug": {"read_only": True},
             "source": {"required": False},
-            "status": {"read_only": True},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
         }
-
-    def validate_access(self, value):
-        if value == Access.invisible:
-            raise serializers.ValidationError("Invalid value for `access`")
-        return value
 
     def validate(self, attrs):
         if self.instance:
@@ -83,6 +85,12 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 
 class NoteSerializer(serializers.ModelSerializer):
+    access = ChoiceField(
+        Access,
+        default=Access.private,
+        help_text=Note._meta.get_field("access").help_text,
+    )
+
     class Meta:
         model = Note
         fields = [
@@ -101,7 +109,6 @@ class NoteSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         extra_kwargs = {
-            "access": {"default": Access.private},
             "created_at": {"read_only": True},
             "organization": {"read_only": True},
             "updated_at": {"read_only": True},
@@ -109,8 +116,6 @@ class NoteSerializer(serializers.ModelSerializer):
         }
 
     def validate_access(self, value):
-        if value == Access.invisible:
-            raise serializers.ValidationError("Invalid value for `access`")
         if (
             self.instance
             and self.instance.access == Access.private

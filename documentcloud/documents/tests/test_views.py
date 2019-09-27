@@ -94,6 +94,7 @@ class TestDocumentAPI:
         response_json = json.loads(response.content)
         serializer = DocumentSerializer(document)
         assert response_json == serializer.data
+        assert response_json["access"] == "public"
 
     def test_retrieve_bad(self, client):
         """Test retrieving a document you do not have access to"""
@@ -105,17 +106,28 @@ class TestDocumentAPI:
         """Test updating a document"""
         client.force_authenticate(user=document.user)
         title = "New Title"
-        response = client.patch(f"/api/documents/{document.pk}/", {"title": title})
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"title": title, "access": "organization"}
+        )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.title == title
+        assert document.access == Access.organization
 
-    def test_update_bad(self, client, document):
+    def test_update_bad_file(self, client, document):
         """You may not update the file"""
         client.force_authenticate(user=document.user)
         response = client.patch(
             f"/api/documents/{document.pk}/",
             {"file_url": "https://www.example.com/2.pdf"},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_bad_access(self, client, document):
+        """You may not make a document invisible"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"access": "invisible"}
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -151,7 +163,7 @@ class TestNoteAPI:
                 "left": 10,
                 "bottom": 20,
                 "right": 20,
-                "access": Access.public,
+                "access": "public",
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
@@ -171,7 +183,7 @@ class TestNoteAPI:
                 "left": 10,
                 "bottom": 20,
                 "right": 20,
-                "access": Access.public,
+                "access": "public",
             },
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -189,7 +201,7 @@ class TestNoteAPI:
                 "left": 10,
                 "bottom": 20,
                 "right": 20,
-                "access": Access.private,
+                "access": "private",
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
@@ -235,7 +247,7 @@ class TestNoteAPI:
         client.force_authenticate(user=note.user)
         response = client.patch(
             f"/api/documents/{note.document.pk}/notes/{note.pk}/",
-            {"access": Access.organization},
+            {"access": "organization"},
         )
         assert response.status_code == status.HTTP_200_OK
         note.refresh_from_db()
@@ -245,8 +257,7 @@ class TestNoteAPI:
         """A note may not be switched from or to private"""
         client.force_authenticate(user=note.user)
         response = client.patch(
-            f"/api/documents/{note.document.pk}/notes/{note.pk}/",
-            {"access": Access.private},
+            f"/api/documents/{note.document.pk}/notes/{note.pk}/", {"access": "private"}
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
