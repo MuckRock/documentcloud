@@ -56,7 +56,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "source": {"required": False},
             "status": {"read_only": True},
             "updated_at": {"read_only": True},
-            "user": {"read_only": True, "style": {"base_template": "input.html"}},
+            "user": {"read_only": True},
         }
 
     def validate_access(self, value):
@@ -73,11 +73,11 @@ class DocumentSerializer(serializers.ModelSerializer):
         else:
             if "file" not in attrs and "file_url" not in attrs:
                 raise serializers.ValidationError(
-                    "You must pass in either file or file_url"
+                    "You must pass in either `file` or `file_url`"
                 )
             if "file" in attrs and "file_url" in attrs:
                 raise serializers.ValidationError(
-                    "You must not pass in both file and file_url"
+                    "You must not pass in both `file` and `file_url`"
                 )
         return attrs
 
@@ -105,7 +105,7 @@ class NoteSerializer(serializers.ModelSerializer):
             "created_at": {"read_only": True},
             "organization": {"read_only": True},
             "updated_at": {"read_only": True},
-            "user": {"read_only": True, "style": {"base_template": "input.html"}},
+            "user": {"read_only": True},
         }
 
     def validate_access(self, value):
