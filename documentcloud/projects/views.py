@@ -1,6 +1,6 @@
 # Django
 from django.db import transaction
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 
 # Third Party
@@ -62,7 +62,12 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Specify the project"""
-        serializer.save(project_id=self.kwargs["project_pk"])
+        project = Project.objects.get(pk=self.kwargs["project_pk"])
+        if not self.request.user.has_perm("projects.change_project", project):
+            raise serializers.ValidationError(
+                "You do not have permission to add documents to this project"
+            )
+        serializer.save(project=project)
 
 
 class CollaborationViewSet(
@@ -88,4 +93,9 @@ class CollaborationViewSet(
 
     def perform_create(self, serializer):
         """Specify the project"""
-        serializer.save(project_id=self.kwargs["project_pk"])
+        project = Project.objects.get(pk=self.kwargs["project_pk"])
+        if not self.request.user.has_perm("projects.change_project", project):
+            raise serializers.ValidationError(
+                "You do not have permission to add collaborators to this project"
+            )
+        serializer.save(project=project)

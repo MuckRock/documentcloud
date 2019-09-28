@@ -119,6 +119,15 @@ class TestDocumentAPI:
         client.force_authenticate(user=document.user)
         response = client.patch(
             f"/api/documents/{document.pk}/",
+            {"file": SimpleUploadedFile("hello.txt", b"123")},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_bad_file_url(self, client, document):
+        """You may not update the file url"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
             {"file_url": "https://www.example.com/2.pdf"},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -253,11 +262,21 @@ class TestNoteAPI:
         note.refresh_from_db()
         assert note.access == Access.organization
 
-    def test_update_access_bad(self, client, note):
-        """A note may not be switched from or to private"""
+    def test_update_access_bad_to_private(self, client, note):
+        """A note may not be switched from public/organization to private"""
         client.force_authenticate(user=note.user)
         response = client.patch(
             f"/api/documents/{note.document.pk}/notes/{note.pk}/", {"access": "private"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_access_bad_from_private(self, client):
+        """A note may not be switched from public/organization to private"""
+        note = NoteFactory(access=Access.private)
+        client.force_authenticate(user=note.user)
+        response = client.patch(
+            f"/api/documents/{note.document.pk}/notes/{note.pk}/",
+            {"access": "organization"},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 

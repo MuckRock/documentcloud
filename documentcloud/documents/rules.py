@@ -49,7 +49,7 @@ can_change_document = is_authenticated & (
 can_view_document = (
     has_access(Access.public)
     | can_change_document
-    | (~has_access(Access.invisible) & is_collaborator)
+    | (~has_access(Access.invisible) & is_authenticated & is_collaborator)
 )
 
 add_perm("documents.view_document", can_view_document)

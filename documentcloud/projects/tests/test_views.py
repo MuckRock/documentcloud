@@ -99,6 +99,14 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_bad_collaborator(self, client, user, project, document):
+        """You may not add a document to a project you are not a collaborator on"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/", {"document": document.pk}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_retrieve(self, client, document):
         """Test retrieving a document from project"""
         project = ProjectFactory(documents=[document])
@@ -151,6 +159,13 @@ class TestProjectMembershipAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not project.documents.filter(pk=document.pk).exists()
 
+    def test_destroy_bad_collaborator(self, client, user, document):
+        """You cannot remove a document from a project you are not a collaborator on"""
+        project = ProjectFactory(user=document.user, documents=[document])
+        client.force_authenticate(user=user)
+        response = client.delete(f"/api/projects/{project.pk}/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
 
 @pytest.mark.django_db()
 class TestCollaborationAPI:
@@ -173,6 +188,13 @@ class TestCollaborationAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert project.collaborators.filter(pk=user.pk).exists()
 
+    def test_create_bad_collaborator(self, client, project, user):
+        """You may not add a collaborator to a project you are not a collaborator on"""
+        OrganizationFactory(members=[project.user, user])
+        client.force_authenticate(user=user)
+        response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_retrieve(self, client, user):
         """Test retrieving a user from project"""
         project = ProjectFactory(collaborators=[user])
@@ -190,3 +212,9 @@ class TestCollaborationAPI:
         response = client.delete(f"/api/projects/{project.pk}/users/{user.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not project.collaborators.filter(pk=user.pk).exists()
+
+    def test_destroy_bad_collaborator(self, client, user, project):
+        """You cannot remove a user from a project you are not a collaborator on"""
+        client.force_authenticate(user=user)
+        response = client.delete(f"/api/projects/{project.pk}/users/{project.user.pk}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN

@@ -4,18 +4,22 @@
 from rules import add_perm, always_deny, is_authenticated, predicate
 
 # DocumentCloud
+from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 
 
 @predicate
 def is_organization(user, user_):
-    return user.organization.has_member(user_)
+    # separate filters will do two joins in SQL
+    return Organization.objects.filter(users=user).filter(users=user_).exists()
 
 
 @predicate
 def is_collaborator(user, user_):
     # separate filters will do two joins in SQL
-    return Project.objects.filter(users=user).filter(users=user_).exists()
+    return (
+        Project.objects.filter(collaborators=user).filter(collaborators=user_).exists()
+    )
 
 
 @predicate

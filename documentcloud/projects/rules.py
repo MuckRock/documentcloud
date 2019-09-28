@@ -42,11 +42,11 @@ def can_change_project(user, resource):
 
 
 add_perm("projects.view_projectmembership", can_view_project)
-add_perm("projects.add_projectmembership", can_change_project)
+add_perm("projects.add_projectmembership", is_authenticated)
 add_perm("projects.change_projectmembership", can_change_project)
 add_perm("projects.delete_projectmembership", can_change_project)
 
 add_perm("projects.view_collaboration", can_change_project)
-add_perm("projects.add_collaboration", can_change_project)
+add_perm("projects.add_collaboration", is_authenticated)
 add_perm("projects.change_collaboration", always_deny)
 add_perm("projects.delete_collaboration", can_change_project)

@@ -23,6 +23,15 @@ class ProjectFactory(factory.django.DjangoModelFactory):
                 ProjectMembership.objects.create(document=document, project=self)
 
     @factory.post_generation
+    def edit_documents(self, create, extracted, **kwargs):
+        # pylint: disable=unused-argument
+        if create and extracted:
+            for document in extracted:
+                ProjectMembership.objects.create(
+                    document=document, project=self, edit_access=True
+                )
+
+    @factory.post_generation
     def collaborators(self, create, extracted, **kwargs):
         # pylint: disable=unused-argument
         if create:
