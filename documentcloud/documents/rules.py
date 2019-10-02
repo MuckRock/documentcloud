@@ -16,7 +16,7 @@ def is_owner(user, resource):
 
 @predicate
 def is_organization(user, resource):
-    return user.organization == resource.organization
+    return resource.organization.has_member(user)
 
 
 def has_access(*accesses):

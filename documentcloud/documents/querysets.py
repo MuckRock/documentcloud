@@ -22,7 +22,10 @@ class DocumentQuerySet(models.QuerySet):
                 # | Q(projects__collaborators=user)
                 # you can see organization level documents in your
                 # organization
-                | Q(access=Access.organization, organization=user.organization)
+                | Q(
+                    access=Access.organization,
+                    organization__in=user.organizations.all(),
+                )
             )
             return self.exclude(access=Access.invisible).filter(query)
         else:
@@ -41,7 +44,10 @@ class NoteQuerySet(models.QuerySet):
                 | Q(user=user)
                 # you can see organization level notes in your
                 # organization
-                | Q(access=Access.organization, organization=user.organization)
+                | Q(
+                    access=Access.organization,
+                    organization__in=user.organizations.all(),
+                )
             )
         else:
             return self.filter(access=Access.public)
