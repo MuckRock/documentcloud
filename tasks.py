@@ -135,7 +135,7 @@ def sh(c):
     """Run an interactive shell"""
     c.run(
         COMPOSE_RUN_OPT.format(
-            opt="--use-aliases", service="documentcloud_django", cmd="bash"
+            opt="--use-aliases", service="documentcloud_django", cmd="sh"
         ),
         pty=True,
     )
