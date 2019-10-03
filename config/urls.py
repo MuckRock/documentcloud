@@ -9,6 +9,7 @@ from rest_framework import permissions, routers
 # Third Party
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # DocumentCloud
 from documentcloud.documents.views import DocumentViewSet
@@ -34,12 +35,12 @@ router.register("organizations", OrganizationViewSet)
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
-    path(
-        "api/login/social/session/<provider>/",
-        SocialSessionAuthView.as_view(),
-        name="login_social_session",
-    ),
     path("api/", include(router.urls)),
+    # JWT
+    path("api/login/", include("rest_social_auth.urls_jwt_pair")),
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # Swagger
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
     ),
@@ -48,6 +49,7 @@ urlpatterns = [
         schema_view.with_ui("swagger", cache_timeout=0),
         name="schema-swagger-ui",
     ),
+    path("accounts/", include("social_django.urls", namespace="social")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

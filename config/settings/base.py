@@ -72,6 +72,7 @@ THIRD_PARTY_APPS = [
     "reversion",
     "rules.apps.AutodiscoverRulesConfig",
     "social_django",
+    "corsheaders",
 ]
 
 LOCAL_APPS = [
@@ -101,6 +102,8 @@ SOCIAL_AUTH_SQUARELET_SECRET = SQUARELET_SECRET = env("SQUARELET_SECRET")
 SOCIAL_AUTH_SQUARELET_SCOPE = ["uuid", "organizations", "preferences"]
 SOCIAL_AUTH_TRAILING_SLASH = False
 
+# SOCIAL_AUTH_USER_FIELDS = ['username', 'email', 'uuid']
+
 SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_details",
     "social_core.pipeline.social_auth.social_uid",
@@ -108,14 +111,16 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_user",
     "social_core.pipeline.user.get_username",
     "documentcloud.squarelet.pipeline.associate_by_uuid",
-    "social_core.pipeline.user.create_user",
+    # "social_core.pipeline.user.create_user",
     "documentcloud.squarelet.pipeline.save_info",
-    "documentcloud.squarelet.pipeline.save_session_data",
+    # "documentcloud.squarelet.pipeline.save_session_data",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
     "social_core.pipeline.user.user_details",
 )
 SOCIAL_AUTH_LOGIN_ERROR_URL = "/"
+SOCIAL_AUTH_LOGIN_URL = "/api/"
+LOGIN_REDIRECT_URL = SOCIAL_AUTH_LOGIN_URL
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
@@ -144,6 +149,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -318,6 +324,9 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "PAGE_SIZE": 100,
     "HTML_SELECT_CUTOFF": 20,
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
 }
 
 # Your stuff...

@@ -2,7 +2,7 @@
 
 # Django
 from django.conf import settings
-from django.contrib.auth.models import User, UserManager as AuthUserManager
+from django.contrib.auth.models import UserManager as AuthUserManager
 from django.core.cache import cache
 from django.db import transaction
 
@@ -54,14 +54,12 @@ class BaseUserManager(AuthUserManager):
             "email_verified": False,
             "use_autologin": True,
         }
-        user_data = {
-            user_map[k]: data.get(k, user_defaults[k]) for k in user_map.iterkeys()
-        }
+        user_data = {user_map[k]: data.get(k, user_defaults[k]) for k in user_map}
         if user_data["email"] is None:
             # the mail should only be null for agency users
             # on DocumentCloud that must be stored as a blank string
             user_data["email"] = ""
-        return User.objects.update_or_create(profile__uuid=uuid, defaults=user_data)
+        return self.update_or_create(uuid=uuid, defaults=user_data)
 
     def _update_organizations(self, user, data):
         """Update the user's organizations"""
