@@ -48,4 +48,4 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
-CORS_ORIGIN_WHITELIST = ["http://dev.documentcloud.org"]
+CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]

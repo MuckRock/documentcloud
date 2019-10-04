@@ -59,7 +59,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
         # XXX httpsub
         transaction.on_commit(
-            lambda: httpsub.post(env("DOC_PROCESSING_URL"), json=options)
+            lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
         )
 
     class Filter(django_filters.FilterSet):

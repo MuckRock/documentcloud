@@ -18,4 +18,4 @@ class SquareletBackend(OpenIdConnectAuth):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.redirect_uri = self.strategy.absolute_uri("http://dev.documentcloud.org/")
+        self.redirect_uri = self.strategy.absolute_uri(settings.DOCCLOUD_URL)

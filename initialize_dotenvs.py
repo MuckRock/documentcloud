@@ -25,6 +25,7 @@ CONFIG = [
                     ("USE_DOCKER", "yes"),
                     ("DJANGO_SECRET_KEY", lambda: random_string(20)),
                     ("IPYTHONDIR", "/app/.ipython"),
+                    ("DOCUMENTCLOUD_URL", "http://dev.documentcloud.org"),
                 ],
             },
             {

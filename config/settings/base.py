@@ -102,8 +102,6 @@ SOCIAL_AUTH_SQUARELET_SECRET = SQUARELET_SECRET = env("SQUARELET_SECRET")
 SOCIAL_AUTH_SQUARELET_SCOPE = ["uuid", "organizations", "preferences"]
 SOCIAL_AUTH_TRAILING_SLASH = False
 
-# SOCIAL_AUTH_USER_FIELDS = ['username', 'email', 'uuid']
-
 SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_details",
     "social_core.pipeline.social_auth.social_uid",
@@ -111,9 +109,7 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_user",
     "social_core.pipeline.user.get_username",
     "documentcloud.squarelet.pipeline.associate_by_uuid",
-    # "social_core.pipeline.user.create_user",
     "documentcloud.squarelet.pipeline.save_info",
-    # "documentcloud.squarelet.pipeline.save_session_data",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
     "social_core.pipeline.user.user_details",
@@ -345,3 +341,6 @@ BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
 
 # bucket to store files in
 BUCKET = env("BUCKET", default="")
+
+# Processing
+DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
