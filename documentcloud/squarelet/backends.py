@@ -15,3 +15,7 @@ class SquareletBackend(OpenIdConnectAuth):
     # pylint: disable=abstract-method
     name = "squarelet"
     OIDC_ENDPOINT = settings.SQUARELET_URL + "/openid"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.redirect_uri = self.strategy.absolute_uri(settings.DOCCLOUD_URL)

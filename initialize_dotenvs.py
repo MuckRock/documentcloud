@@ -25,6 +25,7 @@ CONFIG = [
                     ("USE_DOCKER", "yes"),
                     ("DJANGO_SECRET_KEY", lambda: random_string(20)),
                     ("IPYTHONDIR", "/app/.ipython"),
+                    ("DOCUMENTCLOUD_URL", "http://dev.documentcloud.org"),
                 ],
             },
             {
@@ -33,7 +34,7 @@ CONFIG = [
             },
             {
                 "name": "Squarelet",
-                "envvars": [("SQUARELET_KEY", "")("SQUARELET_SECRET", "")],
+                "envvars": [("SQUARELET_KEY", ""), ("SQUARELET_SECRET", "")],
             },
         ],
     },
@@ -43,9 +44,9 @@ CONFIG = [
             {
                 "name": "PostgreSQL",
                 "envvars": [
-                    ("POSTGRES_HOST", "squarelet_postgres"),
+                    ("POSTGRES_HOST", "documentcloud_postgres"),
                     ("POSTGRES_PORT", "5432"),
-                    ("POSTGRES_DB", "squarelet"),
+                    ("POSTGRES_DB", "documentcloud"),
                     ("POSTGRES_USER", lambda: random_string(30)),
                     ("POSTGRES_PASSWORD", lambda: random_string(60)),
                 ],

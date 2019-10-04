@@ -68,7 +68,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # XXX httpsub
         # XXX this should be a config setting instead of direct env access
         transaction.on_commit(
-            lambda: httpsub.post(env("DOC_PROCESSING_URL"), json=options)
+            lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
         )
 
     class Filter(django_filters.FilterSet):

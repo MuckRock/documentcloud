@@ -27,4 +27,6 @@ coreapi
 rest-social-auth
 social-auth-core[openidconnect]
 drf-yasg
+django-cors-headers
+djangorestframework_simplejwt
 drf-nested-routers
