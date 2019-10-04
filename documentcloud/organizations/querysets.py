@@ -1,14 +1,14 @@
 """Custom querysets for organization app"""
-
 # Django
 from django.db import models, transaction
+from django.db.models import Q
 
 # Standard Library
 from datetime import datetime
 
 
 class OrganizationQuerySet(models.QuerySet):
-    """Object manager for profiles"""
+    """Object manager for organizations"""
 
     @transaction.atomic
     def squarelet_update_or_create(self, uuid, data):
@@ -43,6 +43,6 @@ class OrganizationQuerySet(models.QuerySet):
 
     def get_viewable(self, user):
         if user.is_authenticated:
-            return self.filter(users=user)
+            return self.filter(Q(users=user) | Q(private=False)).distinct()
         else:
-            return self.none()
+            return self.filter(private=False)

@@ -4,8 +4,9 @@ from rest_framework import serializers
 
 # DocumentCloud
 from documentcloud.core.choices import Language
-from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document
+from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.fields import ChoiceField
+from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -24,6 +25,14 @@ class DocumentSerializer(serializers.ModelSerializer):
             "A publically accessible URL to the file to upload - use this field or "
             "`file`"
         ),
+    )
+    access = ChoiceField(
+        Access,
+        default=Access.private,
+        help_text=Document._meta.get_field("access").help_text,
+    )
+    status = ChoiceField(
+        Status, read_only=True, help_text=Document._meta.get_field("status").help_text
     )
 
     class Meta:
@@ -46,7 +55,6 @@ class DocumentSerializer(serializers.ModelSerializer):
             "user",
         ]
         extra_kwargs = {
-            "access": {"default": Access.private},
             "created_at": {"read_only": True},
             "description": {"required": False},
             "language": {"default": Language.english},
@@ -54,20 +62,118 @@ class DocumentSerializer(serializers.ModelSerializer):
             "page_count": {"read_only": True},
             "slug": {"read_only": True},
             "source": {"required": False},
-            "status": {"read_only": True},
             "updated_at": {"read_only": True},
-            "user": {"read_only": True, "style": {"base_template": "input.html"}},
+            "user": {"read_only": True},
         }
 
     def validate(self, attrs):
-        if self.partial:
-            return attrs
-        if "file" not in attrs and "file_url" not in attrs:
+        if self.instance:
+            if "file" in attrs:
+                raise serializers.ValidationError("You may not update `file`")
+            if "file_url" in attrs:
+                raise serializers.ValidationError("You may not update `file_url`")
+        else:
+            if "file" not in attrs and "file_url" not in attrs:
+                raise serializers.ValidationError(
+                    "You must pass in either `file` or `file_url`"
+                )
+            if "file" in attrs and "file_url" in attrs:
+                raise serializers.ValidationError(
+                    "You must not pass in both `file` and `file_url`"
+                )
+        return attrs
+
+
+class NoteSerializer(serializers.ModelSerializer):
+    access = ChoiceField(
+        Access,
+        default=Access.private,
+        help_text=Note._meta.get_field("access").help_text,
+    )
+
+    class Meta:
+        model = Note
+        fields = [
+            "id",
+            "user",
+            "organization",
+            "page_number",
+            "access",
+            "title",
+            "content",
+            "top",
+            "left",
+            "bottom",
+            "right",
+            "created_at",
+            "updated_at",
+        ]
+        extra_kwargs = {
+            "created_at": {"read_only": True},
+            "organization": {"read_only": True},
+            "updated_at": {"read_only": True},
+            "user": {"read_only": True},
+        }
+
+    def validate_access(self, value):
+        if (
+            self.instance
+            and self.instance.access == Access.private
+            and value != Access.private
+        ):
             raise serializers.ValidationError(
-                "You must pass in either file or file_url"
+                "May not make a private note public or draft"
             )
-        if "file" in attrs and "file_url" in attrs:
+        if (
+            self.instance
+            and self.instance.access != Access.private
+            and value == Access.private
+        ):
             raise serializers.ValidationError(
-                "You must not pass in both file and file_url"
+                "May not make a public or draft note private"
+            )
+        return value
+
+    def validate(self, attrs):
+        """Check the access level"""
+        request = self.context.get("request")
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if attrs.get("access") in (
+            Access.public,
+            Access.organization,
+        ) and not request.user.has_perm("documents.change_document", document):
+            raise serializers.ValidationError(
+                "You may only create public or draft notes on documents you have "
+                "edit access to"
             )
         return attrs
+
+
+class SectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Section
+        fields = ["id", "page_number", "title"]
+
+    def validate(self, attrs):
+        """Check the permissions"""
+        request = self.context.get("request")
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if not request.user.has_perm("documents.change_document", document):
+            raise serializers.ValidationError(
+                "You may only create sections on documents you have edit access to"
+            )
+        return attrs
+
+
+class EntitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Entity
+        fields = ["kind", "value", "relevance", "occurrences"]
+
+
+class EntityDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EntityDate
+        fields = ["date", "occurrences"]

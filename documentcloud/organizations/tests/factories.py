@@ -4,6 +4,9 @@ from django.utils.text import slugify
 # Third Party
 import factory
 
+# DocumentCloud
+from documentcloud.organizations.models import Membership
+
 
 class OrganizationFactory(factory.django.DjangoModelFactory):
     """A factory for creating Organization test objects."""
@@ -17,6 +20,13 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "organizations.Organization"
+
+    @factory.post_generation
+    def members(self, create, extracted, **kwargs):
+        # pylint: disable=unused-argument
+        if create and extracted:
+            for user in extracted:
+                Membership.objects.create(user=user, organization=self)
 
 
 class MembershipFactory(factory.django.DjangoModelFactory):

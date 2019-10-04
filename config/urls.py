@@ -4,7 +4,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
-from rest_framework import permissions, routers
+from rest_framework import permissions
 
 # Third Party
 from drf_yasg import openapi
@@ -12,8 +12,19 @@ from drf_yasg.views import get_schema_view
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # DocumentCloud
-from documentcloud.documents.views import DocumentViewSet
+from documentcloud.documents.views import (
+    DocumentViewSet,
+    EntityDateViewSet,
+    EntityViewSet,
+    NoteViewSet,
+    SectionViewSet,
+)
 from documentcloud.organizations.views import OrganizationViewSet
+from documentcloud.projects.views import (
+    CollaborationViewSet,
+    ProjectMembershipViewSet,
+    ProjectViewSet,
+)
 from documentcloud.users.views import SocialSessionAuthView, UserViewSet
 
 schema_view = get_schema_view(
@@ -30,8 +41,20 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter()
 router.register("documents", DocumentViewSet)
-router.register("users", UserViewSet)
 router.register("organizations", OrganizationViewSet)
+router.register("projects", ProjectViewSet)
+router.register("users", UserViewSet)
+
+documents_router = routers.NestedDefaultRouter(router, "documents", lookup="document")
+documents_router.register("notes", NoteViewSet)
+documents_router.register("sections", SectionViewSet)
+documents_router.register("entities", EntityViewSet)
+documents_router.register("dates", EntityDateViewSet)
+
+projects_router = routers.NestedDefaultRouter(router, "projects", lookup="project")
+projects_router.register("documents", ProjectMembershipViewSet)
+projects_router.register("users", CollaborationViewSet)
+
 
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),

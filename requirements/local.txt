@@ -46,6 +46,7 @@ django==2.2.5
 djangorestframework-simplejwt==4.3.0
 djangorestframework==3.10.3
 docutils==0.15.2          # via sphinx
+drf-nested-routers==0.91
 drf-yasg==1.16.1
 ecdsa==0.13.2
 entrypoints==0.3          # via flake8

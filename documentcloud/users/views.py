@@ -8,11 +8,13 @@ import rest_social_auth.views
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
 from documentcloud.organizations.models import Organization
+from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
 
 
 class UserViewSet(
+    # Cannot create or destroy users
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
@@ -28,17 +30,18 @@ class UserViewSet(
 
     def get_object(self):
         """Allow one to lookup themselves by specifying `me` as the pk"""
-        if self.kwargs["pk"] == "me":
+        if self.kwargs["pk"] == "me" and self.request.user.is_authenticated:
             return self.request.user
         else:
             return super().get_object()
 
     class Filter(django_filters.FilterSet):
-        organizations = ModelChoiceFilter(model=Organization)
+        organization = ModelChoiceFilter(model=Organization, field_name="organizations")
+        project = ModelChoiceFilter(model=Project, field_name="projects")
 
         class Meta:
             model = User
-            fields = ["organizations", "name", "username", "uuid"]
+            fields = ["organization", "project", "name", "username", "uuid"]
 
     filterset_class = Filter
 
