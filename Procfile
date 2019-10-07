@@ -1,3 +1,3 @@
-release: python manage.py migrate
-web: gunicorn config.wsgi:application
-worker: celery worker --app=config.celery_app --loglevel=info
+web: bin/start-nginx gunicorn -c config/gunicorn.conf config.wsgi:application
+worker: celery worker --app=documentcloud2.taskapp --loglevel=info
+beat: celery beat --app=documentcloud2.taskapp --loglevel=info

@@ -1,0 +1,139 @@
+daemon off;
+#Heroku dynos have at least 4 cores.
+worker_processes <%= ENV['NGINX_WORKERS'] || 4 %>;
+
+events {
+    use epoll;
+    accept_mutex on;
+    worker_connections 1024;
+}
+
+http {
+
+    gzip on;
+    gzip_http_version 1.0;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_types application/rss+xml text/html;
+
+    server_tokens off;
+
+    real_ip_header X-Forwarded-For;
+    set_real_ip_from 10.0.0.0/8;
+    <% ENV.fetch('DENY_IPS', '').split(',').each do |ip| %>
+        deny <%= ip %>;
+    <% end %>
+    <% if ENV.key?('ALLOW_IPS') %>
+        <% ENV['ALLOW_IPS'].split(',').each do |entry| %>
+            <% ip, comment = entry.split(':') %>
+            allow <%= ip %>;
+        <% end %>
+        deny all;
+    <% end %>
+    # include block_nobis.conf;
+
+    geo $whitelist {
+        default 0;
+        <% ENV.fetch('NO_LIMIT_IPS', '').split(',').each do |ip| %>
+            <%= ip %> 1;
+        <% end %>
+    }
+
+    map "$whitelist:$http_x_bypass_rate_limit" $limit_key {
+        # default is to limit by ip address
+        default $binary_remote_addr;
+        # on the whitelist, do not rate limit
+        "~^1:" "";
+        <% if ENV.key?('BYPASS_RATE_LIMIT_SECRET') %>
+            # passed the secret in the header, do not rate limit
+            "0:<%= ENV['BYPASS_RATE_LIMIT_SECRET'] %>" "";
+        <% end %>
+    }
+
+    limit_req_zone $limit_key zone=one:10m rate=1r/s;
+
+    log_format l2met 'measure#nginx.service=$request_time request_id=$http_x_request_id';
+    log_format compression '$remote_addr - $remote_user [$time_local] '
+                           '"$request" $status $bytes_sent '
+                           '"$http_referer" "$http_user_agent" "$gzip_ratio" "$http_x_forwarded_for"';
+    access_log logs/nginx/access.log compression;
+    error_log logs/nginx/error.log;
+
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+
+    #Must read the body in 5 seconds.
+    client_body_timeout 5;
+    client_max_body_size 4G;
+
+    upstream app_server {
+        server unix:/tmp/nginx.socket fail_timeout=0;
+     }
+
+    upstream gs {
+        server                   storage.googleapis.com;
+        keepalive                128;
+    }
+
+    proxy_set_header   Host $host;
+    proxy_set_header   X-Real-IP $remote_addr;
+    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Host $server_name;
+
+    server {
+
+        listen <%= ENV["PORT"] %>;
+        server_name _;
+        keepalive_timeout 5;
+        limit_req zone=one burst=20 nodelay;
+        if ($http_host ~ "\.$" ){
+            rewrite ^(.*) $scheme://$host$1 permanent;
+        }
+
+        location / {
+            # redirect all urls besides favicon, css, js and icons to index.html
+            # to make push state work
+            rewrite ^/(?!(favicon\.ico|css|js|icons)) /documentcloud-staging/dist/index.html break;
+            # gcs config stolen from:
+            # https://github.com/presslabs/gs-proxy/blob/master/nginx.conf
+            proxy_pass http://gs/<%= ENV["GS_BUCKET_NAME"] %>/dist/;
+            proxy_set_header    Host storage.googleapis.com;
+            proxy_http_version  1.1;
+            proxy_set_header    Connection "";
+
+            proxy_intercept_errors on;
+            proxy_hide_header       alt-svc;
+            proxy_hide_header       X-GUploader-UploadID;
+            proxy_hide_header       alternate-protocol;
+            proxy_hide_header       x-goog-hash;
+            proxy_hide_header       x-goog-generation;
+            proxy_hide_header       x-goog-metageneration;
+            proxy_hide_header       x-goog-stored-content-encoding;
+            proxy_hide_header       x-goog-stored-content-length;
+            proxy_hide_header       x-goog-storage-class;
+            proxy_hide_header       x-xss-protection;
+            proxy_hide_header       accept-ranges;
+            proxy_hide_header       Set-Cookie;
+            proxy_ignore_headers Set-Cookie;
+        }
+
+        location ~ ^(/static|/admin|/api|/auth|/registration|/api-docs|/media|/document|/accounts) {
+            proxy_redirect off;
+            proxy_pass http://app_server;
+        }
+
+        location /ws {
+          proxy_set_header X-Forwarded-For $remote_addr;
+
+          proxy_pass http://app_server;
+          proxy_redirect off;
+
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+        }
+    }
+}
