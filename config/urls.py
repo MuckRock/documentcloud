@@ -60,6 +60,8 @@ projects_router.register("users", CollaborationViewSet)
 urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("api/", include(router.urls)),
+    path("api/", include(documents_router.urls)),
+    path("api/", include(projects_router.urls)),
     # JWT
     path("api/login/", include("rest_social_auth.urls_jwt_pair")),
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
