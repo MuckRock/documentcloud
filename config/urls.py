@@ -10,7 +10,6 @@ from rest_framework import permissions
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework_nested import routers
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 # DocumentCloud
 from documentcloud.documents.views import (
@@ -26,7 +25,7 @@ from documentcloud.projects.views import (
     ProjectMembershipViewSet,
     ProjectViewSet,
 )
-from documentcloud.users.views import SocialSessionAuthView, UserViewSet
+from documentcloud.users.views import UserViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -62,10 +61,6 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
-    # JWT
-    path("api/login/", include("rest_social_auth.urls_jwt_pair")),
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     # Swagger
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"

@@ -3,7 +3,6 @@ from rest_framework import mixins, viewsets
 
 # Third Party
 import django_filters
-import rest_social_auth.views
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
@@ -44,7 +43,3 @@ class UserViewSet(
             fields = ["organization", "project", "name", "username", "uuid"]
 
     filterset_class = Filter
-
-
-class SocialSessionAuthView(rest_social_auth.views.SocialSessionAuthView):
-    serializer_class = UserSerializer

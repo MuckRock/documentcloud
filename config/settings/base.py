@@ -68,7 +68,6 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "drf_yasg",
     "rest_framework",
-    "rest_social_auth",
     "reversion",
     "rules.apps.AutodiscoverRulesConfig",
     "social_django",
@@ -320,7 +319,6 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 100,
     "HTML_SELECT_CUTOFF": 20,
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
 }
