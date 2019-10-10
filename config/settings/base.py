@@ -339,8 +339,8 @@ DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://api.dev.documentcloud
 # SESSION/COOKIES
 # ----
 # https://docs.djangoproject.com/en/2.2/ref/settings/#session-cookie-domain
-SESSION_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", ".dev.documentcloud.org")
-CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", ".dev.documentcloud.org")
+SESSION_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org")
+CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org")
 
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
