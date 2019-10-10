@@ -357,5 +357,6 @@ DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
 
 # Auth
 LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
+LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
 SESSION_COOKIE_SAMESITE = None
