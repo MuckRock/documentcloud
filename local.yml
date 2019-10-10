@@ -30,10 +30,10 @@ services:
     networks:
       default:
         aliases:
-          - dev.api-documentcloud.org
+          - api.dev.documentcloud.org
       squarelet_default:
         aliases:
-          - dev.api-documentcloud.org
+          - api.dev.documentcloud.org
 
   documentcloud_postgres:
     build:

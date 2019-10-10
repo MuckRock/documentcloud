@@ -12,7 +12,13 @@ SECRET_KEY = env(
     default="FhLwGIYi6qw371QQtXYK6nN40KG01W7E1d7MxL9ySF0zbHIzDNv0brKvge2s8nJA",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "dev.api-documentcloud.org"]
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "api.dev.documentcloud.org"]
+
+# SESSION/COOKIES
+# ----
+# https://docs.djangoproject.com/en/2.2/ref/settings/#session-cookie-domain
+SESSION_COOKIE_DOMAIN = ".dev.documentcloud.org"
+CSRF_COOKIE_DOMAIN = ".dev.documentcloud.org"
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -49,3 +55,4 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]
+CORS_ALLOW_CREDENTIALS = True

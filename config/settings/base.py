@@ -116,8 +116,6 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.user.user_details",
 )
 SOCIAL_AUTH_LOGIN_ERROR_URL = "/"
-SOCIAL_AUTH_LOGIN_URL = "/api/"
-LOGIN_REDIRECT_URL = SOCIAL_AUTH_LOGIN_URL
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
@@ -323,6 +321,7 @@ REST_FRAMEWORK = {
     "HTML_SELECT_CUTOFF": 20,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
 }
 
@@ -334,8 +333,20 @@ REST_FRAMEWORK = {
 SQUARELET_URL = env("SQUARELET_URL", default="http://dev.squarelet.com")
 MUCKROCK_URL = env("MUCKROCK_URL", default="http://dev.muckrock.com")
 FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="http://dev.foiamachine.org")
-DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://dev.documentcloud.org")
-DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://dev.api-documentcloud.org")
+DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://www.dev.documentcloud.org")
+DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://api.dev.documentcloud.org")
+
+# SESSION/COOKIES
+# ----
+# https://docs.djangoproject.com/en/2.2/ref/settings/#session-cookie-domain
+SESSION_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", ".dev.documentcloud.org")
+CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", ".dev.documentcloud.org")
+
+# CORS middleware
+# https://pypi.org/project/django-cors-headers/
+CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]
+# This enables cookies
+CORS_ALLOW_CREDENTIALS = True
 
 # this allows communication from muckrock to squarelet to bypass rate limiting
 BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
@@ -345,3 +356,8 @@ BUCKET = env("BUCKET", default="")
 
 # Processing
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
+
+# Auth
+LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
+# This lets us send the session cookie to the API
+SESSION_COOKIE_SAMESITE = None
