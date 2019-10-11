@@ -215,3 +215,5 @@ sentry_sdk.init(
 if env("FIXIE_URL", default=""):
     os.environ["http_proxy"] = env("FIXIE_URL")
     os.environ["https_proxy"] = env("FIXIE_URL")
+
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
