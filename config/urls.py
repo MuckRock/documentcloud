@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.auth.views import LogoutView
 from django.urls import include, path
 from django.views import defaults as default_views
+from django.views.generic.base import RedirectView
 from rest_framework import permissions
 
 # Third Party
@@ -58,6 +59,7 @@ projects_router.register("users", CollaborationViewSet)
 
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="/api/"), name="index"),
     path(settings.ADMIN_URL, admin.site.urls),
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
