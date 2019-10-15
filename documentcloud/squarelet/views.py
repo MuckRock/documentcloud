@@ -28,11 +28,10 @@ def webhook(request):
 
     # verify signature
     hmac_digest = hmac.new(
-        key=settings.SQUARELET_SECRET,
-        msg="{}{}{}".format(timestamp, type_, "".join(uuids)),
+        key=settings.SQUARELET_SECRET.encode("utf8"),
+        msg="{}{}{}".format(timestamp, type_, "".join(uuids)).encode("utf8"),
         digestmod=hashlib.sha256,
     ).hexdigest()
-    # XXX check if i need to encode these to unicode
     match = hmac.compare_digest(signature, hmac_digest)
     try:
         timestamp_current = int(timestamp) + 300 > time.time()
