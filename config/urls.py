@@ -76,6 +76,7 @@ urlpatterns = [
     # Social Django
     path("accounts/logout/", LogoutView.as_view(), name="logout"),
     path("accounts/", include("social_django.urls", namespace="social")),
+    path("squarelet/", include("documentcloud.squarelet.urls", namespace="squarelet")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
