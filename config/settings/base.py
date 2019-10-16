@@ -78,7 +78,7 @@ LOCAL_APPS = [
     "documentcloud.documents",
     "documentcloud.organizations",
     "documentcloud.projects",
-    "documentcloud.users",
+    "documentcloud.users.apps.UsersConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -357,6 +357,7 @@ BUCKET = env("BUCKET", default="")
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
 
 # Auth
+LOGIN_URL = "/accounts/login/squarelet"
 LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
 LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
