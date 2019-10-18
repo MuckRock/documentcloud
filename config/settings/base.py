@@ -321,6 +321,7 @@ REST_FRAMEWORK = {
     "HTML_SELECT_CUTOFF": 20,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
 }
 
@@ -362,3 +363,10 @@ LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
 LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
 SESSION_COOKIE_SAMESITE = None
+
+SIMPLE_JWT = {
+    "ALGORITHM": "RS256",
+    "VERIFYING_KEY": env("JWT_VERIFYING_KEY").replace("\\n", "\n"),
+    "AUDIENCE": ["documentcloud"],
+    "USER_ID_FIELD": "uuid",
+}
