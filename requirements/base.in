@@ -30,3 +30,18 @@ drf-yasg
 django-cors-headers
 djangorestframework_simplejwt
 drf-nested-routers
+
+# Cloud providers
+gcsfs
+google-cloud-pubsub
+boto3
+smart-open
+
+
+# Processing
+cpuprofile
+listcrunch
+numpy
+
+# Typing
+typing-extensions

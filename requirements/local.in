@@ -27,3 +27,8 @@ django-debug-toolbar
 django-extensions
 django-coverage-plugin
 pytest-django
+
+# Processing
+python-Levenshtein
+Unidecode
+opencv-python
