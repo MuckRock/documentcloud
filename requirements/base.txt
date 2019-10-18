@@ -94,7 +94,6 @@ ruamel.yaml==0.16.5       # via drf-yasg
 rules==2.1
 s3transfer==0.2.1         # via boto3
 six==1.12.0               # via argon2-cffi, cryptography, django-appconf, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core
-six==1.12.0               # via argon2-cffi, django-appconf, drf-yasg, google-api-core, google-auth, grpcio, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core
 smart-open==1.8.4
 social-auth-app-django==3.1.0  # via rest-social-auth
 social-auth-core[openidconnect]==3.2.0
@@ -108,4 +107,3 @@ zipp==0.6.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools==41.5.0        # via google-api-core, protobuf
-# setuptools==41.4.0        # via google-api-core, protobuf
