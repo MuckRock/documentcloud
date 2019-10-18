@@ -1,0 +1,86 @@
+<script>
+    // Add in new reports here.
+    const subReports = [
+      'reports/document_processor.html',
+      'reports/png_processor.html',
+      'reports/pdf_processor.html',
+      'reports/imagediff.html',
+    ];
+</script>
+
+<style>
+  html, body {
+    padding: 0; margin: 0;
+  }
+  
+  button {
+    outline: none;
+    padding: 6px 10px;
+    margin: 5px;
+  }
+
+  a {
+    margin-right: 15px;
+  }
+
+  .container {
+    position: absolute;
+    top: 0; bottom: 0; left: 0; right: 0;
+    margin-top: 50px;
+  }
+
+  .selected {
+    background: gray;
+    color: white;
+  }
+
+  .reports {
+    position: absolute;
+    top: -50px;
+    width: 100%;
+    height: 50px;
+    padding: 15px;
+    overflow: scroll-y;
+  }
+
+  iframe{
+    position:absolute; 
+    width: 100%;
+    height: 100%;
+    border: 0px;
+  }
+</style>
+
+<div class="container">
+  <div class="reports" id="reports"></div>
+  <iframe id="iframe" srcdoc="Click to view a report"></iframe>
+</div>
+
+<script>
+    const reportsContainer = document.getElementById('reports');
+    const iframe = document.getElementById('iframe');
+    let selected = null;
+    for (const report of subReports) {
+      const pathParts = report.split('/');
+      const finalPath = pathParts[pathParts.length - 1];
+      const humanReadable = finalPath.split('.')[0].split('_').map(x => x.replace(/^\w/, c => c.toUpperCase())).join(' ');
+
+      const button = document.createElement('button');
+      button.textContent = humanReadable;
+      button.addEventListener('click', () => {
+        if (selected != null) {
+          selected.classList.remove('selected');
+        }
+        selected = button;
+        selected.classList.add('selected');
+        iframe.removeAttribute('srcdoc');
+        iframe.src = report;
+      }, false);
+      const link = document.createElement('a');
+      link.target = '_blank';
+      link.href = report;
+      link.textContent = '(link)';
+      reportsContainer.appendChild(button);
+      reportsContainer.appendChild(link);
+    }
+</script>
