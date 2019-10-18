@@ -20,7 +20,6 @@ coreschema==0.0.4         # via coreapi, drf-yasg
 cpuprofile==1.0.1
 cryptography==2.8
 cpuprofile==1.0.1
-cryptography==2.8
 decorator==4.4.0          # via gcsfs
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 django-appconf==1.0.3     # via django-compressor
