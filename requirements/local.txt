@@ -31,7 +31,8 @@ coreschema==0.0.4
 coverage==4.5.4
 cpuprofile==1.0.1
 cryptography==2.8
-decorator==4.4.0
+decorator==4.4.0          # via ipython, traitlets
+cpuprofile==1.0.1
 defusedxml==0.6.0
 django-appconf==1.0.3
 django-autoslug==1.9.6

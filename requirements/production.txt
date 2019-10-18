@@ -22,6 +22,10 @@ coreapi==2.3.3
 coreschema==0.0.4
 cpuprofile==1.0.1
 cryptography==2.8
+<<<<<<< HEAD
+=======
+cpuprofile==1.0.1
+>>>>>>> 8e89933... Processing code imported and backend tests pass
 decorator==4.4.0
 defusedxml==0.6.0
 django-anymail[mailgun]==6.1.0
@@ -43,6 +47,7 @@ djangorestframework-simplejwt==4.3.0
 djangorestframework==3.10.3
 docutils==0.15.2
 drf-flex-fields==0.6.1
+docutils==0.15.2          # via botocore
 drf-nested-routers==0.91
 drf-yasg==1.17.0
 ecdsa==0.13.2
