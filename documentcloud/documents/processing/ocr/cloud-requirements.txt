@@ -1,0 +1,2 @@
+gcsfs==0.2.2
+google-cloud-pubsub==0.42.1
