@@ -33,6 +33,7 @@ djangorestframework==3.10.3
 drf-nested-routers==0.91
 drf-yasg==1.17.0
 ecdsa==0.13.2             # via python-jose
+furl==2.1.0
 future==0.17.1            # via python-jose
 idna==2.8                 # via requests
 importlib-metadata==0.21  # via kombu
@@ -43,6 +44,7 @@ kombu==4.6.4              # via celery
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
+orderedmultidict==1.0.1   # via furl
 packaging==19.2           # via drf-yasg
 pillow==6.1.0
 pyasn1==0.4.7             # via rsa
@@ -66,7 +68,7 @@ rsa==4.0                  # via python-jose
 ruamel.yaml.clib==0.1.2   # via ruamel.yaml
 ruamel.yaml==0.16.5       # via drf-yasg
 rules==2.1
-six==1.12.0               # via argon2-cffi, cryptography, django-appconf, drf-yasg, packaging, python-dateutil, python-jose, social-auth-app-django, social-auth-core
+six==1.12.0               # via argon2-cffi, cryptography, django-appconf, drf-yasg, furl, orderedmultidict, packaging, python-dateutil, python-jose, social-auth-app-django, social-auth-core
 social-auth-app-django==3.1.0  # via rest-social-auth
 social-auth-core[openidconnect]==3.2.0
 sqlparse==0.3.0           # via django

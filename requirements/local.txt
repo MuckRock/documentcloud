@@ -54,6 +54,7 @@ entrypoints==0.3          # via flake8
 factory-boy==2.12.0
 faker==2.0.1              # via factory-boy
 flake8==3.7.8
+furl==2.1.0
 future==0.17.1
 idna==2.8
 imagesize==1.1.0          # via sphinx
@@ -74,6 +75,7 @@ more-itertools==7.2.0
 mypy-extensions==0.4.1    # via mypy
 mypy==0.720
 oauthlib==3.1.0
+orderedmultidict==1.0.1
 packaging==19.2
 parso==0.5.1              # via jedi
 pexpect==4.7.0            # via ipython

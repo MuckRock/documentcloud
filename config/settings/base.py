@@ -370,3 +370,5 @@ SIMPLE_JWT = {
     "AUDIENCE": ["documentcloud"],
     "USER_ID_FIELD": "uuid",
 }
+
+REDIS_PROCESSING_URL = env("REDIS_PROCESSING_URL")
