@@ -189,6 +189,20 @@ class DocumentErrorSerializer(serializers.ModelSerializer):
         fields = ["id", "created_at", "message"]
         extra_kwargs = {"created_at": {"read_only": True}}
 
+    def get_texts_remaining(self, obj):
+        """Get the texts remaining from the processing redis instance"""
+        return self._get_redis(obj, "text")
+
+    def get_images_remaining(self, obj):
+        """Get the images remaining from the processing redis instance"""
+        return self._get_redis(obj, "image")
+
+    def _get_redis(self, obj, key):
+        """Get a value from the processing redis instance"""
+        redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
+        redis_ = redis.Redis(host=redis_url.host, port=redis_url.port)
+        return redis_.get(f"{obj.pk}-{key}")
+
 
 class NoteSerializer(serializers.ModelSerializer):
     access = ChoiceField(
