@@ -7,6 +7,7 @@ redis
 celery
 django-celery-beat
 python-redis-lock[django]
+furl
 
 # Django
 # ------------------------------------------------------------------------------

@@ -42,6 +42,7 @@ drf-nested-routers==0.91
 drf-yasg==1.17.0
 ecdsa==0.13.2             # via python-jose
 fsspec==0.5.2             # via gcsfs
+furl==2.1.0
 future==0.17.1            # via python-jose
 gcsfs==0.3.1
 google-api-core[grpc]==1.14.3  # via google-cloud-pubsub
@@ -63,6 +64,7 @@ markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 numpy==1.17.3
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
+orderedmultidict==1.0.1   # via furl
 packaging==19.2           # via drf-yasg
 pillow==6.1.0
 protobuf==3.10.0          # via google-api-core, googleapis-common-protos
@@ -89,7 +91,7 @@ ruamel.yaml.clib==0.1.2   # via ruamel.yaml
 ruamel.yaml==0.16.5       # via drf-yasg
 rules==2.1
 s3transfer==0.2.1         # via boto3
-six==1.12.0               # via argon2-cffi, django-appconf, drf-yasg, google-api-core, google-auth, grpcio, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core
+six==1.12.0               # via argon2-cffi, cryptography, django-appconf, drf-yasg, furl, orderedmultidict, packaging, python-dateutil, python-jose, social-auth-app-django, social-auth-core
 smart-open==1.8.4
 social-auth-app-django==3.1.0  # via rest-social-auth
 social-auth-core[openidconnect]==3.2.0
