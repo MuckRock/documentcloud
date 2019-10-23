@@ -78,7 +78,7 @@ LOCAL_APPS = [
     "documentcloud.documents",
     "documentcloud.organizations",
     "documentcloud.projects",
-    "documentcloud.users",
+    "documentcloud.users.apps.UsersConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -301,6 +301,7 @@ CELERY_TASK_TIME_LIMIT = 5 * 60
 CELERY_TASK_SOFT_TIME_LIMIT = 60
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#beat-scheduler
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_IMPORTS = ["documentcloud.squarelet.tasks"]
 
 # django-compressor
 # ------------------------------------------------------------------------------
@@ -320,6 +321,7 @@ REST_FRAMEWORK = {
     "HTML_SELECT_CUTOFF": 20,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
 }
 
@@ -356,6 +358,17 @@ BUCKET = env("BUCKET", default="")
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
 
 # Auth
+LOGIN_URL = "/accounts/login/squarelet"
 LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
+LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
 SESSION_COOKIE_SAMESITE = None
+
+SIMPLE_JWT = {
+    "ALGORITHM": "RS256",
+    "VERIFYING_KEY": env("JWT_VERIFYING_KEY").replace("\\n", "\n"),
+    "AUDIENCE": ["documentcloud"],
+    "USER_ID_FIELD": "uuid",
+}
+
+REDIS_PROCESSING_URL = env("REDIS_PROCESSING_URL")

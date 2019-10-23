@@ -1,5 +1,6 @@
 # Standard Library
 import logging
+import os
 
 # Third Party
 import sentry_sdk
@@ -207,3 +208,12 @@ sentry_sdk.init(
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+# Fixie
+# ------------------------------------------------------------------------------
+# set proxy for static outgoing IP address, so we can cross
+# white list muckrock and squarelet staging sites
+if env("FIXIE_URL", default=""):
+    os.environ["http_proxy"] = env("FIXIE_URL")
+    os.environ["https_proxy"] = env("FIXIE_URL")
+
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True

@@ -1,6 +1,11 @@
 # Django
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
+
+# Third Party
+import furl
+import redis
 
 # DocumentCloud
 from documentcloud.core.choices import Language
@@ -35,6 +40,22 @@ class DocumentSerializer(serializers.ModelSerializer):
         Status, read_only=True, help_text=Document._meta.get_field("status").help_text
     )
 
+    texts_remaining = serializers.SerializerMethodField(
+        label=_("Text pages remaining"),
+        read_only=True,
+        help_text=_(
+            "How many pages are left to be OCRed - only present during processing"
+        ),
+    )
+    images_remaining = serializers.SerializerMethodField(
+        label=_("Image pages remaining"),
+        read_only=True,
+        help_text=_(
+            "How many pages are left to have their image extracted via pdfium - "
+            "only present during processing"
+        ),
+    )
+
     class Meta:
         model = Document
         fields = [
@@ -44,12 +65,15 @@ class DocumentSerializer(serializers.ModelSerializer):
             "description",
             "file",
             "file_url",
+            "images_remaining",
             "language",
             "organization",
             "page_count",
+            "page_spec",
             "slug",
             "source",
             "status",
+            "texts_remaining",
             "title",
             "updated_at",
             "user",
@@ -60,11 +84,27 @@ class DocumentSerializer(serializers.ModelSerializer):
             "language": {"default": Language.english},
             "organization": {"read_only": True},
             "page_count": {"read_only": True},
+            "page_spec": {"read_only": True},
             "slug": {"read_only": True},
             "source": {"required": False},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        context = kwargs.get("context", {})
+        request = context.get("request")
+        if request and request.user and request.user.has_perm("process_document"):
+            for field in ["page_count", "page_spec", "status"]:
+                self.fields[field].read_only = False
+
+        if not isinstance(self.instance, Document) or self.instance.status not in (
+            Status.pending,
+            Status.readable,
+        ):
+            del self.fields["images_remaining"]
+            del self.fields["texts_remaining"]
 
     def validate(self, attrs):
         if self.instance:
@@ -82,6 +122,20 @@ class DocumentSerializer(serializers.ModelSerializer):
                     "You must not pass in both `file` and `file_url`"
                 )
         return attrs
+
+    def get_texts_remaining(self, obj):
+        """Get the texts remaining from the processing redis instance"""
+        return self._get_redis(obj, "text")
+
+    def get_images_remaining(self, obj):
+        """Get the images remaining from the processing redis instance"""
+        return self._get_redis(obj, "image")
+
+    def _get_redis(self, obj, key):
+        """Get a value from the processing redis instance"""
+        redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
+        redis_ = redis.Redis(host=redis_url.host, port=redis_url.port)
+        return redis_.get(f"{obj.pk}-{key}")
 
 
 class NoteSerializer(serializers.ModelSerializer):

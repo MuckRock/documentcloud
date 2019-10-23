@@ -2,8 +2,10 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.auth.views import LogoutView
 from django.urls import include, path
 from django.views import defaults as default_views
+from django.views.generic.base import RedirectView
 from rest_framework import permissions
 
 # Third Party
@@ -57,6 +59,7 @@ projects_router.register("users", CollaborationViewSet)
 
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="/api/"), name="index"),
     path(settings.ADMIN_URL, admin.site.urls),
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
@@ -71,7 +74,9 @@ urlpatterns = [
         name="schema-swagger-ui",
     ),
     # Social Django
+    path("accounts/logout/", LogoutView.as_view(), name="logout"),
     path("accounts/", include("social_django.urls", namespace="social")),
+    path("squarelet/", include("documentcloud.squarelet.urls", namespace="squarelet")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
