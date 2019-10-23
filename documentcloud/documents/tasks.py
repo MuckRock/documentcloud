@@ -5,20 +5,19 @@ from documentcloud.documents.processing.info_and_image.main import (
     process_pdf,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
-from documentcloud.documents.solr import solr
-from documentcloud.taskapp.celery import app
+from celery.task import task
 
 
-@app.task
+@task
 def process_file(options):
     process_pdf(options)
 
 
-@app.task
+@task
 def extract_images(data):
     extract_image(data)
 
 
-@app.task
+@task
 def ocr_pages(data):
     run_tesseract(data, None)

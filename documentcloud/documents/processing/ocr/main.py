@@ -38,7 +38,8 @@ bucket = env.str("BUCKET", default="")
 
 def send_update(pk, data):
     """Write an update to the app server."""
-    requests.post(POST_URL.format(id=pk), json=data)
+    print("SENDING_UPDATE", pk, data)    
+    # requests.post(POST_URL.format(id=pk), json=data)
 
 
 ocr_topic = publisher.topic_path(
