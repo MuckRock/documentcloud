@@ -22,6 +22,8 @@ from documentcloud.documents.serializers import (
     NoteSerializer,
     SectionSerializer,
 )
+from documentcloud.environment.environment import storage
+from documentcloud.environment.httpsub import httpsub
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -52,7 +54,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
         options = {"document": document.pk}
 
         if file_ is not None:
-            # XXX what path do we save files to
             path = f"documents/{document.id}/{document.slug}.pdf"
             full_path = os.path.join(settings.BUCKET, path)
             # XXX storage
