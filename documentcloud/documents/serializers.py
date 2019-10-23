@@ -95,7 +95,9 @@ class DocumentSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         context = kwargs.get("context", {})
         request = context.get("request")
-        if request and request.user and request.user.has_perm("process_document"):
+        if self._authenticate_processing(request):
+            # If this request is from our serverless processing functions,
+            # make the following fields writable
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
@@ -105,6 +107,13 @@ class DocumentSerializer(serializers.ModelSerializer):
         ):
             del self.fields["images_remaining"]
             del self.fields["texts_remaining"]
+
+    def _authenticate_processing(self, request):
+        """Check the requests Authorization header for our special token"""
+        if not request or not hasattr(request, "auth") or request.auth is None:
+            return False
+
+        return "processing" in request.auth["permissions"]
 
     def validate(self, attrs):
         if self.instance:

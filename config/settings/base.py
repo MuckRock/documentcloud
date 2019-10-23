@@ -322,6 +322,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "documentcloud.core.authentication.ProcessingTokenAuthentication",
     ),
 }
 
@@ -372,5 +373,6 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "uuid",
 }
 
-REDIS_PROCESSING_HOST = env("REDIS_PROCESSING_HOST")
-REDIS_PROCESSING_URL = f"redis://{REDIS_PROCESSING_HOST}:6379/0"
+REDIS_PROCESSING_URL = env("REDIS_PROCESSING_URL")
+
+PROCESSING_TOKEN = env("PROCESSING_TOKEN")
