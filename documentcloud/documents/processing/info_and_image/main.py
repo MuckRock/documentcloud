@@ -89,16 +89,17 @@ bucket = env.str("BUCKET", default="")
 
 def send_update(pk, data):
     """Write an update to the app server."""
-    requests.post(POST_URL.format(id=pk), json=data)
+    print("SENDING_UPDATE", pk, data)
+    # requests.post(POST_URL.format(id=pk), json=data)
 
 
 # Topic names for the messaging queue
 image_extract_topic = publisher.topic_path(
-    "documentcloud2",
+    "documentcloud",
     env.str("IMAGE_EXTRACT_TOPIC", default="page-image-ready-for-extraction"),
 )
 ocr_topic = publisher.topic_path(
-    "documentcloud2", env.str("OCR_TOPIC", default="ocr-queue")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
 )
 
 

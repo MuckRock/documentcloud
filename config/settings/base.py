@@ -230,7 +230,7 @@ DEFAULT_CACHE_TIMEOUT = 15 * 60
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-browser-xss-filter
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
@@ -345,6 +345,7 @@ CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]
+# CSRF_TRUSTED_ORIGINS = ['www.dev.documentcloud.org']
 # This enables cookies
 CORS_ALLOW_CREDENTIALS = True
 
@@ -371,4 +372,5 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "uuid",
 }
 
-REDIS_PROCESSING_URL = env("REDIS_PROCESSING_URL")
+REDIS_PROCESSING_HOST = env("REDIS_PROCESSING_HOST")
+REDIS_PROCESSING_URL = f"redis://{REDIS_PROCESSING_HOST}:6379/0"
