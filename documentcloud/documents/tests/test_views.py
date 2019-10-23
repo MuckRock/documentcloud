@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
@@ -153,6 +154,25 @@ class TestDocumentAPI:
             f"/api/documents/{document.pk}/", {"access": "invisible"}
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_bad_processing_token(self, client, document):
+        """Only the processing functions with a token may modify certain fields"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"page_count": 42})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.page_count != 42
+
+    def test_update_processing_token(self, client, document):
+        """Only the processing functions with a token may modify certain fields"""
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"page_count": 42},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.page_count == 42
 
     def test_destroy(self, client, document):
         """Test destroying a document"""
