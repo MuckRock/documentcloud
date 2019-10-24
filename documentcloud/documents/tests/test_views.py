@@ -23,6 +23,8 @@ from documentcloud.documents.tests.factories import (
     NoteFactory,
     SectionFactory,
 )
+from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.users.serializers import UserSerializer
 
 
 @pytest.mark.django_db()
@@ -95,6 +97,18 @@ class TestDocumentAPI:
         serializer = DocumentSerializer(document)
         assert response_json == serializer.data
         assert response_json["access"] == "public"
+
+    def test_retrieve_expand(self, client, document):
+        """Test retrieving a document with an expanded user and organization"""
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "user,organization"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        user_serializer = UserSerializer(document.user)
+        organization_serializer = OrganizationSerializer(document.organization)
+        assert response_json["user"] == user_serializer.data
+        assert response_json["organization"] == organization_serializer.data
 
     def test_retrieve_bad(self, client):
         """Test retrieving a document you do not have access to"""

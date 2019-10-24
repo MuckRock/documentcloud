@@ -31,3 +31,4 @@ django-cors-headers
 djangorestframework_simplejwt
 drf-nested-routers
 cryptography # support RS256 for JWT
+drf-flex-fields

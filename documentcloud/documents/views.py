@@ -11,6 +11,7 @@ import os
 # Third Party
 import django_filters
 import environ
+from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
@@ -29,7 +30,7 @@ from documentcloud.users.models import User
 env = environ.Env()
 
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
