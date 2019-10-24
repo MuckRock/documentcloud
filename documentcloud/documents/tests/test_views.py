@@ -153,6 +153,18 @@ class TestDocumentAPI:
         assert response_json["user"] == user_serializer.data
         assert response_json["organization"] == organization_serializer.data
 
+    def test_retrieve_expand(self, client, document):
+        """Test retrieving a document with an expanded user and organization"""
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "user,organization"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        user_serializer = UserSerializer(document.user)
+        organization_serializer = OrganizationSerializer(document.organization)
+        assert response_json["user"] == user_serializer.data
+        assert response_json["organization"] == organization_serializer.data
+
     def test_retrieve_bad(self, client):
         """Test retrieving a document you do not have access to"""
         document = DocumentFactory(access=Access.private)
