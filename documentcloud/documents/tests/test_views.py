@@ -100,6 +100,14 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_create_bad_no_user(self, client):
+        """Must be logged in to create a document"""
+        response = client.post(
+            f"/api/documents/",
+            {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")

@@ -204,6 +204,13 @@ class DocumentErrorSerializer(serializers.ModelSerializer):
         return redis_.get(f"{obj.pk}-{key}")
 
 
+class DocumentErrorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentError
+        fields = ["id", "created_at", "message"]
+        extra_kwargs = {"created_at": {"read_only": True}}
+
+
 class NoteSerializer(serializers.ModelSerializer):
     access = ChoiceField(
         Access,

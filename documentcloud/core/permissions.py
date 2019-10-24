@@ -1,9 +1,6 @@
 # Django
 from rest_framework import permissions
 
-# DocumentCloud
-from documentcloud.documents.models import Document
-
 
 class DjangoObjectPermissionsOrAnonReadOnly(permissions.DjangoObjectPermissions):
     """Use Django Object permissions as the base for our permissions
