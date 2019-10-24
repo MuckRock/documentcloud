@@ -193,6 +193,8 @@ def extract_single_page(original_path, path, doc, page_number):
             get_pageimage_path(path, page_number, image_suffix), "wb"
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
+        
+        # TODO: trigger update when thumbnail image is parsed
 
         # TODO: trigger update when thumbnail image is parsed
 

@@ -191,17 +191,21 @@ class DocumentErrorSerializer(serializers.ModelSerializer):
 
     def get_texts_remaining(self, obj):
         """Get the texts remaining from the processing redis instance"""
-        return self._get_redis(obj, "text")
+        texts_remaining = self._get_redis(obj, "text")
+        if texts_remaining is None: return None
+        return int(texts_remaining)
 
     def get_images_remaining(self, obj):
         """Get the images remaining from the processing redis instance"""
-        return self._get_redis(obj, "image")
+        images_remaining = self._get_redis(obj, "image")
+        if images_remaining is None: return None
+        return int(images_remaining)
 
     def _get_redis(self, obj, key):
         """Get a value from the processing redis instance"""
         redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
         redis_ = redis.Redis(host=redis_url.host, port=redis_url.port)
-        return redis_.get(f"{obj.pk}-{key}")
+        return redis_.hget(obj.pk, key)
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
