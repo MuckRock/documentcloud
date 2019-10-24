@@ -7,6 +7,7 @@ import pickle
 
 # Third Party
 import environ
+import furl
 import redis
 from listcrunch import crunch
 from PIL import Image
@@ -53,44 +54,11 @@ IMAGE_WIDTHS = [
         default=["large:1000", "normal:700", "small:180", "thumbnail:60"],
     )
 ]  # width of images to OCR
-POST_URL = urljoin(
-    env.str("API_CALLBACK"), "/api/documents/{id}/send_progress/"
-)  # Post callback
 
 
-# The number of progress updates to send if requested given the number of pages
-def image_step_update(page_count):
-    if page_count < 10:
-        return 1
-    elif page_count < 20:
-        return 2
-    elif page_count < 50:
-        return 3
-    elif page_count < 100:
-        return 5
-    else:
-        return 20
-
-
-def ocr_step_update(page_count):
-    if page_count < 15:
-        return 1
-    elif page_count < 30:
-        return 2
-    elif page_count < 100:
-        return 4
-    else:
-        return 10
-
-
-redis = redis.Redis(host=env.str("REDIS_PROCESSING_HOST"), port=6379, db=0)
+redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
+redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
 bucket = env.str("BUCKET", default="")
-
-
-def send_update(pk, data):
-    """Write an update to the app server."""
-    print("SENDING_UPDATE", pk, data)
-    # requests.post(POST_URL.format(id=pk), json=data)
 
 
 # Topic names for the messaging queue
@@ -183,9 +151,11 @@ def process_pdf(request, _context=None):
 
     # Trigger progress update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
-    send_update(
-        get_id(path),
-        {"action": "started", "page_count": page_count, "page_spec": page_spec},
+
+    requests.patch(
+        urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
+        data={"page_count": page_count, "page_spec": page_spec},
+        headers={'Authorization': f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
 
     # Kick off image processing tasks
@@ -198,12 +168,6 @@ def process_pdf(request, _context=None):
                 {
                     "path": data["path"],
                     "pages": pages,
-                    "image_update_interval": image_step_update(page_count)
-                    if progress_updates
-                    else -1,
-                    "ocr_update_interval": ocr_step_update(page_count)
-                    if progress_updates
-                    else -1,
                 }
             ).encode("utf8"),
         )
@@ -245,8 +209,6 @@ def extract_image(data, _context=None):
 
     path = os.path.join(bucket, data["path"])  # The PDF file path
     page_numbers = data["pages"]  # The page numbers to extract
-    image_update_interval = data["image_update_interval"]
-    ocr_update_interval = data["ocr_update_interval"]
     index_path = get_index_path(path)  # The path to the PDF index file
 
     # Store a queue of pages to OCR to fill the batch
@@ -262,7 +224,6 @@ def extract_image(data, _context=None):
             data=json.dumps(
                 {
                     "paths": [page[1] for page in ocr_queue],
-                    "ocr_update_interval": ocr_update_interval,
                 }
             ).encode("utf8"),
         )
@@ -287,18 +248,6 @@ def extract_image(data, _context=None):
             large_image_path = extract_single_page(data["path"], path, doc, page_number)
 
             images_remaining = redis.hincrby(get_id(path), "image", -1)
-            if (
-                image_update_interval != -1
-                and images_remaining % image_update_interval == 0
-            ):
-                send_update(
-                    get_id(path),
-                    {
-                        "action": "progress",
-                        "type": "image",
-                        "remaining": images_remaining,
-                    },
-                )
 
             # Prepare the image to be OCRd.
             ocr_queue.append([page_number, large_image_path])

@@ -13,13 +13,18 @@ class Permissions(permissions.DjangoObjectPermissions):
         Return true here to continue to the object check
         Anonymous users have read-only access
         """
+        print("CHECKING PERMISSION")
+        print(request.user)
+        print(request.auth)
         if request.user.is_authenticated:
+            print("AUTHENTICATED")
             return True
         elif (
             hasattr(request, "auth")
             and request.auth is not None
             and request.method in ["PUT", "PATCH"]
         ):
+            print("AUTH2")
             # If there is an auth token, allow it for PUT and PATCH requests
             return True
         else:
@@ -34,11 +39,18 @@ class Permissions(permissions.DjangoObjectPermissions):
             and request.auth is not None
             and "processing" in request.auth["permissions"]
         )
+        print("VALID TOKEN", valid_token)
+        print("HAS ATTR", hasattr(request, "auth"))
+        print("REQUEST USER", request.user)
+        print("REQUEST AUTH", request.auth)
+        print("REQUEST AUTH PERMISSIONS", request.auth['permissions'] if request.auth else None)
         if (
             valid_token
             and request.method in ["PUT", "PATCH"]
             and isinstance(obj, Document)
         ):
+            print("YUP")
             return True
         else:
+            print("CHECKING WITH SUPER")
             return super().has_object_permission(request, view, obj)
