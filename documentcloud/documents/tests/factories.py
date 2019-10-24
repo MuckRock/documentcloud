@@ -21,6 +21,16 @@ class DocumentFactory(factory.django.DjangoModelFactory):
         model = "documents.Document"
 
 
+class DocumentErrorFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    message = factory.Faker("text")
+
+    class Meta:
+        model = "documents.DocumentError"
+
+
 class PageFactory(factory.django.DjangoModelFactory):
     document = factory.SubFactory(
         "documentcloud.documents.tests.factories.DocumentFactory"

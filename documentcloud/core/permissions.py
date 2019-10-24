@@ -1,44 +1,58 @@
 # Django
 from rest_framework import permissions
 
-# DocumentCloud
-from documentcloud.documents.models import Document
-
 
 class Permissions(permissions.DjangoObjectPermissions):
-    """Use Django Object permissions as the base for our Document permissions"""
+    """Use Django Object permissions as the base for our permissions
+    Allow anonymous read-only access
+    """
+
+    authenticated_users_only = False
+
+
+class TokenPermissions(Permissions):
+    """For views which allow authorization via special token"""
+
+    token_permissions = frozenset()
+    token_methods = permissions.SAFE_METHODS
+
+    def _has_token(self, request):
+        """Is this request authenticated via a token
+        Allow if method is in self.token_methods
+        Allow if token is authorized with all permissions in self.token_permissions
+        """
+        return (
+            request.method in self.token_methods
+            and hasattr(request, "auth")
+            and request.auth is not None
+            and self.token_permissions.issubset(request.auth["permissions"])
+        )
 
     def has_permission(self, request, view):
-        """Authenticated users permissions will be checked on a per object basis
-        Return true here to continue to the object check
-        Anonymous users have read-only access
         """
-        if request.user.is_authenticated:
-            return True
-        elif (
-            hasattr(request, "auth")
-            and request.auth is not None
-            and request.method in ["PUT", "PATCH"]
-        ):
-            # If there is an auth token, allow it for PUT and PATCH requests
+        Allow token authed request to contiue to object check
+        """
+        if self._has_token(request):
             return True
         else:
-            return request.method in permissions.SAFE_METHODS
+            return super().has_permission(request, view)
 
     def has_object_permission(self, request, view, obj):
-        """Check for processing token"""
-
-        # A processing token allows for updating documents
-        valid_token = (
-            hasattr(request, "auth")
-            and request.auth is not None
-            and "processing" in request.auth["permissions"]
-        )
-        if (
-            valid_token
-            and request.method in ["PUT", "PATCH"]
-            and isinstance(obj, Document)
-        ):
+        if self._has_token(request):
             return True
         else:
             return super().has_object_permission(request, view, obj)
+
+
+class DocumentPermissions(TokenPermissions):
+    """Allow the processing functions to update documents"""
+
+    token_permissions = {"processing"}
+    token_methods = ["PUT", "PATCH"]
+
+
+class DocumentErrorPermissions(TokenPermissions):
+    """Alow the processing functions to create errors"""
+
+    token_permissions = {"processing"}
+    token_methods = ["POST"]
