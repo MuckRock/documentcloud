@@ -3,16 +3,16 @@ import json
 import logging
 import os
 import time
-import redis
+from urllib.parse import urljoin
 
 # Third Party
 import environ
 import furl
 import numpy as np
+import redis
+import requests
 from cpuprofile import profile_cpu
 from PIL import Image
-from urllib.parse import urljoin
-import requests
 
 env = environ.Env()
 
@@ -82,7 +82,7 @@ def run_tesseract(data, _context=None):
     """Runs OCR on the images passed in, storing the extracted text.
     """
     overall_start = time.time()
-    
+
     data = get_pubsub_data(data)
     paths = data["paths"]
 
@@ -133,17 +133,16 @@ def run_tesseract(data, _context=None):
         requests.patch(
             urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
             json={"status": "Success"},
-            headers={'Authorization': f"processing-token {env.str('PROCESSING_TOKEN')}"},
+            headers={
+                "Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"
+            },
         )
     else:
         next_paths = paths[1:]
         if next_paths:
             # Launch next iteration
             publisher.publish(
-                ocr_topic,
-                data=json.dumps(
-                    {"paths": next_paths}
-                ).encode("utf8"),
+                ocr_topic, data=json.dumps({"paths": next_paths}).encode("utf8")
             )
 
     result["path"] = path

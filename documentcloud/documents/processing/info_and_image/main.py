@@ -2,16 +2,16 @@
 import gzip
 import json
 import os
-from urllib.parse import urljoin
 import pickle
+from urllib.parse import urljoin
 
 # Third Party
 import environ
 import furl
 import redis
+import requests
 from listcrunch import crunch
 from PIL import Image
-import requests
 
 env = environ.Env()
 
@@ -155,7 +155,7 @@ def process_pdf(request, _context=None):
     requests.patch(
         urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
         json={"page_count": page_count, "page_spec": page_spec},
-        headers={'Authorization': f"processing-token {env.str('PROCESSING_TOKEN')}"},
+        headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
 
     # Kick off image processing tasks
@@ -164,12 +164,7 @@ def process_pdf(request, _context=None):
         pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
         publisher.publish(
             image_extract_topic,
-            data=json.dumps(
-                {
-                    "path": data["path"],
-                    "pages": pages,
-                }
-            ).encode("utf8"),
+            data=json.dumps({"path": data["path"], "pages": pages}).encode("utf8"),
         )
 
     return "Ok"
@@ -199,7 +194,7 @@ def extract_single_page(original_path, path, doc, page_number):
             get_pageimage_path(path, page_number, image_suffix), "wb"
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
-        
+
         # TODO: trigger update when thumbnail image is parsed
 
     return get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0])
@@ -223,11 +218,7 @@ def extract_image(data, _context=None):
         # Trigger ocr pipeline
         publisher.publish(
             ocr_topic,
-            data=json.dumps(
-                {
-                    "paths": [page[1] for page in ocr_queue],
-                }
-            ).encode("utf8"),
+            data=json.dumps({"paths": [page[1] for page in ocr_queue]}).encode("utf8"),
         )
 
         ocr_queue.clear()
