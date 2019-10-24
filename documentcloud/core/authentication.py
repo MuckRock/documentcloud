@@ -13,8 +13,11 @@ class ProcessingTokenAuthentication(BaseAuthentication):
     """Authorization for our processing functions"""
 
     def authenticate(self, request):
+        print(request)
+        print("METHOD", request.method)
         auth = get_authorization_header(request).split()
 
+        print(auth)
         if not auth or auth[0].lower() != b"processing-token":
             return None
 
@@ -27,6 +30,7 @@ class ProcessingTokenAuthentication(BaseAuthentication):
 
         try:
             token = auth[1].decode()
+            print("TOKEN", token)
         except UnicodeError:
             msg = _(
                 "Invalid token header. Token string should not contain invalid "
@@ -37,7 +41,9 @@ class ProcessingTokenAuthentication(BaseAuthentication):
         return self.authenticate_credentials(token)
 
     def authenticate_credentials(self, key):
+        print("AUTHING", key, settings.PROCESSING_TOKEN)
         if hmac.compare_digest(key, settings.PROCESSING_TOKEN):
+            print("GOT USER")
             return (AnonymousUser(), {"permissions": {"processing"}})
         else:
             raise exceptions.AuthenticationFailed(_("Invalid token."))
