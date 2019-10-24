@@ -2,14 +2,19 @@
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
+# Third Party
+from rest_flex_fields import FlexFieldsModelSerializer
+
 # DocumentCloud
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
+from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.users.serializers import UserSerializer
 
 
-class DocumentSerializer(serializers.ModelSerializer):
+class DocumentSerializer(FlexFieldsModelSerializer):
 
     file = serializers.FileField(
         label=_("File"),
@@ -64,6 +69,10 @@ class DocumentSerializer(serializers.ModelSerializer):
             "source": {"required": False},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
+        }
+        expandable_fields = {
+            "user": (UserSerializer, {"source": "user"}),
+            "organization": (OrganizationSerializer, {"source": "organization"}),
         }
 
     def validate(self, attrs):

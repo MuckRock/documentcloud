@@ -38,6 +38,7 @@ django==2.2.5
 djangorestframework-simplejwt==4.3.0
 djangorestframework==3.10.3
 docutils==0.15.2          # via botocore
+drf-flex-fields==0.6.1
 drf-nested-routers==0.91
 drf-yasg==1.17.0
 ecdsa==0.13.2
