@@ -49,7 +49,7 @@ CONFIG = [
                     ("ENVIRONMENT", "local"),
                     ("DOC_PROCESSING_URL", "http://process.dev.documentcloud.org"),
                     ("API_CALLBACK", "http://api.dev.documentcloud.org"),
-                    ("PROCESSING_TOKEN", ""),
+                    ("PROCESSING_TOKEN", lambda: random_string(64)),
                 ],
             },
         ],

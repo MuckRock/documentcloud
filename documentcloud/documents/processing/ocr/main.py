@@ -7,6 +7,7 @@ import redis
 
 # Third Party
 import environ
+import furl
 import numpy as np
 from cpuprofile import profile_cpu
 from PIL import Image
@@ -28,19 +29,9 @@ else:
     from tess import Tesseract
     from environment import storage, publisher, get_pubsub_data
 
-POST_URL = urljoin(
-    env.str("API_CALLBACK"), "/api/documents/{id}/send_progress/"
-)  # Post callback
-
-redis = redis.Redis(host=env.str("REDIS_PROCESSING_HOST"), port=6379, db=0)
+redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
+redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
 bucket = env.str("BUCKET", default="")
-
-
-def send_update(pk, data):
-    """Write an update to the app server."""
-    print("SENDING_UPDATE", pk, data)    
-    # requests.post(POST_URL.format(id=pk), json=data)
-
 
 ocr_topic = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
@@ -94,7 +85,6 @@ def run_tesseract(data, _context=None):
     
     data = get_pubsub_data(data)
     paths = data["paths"]
-    ocr_update_interval = data["ocr_update_interval"]
 
     result = {}
 
@@ -140,21 +130,19 @@ def run_tesseract(data, _context=None):
 
     texts_remaining = redis.hincrby(doc_id, "text", -1)
     if texts_remaining == 0:
-        send_update(doc_id, {"action": "done"})
+        requests.patch(
+            urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
+            json={"status": "Success"},
+            headers={'Authorization': f"processing-token {env.str('PROCESSING_TOKEN')}"},
+        )
     else:
-        if ocr_update_interval != -1 and texts_remaining % ocr_update_interval == 0:
-            send_update(
-                get_id(path),
-                {"action": "progress", "type": "text", "remaining": texts_remaining},
-            )
-
         next_paths = paths[1:]
         if next_paths:
             # Launch next iteration
             publisher.publish(
                 ocr_topic,
                 data=json.dumps(
-                    {"paths": next_paths, "ocr_update_interval": ocr_update_interval}
+                    {"paths": next_paths}
                 ).encode("utf8"),
             )
 
