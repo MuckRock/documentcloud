@@ -1,26 +1,47 @@
 # pylint: disable=unused-argument, invalid-unary-operand-type
 
+# Standard Library
+from functools import wraps
+
 # Third Party
-from rules import add_perm, always_allow, is_authenticated, predicate
+from rules import add_perm, always_allow, always_deny, is_authenticated, predicate
 
 # DocumentCloud
 from documentcloud.documents.models import Access
+
+
+def skip_if_not_obj(func):
+    """Decorator for predicates
+    Skip the predicate if obj is None"""
+
+    @wraps(func)
+    def inner(user, obj):
+        if obj is None:
+            return None
+        else:
+            return func(user, obj)
+
+    return inner
+
 
 # These predicates work for documents and notes
 
 
 @predicate
+@skip_if_not_obj
 def is_owner(user, resource):
     return user == resource.user
 
 
 @predicate
+@skip_if_not_obj
 def is_organization(user, resource):
     return resource.organization.has_member(user)
 
 
 def has_access(*accesses):
     @predicate(f"has_access:{accesses}")
+    @skip_if_not_obj
     def inner(user, resource):
         return resource.access in accesses
 
@@ -31,6 +52,7 @@ def has_access(*accesses):
 
 
 @predicate
+@skip_if_not_obj
 def is_edit_collaborator(user, document):
     return document.projects.filter(
         collaborators=user, projectmembership__edit_access=True
@@ -38,6 +60,7 @@ def is_edit_collaborator(user, document):
 
 
 @predicate
+@skip_if_not_obj
 def is_collaborator(user, document):
     return document.projects.filter(collaborators=user).exists()
 
@@ -73,11 +96,18 @@ add_perm("documents.delete_note", can_change_note)
 
 
 @predicate
+@skip_if_not_obj
 def can_change_section(user, section):
     return can_change_document(user, section.document)
 
 
 add_perm("documents.view_section", always_allow)
 add_perm("documents.add_section", is_authenticated)
-add_perm("documents.change_section", can_change_section)
-add_perm("documents.delete_section", can_change_section)
+add_perm("documents.change_section", is_authenticated & can_change_section)
+add_perm("documents.delete_section", is_authenticated & can_change_section)
+
+
+add_perm("documents.view_documenterror", always_allow)
+add_perm("documents.add_documenterror", always_deny)
+add_perm("documents.change_documenterror", always_deny)
+add_perm("documents.delete_documenterror", always_deny)

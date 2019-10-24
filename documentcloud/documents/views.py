@@ -15,8 +15,17 @@ from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
+from documentcloud.core.permissions import DocumentErrorPermissions, DocumentPermissions
+from documentcloud.documents.models import (
+    Document,
+    DocumentError,
+    Entity,
+    EntityDate,
+    Note,
+    Section,
+)
 from documentcloud.documents.serializers import (
+    DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
     EntitySerializer,
@@ -36,6 +45,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
+    permission_classes = (DocumentPermissions,)
 
     def get_queryset(self):
         return Document.objects.get_viewable(self.request.user).select_related(
@@ -94,6 +104,26 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             }
 
     filterset_class = Filter
+
+
+class DocumentErrorViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+):
+    serializer_class = DocumentErrorSerializer
+    queryset = DocumentError.objects.none()
+    permission_classes = (DocumentErrorPermissions,)
+
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return document.errors.all()
+
+    def perform_create(self, serializer):
+        """Specify the document"""
+        serializer.save(document_id=self.kwargs["document_pk"])
 
 
 class NoteViewSet(viewsets.ModelViewSet):

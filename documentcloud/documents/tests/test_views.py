@@ -11,13 +11,14 @@ import pytest
 
 # DocumentCloud
 from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document, Note, Section
+from documentcloud.documents.models import Document, DocumentError, Note, Section
 from documentcloud.documents.serializers import (
     DocumentSerializer,
     NoteSerializer,
     SectionSerializer,
 )
 from documentcloud.documents.tests.factories import (
+    DocumentErrorFactory,
     DocumentFactory,
     EntityDateFactory,
     EntityFactory,
@@ -89,6 +90,14 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(f"/api/documents/", {"title": "Test"})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_no_user(self, client):
+        """Must be logged in to create a document"""
+        response = client.post(
+            f"/api/documents/",
+            {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
@@ -180,6 +189,38 @@ class TestDocumentAPI:
         response = client.delete(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Document.objects.filter(pk=document.pk).exists()
+
+
+@pytest.mark.django_db()
+class TestDocumentErrorAPI:
+    def test_list(self, client, document):
+        """List the errors of a document"""
+        size = 10
+        DocumentErrorFactory.create_batch(size, document=document)
+        response = client.get(f"/api/documents/{document.pk}/errors/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == size
+
+    def test_create(self, client, document):
+        """Create an error"""
+        response = client.post(
+            f"/api/documents/{document.pk}/errors/",
+            {"message": "An error has occurred"},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = json.loads(response.content)
+        assert DocumentError.objects.filter(pk=response_json["id"]).exists()
+
+    def test_create_bad(self, client, document):
+        """Only the processing functions my create errors"""
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/errors/",
+            {"message": "An error has occurred"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db()
