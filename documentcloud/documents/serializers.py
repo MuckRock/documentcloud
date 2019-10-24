@@ -189,34 +189,6 @@ class DocumentErrorSerializer(serializers.ModelSerializer):
         fields = ["id", "created_at", "message"]
         extra_kwargs = {"created_at": {"read_only": True}}
 
-    def get_texts_remaining(self, obj):
-        """Get the texts remaining from the processing redis instance"""
-        texts_remaining = self._get_redis(obj, "text")
-        if texts_remaining is None: return None
-        return int(texts_remaining)
-
-    def get_images_remaining(self, obj):
-        """Get the images remaining from the processing redis instance"""
-        images_remaining = self._get_redis(obj, "image")
-        if images_remaining is None: return None
-        return int(images_remaining)
-
-    def _get_redis(self, obj, key):
-        """Get a value from the processing redis instance"""
-        redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
-        redis_password = settings.REDIS_PROCESSING_PASSWORD
-        redis_ = redis.Redis(
-            host=redis_url.host, port=redis_url.port, password=redis_password, health_check_interval=30
-        )
-        return redis_.hget(obj.pk, key)
-
-
-class DocumentErrorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentError
-        fields = ["id", "created_at", "message"]
-        extra_kwargs = {"created_at": {"read_only": True}}
-
 
 class NoteSerializer(serializers.ModelSerializer):
     access = ChoiceField(
