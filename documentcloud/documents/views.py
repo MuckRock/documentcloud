@@ -53,9 +53,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
     )
 
     def get_queryset(self):
-        return Document.objects.get_viewable(self.request.user).select_related(
-            "user", "organization"
+        valid_token = (
+            hasattr(self.request, "auth")
+            and self.request.auth is not None
+            and "processing" in self.request.auth["permissions"]
         )
+        # Processing scope can access all documents
+        queryset = Document.objects.select_related("user", "organization")
+        if not valid_token:
+            queryset = queryset.get_viewable(self.request.user)
+        return queryset
 
     @transaction.atomic
     def perform_create(self, serializer):
