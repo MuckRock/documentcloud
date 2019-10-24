@@ -12,7 +12,14 @@ from rest_flex_fields import FlexFieldsModelSerializer
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.fields import ChoiceField
-from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
+from documentcloud.documents.models import (
+    Document,
+    DocumentError,
+    Entity,
+    EntityDate,
+    Note,
+    Section,
+)
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
@@ -152,6 +159,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
         redis_ = redis.Redis(host=redis_url.host, port=redis_url.port)
         return redis_.get(f"{obj.pk}-{key}")
+
+
+class DocumentErrorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentError
+        fields = ["id", "created_at", "message"]
+        extra_kwargs = {"created_at": {"read_only": True}}
 
 
 class NoteSerializer(serializers.ModelSerializer):

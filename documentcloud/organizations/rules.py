@@ -3,13 +3,18 @@
 # Third Party
 from rules import add_perm, always_deny, is_authenticated, predicate
 
+# DocumentCloud
+from documentcloud.documents.rules import skip_if_not_obj
+
 
 @predicate
+@skip_if_not_obj
 def is_private(user, organization):
     return organization.private
 
 
 @predicate
+@skip_if_not_obj
 def is_member(user, organization):
     return organization.has_member(user)
 
