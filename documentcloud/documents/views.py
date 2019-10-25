@@ -15,7 +15,11 @@ from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.core.permissions import DocumentErrorPermissions, DocumentPermissions
+from documentcloud.core.permissions import (
+    DjangoObjectPermissionsOrAnonReadOnly,
+    DocumentErrorTokenPermissions,
+    DocumentTokenPermissions,
+)
 from documentcloud.documents.models import (
     Document,
     DocumentError,
@@ -45,7 +49,9 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
-    permission_classes = (DocumentPermissions,)
+    permission_classes = (
+        DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
+    )
 
     def get_queryset(self):
         return Document.objects.get_viewable(self.request.user).select_related(
@@ -111,7 +117,9 @@ class DocumentErrorViewSet(
 ):
     serializer_class = DocumentErrorSerializer
     queryset = DocumentError.objects.none()
-    permission_classes = (DocumentErrorPermissions,)
+    permission_classes = (
+        DjangoObjectPermissionsOrAnonReadOnly | DocumentErrorTokenPermissions,
+    )
 
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
