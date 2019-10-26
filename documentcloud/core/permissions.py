@@ -23,9 +23,36 @@ class TokenPermissions(permissions.BasePermission):
         return (
             request.method in self.token_methods
             and hasattr(request, "auth")
+        if request.user.is_authenticated:
+            return True
+        elif (
+            hasattr(request, "auth")
+            and request.auth is not None
+            and request.method in ["PUT", "PATCH"]
+        ):
+            # If there is an auth token, allow it for PUT and PATCH requests
+            return True
+        else:
+            return request.method in permissions.SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        """Check for processing token"""
+
+        # A processing token allows for updating documents
+        valid_token = (
+            hasattr(request, "auth")
             and request.auth is not None
             and self.token_permissions.issubset(request.auth["permissions"])
         )
+        if (
+            valid_token
+            and request.method in ["PUT", "PATCH"]
+            and isinstance(obj, Document)
+        ):
+            return True
+        else:
+            return super().has_object_permission(request, view, obj)
+
 
 
 class DocumentTokenPermissions(TokenPermissions):

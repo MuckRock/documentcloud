@@ -29,6 +29,10 @@ else:
     from tess import Tesseract
     from environment import storage, publisher, get_pubsub_data
 
+POST_URL = urljoin(
+    env.str("API_CALLBACK"), "/api/documents/{id}/send_progress/"
+)  # Post callback
+
 redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
 redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
 bucket = env.str("BUCKET", default="")
