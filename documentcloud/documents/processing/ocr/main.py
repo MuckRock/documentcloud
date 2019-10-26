@@ -29,10 +29,6 @@ else:
     from tess import Tesseract
     from environment import storage, publisher, get_pubsub_data
 
-POST_URL = urljoin(
-    env.str("API_CALLBACK"), "/api/documents/{id}/send_progress/"
-)  # Post callback
-
 redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
 redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
 bucket = env.str("BUCKET", default="")
@@ -134,8 +130,11 @@ def run_tesseract(data, _context=None):
 
     texts_remaining = redis.hincrby(doc_id, "text", -1)
     if texts_remaining == 0:
-        pass
-        # send_update(doc_id, {"action": "done"})
+        requests.patch(
+            urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
+            json={"status": "Success"},
+            headers={'Authorization': f"processing-token {env.str('PROCESSING_TOKEN')}"},
+        )
     else:
         next_paths = paths[1:]
         if next_paths:

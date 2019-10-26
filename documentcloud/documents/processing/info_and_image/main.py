@@ -149,7 +149,7 @@ def process_pdf(request, _context=None):
     redis.hset(get_id(path), "image", page_count)
     redis.hset(get_id(path), "text", page_count)
 
-    # Trigger progress update
+    # Send update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
 
     requests.patch(
@@ -199,6 +199,8 @@ def extract_single_page(original_path, path, doc, page_number):
             get_pageimage_path(path, page_number, image_suffix), "wb"
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
+        
+        # TODO: trigger update when thumbnail image is parsed
 
     return get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0])
 
