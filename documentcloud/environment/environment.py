@@ -1,6 +1,9 @@
-import environ
-import json
+# Standard Library
 import base64
+import json
+
+# Third Party
+import environ
 
 env = environ.Env()
 environment = env.str("ENVIRONMENT")
