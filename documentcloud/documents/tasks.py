@@ -1,3 +1,6 @@
+# Django
+from celery.task import task
+
 # DocumentCloud
 from documentcloud.documents.models import Document
 from documentcloud.documents.processing.info_and_image.main import (
@@ -5,7 +8,6 @@ from documentcloud.documents.processing.info_and_image.main import (
     process_pdf,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
-from celery.task import task
 
 
 @task
