@@ -325,8 +325,8 @@ def fpdf_string(text):
     return text
 
 
-# pylint: disable=too-many-instance-attributes, too-many-statements
 class Workspace:
+    # pylint: disable=too-many-instance-attributes, too-many-statements
     def __init__(self):
         self.pdfium = None
 

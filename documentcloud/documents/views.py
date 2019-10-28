@@ -80,18 +80,14 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         if file_ is not None:
             path = f"documents/{document.id}/{document.slug}.pdf"
             full_path = os.path.join(settings.BUCKET, path)
-            # XXX storage
             with storage.open(full_path, "wb") as dest:
                 for chunk in file_.chunks():
                     dest.write(chunk)
             options["path"] = path
         else:
-            # XXX where do we do the download?
-            # Celery or cloud function?
+            # XXX Need to do the download (in celery function)
             options["url"] = file_url
 
-        # XXX httpsub
-        # XXX this should be a config setting instead of direct env access
         transaction.on_commit(
             lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
         )

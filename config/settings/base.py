@@ -348,7 +348,6 @@ CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]
-# CSRF_TRUSTED_ORIGINS = ['www.dev.documentcloud.org']
 # This enables cookies
 CORS_ALLOW_CREDENTIALS = True
 
