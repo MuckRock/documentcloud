@@ -139,7 +139,6 @@ def process_pdf(request, _context=None):
 
     # Ensure a PDF file
     path = os.path.join(bucket, data["path"])
-    progress_updates = data["progress_updates"] if "progress_updates" in data else False
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
