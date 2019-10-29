@@ -132,7 +132,7 @@ def run_tesseract(data, _context=None):
     if texts_remaining == 0:
         requests.patch(
             urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
-            json={"status": "Success"},
+            json={"status": "success"},
             headers={
                 "Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"
             },
