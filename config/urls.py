@@ -21,6 +21,7 @@ from documentcloud.documents.views import (
     EntityViewSet,
     NoteViewSet,
     SectionViewSet,
+    SignedPutURIView,
 )
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
@@ -66,6 +67,8 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
+    # XXX put this into the doc viewset
+    path("api/put-uri/", SignedPutURIView.as_view()),
     # Swagger
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
