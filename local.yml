@@ -58,6 +58,8 @@ services:
     ports:
       - "9000:9000"
     command: server /data
+    env_file:
+      - ./.envs/.local/.django
 
   # add solr and test solr images in
 
