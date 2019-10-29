@@ -80,5 +80,53 @@ elif environment == "aws":
 
     storage = AwsStorage
     publisher = AwsPubsub
+elif environment == "local-minio":
+    import boto3
+    from botocore.client import Config
+    import smart_open
+
+    resource_kwargs = {
+        "endpoint_url": "http://minio.documentcloud.org:9000",
+        "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
+        "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
+        "config": Config(signature_version="s3v4"),
+        "region_name": "us-east-1",
+    }
+
+    s3 = boto3.resource("s3", **resource_kwargs)
+    s3_client = boto3.client("s3", **resource_kwargs)
+
+    # XXX de dupe code with above?
+    class AwsStorage:
+        @staticmethod
+        def canonical(filename):
+            return "s3://" + filename
+
+        @staticmethod
+        def du(filename):
+            parts = filename.split("/")
+            bucket = parts[0]
+            file_part = "/".join(parts[1:])
+            bucket = s3.Bucket(bucket)
+            return {filename: bucket.Object(file_part).content_length}
+
+        @staticmethod
+        def open(filename, mode="rb"):
+            return smart_open.open(
+                AwsStorage.canonical(filename),
+                mode,
+                transport_params={"resource_kwargs": resource_kwargs},
+            )
+
+        @staticmethod
+        def presign_url(key):
+            return s3_client.generate_presigned_url(
+                "put_object", Params={"Bucket": "uploads", "Key": key}, ExpiresIn=300
+            )
+
+    storage = AwsStorage
+    from documentcloud.environment.pubsub import publisher
+    from documentcloud.environment.httpsub import httpsub
+
 else:
     raise Exception("Invalid environment")
