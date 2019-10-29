@@ -15,7 +15,7 @@ import requests
 
 env = environ.Env()
 
-if env.str("ENVIRONMENT") == "local":
+if env.str("ENVIRONMENT").startswith("local"):
     # Load from Django imports if in a local environment
     from documentcloud.documents.processing.info_and_image.pdfium import (
         StorageHandler,

@@ -60,6 +60,10 @@ services:
     command: server /data
     env_file:
       - ./.envs/.local/.django
+    networks:
+      default:
+        aliases:
+          - minio.documentcloud.org
 
   # add solr and test solr images in
 

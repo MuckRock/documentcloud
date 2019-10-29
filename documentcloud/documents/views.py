@@ -2,11 +2,14 @@
 from django import forms
 from django.conf import settings
 from django.db import transaction
-from rest_framework import mixins, parsers, viewsets
+from rest_framework import mixins, parsers, permissions, status, viewsets
 from rest_framework.generics import get_object_or_404
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # Standard Library
 import os
+import uuid
 
 # Third Party
 import django_filters
@@ -42,6 +45,23 @@ from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 
 env = environ.Env()
+
+
+class SignedPutURIView(APIView):
+    """
+    Generate a signed url for the user to upload a file to S3.
+    """
+
+    # XXX put this into the doc viewset
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+
+        key = "{}/{}".format(request.user.username, uuid.uuid4())
+        upload_uri = storage.presign_url(key)
+        data = {"key": key, "upload_uri": upload_uri}
+        return Response(data=data, status=status.HTTP_200_OK)
 
 
 class DocumentViewSet(FlexFieldsModelViewSet):
