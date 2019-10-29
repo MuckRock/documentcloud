@@ -86,12 +86,15 @@ elif environment == "local-minio":
     import smart_open
 
     resource_kwargs = {
-        "endpoint_url": "http://documentcloud_minio:9000",
+        "endpoint_url": "http://minio.documentcloud.org:9000",
+        "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
+        "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
         "config": Config(signature_version="s3v4"),
         "region_name": "us-east-1",
     }
 
     s3 = boto3.resource("s3", **resource_kwargs)
+    s3_client = boto3.client("s3", **resource_kwargs)
 
     # XXX de dupe code with above?
     class AwsStorage:
@@ -110,9 +113,18 @@ elif environment == "local-minio":
         @staticmethod
         def open(filename, mode="rb"):
             return smart_open.open(
-                AwsStorage.canonical(filename), mode, resource_kwargs=resource_kwargs
+                AwsStorage.canonical(filename),
+                mode,
+                transport_params={"resource_kwargs": resource_kwargs},
             )
 
+        @staticmethod
+        def presign_url(key):
+            return s3_client.generate_presigned_url(
+                "put_object", Params={"Bucket": "uploads", "Key": key}, ExpiresIn=300
+            )
+
+    storage = AwsStorage
     from documentcloud.environment.pubsub import publisher
     from documentcloud.environment.httpsub import httpsub
 
