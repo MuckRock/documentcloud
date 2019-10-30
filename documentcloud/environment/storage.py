@@ -1,3 +1,6 @@
+"""
+This is only used during tests
+"""
 # Django
 from django.conf import settings
 
@@ -40,8 +43,8 @@ class LocalStorage:
 
     # pylint: disable=invalid-name
     @staticmethod
-    def du(filename):
-        return {filename: os.path.getsize(os.path.join(settings.MEDIA_ROOT, filename))}
+    def size(filename):
+        return os.path.getsize(os.path.join(settings.MEDIA_ROOT, filename))
 
     def open(self, filename, mode="w"):
         return LocalStorageFile(self, filename, mode)
