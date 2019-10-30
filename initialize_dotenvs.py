@@ -48,7 +48,7 @@ CONFIG = [
                 "envvars": [
                     ("ENVIRONMENT", "local"),
                     ("DOC_PROCESSING_URL", "http://process.dev.documentcloud.org"),
-                    ("API_CALLBACK", "http://api.dev.documentcloud.org"),
+                    ("API_CALLBACK", "http://api.dev.documentcloud.org/api/"),
                     ("PROCESSING_TOKEN", lambda: random_string(64)),
                 ],
             },
