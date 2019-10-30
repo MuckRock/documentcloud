@@ -4,6 +4,7 @@ from rest_framework import status
 
 # Standard Library
 import json
+from uuid import uuid4
 
 # Third Party
 import pytest
