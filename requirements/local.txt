@@ -31,7 +31,7 @@ coreschema==0.0.4
 coverage==4.5.4
 cpuprofile==1.0.1
 cryptography==2.8
-decorator==4.4.0          # via ipython, traitlets
+decorator==4.4.0
 defusedxml==0.6.0
 django-appconf==1.0.3
 django-autoslug==1.9.6
@@ -51,7 +51,7 @@ django-timezone-field==3.0
 django==2.2.5
 djangorestframework-simplejwt==4.3.0
 djangorestframework==3.10.3
-docutils==0.15.2          # via sphinx
+docutils==0.15.2
 drf-flex-fields==0.6.1
 drf-nested-routers==0.91
 drf-yasg==1.17.0
@@ -169,4 +169,4 @@ wrapt==1.11.2             # via astroid
 zipp==0.6.0
 
 # The following packages are considered to be unsafe in a requirements file:
-# setuptools==41.4.0        # via google-api-core, ipdb, ipython, protobuf, python-levenshtein, sphinx
+# setuptools==41.5.0        # via google-api-core, ipdb, ipython, protobuf, python-levenshtein, sphinx
