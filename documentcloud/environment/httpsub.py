@@ -17,9 +17,8 @@ class HTTPSub:
     def post(self, url, json):
         if url in self.tasks:
             self.tasks[url](json)
-        else:
-            if ERROR_IF_NO_URL:
-                raise ValueError(f"HTTP route not registered: {url}")
+        elif ERROR_IF_NO_URL:
+            raise ValueError(f"HTTP route not registered: {url}")
 
 
 # Define http sub client and subscriptions

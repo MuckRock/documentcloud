@@ -3,7 +3,6 @@ from celery.task import task
 from django.conf import settings
 
 # DocumentCloud
-from documentcloud.documents.models import Document
 from documentcloud.documents.processing.info_and_image.main import (
     extract_image,
     process_pdf,
@@ -29,8 +28,9 @@ def ocr_pages(data):
 
 @task
 def fetch_file_url(file_url, document_pk, slug):
-    path = f"{document_pk}/{slug}.pdf"
-    storage.fetch_url(file_url, settings.DOCUMENT_BUCKET, path)
+    # XXX error check fetch worked
+    path = f"{settings.DOCUMENT_BUCKET}/{document_pk}/{slug}.pdf"
+    storage.fetch_url(file_url, path)
     httpsub.post(
         settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
     )
