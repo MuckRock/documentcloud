@@ -135,7 +135,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def validate_key(self, value):
         request = self.context["request"]
-        if not storage.exists(settings.UPLOAD_BUCKET, f"{request.user.pk}/{value}"):
+        if not storage.exists(f"{settings.UPLOAD_BUCKET}/{request.user.pk}/{value}"):
             raise serializers.ValidationError("That key does not exist")
         return value
 

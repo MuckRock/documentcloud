@@ -5,6 +5,7 @@ from rest_framework import status
 
 # Standard Library
 import json
+from uuid import uuid4
 
 # Third Party
 import pytest
@@ -72,14 +73,14 @@ class TestDocumentAPI:
         response_json = json.loads(response.content)
         assert Document.objects.filter(pk=response_json["id"]).exists()
 
-    def test_create_bad_file_and_url(self, client, user):
-        """May not specify `file` and `file_url`"""
+    def test_create_bad_key_and_url(self, client, user):
+        """May not specify `key` and `file_url`"""
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/",
             {
                 "title": "Test",
-                "file": SimpleUploadedFile("hello.txt", b"123"),
+                "key": uuid4(),
                 "file_url": "http://www.example.com/test.pdf",
             },
         )
@@ -139,12 +140,9 @@ class TestDocumentAPI:
         assert document.access == Access.organization
 
     def test_update_bad_file(self, client, document):
-        """You may not update the file"""
+        """You may not update the file key"""
         client.force_authenticate(user=document.user)
-        response = client.patch(
-            f"/api/documents/{document.pk}/",
-            {"file": SimpleUploadedFile("hello.txt", b"123")},
-        )
+        response = client.patch(f"/api/documents/{document.pk}/", {"key": uuid4()})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_bad_file_url(self, client, document):
