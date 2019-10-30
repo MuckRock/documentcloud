@@ -507,27 +507,25 @@ class Workspace:
         return Document(self, doc)
 
 
-class Handler:
-    def __init__(self, file_obj, f_size, record=False, playback=False, cache=None):
-        self.file_obj = file_obj
-        self.size = f_size
-        self.record = record
-        self.playback = playback
+class StorageHandler:
+    def __init__(self, storage, filename, record=False, playback=False, cache=None):
+        self.handle = storage.open(filename, "rb").__enter__()
         self.cache = {} if cache is None else cache
+        self.size = storage.size(filename)
 
         @CFUNCTYPE(c_int, c_void_p, c_ulong, c_ubyte_p, c_ulong)
         def get_block(_param, position, p_buf, size):
-            if self.playback and (position, size) in self.cache:
+            if playback and (position, size) in self.cache:
                 data = cache[(position, size)]
             else:
-                if self.playback:
+                if playback:
                     print((position, size))
                 # Seek in PDF file
-                file_obj.seek(position, os.SEEK_SET)
+                self.handle.seek(position, os.SEEK_SET)
 
-                data = file_obj.read(size)
+                data = self.handle.read(size)
 
-            if self.record:
+            if record:
                 self.cache[(position, size)] = data
 
             # Copy over data
@@ -535,42 +533,6 @@ class Handler:
             return size
 
         self.get_block = get_block
-
-
-class StorageHandler(Handler):
-    def __init__(self, storage, filename, record=False, playback=False, cache=None):
-        self.filename = filename
-        self.handle = storage.open(filename, "rb").__enter__()
-        size = storage.du(filename)[filename]
-        super().__init__(self.handle, size, record, playback, cache)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.handle.close()
-
-
-class FileHandler(Handler):
-    def __init__(self, filename, record=False, playback=False, cache=None):
-        self.filename = filename
-        self.handle = open(filename, "rb")
-        size = os.path.getsize(filename)
-        super().__init__(self.handle, size, record, playback, cache)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.handle.close()
-
-
-class GCSHandler(Handler):
-    def __init__(self, fs, path, record=False, playback=False, cache=None):
-        self.filename = path
-        self.handle = fs.open(path, "rb")
-        size = fs.du(path, total=True)
-        super().__init__(self.handle, size, record, playback, cache)
 
     def __enter__(self):
         return self

@@ -1,9 +1,23 @@
+"""
+Environment abstraction
+
+This abstracts file storage and serverless function trigering, to allow our code
+to work both locally and in different cloud environments.  This code will be run from
+serverless functions not within a Django context, so no Django code is imported for
+non-local environments.  We also keep all non-local code in this single file so we do
+not need to copy multiple files into the serverless function context.
+"""
+
+# We do some weird things with imports to support this abstraction, silence pylint:
+# pylint: disable=reimported, unused-import, ungrouped-imports
+
 # Standard Library
 import base64
 import json
 
 # Third Party
 import environ
+import requests
 
 env = environ.Env()
 environment = env.str("ENVIRONMENT")
@@ -30,10 +44,87 @@ def get_pubsub_data(data):
         return json.loads(base64.b64decode(data["data"]).decode("utf-8"))
 
 
+class AwsPubsub:
+    def __init__(self):
+        import boto3
+
+        self.arn_prefix = env.str("AWS_ARN_PREFIX")
+        self.sns = boto3.client("sns")
+
+    def topic_path(self, _namespace, name):
+        return f"{self.arn_prefix}:{name}"
+
+    def publish(self, topic_path, data):
+        self.sns.publish(TopicArn=topic_path, Message=data.decode("utf8"))
+
+
+class AwsStorage:
+    def __init__(self, resource_kwargs=None):
+        import boto3
+
+        self.resource_kwargs = {} if resource_kwargs is None else resource_kwargs
+        self.s3_resource = boto3.resource("s3", **self.resource_kwargs)
+        self.s3_client = boto3.client("s3", **self.resource_kwargs)
+
+    def bucket_key(self, file_name):
+        return file_name.split("/", 1)
+
+    def size(self, file_name):
+        bucket, key = self.bucket_key(file_name)
+        bucket = self.s3_resource.Bucket(bucket)
+        return bucket.Object(key).content_length
+
+    def open(self, file_name, mode="rb"):
+        import smart_open
+
+        return smart_open.open(
+            f"s3://{file_name}",
+            mode,
+            transport_params={"resource_kwargs": self.resource_kwargs},
+        )
+
+    def presign_url(self, file_name):
+        bucket, key = self.bucket_key(file_name)
+        return self.s3_client.generate_presigned_url(
+            "put_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=300
+        )
+
+    def exists(self, file_name):
+        # https://www.peterbe.com/plog/fastest-way-to-find-out-if-a-file-exists-in-s3
+        bucket, key = self.bucket_key(file_name)
+        response = self.s3_client.list_objects_v2(Bucket=bucket, Prefix=key)
+        for obj in response.get("Contents", []):
+            if obj["Key"] == key:
+                return True
+        return False
+
+    def fetch_url(self, url, file_name):
+        bucket, key = self.bucket_key(file_name)
+        response = requests.get(url, stream=True)
+        self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
+
+
 if environment == "local":
-    from documentcloud.environment.storage import storage
+    from botocore.client import Config
+
+    storage = AwsStorage(
+        {
+            "endpoint_url": "http://minio.documentcloud.org:9000",
+            "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
+            "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
+            "config": Config(signature_version="s3v4"),
+            "region_name": "us-east-1",
+        }
+    )
     from documentcloud.environment.pubsub import publisher
     from documentcloud.environment.httpsub import httpsub
+
+elif environment == "aws":
+    import requests as httpsub
+
+    storage = AwsStorage()
+    publisher = AwsPubsub()
+
 elif environment == "gcp":
     import gcsfs
     from google.cloud import pubsub_v1
@@ -41,116 +132,6 @@ elif environment == "gcp":
 
     storage = gcsfs.GCSFileSystem()
     publisher = pubsub_v1.PublisherClient()
-elif environment == "aws":
-    import boto3
-    import smart_open
-    import requests as httpsub
-
-    s3 = boto3.resource("s3")
-    sns = boto3.client("sns")
-
-    class AwsStorage:
-        @staticmethod
-        def canonical(filename):
-            return "s3://" + filename
-
-        @staticmethod
-        def du(filename):
-            parts = filename.split("/")
-            bucket = parts[0]
-            file_part = "/".join(parts[1:])
-            bucket = s3.Bucket(bucket)
-            return {filename: bucket.Object(file_part).content_length}
-
-        @staticmethod
-        def open(filename, mode="rb"):
-            return smart_open.open(AwsStorage.canonical(filename), mode)
-
-    arn_prefix = env.str("AWS_ARN_PREFIX")
-
-    class AwsPubsub:
-        @staticmethod
-        def topic_path(namespace, name):
-            return ":".join([arn_prefix, name])
-
-        @staticmethod
-        def publish(topic_path, data):
-            decoded_data = json.loads(data.decode("utf8"))
-            sns.publish(TopicArn=topic_path, Message=data.decode("utf8"))
-
-    storage = AwsStorage
-    publisher = AwsPubsub
-elif environment == "local-minio":
-    import boto3
-    from botocore.client import Config
-    import smart_open
-    import requests
-
-    resource_kwargs = {
-        "endpoint_url": "http://minio.documentcloud.org:9000",
-        "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
-        "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
-        "config": Config(signature_version="s3v4"),
-        "region_name": "us-east-1",
-    }
-
-    s3 = boto3.resource("s3", **resource_kwargs)
-    s3_client = boto3.client("s3", **resource_kwargs)
-
-    # XXX de dupe code with above?
-    # rework this abstraction - not just based on gcsfs code
-    class AwsStorage:
-        @staticmethod
-        def canonical(filename):
-            return "s3://" + filename
-
-        @staticmethod
-        def du(filename):
-            parts = filename.split("/")
-            bucket = parts[0]
-            file_part = "/".join(parts[1:])
-            bucket = s3.Bucket(bucket)
-            return {filename: bucket.Object(file_part).content_length}
-
-        @staticmethod
-        def open(filename, mode="rb"):
-            return smart_open.open(
-                AwsStorage.canonical(filename),
-                mode,
-                transport_params={"resource_kwargs": resource_kwargs},
-            )
-
-        @staticmethod
-        def presign_url(key):
-            return s3_client.generate_presigned_url(
-                "put_object",
-                Params={"Bucket": env.str("UPLOAD_BUCKET"), "Key": key},
-                ExpiresIn=300,
-            )
-
-        @staticmethod
-        def copy(src_bucket, src_key, dst_bucket, dst_key):
-            return s3.meta.client.copy(
-                {"Bucket": src_bucket, "Key": src_key}, dst_bucket, dst_key
-            )
-
-        @staticmethod
-        def exists(bucket, key):
-            # https://www.peterbe.com/plog/fastest-way-to-find-out-if-a-file-exists-in-s3
-            response = s3_client.list_objects_v2(Bucket=bucket, Prefix=key)
-            for obj in response.get("Contents", []):
-                if obj["Key"] == key:
-                    return True
-            return False
-
-        @staticmethod
-        def fetch_url(url, bucket, key):
-            response = requests.get(url, stream=True)
-            s3.Bucket(bucket).upload_fileobj(response.raw, key)
-
-    storage = AwsStorage
-    from documentcloud.environment.pubsub import publisher
-    from documentcloud.environment.httpsub import httpsub
-
+    raise RuntimeError("GCP environment is not currently supported")
 else:
-    raise Exception("Invalid environment")
+    raise RuntimeError("Invalid environment")
