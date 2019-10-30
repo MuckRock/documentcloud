@@ -20,17 +20,21 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
+from documentcloud.environment.environment import storage
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):
 
-    file = serializers.FileField(
-        label=_("File"),
+    key = serializers.UUIDField(
+        label=_("Key"),
         write_only=True,
         required=False,
-        help_text=_("The file to upload - use this field or `file_url`"),
+        help_text=_(
+            "The UUID key for a file you uploaded directly - "
+            "use this field or `file_url`"
+        ),
     )
     file_url = serializers.URLField(
         label=_("File URL"),
@@ -73,9 +77,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "access",
             "created_at",
             "description",
-            "file",
             "file_url",
             "images_remaining",
+            "key",
             "language",
             "organization",
             "page_count",
@@ -129,20 +133,26 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
         return "processing" in request.auth["permissions"]
 
+    def validate_key(self, value):
+        request = self.context["request"]
+        if not storage.exists(settings.UPLOAD_BUCKET, f"{request.user.pk}/{value}"):
+            raise serializers.ValidationError("That key does not exist")
+        return value
+
     def validate(self, attrs):
         if self.instance:
-            if "file" in attrs:
-                raise serializers.ValidationError("You may not update `file`")
+            if "key" in attrs:
+                raise serializers.ValidationError("You may not update `key`")
             if "file_url" in attrs:
                 raise serializers.ValidationError("You may not update `file_url`")
         else:
-            if "file" not in attrs and "file_url" not in attrs:
+            if "key" not in attrs and "file_url" not in attrs:
                 raise serializers.ValidationError(
-                    "You must pass in either `file` or `file_url`"
+                    "You must pass in either `key` or `file_url`"
                 )
-            if "file" in attrs and "file_url" in attrs:
+            if "key" in attrs and "file_url" in attrs:
                 raise serializers.ValidationError(
-                    "You must not pass in both `file` and `file_url`"
+                    "You must not pass in both `key` and `file_url`"
                 )
         return attrs
 

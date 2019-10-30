@@ -58,7 +58,7 @@ IMAGE_WIDTHS = [
 
 redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
 redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
-bucket = env.str("BUCKET", default="")
+bucket = env.str("DOCUMENT_BUCKET", default="")
 
 
 # Topic names for the messaging queue
