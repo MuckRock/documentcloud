@@ -11,17 +11,33 @@ import os
 # Third Party
 import django_filters
 import environ
+from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
+from documentcloud.core.permissions import (
+    DjangoObjectPermissionsOrAnonReadOnly,
+    DocumentErrorTokenPermissions,
+    DocumentTokenPermissions,
+)
+from documentcloud.documents.models import (
+    Document,
+    DocumentError,
+    Entity,
+    EntityDate,
+    Note,
+    Section,
+)
 from documentcloud.documents.serializers import (
+    DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
     EntitySerializer,
     NoteSerializer,
     SectionSerializer,
 )
+from documentcloud.environment.environment import storage
+from documentcloud.environment.httpsub import httpsub
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -29,15 +45,26 @@ from documentcloud.users.models import User
 env = environ.Env()
 
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
+    permit_list_expands = ["user", "organization"]
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
+    permission_classes = (
+        DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
+    )
 
     def get_queryset(self):
-        return Document.objects.get_viewable(self.request.user).select_related(
-            "user", "organization"
+        valid_token = (
+            hasattr(self.request, "auth")
+            and self.request.auth is not None
+            and "processing" in self.request.auth["permissions"]
         )
+        # Processing scope can access all documents
+        queryset = Document.objects.select_related("user", "organization")
+        if not valid_token:
+            queryset = queryset.get_viewable(self.request.user)
+        return queryset
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -52,21 +79,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
         options = {"document": document.pk}
 
         if file_ is not None:
-            # XXX what path do we save files to
             path = f"documents/{document.id}/{document.slug}.pdf"
             full_path = os.path.join(settings.BUCKET, path)
-            # XXX storage
             with storage.open(full_path, "wb") as dest:
                 for chunk in file_.chunks():
                     dest.write(chunk)
             options["path"] = path
         else:
-            # XXX where do we do the download?
-            # Celery or cloud function?
+            # XXX Need to do the download (in celery function)
             options["url"] = file_url
 
-        # XXX httpsub
-        # XXX this should be a config setting instead of direct env access
         transaction.on_commit(
             lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
         )
@@ -92,6 +114,28 @@ class DocumentViewSet(viewsets.ModelViewSet):
             }
 
     filterset_class = Filter
+
+
+class DocumentErrorViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+):
+    serializer_class = DocumentErrorSerializer
+    queryset = DocumentError.objects.none()
+    permission_classes = (
+        DjangoObjectPermissionsOrAnonReadOnly | DocumentErrorTokenPermissions,
+    )
+
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return document.errors.all()
+
+    def perform_create(self, serializer):
+        """Specify the document"""
+        serializer.save(document_id=self.kwargs["document_pk"])
 
 
 class NoteViewSet(viewsets.ModelViewSet):

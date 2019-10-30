@@ -48,6 +48,6 @@ RUN pip install 'pip<19.2'
 
 WORKDIR /app
 
-ENV LD_LIBRARY_PATH /app/documentcloud/document/processing/ocr/tesseract
+ENV LD_LIBRARY_PATH /app/documentcloud/documents/processing/ocr/tesseract
 
 ENTRYPOINT ["/entrypoint"]

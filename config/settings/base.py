@@ -230,7 +230,7 @@ DEFAULT_CACHE_TIMEOUT = 15 * 60
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-httponly
 SESSION_COOKIE_HTTPONLY = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-httponly
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-browser-xss-filter
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
@@ -314,7 +314,9 @@ STATICFILES_FINDERS += ["compressor.finders.CompressorFinder"]
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
-    "DEFAULT_PERMISSION_CLASSES": ["documentcloud.core.permissions.Permissions"],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "documentcloud.core.permissions.DjangoObjectPermissionsOrAnonReadOnly"
+    ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "PAGE_SIZE": 100,
@@ -322,6 +324,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "documentcloud.core.authentication.ProcessingTokenAuthentication",
     ),
 }
 
@@ -370,3 +373,7 @@ SIMPLE_JWT = {
     "AUDIENCE": ["documentcloud"],
     "USER_ID_FIELD": "uuid",
 }
+
+REDIS_PROCESSING_URL = env("REDIS_PROCESSING_URL")
+
+PROCESSING_TOKEN = env("PROCESSING_TOKEN")

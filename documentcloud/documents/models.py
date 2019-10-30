@@ -59,6 +59,11 @@ class Document(models.Model):
         db_index=True,
         help_text=_("Number of pages in this document"),
     )
+    page_spec = models.TextField(
+        _("page specification"),
+        blank=True,
+        help_text=_("A cached and compressed specification of each pages dimensions"),
+    )
 
     language = models.CharField(
         _("language"),
@@ -89,12 +94,40 @@ class Document(models.Model):
         _("updated at"), help_text=_("Timestamp of when the document was last updated")
     )
 
+    class Meta:
+        permissions = (
+            (
+                "process_document",
+                "Document processor - can set `page_count`, `page_spec`, and "
+                "`status` through the API",
+            ),
+        )
+
     @property
     def combined_page_text(self):
         return "".join(p.text for p in self.pages.all())
 
     def __str__(self):
         return self.title
+
+
+class DocumentError(models.Model):
+    """An error occured while processing a document"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="errors",
+        help_text=_("The document this page belongs to"),
+    )
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the error occured")
+    )
+    message = models.TextField(_("message"), help_text=_("The error message"))
+
+    def __str__(self):
+        return self.message
 
 
 class Page(models.Model):

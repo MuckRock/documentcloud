@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
@@ -10,19 +11,22 @@ import pytest
 
 # DocumentCloud
 from documentcloud.documents.choices import Access
-from documentcloud.documents.models import Document, Note, Section
+from documentcloud.documents.models import Document, DocumentError, Note, Section
 from documentcloud.documents.serializers import (
     DocumentSerializer,
     NoteSerializer,
     SectionSerializer,
 )
 from documentcloud.documents.tests.factories import (
+    DocumentErrorFactory,
     DocumentFactory,
     EntityDateFactory,
     EntityFactory,
     NoteFactory,
     SectionFactory,
 )
+from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.users.serializers import UserSerializer
 
 
 @pytest.mark.django_db()
@@ -87,6 +91,14 @@ class TestDocumentAPI:
         response = client.post(f"/api/documents/", {"title": "Test"})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_bad_no_user(self, client):
+        """Must be logged in to create a document"""
+        response = client.post(
+            f"/api/documents/",
+            {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")
@@ -95,6 +107,18 @@ class TestDocumentAPI:
         serializer = DocumentSerializer(document)
         assert response_json == serializer.data
         assert response_json["access"] == "public"
+
+    def test_retrieve_expand(self, client, document):
+        """Test retrieving a document with an expanded user and organization"""
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "user,organization"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        user_serializer = UserSerializer(document.user)
+        organization_serializer = OrganizationSerializer(document.organization)
+        assert response_json["user"] == user_serializer.data
+        assert response_json["organization"] == organization_serializer.data
 
     def test_retrieve_bad(self, client):
         """Test retrieving a document you do not have access to"""
@@ -140,12 +164,63 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_bad_processing_token(self, client, document):
+        """Only the processing functions with a token may modify certain fields"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"page_count": 42})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.page_count != 42
+
+    def test_update_processing_token(self, client, document):
+        """Only the processing functions with a token may modify certain fields"""
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"page_count": 42},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.page_count == 42
+
     def test_destroy(self, client, document):
         """Test destroying a document"""
         client.force_authenticate(user=document.user)
         response = client.delete(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Document.objects.filter(pk=document.pk).exists()
+
+
+@pytest.mark.django_db()
+class TestDocumentErrorAPI:
+    def test_list(self, client, document):
+        """List the errors of a document"""
+        size = 10
+        DocumentErrorFactory.create_batch(size, document=document)
+        response = client.get(f"/api/documents/{document.pk}/errors/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == size
+
+    def test_create(self, client, document):
+        """Create an error"""
+        response = client.post(
+            f"/api/documents/{document.pk}/errors/",
+            {"message": "An error has occurred"},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = json.loads(response.content)
+        assert DocumentError.objects.filter(pk=response_json["id"]).exists()
+
+    def test_create_bad(self, client, document):
+        """Only the processing functions my create errors"""
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/errors/",
+            {"message": "An error has occurred"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db()

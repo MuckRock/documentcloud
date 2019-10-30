@@ -30,11 +30,27 @@ CONFIG = [
             },
             {
                 "name": "Redis",
-                "envvars": [("REDIS_URL", "redis://documentcloud_redis:6379/0")],
+                "envvars": [
+                    ("REDIS_URL", "redis://documentcloud_redis:6379/0"),
+                    (
+                        "REDIS_PROCESSING_URL",
+                        "redis://documentcloud_processing_redis:6379/0",
+                    ),
+                ],
             },
             {
                 "name": "Squarelet",
                 "envvars": [("SQUARELET_KEY", ""), ("SQUARELET_SECRET", "")],
+            },
+            {"name": "JWT", "envvars": [("JWT_VERIFYING_KEY", "")]},
+            {
+                "name": "Processing Environment",
+                "envvars": [
+                    ("ENVIRONMENT", "local"),
+                    ("DOC_PROCESSING_URL", "http://process.dev.documentcloud.org"),
+                    ("API_CALLBACK", "http://api.dev.documentcloud.org/api/"),
+                    ("PROCESSING_TOKEN", lambda: random_string(64)),
+                ],
             },
         ],
     },

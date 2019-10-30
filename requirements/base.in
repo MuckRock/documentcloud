@@ -7,6 +7,7 @@ redis
 celery
 django-celery-beat
 python-redis-lock[django]
+furl
 
 # Django
 # ------------------------------------------------------------------------------
@@ -31,3 +32,19 @@ django-cors-headers
 djangorestframework_simplejwt
 drf-nested-routers
 cryptography # support RS256 for JWT
+drf-flex-fields
+
+# Cloud providers
+gcsfs
+google-cloud-pubsub
+boto3
+smart-open
+
+
+# Processing
+cpuprofile
+listcrunch
+numpy
+
+# Typing
+typing-extensions
