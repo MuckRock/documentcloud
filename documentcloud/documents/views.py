@@ -3,6 +3,7 @@ from django import forms
 from django.conf import settings
 from django.db import transaction
 from rest_framework import mixins, parsers, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,29 +40,13 @@ from documentcloud.documents.serializers import (
     NoteSerializer,
     SectionSerializer,
 )
+from documentcloud.documents.tasks import fetch_file_url
 from documentcloud.environment.environment import httpsub, storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 
 env = environ.Env()
-
-
-class SignedPutURIView(APIView):
-    """
-    Generate a signed url for the user to upload a file to S3.
-    """
-
-    # XXX put this into the doc viewset
-
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def post(self, request):
-
-        key = "{}/{}".format(request.user.username, uuid.uuid4())
-        upload_uri = storage.presign_url(key)
-        data = {"key": key, "upload_uri": upload_uri}
-        return Response(data=data, status=status.HTTP_200_OK)
 
 
 class DocumentViewSet(FlexFieldsModelViewSet):
@@ -85,10 +70,19 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             queryset = queryset.get_viewable(self.request.user)
         return queryset
 
+    @action(detail=False, methods=["post"])
+    def signed_uri(self, request):
+        """Generate a signed url for the user to upload a file to S3"""
+
+        key_uuid = uuid.uuid4()
+        upload_uri = storage.presign_url(f"{request.user.pk}/{key_uuid}")
+        data = {"key": key_uuid, "upload_uri": upload_uri}
+        return Response(data=data, status=status.HTTP_200_OK)
+
     @transaction.atomic
     def perform_create(self, serializer):
 
-        file_ = serializer.validated_data.pop("file", None)
+        key = serializer.validated_data.pop("key", None)
         file_url = serializer.validated_data.pop("file_url", None)
 
         document = serializer.save(
@@ -97,20 +91,22 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
         options = {"document": document.pk}
 
-        if file_ is not None:
-            path = f"documents/{document.id}/{document.slug}.pdf"
-            full_path = os.path.join(settings.BUCKET, path)
-            with storage.open(full_path, "wb") as dest:
-                for chunk in file_.chunks():
-                    dest.write(chunk)
-            options["path"] = path
+        if key is not None:
+            dst_key = f"{document.id}/{document.slug}.pdf"
+            storage.copy(
+                settings.UPLOAD_BUCKET,
+                f"{self.request.user.pk}/{key}",
+                settings.DOCUMENT_BUCKET,
+                dst_key,
+            )
+            options["path"] = dst_key
+            transaction.on_commit(
+                lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
+            )
         else:
-            # XXX Need to do the download (in celery function)
-            options["url"] = file_url
-
-        transaction.on_commit(
-            lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
-        )
+            transaction.on_commit(
+                lambda: fetch_file_url.delay(file_url, document.pk, document.slug)
+            )
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(

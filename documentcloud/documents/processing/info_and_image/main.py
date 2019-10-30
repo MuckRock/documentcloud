@@ -60,7 +60,7 @@ redis_password = env.str("REDIS_PROCESSING_PASSWORD")
 redis = redis.Redis(
     host=redis_url.host, port=redis_url.port, password=redis_password, db=0
 )
-bucket = env.str("BUCKET", default="")
+bucket = env.str("DOCUMENT_BUCKET", default="")
 
 # Topic names for the messaging queue
 image_extract_topic = publisher.topic_path(
