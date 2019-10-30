@@ -70,7 +70,9 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         """Generate a signed url for the user to upload a file to S3"""
 
         key_uuid = uuid.uuid4()
-        upload_uri = storage.presign_url(f"{request.user.pk}/{key_uuid}")
+        upload_uri = storage.presign_url(
+            f"{settings.UPLOAD_BUCKET}/{request.user.pk}/{key_uuid}"
+        )
         data = {"key": key_uuid, "upload_uri": upload_uri}
         return Response(data=data, status=status.HTTP_200_OK)
 
