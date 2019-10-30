@@ -47,6 +47,7 @@ env = environ.Env()
 
 class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
+    permit_list_expands = ["user", "organization"]
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
     permission_classes = (
