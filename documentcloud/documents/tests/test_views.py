@@ -77,7 +77,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/",
-            {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
+            {"title": "Test", "file_url": "http://www.example.com/_test.pdf"},
         )
         assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)
@@ -92,14 +92,6 @@ class TestDocumentAPI:
         response_json = json.loads(response.content)
         assert Document.objects.filter(pk=response_json["id"]).exists()
         assert "presigned_url" in response_json
-
-    def test_create_bad_no_user(self, client):
-        """Must be logged in to create a document"""
-        response = client.post(
-            f"/api/documents/",
-            {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
-        )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_bad_no_user(self, client):
         """Must be logged in to create a document"""

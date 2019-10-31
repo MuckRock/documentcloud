@@ -65,17 +65,6 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             queryset = queryset.get_viewable(self.request.user)
         return queryset
 
-    @action(detail=False, methods=["post"])
-    def signed_uri(self, request):
-        """Generate a signed url for the user to upload a file to S3"""
-
-        key_uuid = uuid.uuid4()
-        upload_uri = storage.presign_url(
-            f"{settings.UPLOAD_BUCKET}/{request.user.pk}/{key_uuid}"
-        )
-        data = {"key": key_uuid, "upload_uri": upload_uri}
-        return Response(data=data, status=status.HTTP_200_OK)
-
     @transaction.atomic
     def perform_create(self, serializer):
 
@@ -87,6 +76,21 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
         if file_url is not None:
             transaction.on_commit(lambda: fetch_file_url.delay(file_url, document.pk))
+
+    @action(detail=True, methods=["post"])
+    def process(self, request, pk=None):
+        """Process a document after you have uploaded the file"""
+        document = self.get_object()
+        path = f"{document.pk}/{document.slug}.pdf"
+        if not storage.exists(f"{settings.DOCUMENT_BUCKET}/{path}"):
+            return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
+
+        document.status = Status.pending
+        document.save()
+        httpsub.post(
+            settings.DOC_PROCESSING_URL, json={"document": document.pk, "path": path}
+        )
+        return Response(status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
     def process(self, request, pk=None):
