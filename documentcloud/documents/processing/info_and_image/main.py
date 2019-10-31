@@ -56,9 +56,9 @@ IMAGE_WIDTHS = [
 ]  # width of images to OCR
 
 
-redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
-redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
-bucket = env.str("DOCUMENT_BUCKET", default="")
+REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
+REDIS = redis.Redis(host=REDIS_URL.host, port=REDIS_URL.port, db=0)
+BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 
 # Topic names for the messaging queue
@@ -138,15 +138,15 @@ def process_pdf(request, _context=None):
     data = get_http_data(request)
 
     # Ensure a PDF file
-    path = os.path.join(bucket, data["path"])
+    path = os.path.join(BUCKET, data["path"])
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
     page_count, page_sizes = write_cache_and_pagesizes(path)
 
     # Store the page count in redis
-    redis.hset(get_id(path), "image", page_count)
-    redis.hset(get_id(path), "text", page_count)
+    REDIS.hset(get_id(path), "image", page_count)
+    REDIS.hset(get_id(path), "text", page_count)
 
     # Send update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
@@ -203,7 +203,7 @@ def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
     data = get_pubsub_data(data)
 
-    path = os.path.join(bucket, data["path"])  # The PDF file path
+    path = os.path.join(BUCKET, data["path"])  # The PDF file path
     page_numbers = data["pages"]  # The page numbers to extract
     index_path = get_index_path(path)  # The path to the PDF index file
 
@@ -239,7 +239,7 @@ def extract_image(data, _context=None):
             # Extract the image.
             large_image_path = extract_single_page(data["path"], path, doc, page_number)
 
-            images_remaining = redis.hincrby(get_id(path), "image", -1)
+            images_remaining = REDIS.hincrby(get_id(path), "image", -1)
 
             # Prepare the image to be OCRd.
             ocr_queue.append([page_number, large_image_path])
