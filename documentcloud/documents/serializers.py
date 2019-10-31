@@ -27,14 +27,10 @@ from documentcloud.users.serializers import UserSerializer
 
 class DocumentSerializer(FlexFieldsModelSerializer):
 
-    key = serializers.UUIDField(
-        label=_("Key"),
-        write_only=True,
-        required=False,
-        help_text=_(
-            "The UUID key for a file you uploaded directly - "
-            "use this field or `file_url`"
-        ),
+    presigned_url = serializers.SerializerMethodField(
+        label=_("Presigned URL"),
+        read_only=True,
+        help_text=_("The presigned URL to upload the file to"),
     )
     file_url = serializers.URLField(
         label=_("File URL"),
@@ -79,11 +75,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "description",
             "file_url",
             "images_remaining",
-            "key",
             "language",
             "organization",
             "page_count",
             "page_spec",
+            "presigned_url",
             "slug",
             "source",
             "status",
@@ -123,8 +119,22 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             Status.pending,
             Status.readable,
         ):
+            # images and texts remaining fields or for processing documents only
             del self.fields["images_remaining"]
             del self.fields["texts_remaining"]
+
+        is_create = self.instance is None
+        has_file_url = hasattr(self, "initial_data") and self.initial_data.get(
+            "file_url"
+        )
+        has_file = (
+            isinstance(self.instance, Document)
+            and self.instance.status != Status.nofile
+        )
+        if (is_create and has_file_url) or has_file:
+            # only show presigned url if we are creating a new document without a
+            # file url, or the document has not had a file uploaded yet
+            del self.fields["presigned_url"]
 
     def _authenticate_processing(self, request):
         """Check the requests Authorization header for our special token"""
@@ -133,28 +143,15 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
         return "processing" in request.auth["permissions"]
 
-    def validate_key(self, value):
-        request = self.context["request"]
-        if not storage.exists(f"{settings.UPLOAD_BUCKET}/{request.user.pk}/{value}"):
-            raise serializers.ValidationError("That key does not exist")
+    def validate_file_url(self, value):
+        if self.instance and value:
+            raise serializers.ValidationError("You may not update `file_url`")
         return value
 
-    def validate(self, attrs):
-        if self.instance:
-            if "key" in attrs:
-                raise serializers.ValidationError("You may not update `key`")
-            if "file_url" in attrs:
-                raise serializers.ValidationError("You may not update `file_url`")
-        else:
-            if "key" not in attrs and "file_url" not in attrs:
-                raise serializers.ValidationError(
-                    "You must pass in either `key` or `file_url`"
-                )
-            if "key" in attrs and "file_url" in attrs:
-                raise serializers.ValidationError(
-                    "You must not pass in both `key` and `file_url`"
-                )
-        return attrs
+    def get_presigned_url(self, obj):
+        """Return the presigned URL to upload the file to"""
+        path = f"{settings.DOCUMENT_BUCKET}/{obj.pk}/{obj.slug}.pdf"
+        return storage.presign_url(path)
 
     def get_texts_remaining(self, obj):
         """Get the texts remaining from the processing redis instance"""
