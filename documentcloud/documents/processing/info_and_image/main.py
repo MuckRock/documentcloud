@@ -55,12 +55,13 @@ IMAGE_WIDTHS = [
     )
 ]  # width of images to OCR
 
-redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
-redis_password = env.str("REDIS_PROCESSING_PASSWORD")
-redis = redis.Redis(
-    host=redis_url.host, port=redis_url.port, password=redis_password, db=0
+
+REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
+REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
+REDIS = redis.Redis(
+    host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-bucket = env.str("DOCUMENT_BUCKET", default="")
+BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 # Topic names for the messaging queue
 image_extract_topic = publisher.topic_path(
@@ -147,11 +148,11 @@ def process_pdf(request, _context=None):
 
     # Store the page count in redis
     doc_id = get_id(path)
-    redis.hset(doc_id, "image", page_count)
-    redis.hset(doc_id, "text", page_count)
+    REDIS.hset(doc_id, "image", page_count)
+    REDIS.hset(doc_id, "text", page_count)
     # Set Redis bit arrays flooded to 0 to track each page
-    redis.setbit(f"{doc_id}-image", page_count - 1, 0)
-    redis.setbit(f"{doc_id}-text", page_count - 1, 0)
+    REDIS.setbit(f"{doc_id}-image", page_count - 1, 0)
+    REDIS.setbit(f"{doc_id}-text", page_count - 1, 0)
 
     # Send update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
@@ -243,13 +244,13 @@ def extract_image(data, _context=None):
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            if redis.getbit(redis_images_key, page_number) == 0:
+            if REDIS.getbit(redis_images_key, page_number) == 0:
                 # Extract the image.
                 large_image_path = extract_single_page(
                     data["path"], path, doc, page_number
                 )
                 # Decrement pages remaining and set the bit for the page off atomically
-                pipeline = redis.pipeline()
+                pipeline = REDIS.pipeline()
                 images_remaining = pipeline.hincrby(doc_id, "image", -1)
                 pipeline.setbit(redis_images_key, page_number, 1)
                 pipeline.execute()
