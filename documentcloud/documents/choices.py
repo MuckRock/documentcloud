@@ -29,3 +29,5 @@ class Status(DjangoChoices):
     pending = ChoiceItem(2, _("Pending"), api=True)
     # There was an error processing the document
     error = ChoiceItem(3, _("Error"), api=True)
+    # There is no file yet
+    nofile = ChoiceItem(4, _("No file"), api=True)

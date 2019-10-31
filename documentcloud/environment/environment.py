@@ -100,8 +100,8 @@ class AwsStorage:
 
     def fetch_url(self, url, file_name):
         bucket, key = self.bucket_key(file_name)
-        response = requests.get(url, stream=True)
-        self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
+        with requests.get(url, stream=True) as response:
+            self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
 
 
 if environment == "local":
@@ -134,4 +134,4 @@ elif environment == "gcp":
     publisher = pubsub_v1.PublisherClient()
     raise RuntimeError("GCP environment is not currently supported")
 else:
-    raise RuntimeError("Invalid environment")
+    raise RuntimeError(f"Invalid environment: {environment}")

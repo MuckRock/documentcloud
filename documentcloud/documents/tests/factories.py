@@ -6,7 +6,7 @@ import factory
 
 # DocumentCloud
 from documentcloud.core.choices import Language
-from documentcloud.documents.choices import Access
+from documentcloud.documents.choices import Access, Status
 
 
 class DocumentFactory(factory.django.DjangoModelFactory):
@@ -16,6 +16,7 @@ class DocumentFactory(factory.django.DjangoModelFactory):
     organization = factory.LazyAttribute(lambda obj: obj.user.organization)
     access = Access.public
     language = Language.english
+    status = Status.success
 
     class Meta:
         model = "documents.Document"
