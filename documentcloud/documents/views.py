@@ -24,6 +24,7 @@ from documentcloud.core.permissions import (
     DocumentErrorTokenPermissions,
     DocumentTokenPermissions,
 )
+from documentcloud.documents.choices import Status
 from documentcloud.documents.models import (
     Document,
     DocumentError,
@@ -70,46 +71,34 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             queryset = queryset.get_viewable(self.request.user)
         return queryset
 
-    @action(detail=False, methods=["post"])
-    def signed_uri(self, request):
-        """Generate a signed url for the user to upload a file to S3"""
-
-        key_uuid = uuid.uuid4()
-        upload_uri = storage.presign_url(
-            f"{settings.UPLOAD_BUCKET}/{request.user.pk}/{key_uuid}"
-        )
-        data = {"key": key_uuid, "upload_uri": upload_uri}
-        return Response(data=data, status=status.HTTP_200_OK)
-
     @transaction.atomic
     def perform_create(self, serializer):
 
-        key = serializer.validated_data.pop("key", None)
         file_url = serializer.validated_data.pop("file_url", None)
 
         document = serializer.save(
             user=self.request.user, organization=self.request.user.organization
         )
 
-        options = {"document": document.pk}
-
-        if key is not None:
-            dst_key = f"{document.id}/{document.slug}.pdf"
-            storage.copy(
-                settings.UPLOAD_BUCKET,
-                f"{self.request.user.pk}/{key}",
-                settings.DOCUMENT_BUCKET,
-                dst_key,
-            )
-            # XXX delete from upload bucket
-            options["path"] = dst_key
-            transaction.on_commit(
-                lambda: httpsub.post(settings.DOC_PROCESSING_URL, json=options)
-            )
-        else:
+        if file_url is not None:
             transaction.on_commit(
                 lambda: fetch_file_url.delay(file_url, document.pk, document.slug)
             )
+
+    @action(detail=True, methods=["post"])
+    def process(self, request, pk=None):
+        """Process a document after you have uploaded the file"""
+        document = self.get_object()
+        path = f"{document.pk}/{document.slug}.pdf"
+        if not storage.exists(f"{settings.DOCUMENT_BUCKET}/{path}"):
+            return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
+
+        document.status = Status.pending
+        document.save()
+        httpsub.post(
+            settings.DOC_PROCESSING_URL, json={"document": document.pk, "path": path}
+        )
+        return Response(status=status.HTTP_200_OK)
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(
@@ -145,15 +134,19 @@ class DocumentErrorViewSet(
 
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
-        document = get_object_or_404(
+        self.document = get_object_or_404(
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        return document.errors.all()
+        return self.document.errors.all()
 
     def perform_create(self, serializer):
-        """Specify the document"""
-        serializer.save(document_id=self.kwargs["document_pk"])
+        """Specify the document
+        Set the status of the document to error
+        """
+        serializer.save(document_id=self.document.pk)
+        self.document.status = Status.error
+        self.document.save()
 
 
 class NoteViewSet(viewsets.ModelViewSet):
