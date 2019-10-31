@@ -1,6 +1,10 @@
 # Django
 from celery.task import task
 from django.conf import settings
+from django.db import transaction
+
+# Third Party
+from requests.exceptions import HTTPError
 
 # DocumentCloud
 from documentcloud.documents.choices import Status
@@ -28,16 +32,28 @@ def ocr_pages(data):
     run_tesseract(data, None)
 
 
-@task
+@task(autoretry_for=(HTTPError,), retry_backoff=True)
 def fetch_file_url(file_url, document_pk):
-    # XXX error check fetch worked
-    # do we want to retry for 5xx status codes?
     document = Document.objects.get(pk=document_pk)
     path = f"{document_pk}/{document.slug}.pdf"
-    storage.fetch_url(file_url, f"{settings.DOCUMENT_BUCKET}/{path}")
+    try:
+        storage.fetch_url(file_url, f"{settings.DOCUMENT_BUCKET}/{path}")
+    except HTTPError as exc:
+        if exc.response.status_code >= 500:
+            # a 5xx error can be retried - using celery autoretry
+            raise
 
-    document.status = Status.pending
-    document.save()
-    httpsub.post(
-        settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
-    )
+        # a 4xx error should not be retried
+        with transaction.atomic():
+            document.errors.create(
+                message=f'Fetching file "{file_url}" failed with status code: '
+                f"{exc.response.status_code}"
+            )
+            document.status = Status.error
+            document.save()
+    else:
+        document.status = Status.pending
+        document.save()
+        httpsub.post(
+            settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
+        )

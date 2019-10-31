@@ -101,6 +101,7 @@ class AwsStorage:
     def fetch_url(self, url, file_name):
         bucket, key = self.bucket_key(file_name)
         with requests.get(url, stream=True) as response:
+            response.raise_for_status()
             self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
 
 
