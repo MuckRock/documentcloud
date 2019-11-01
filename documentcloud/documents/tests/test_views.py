@@ -28,6 +28,7 @@ from documentcloud.documents.tests.factories import (
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
+from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db()
@@ -61,6 +62,16 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert [j["page_count"] for j in response_json["results"]] == [1, 2, 3]
+
+    def test_list_presigned_url_field(self, client):
+        """List documents"""
+        DocumentFactory(status=Status.nofile)
+        DocumentFactory(status=Status.success)
+        response = client.get(f"/api/documents/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        for doc_json in response_json["results"]:
+            assert "presigned_url" not in doc_json
 
     def test_create_file_url(self, client, user):
         """Upload a document with a file and a title"""
@@ -102,15 +113,23 @@ class TestDocumentAPI:
         assert "presigned_url" not in response_json
 
     def test_retrieve_no_file(self, client):
-        """Test retrieving a document"""
+        """Test retrieving a document with a presigned url"""
         document = DocumentFactory(status=Status.nofile)
+        client.force_authenticate(user=document.user)
         response = client.get(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
-        serializer = DocumentSerializer(document)
-        assert response_json == serializer.data
-        assert response_json["access"] == "public"
         assert "presigned_url" in response_json
+
+    def test_retrieve_no_file_shared(self, client):
+        """Test retrieving a shared document without a file"""
+        document = DocumentFactory(status=Status.nofile, access=Access.organization)
+        user = UserFactory(organizations=[document.organization])
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "presigned_url" not in response_json
 
     def test_retrieve_expand(self, client, document):
         """Test retrieving a document with an expanded user and organization"""
