@@ -124,14 +124,17 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             del self.fields["texts_remaining"]
 
         is_create = self.instance is None
+        is_list = isinstance(self.instance, list)
+        is_document = isinstance(self.instance, Document)
+
+        is_owner = is_create or (
+            is_document and request and self.instance.user == request.user
+        )
         has_file_url = hasattr(self, "initial_data") and self.initial_data.get(
             "file_url"
         )
-        has_file = (
-            isinstance(self.instance, Document)
-            and self.instance.status != Status.nofile
-        )
-        if (is_create and has_file_url) or has_file:
+        has_file = is_document and self.instance.status != Status.nofile
+        if (is_create and has_file_url) or is_list or has_file or not is_owner:
             # only show presigned url if we are creating a new document without a
             # file url, or the document has not had a file uploaded yet
             del self.fields["presigned_url"]
