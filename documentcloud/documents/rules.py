@@ -7,6 +7,7 @@ from functools import wraps
 from rules import add_perm, always_allow, always_deny, is_authenticated, predicate
 
 # DocumentCloud
+from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Access
 
 
@@ -48,6 +49,15 @@ def has_access(*accesses):
     return inner
 
 
+def has_status(*statuses):
+    @predicate(f"has_status:{statuses}")
+    @skip_if_not_obj
+    def inner(user, resource):
+        return resource.status in statuses
+
+    return inner
+
+
 # These predicates are for documents only
 
 
@@ -70,7 +80,7 @@ can_change_document = is_authenticated & (
     | (has_access(Access.organization, Access.public) & is_organization)
 )
 can_view_document = (
-    has_access(Access.public)
+    (has_access(Access.public) & has_status(Status.success, Status.readable))
     | can_change_document
     | (~has_access(Access.invisible) & is_authenticated & is_collaborator)
 )
