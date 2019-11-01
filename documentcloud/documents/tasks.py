@@ -32,18 +32,21 @@ def ocr_pages(data):
     run_tesseract(data, None)
 
 
-@task(autoretry_for=(HTTPError,), retry_backoff=True)
+@task(autoretry_for=(HTTPError,), throws=(HTTPError,), retry_backoff=30)
 def fetch_file_url(file_url, document_pk):
     document = Document.objects.get(pk=document_pk)
     path = f"{document_pk}/{document.slug}.pdf"
     try:
         storage.fetch_url(file_url, f"{settings.DOCUMENT_BUCKET}/{path}")
     except HTTPError as exc:
-        if exc.response.status_code >= 500:
+        if (
+            exc.response.status_code >= 500
+            and fetch_file_url.request.retries < fetch_file_url.max_retries
+        ):
             # a 5xx error can be retried - using celery autoretry
             raise
 
-        # a 4xx error should not be retried
+        # log 4xx errors and 5xx errors past the maximum retry
         with transaction.atomic():
             document.errors.create(
                 message=f'Fetching file "{file_url}" failed with status code: '

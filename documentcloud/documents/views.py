@@ -81,9 +81,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         )
 
         if file_url is not None:
-            transaction.on_commit(
-                lambda: fetch_file_url.delay(file_url, document.pk, document.slug)
-            )
+            transaction.on_commit(lambda: fetch_file_url.delay(file_url, document.pk))
 
     @action(detail=True, methods=["post"])
     def process(self, request, pk=None):
@@ -140,6 +138,7 @@ class DocumentErrorViewSet(
         )
         return self.document.errors.all()
 
+    @transaction.atomic
     def perform_create(self, serializer):
         """Specify the document
         Set the status of the document to error
