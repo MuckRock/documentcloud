@@ -92,21 +92,6 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         )
         return Response(status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["post"])
-    def process(self, request, pk=None):
-        """Process a document after you have uploaded the file"""
-        document = self.get_object()
-        path = f"{document.pk}/{document.slug}.pdf"
-        if not storage.exists(f"{settings.DOCUMENT_BUCKET}/{path}"):
-            return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
-
-        document.status = Status.pending
-        document.save()
-        httpsub.post(
-            settings.DOC_PROCESSING_URL, json={"document": document.pk, "path": path}
-        )
-        return Response(status=status.HTTP_200_OK)
-
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(
             fields=("created_at", "page_count", "title", "source")
