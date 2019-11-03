@@ -30,7 +30,8 @@ else:
     from environment import storage, publisher, get_pubsub_data
 
 redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
-redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
+redis_password = env.str("REDIS_PROCESSING_PASSWORD")
+redis = redis.Redis(host=redis_url.host, port=redis_url.port, password=redis_password, db=0)
 bucket = env.str("BUCKET", default="")
 
 ocr_topic = publisher.topic_path(
