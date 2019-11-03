@@ -163,7 +163,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     def _get_redis(self, obj, key):
         """Get a value from the processing redis instance"""
         redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
-        redis_ = redis.Redis(host=redis_url.host, port=redis_url.port)
+        redis_password = settings.REDIS_PROCESSING_PASSWORD
+        redis_ = redis.Redis(host=redis_url.host, port=redis_url.port, password=redis_password)
         return redis_.hget(obj.pk, key)
 
 
