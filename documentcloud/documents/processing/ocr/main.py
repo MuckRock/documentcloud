@@ -29,12 +29,12 @@ else:
     from tess import Tesseract
     from environment import storage, publisher, get_pubsub_data
 
-redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
-redis_password = env.str("REDIS_PROCESSING_PASSWORD")
-redis = redis.Redis(
-    host=redis_url.host, port=redis_url.port, password=redis_password, db=0
+REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
+REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
+REDIS = redis.Redis(
+    host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-bucket = env.str("BUCKET", default="")
+BUCKET = env.str("BUCKET", default="")
 
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
@@ -96,7 +96,7 @@ def run_tesseract(data, _context=None):
         if speed > SPEED_THRESHOLD:
             # Resubmit to queue
             publisher.publish(
-                ocr_topic,
+                OCR_TOPIC,
                 data=json.dumps({"paths_and_numbers": paths_and_numbers}).encode(
                     "utf8"
                 ),
@@ -119,7 +119,7 @@ def run_tesseract(data, _context=None):
     redis_texts_key = f"{doc_id}-text"
 
     # Only OCR if the page has yet to be OCRd
-    if redis.getbit(redis_texts_key, page_number) == 0:
+    if REDIS.getbit(redis_texts_key, page_number) == 0:
         ext = "." + path.split(".")[-1]
         assert len(ext) > 1, "Needs an extension"
         # Derive a simple filename for OCRd text
@@ -139,7 +139,7 @@ def run_tesseract(data, _context=None):
             text_file.write(text.encode("utf8"))
 
         # Decrement texts remaining and set the bit for the page off atomically
-        pipeline = redis.pipeline()
+        pipeline = REDIS.pipeline()
         texts_remaining = pipeline.hincrby(doc_id, "text", -1)
         pipeline.setbit(redis_texts_key, page_number, 1)
         pipeline.execute()
@@ -159,7 +159,7 @@ def run_tesseract(data, _context=None):
     if next_paths_and_numbers:
         # Launch next iteration
         publisher.publish(
-            ocr_topic,
+            OCR_TOPIC,
             data=json.dumps({"paths_and_numbers": next_paths_and_numbers}).encode(
                 "utf8"
             ),
