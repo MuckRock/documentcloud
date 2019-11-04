@@ -70,6 +70,14 @@ CONFIG = [
                     ("MINIO_URL", "http://minio.documentcloud.org:9000"),
                 ],
             },
+            {
+                "name": "MinIO",
+                "envvars": [
+                    ("MINIO_ACCESS_KEY", lambda: random_string(64)),
+                    ("MINIO_SECRET_KEY", lambda: random_string(64)),
+                    ("MINIO_URL", "http://minio.documentcloud.org:9000"),
+                ],
+            },
         ],
     },
     {
