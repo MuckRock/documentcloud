@@ -110,7 +110,7 @@ if environment == "local":
 
     storage = AwsStorage(
         {
-            "endpoint_url": "http://minio.documentcloud.org:9000",
+            "endpoint_url": env.str("MINIO_URL"),
             "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
             "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
             "config": Config(signature_version="s3v4"),
