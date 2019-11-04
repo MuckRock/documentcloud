@@ -400,3 +400,8 @@ REDIS_PROCESSING_PASSWORD = env("REDIS_PROCESSING_PASSWORD")
 PROCESSING_TOKEN = env("PROCESSING_TOKEN")
 
 ENVIRONMENT = env("ENVIRONMENT")
+
+# Solr
+# ------------------------------------------------------------------------------
+SOLR_URL = env("SOLR_URL", default="http://documentcloud_solr:8983/solr/documentcloud")
+SOLR_AUTH = None

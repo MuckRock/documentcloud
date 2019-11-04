@@ -9,6 +9,7 @@ from rest_framework.response import Response
 # Third Party
 import django_filters
 import environ
+import pysolr
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
@@ -42,6 +43,8 @@ from documentcloud.documents.tasks import (
     delete_document,
     fetch_file_url,
     process,
+    solr_delete,
+    solr_index,
     update_access,
 )
 from documentcloud.organizations.models import Organization
@@ -105,6 +108,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
     def perform_destroy(self, instance):
         delete_document.delay(instance.path)
+        solr_delete.delay(instance.pk)
         super().perform_destroy(instance)
 
     @transaction.atomic
@@ -113,6 +117,57 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         super().perform_update(serializer)
         if was_public != serializer.instance.public:
             transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
+        # XXX handle partial updates more optimially
+        if serializer.data["status"] == "success":
+            transaction.on_commit(lambda: solr_index.delay(serializer.data["id"]))
+
+    @action(detail=False, methods=["get"])
+    def search(self, request):
+        # XXX filter based on params
+        # XXX filter based on access
+        # XXX paginate
+        query = request.query_params.get("q", "*:*")
+        fq_map = {
+            "user": "user_id_i",
+            "organization": "organization_id_i",
+            "access": "access_i",
+            "status": "status_i",
+            "project": "project_ids_is",
+            "document": "id",
+        }
+        field_queries = []
+
+        # XXX support multiple values
+        # XXX convert access/status
+        for param, solr in fq_map.items():
+            if param in request.query_params:
+                value = request.query_params[param]
+                field_queries.append(f"{solr}:{value}")
+
+        solr = pysolr.Solr(
+            settings.SOLR_URL, auth=settings.SOLR_AUTH, search_handler="/mainsearch"
+        )
+        results = solr.search(query, fq=field_queries)
+        response = {
+            "count": results.hits,
+            "next": None,
+            "previous": None,
+            "results": results,
+        }
+        if settings.DEBUG:
+            response["query"] = query
+            response["fq"] = field_queries
+        return Response(response)
+
+    @action(detail=True, url_path="search", methods=["get"])
+    def page_search(self, request, pk=None):
+        query = request.query_params.get("q", "*:*")
+        solr = pysolr.Solr(
+            settings.SOLR_URL, auth=settings.SOLR_AUTH, search_handler="/mainsearch"
+        )
+        results = solr.search(query, fq=f"id:{pk}")
+        pages = [int(p.rsplit("_", 1)[1]) for p in results.highlighting.get(pk, {})]
+        return Response({"results": pages})
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(

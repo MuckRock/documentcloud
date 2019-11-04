@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import transaction
 
 # Third Party
+import pysolr
 from requests.exceptions import HTTPError
 
 # DocumentCloud
@@ -71,3 +72,18 @@ def update_access(document_pk):
     access = "public" if document.public else "private"
     storage.set_access(document.doc_path, access)
     storage.set_access(document.pages_path, access)
+
+
+# XXX error handling / retry
+# XXX commit policy
+@task
+def solr_index(document_pk):
+    document = Document.objects.get(pk=document_pk)
+    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
+    solr.add([document.solr()], commit=True)
+
+
+@task
+def solr_delete(document_pk):
+    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
+    solr.delete(id=document_pk)
