@@ -73,6 +73,7 @@ pyasn1==0.4.7             # via pyasn1-modules, rsa
 pycparser==2.19           # via cffi
 pyjwt==1.7.1              # via djangorestframework-simplejwt, social-auth-core
 pyparsing==2.4.2          # via packaging
+pysolr==3.8.1
 python-crontab==2.3.8     # via django-celery-beat
 python-dateutil==2.8.0    # via botocore, python-crontab
 python-jose==3.0.1        # via social-auth-core
@@ -83,7 +84,7 @@ pytz==2019.2
 rcssmin==1.0.6
 redis==3.3.8
 requests-oauthlib==1.2.0  # via google-auth-oauthlib, social-auth-core
-requests==2.22.0          # via coreapi, gcsfs, google-api-core, requests-oauthlib, smart-open, social-auth-core
+requests==2.22.0          # via coreapi, gcsfs, google-api-core, pysolr, requests-oauthlib, smart-open, social-auth-core
 rest-social-auth==2.2.0
 rjsmin==1.1.0             # via django-compressor
 rsa==4.0                  # via google-auth, python-jose

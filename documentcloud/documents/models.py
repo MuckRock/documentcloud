@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 
 # Third Party
@@ -9,6 +9,7 @@ from autoslug.fields import AutoSlugField
 
 # DocumentCloud
 from documentcloud.common import path
+from documentcloud.common.environment import storage
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access, Status
@@ -139,6 +140,44 @@ class Document(models.Model):
             return settings.PUBLIC_ASSET_URL
         else:
             return settings.PRIVATE_ASSET_URL
+
+    def get_page_text(self, page_number):
+        try:
+            return (
+                storage.open(
+                    f"{settings.DOCUMENT_BUCKET}/{self.pk}/pages/"
+                    f"{self.slug}-p{page_number}.txt",
+                    "rb",
+                )
+                .read()
+                .decode("utf8")
+            )
+        except ValueError:
+            return ""
+
+    def solr(self):
+        project_ids = [p.pk for p in self.projects.all()]
+        pages = {
+            f"page_no_{i}": self.get_page_text(i) for i in range(1, self.page_count + 1)
+        }
+        return {
+            "id": self.pk,
+            "user_id_i": self.user_id,
+            "organization_id_i": self.organization_id,
+            "access_i": self.access,
+            "status_i": self.status,
+            "title_t": self.title,
+            # slug: store only
+            "slug_t": self.slug,
+            "source_t": self.source,
+            "description_t": self.description,
+            "language_s": self.language,
+            "created_at_dt": self.created_at.isoformat(),
+            "updated_at_dt": self.updated_at.isoformat(),
+            "page_count_i": self.page_count,
+            "project_ids_is": project_ids,
+            **pages,
+        }
 
 
 class DocumentError(models.Model):

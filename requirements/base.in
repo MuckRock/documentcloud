@@ -48,3 +48,6 @@ numpy
 
 # Typing
 typing-extensions
+
+# Solr
+pysolr

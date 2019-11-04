@@ -3,8 +3,8 @@ version: '3'
 volumes:
   local_postgres_data: {}
   local_postgres_data_backups: {}
-  #local_solr_data: {}
-  #local_solr_test_data: {}
+  local_solr_data: {}
+  local_solr_test_data: {}
   local_minio_data: {}
 
 services:
@@ -19,7 +19,7 @@ services:
       - documentcloud_redis
       - documentcloud_processing_redis
       - documentcloud_minio
-      #- documentcloud_solr
+      - documentcloud_solr
     volumes:
       - .:/app
     env_file:
@@ -65,7 +65,29 @@ services:
         aliases:
           - minio.documentcloud.org
 
-  # add solr and test solr images in
+  documentcloud_solr:
+    image: solr:8.1
+    ports:
+      - "8983:8983"
+    volumes:
+      - local_solr_data:/var/solr
+      - ./config/solr:/config
+    command:
+      - solr-precreate
+      - documentcloud
+      - /config
+
+  documentcloud_test_solr:
+    image: solr:8.1
+    ports:
+      - "8984:8983"
+    volumes:
+      - local_solr_test_data:/var/solr
+      - ./config/solr:/config
+    command:
+      - solr-precreate
+      - documentcloud_test
+      - /config
 
   documentcloud_celeryworker:
     <<: *django

@@ -36,7 +36,10 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         label=_("File URL"),
         write_only=True,
         required=False,
-        help_text=_("A publically accessible URL to the file to upload"),
+        help_text=_(
+            "A publically accessible URL to the file to upload - use this field or "
+            "`file`"
+        ),
     )
     access = ChoiceField(
         Access,
@@ -47,11 +50,19 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         Status, read_only=True, help_text=Document._meta.get_field("status").help_text
     )
 
-    remaining = serializers.SerializerMethodField(
-        label=_("Text and image pages remaining"),
+    texts_remaining = serializers.SerializerMethodField(
+        label=_("Text pages remaining"),
         read_only=True,
         help_text=_(
-            "How many pages are left to be processed - only present during processing"
+            "How many pages are left to be OCRed - only present during processing"
+        ),
+    )
+    images_remaining = serializers.SerializerMethodField(
+        label=_("Image pages remaining"),
+        read_only=True,
+        help_text=_(
+            "How many pages are left to have their image extracted via pdfium - "
+            "only present during processing"
         ),
     )
 
@@ -65,15 +76,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "data",
             "description",
             "file_url",
+            "images_remaining",
             "language",
             "organization",
             "page_count",
             "page_spec",
             "presigned_url",
-            "remaining",
             "slug",
             "source",
             "status",
+            "texts_remaining",
             "title",
             "updated_at",
             "user",
@@ -106,12 +118,14 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
+        self._progress_data = None
         if not isinstance(self.instance, Document) or self.instance.status not in (
             Status.pending,
             Status.readable,
         ):
-            # remaining field or for processing documents only
-            del self.fields["remaining"]
+            # images and texts remaining fields or for processing documents only
+            del self.fields["images_remaining"]
+            del self.fields["texts_remaining"]
 
         is_create = self.instance is None
         is_list = isinstance(self.instance, list)
@@ -145,7 +159,19 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         """Return the presigned URL to upload the file to"""
         return storage.presign_url(obj.doc_path, "put_object")
 
-    def get_remaining(self, obj):
+    def get_images_remaining(self, obj):
+        """Get the images remaining from the processing redis instance"""
+        if self._progress_data is None:
+            self._get_progress(obj)
+        return self._progress_data["images_remaining"]
+
+    def get_texts_remaining(self, obj):
+        """Get the texts remaining from the processing redis instance"""
+        if self._progress_data is None:
+            self._get_progress(obj)
+        return self._progress_data["texts_remaining"]
+
+    def _get_progress(self, obj):
         """Get the progress data from the serverless function"""
         try:
             response = httpsub.post(
@@ -154,9 +180,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 timeout=settings.PROGRESS_TIMEOUT,
             )
             response.raise_for_status()
-            return response.json()
+            self._progress_data = response.json()
         except RequestException:
-            return {"texts": None, "images": None}
+            self._progress_data = {"texts_remaining": None, "images_remaining": None}
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
@@ -274,26 +300,3 @@ class DataAddRemoveSerializer(serializers.Serializer):
     remove = serializers.ListSerializer(
         required=False, child=serializers.CharField(max_length=200)
     )
-
-
-class RedactionSerializer(serializers.Serializer):
-    # pylint: disable=abstract-method
-    top = serializers.IntegerField(min_value=0)
-    left = serializers.IntegerField(min_value=0)
-    bottom = serializers.IntegerField(min_value=0)
-    right = serializers.IntegerField(min_value=0)
-    page = serializers.IntegerField(min_value=0)
-
-    def validate(self, attrs):
-        if attrs["top"] >= attrs["bottom"]:
-            raise serializers.ValidationError("`top` must be less than `bottom`")
-        if attrs["left"] >= attrs["right"]:
-            raise serializers.ValidationError("`left` must be less than `right`")
-        return attrs
-
-    def validate_page(self, value):
-        view = self.context.get("view")
-        document = Document.objects.get(pk=view.kwargs["document_pk"])
-        if value >= document.page_count:
-            raise serializers.ValidationError("Must be a valid page for the document")
-        return value
