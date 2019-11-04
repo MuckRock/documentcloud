@@ -29,7 +29,9 @@ class DocumentQuerySet(models.QuerySet):
             )
             return self.exclude(access=Access.invisible).filter(query)
         else:
-            return self.filter(access=Access.public)
+            return self.filter(
+                access=Access.public, status__in=[Status.success, Status.readable]
+            )
 
 
 class NoteQuerySet(models.QuerySet):
