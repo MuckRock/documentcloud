@@ -77,7 +77,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/",
-            {"title": "Test", "file_url": "http://www.example.com/_test.pdf"},
+            {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
         )
         assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)
