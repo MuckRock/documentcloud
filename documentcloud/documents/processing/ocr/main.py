@@ -29,11 +29,11 @@ else:
     from tess import Tesseract
     from environment import storage, publisher, get_pubsub_data
 
-redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
-redis = redis.Redis(host=redis_url.host, port=redis_url.port, db=0)
-bucket = env.str("BUCKET", default="")
+REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
+REDIS = redis.Redis(host=REDIS_URL.host, port=REDIS_URL.port, db=0)
+BUCKET = env.str("BUCKET", default="")
 
-ocr_topic = publisher.topic_path(
+OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
 )
 
@@ -94,7 +94,7 @@ def run_tesseract(data, _context=None):
         if speed > SPEED_THRESHOLD:
             # Resubmit to queue
             publisher.publish(
-                ocr_topic, data=json.dumps({"paths": paths}).encode("utf8")
+                OCR_TOPIC, data=json.dumps({"paths": paths}).encode("utf8")
             )
             logging.warning("Too slow (speed: %f)", speed)
             return "Too slow, retrying"
@@ -108,7 +108,7 @@ def run_tesseract(data, _context=None):
         logging.warning("No paths")
         return "Ok"
 
-    path = os.path.join(bucket, paths[0])
+    path = os.path.join(BUCKET, paths[0])
     doc_id = get_id(path)
     ext = "." + path.split(".")[-1]
     assert len(ext) > 1, "Needs an extension"
@@ -128,7 +128,7 @@ def run_tesseract(data, _context=None):
     with storage.open(new_path, "wb") as text_file:
         text_file.write(text.encode("utf8"))
 
-    texts_remaining = redis.hincrby(doc_id, "text", -1)
+    texts_remaining = REDIS.hincrby(doc_id, "text", -1)
     if texts_remaining == 0:
         requests.patch(
             urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
@@ -142,7 +142,7 @@ def run_tesseract(data, _context=None):
         if next_paths:
             # Launch next iteration
             publisher.publish(
-                ocr_topic, data=json.dumps({"paths": next_paths}).encode("utf8")
+                OCR_TOPIC, data=json.dumps({"paths": next_paths}).encode("utf8")
             )
 
     result["path"] = path
