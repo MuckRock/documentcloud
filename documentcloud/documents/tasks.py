@@ -32,7 +32,7 @@ def ocr_pages(data):
     run_tesseract(data, None)
 
 
-@task(autoretry_for=(HTTPError,), throws=(HTTPError,), retry_backoff=30)
+@task(autoretry_for=(HTTPError,), retry_backoff=30)
 def fetch_file_url(file_url, document_pk):
     document = Document.objects.get(pk=document_pk)
     path = f"{document_pk}/{document.slug}.pdf"
