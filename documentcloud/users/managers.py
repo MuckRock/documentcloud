@@ -55,10 +55,6 @@ class BaseUserManager(AuthUserManager):
             "use_autologin": True,
         }
         user_data = {user_map[k]: data.get(k, user_defaults[k]) for k in user_map}
-        if user_data["email"] is None:
-            # the mail should only be null for agency users
-            # on DocumentCloud that must be stored as a blank string
-            user_data["email"] = ""
         return self.update_or_create(uuid=uuid, defaults=user_data)
 
     def _update_organizations(self, user, data):
