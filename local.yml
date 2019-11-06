@@ -5,8 +5,7 @@ volumes:
   local_postgres_data_backups: {}
   #local_solr_data: {}
   #local_solr_test_data: {}
-  #local_minio_data1: {}
-  #local_minio_data2: {}
+  local_minio_data: {}
 
 services:
 
@@ -52,22 +51,19 @@ services:
   documentcloud_processing_redis:
     image: redis:5.0
 
-  #documentcloud_minio:
-  #  image: minio/minio:RELEASE.2019-09-11T19-53-16Z
-  #  volumes:
-  #    - local_minio_data1:/data1
-  #    - local_minio_data2:/data2
-  #  ports:
-  #    - "9000:9000"
-  #  environment:
-  #    MINIO_ACCESS_KEY: minio
-  #    MINIO_SECRET_KEY: minio123
-  #  command: server http://documentcloud_minio/data{1...2}
-  #  healthcheck:
-  #    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-  #    interval: 30s
-  #    timeout: 20s
-  #    retries: 3
+  documentcloud_minio:
+    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
+    volumes:
+      - local_minio_data:/data
+    ports:
+      - "9000:9000"
+    command: server /data
+    env_file:
+      - ./.envs/.local/.django
+    networks:
+      default:
+        aliases:
+          - minio.documentcloud.org
 
   # add solr and test solr images in
 
