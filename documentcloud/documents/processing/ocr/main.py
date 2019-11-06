@@ -31,7 +31,9 @@ else:
 
 redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
 redis_password = env.str("REDIS_PROCESSING_PASSWORD")
-redis = redis.Redis(host=redis_url.host, port=redis_url.port, password=redis_password, db=0)
+redis = redis.Redis(
+    host=redis_url.host, port=redis_url.port, password=redis_password, db=0
+)
 bucket = env.str("BUCKET", default="")
 
 ocr_topic = publisher.topic_path(
@@ -63,7 +65,6 @@ def ocr_page(path):
     # Capture the image as raw pixel data
     with storage.open(path, "rb") as image_file:
         img = Image.open(image_file).convert("RGB")
-
     # Resize only if image is too big (OCR computation is slow with large images)
     if img.width > DESIRED_WIDTH:
         resize = DESIRED_WIDTH / img.width
@@ -85,7 +86,7 @@ def run_tesseract(data, _context=None):
     overall_start = time.time()
 
     data = get_pubsub_data(data)
-    paths = data["paths"]
+    paths_and_numbers = data["paths_and_numbers"]
 
     result = {}
 
@@ -95,7 +96,10 @@ def run_tesseract(data, _context=None):
         if speed > SPEED_THRESHOLD:
             # Resubmit to queue
             publisher.publish(
-                ocr_topic, data=json.dumps({"paths": paths}).encode("utf8")
+                ocr_topic,
+                data=json.dumps({"paths_and_numbers": paths_and_numbers}).encode(
+                    "utf8"
+                ),
             )
             logging.warning("Too slow (speed: %f)", speed)
             return "Too slow, retrying"
@@ -105,46 +109,61 @@ def run_tesseract(data, _context=None):
     # Keep track of how long OCR takes (useful for profiling)
     elapsed_times = []
 
-    if not paths:
-        logging.warning("No paths")
+    if not paths_and_numbers:
+        logging.warning("No paths/numbers")
         return "Ok"
 
-    path = os.path.join(bucket, paths[0])
+    path = os.path.join(bucket, paths_and_numbers[0][1])
+    page_number = paths_and_numbers[0][0]
     doc_id = get_id(path)
-    ext = "." + path.split(".")[-1]
-    assert len(ext) > 1, "Needs an extension"
-    # Derive a simple filename for OCRd text
-    new_path = ".".join(path.split(".")[:-1])
-    assert new_path.endswith(LARGE_IMAGE_SUFFIX)
-    new_path = new_path[: -len(LARGE_IMAGE_SUFFIX)] + TXT_EXTENSION
+    redis_texts_key = f"{doc_id}-text"
 
-    # Benchmark OCR speed
-    start_time = time.time()
-    text = ocr_page(path)
+    # Only OCR if the page has yet to be OCRd
+    if redis.getbit(redis_texts_key, page_number) == 0:
+        ext = "." + path.split(".")[-1]
+        assert len(ext) > 1, "Needs an extension"
+        # Derive a simple filename for OCRd text
+        new_path = ".".join(path.split(".")[:-1])
+        assert new_path.endswith(LARGE_IMAGE_SUFFIX)
+        new_path = new_path[: -len(LARGE_IMAGE_SUFFIX)] + TXT_EXTENSION
 
-    elapsed_time = time.time() - start_time
-    elapsed_times.append(elapsed_time)
+        # Benchmark OCR speed
+        start_time = time.time()
+        text = ocr_page(path)
 
-    # Write the output text
-    with storage.open(new_path, "wb") as text_file:
-        text_file.write(text.encode("utf8"))
+        elapsed_time = time.time() - start_time
+        elapsed_times.append(elapsed_time)
 
-    texts_remaining = redis.hincrby(doc_id, "text", -1)
-    if texts_remaining == 0:
-        requests.patch(
-            urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
-            json={"status": "success"},
-            headers={
-                "Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"
-            },
-        )
-    else:
-        next_paths = paths[1:]
-        if next_paths:
-            # Launch next iteration
-            publisher.publish(
-                ocr_topic, data=json.dumps({"paths": next_paths}).encode("utf8")
+        # Write the output text
+        with storage.open(new_path, "wb") as text_file:
+            text_file.write(text.encode("utf8"))
+
+        # Decrement texts remaining and set the bit for the page off atomically
+        pipeline = redis.pipeline()
+        texts_remaining = pipeline.hincrby(doc_id, "text", -1)
+        pipeline.setbit(redis_texts_key, page_number, 1)
+        pipeline.execute()
+
+        # Check if finished
+        if texts_remaining == 0:
+            requests.patch(
+                urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
+                json={"status": "success"},
+                headers={
+                    "Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"
+                },
             )
+            return "Ok"
+
+    next_paths_and_numbers = paths_and_numbers[1:]
+    if next_paths_and_numbers:
+        # Launch next iteration
+        publisher.publish(
+            ocr_topic,
+            data=json.dumps({"paths_and_numbers": next_paths_and_numbers}).encode(
+                "utf8"
+            ),
+        )
 
     result["path"] = path
     result["elapsed"] = elapsed_times

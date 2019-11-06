@@ -36,8 +36,7 @@ from documentcloud.documents.serializers import (
     NoteSerializer,
     SectionSerializer,
 )
-from documentcloud.environment.environment import storage
-from documentcloud.environment.environment import httpsub
+from documentcloud.environment.environment import httpsub, storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
