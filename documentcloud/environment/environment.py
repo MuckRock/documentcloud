@@ -80,5 +80,77 @@ elif environment == "aws":
 
     storage = AwsStorage
     publisher = AwsPubsub
+elif environment == "local-minio":
+    import boto3
+    from botocore.client import Config
+    import smart_open
+    import requests
+
+    resource_kwargs = {
+        "endpoint_url": "http://minio.documentcloud.org:9000",
+        "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
+        "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
+        "config": Config(signature_version="s3v4"),
+        "region_name": "us-east-1",
+    }
+
+    s3 = boto3.resource("s3", **resource_kwargs)
+    s3_client = boto3.client("s3", **resource_kwargs)
+
+    # XXX de dupe code with above?
+    # rework this abstraction - not just based on gcsfs code
+    class AwsStorage:
+        @staticmethod
+        def canonical(filename):
+            return "s3://" + filename
+
+        @staticmethod
+        def du(filename):
+            parts = filename.split("/")
+            bucket = parts[0]
+            file_part = "/".join(parts[1:])
+            bucket = s3.Bucket(bucket)
+            return {filename: bucket.Object(file_part).content_length}
+
+        @staticmethod
+        def open(filename, mode="rb"):
+            return smart_open.open(
+                AwsStorage.canonical(filename),
+                mode,
+                transport_params={"resource_kwargs": resource_kwargs},
+            )
+
+        @staticmethod
+        def presign_url(key):
+            return s3_client.generate_presigned_url(
+                "put_object",
+                Params={"Bucket": env.str("UPLOAD_BUCKET"), "Key": key},
+                ExpiresIn=300,
+            )
+
+        @staticmethod
+        def copy(src_bucket, src_key, dst_bucket, dst_key):
+            return s3.meta.client.copy(
+                {"Bucket": src_bucket, "Key": src_key}, dst_bucket, dst_key
+            )
+
+        @staticmethod
+        def exists(bucket, key):
+            # https://www.peterbe.com/plog/fastest-way-to-find-out-if-a-file-exists-in-s3
+            response = s3_client.list_objects_v2(Bucket=bucket, Prefix=key)
+            for obj in response.get("Contents", []):
+                if obj["Key"] == key:
+                    return True
+            return False
+
+        @staticmethod
+        def fetch_url(url, bucket, key):
+            response = requests.get(url, stream=True)
+            s3.Bucket(bucket).upload_fileobj(response.raw, key)
+
+    storage = AwsStorage
+    from documentcloud.environment.pubsub import publisher
+    from documentcloud.environment.httpsub import httpsub
+
 else:
     raise Exception("Invalid environment")
