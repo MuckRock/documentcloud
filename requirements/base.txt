@@ -19,7 +19,6 @@ coreapi==2.3.3
 coreschema==0.0.4         # via coreapi, drf-yasg
 cpuprofile==1.0.1
 cryptography==2.8
-cpuprofile==1.0.1
 decorator==4.4.0          # via gcsfs
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 django-appconf==1.0.3     # via django-compressor
@@ -37,8 +36,6 @@ django-timezone-field==3.0  # via django-celery-beat
 django==2.2.5
 djangorestframework-simplejwt==4.3.0
 djangorestframework==3.10.3
-docutils==0.15.2          # via botocore
-drf-flex-fields==0.6.1
 docutils==0.15.2          # via botocore
 drf-flex-fields==0.6.1
 drf-nested-routers==0.91
