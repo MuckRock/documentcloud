@@ -1,6 +1,5 @@
 # Django
 from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 
 # Standard Library
@@ -10,7 +9,7 @@ import json
 import pytest
 
 # DocumentCloud
-from documentcloud.documents.choices import Access
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError, Note, Section
 from documentcloud.documents.serializers import (
     DocumentSerializer,
@@ -27,6 +26,7 @@ from documentcloud.documents.tests.factories import (
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
+from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db()
@@ -61,7 +61,17 @@ class TestDocumentAPI:
         response_json = json.loads(response.content)
         assert [j["page_count"] for j in response_json["results"]] == [1, 2, 3]
 
-    def test_create(self, client, user):
+    def test_list_presigned_url_field(self, client):
+        """List documents"""
+        DocumentFactory(status=Status.nofile)
+        DocumentFactory(status=Status.success)
+        response = client.get(f"/api/documents/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        for doc_json in response_json["results"]:
+            assert "presigned_url" not in doc_json
+
+    def test_create_file_url(self, client, user):
         """Upload a document with a file and a title"""
         client.force_authenticate(user=user)
         response = client.post(
@@ -71,25 +81,16 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)
         assert Document.objects.filter(pk=response_json["id"]).exists()
+        assert "presigned_url" not in response_json
 
-    def test_create_bad_file_and_url(self, client, user):
-        """May not specify `file` and `file_url`"""
-        client.force_authenticate(user=user)
-        response = client.post(
-            f"/api/documents/",
-            {
-                "title": "Test",
-                "file": SimpleUploadedFile("hello.txt", b"123"),
-                "file_url": "http://www.example.com/test.pdf",
-            },
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_create_bad_no_file(self, client, user):
-        """May not specify `file` and `file_url`"""
+    def test_create_direct(self, client, user):
+        """Create a document and upload the file directly"""
         client.force_authenticate(user=user)
         response = client.post(f"/api/documents/", {"title": "Test"})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = json.loads(response.content)
+        assert Document.objects.filter(pk=response_json["id"]).exists()
+        assert "presigned_url" in response_json
 
     def test_create_bad_no_user(self, client):
         """Must be logged in to create a document"""
@@ -107,6 +108,26 @@ class TestDocumentAPI:
         serializer = DocumentSerializer(document)
         assert response_json == serializer.data
         assert response_json["access"] == "public"
+        assert "presigned_url" not in response_json
+
+    def test_retrieve_no_file(self, client):
+        """Test retrieving a document with a presigned url"""
+        document = DocumentFactory(status=Status.nofile)
+        client.force_authenticate(user=document.user)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "presigned_url" in response_json
+
+    def test_retrieve_no_file_shared(self, client):
+        """Test retrieving a shared document without a file"""
+        document = DocumentFactory(status=Status.nofile, access=Access.organization)
+        user = UserFactory(organizations=[document.organization])
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "presigned_url" not in response_json
 
     def test_retrieve_expand(self, client, document):
         """Test retrieving a document with an expanded user and organization"""
@@ -137,15 +158,6 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.title == title
         assert document.access == Access.organization
-
-    def test_update_bad_file(self, client, document):
-        """You may not update the file"""
-        client.force_authenticate(user=document.user)
-        response = client.patch(
-            f"/api/documents/{document.pk}/",
-            {"file": SimpleUploadedFile("hello.txt", b"123")},
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_bad_file_url(self, client, document):
         """You may not update the file url"""

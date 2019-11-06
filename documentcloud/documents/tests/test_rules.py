@@ -5,7 +5,7 @@ from django.contrib.auth.models import AnonymousUser
 import pytest
 
 # DocumentCloud
-from documentcloud.documents.choices import Access
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.tests.factories import DocumentFactory, NoteFactory
 from documentcloud.organizations.tests.factories import OrganizationFactory
 from documentcloud.projects.tests.factories import ProjectFactory
@@ -26,6 +26,12 @@ def test_document_rules():
     public_document = DocumentFactory(
         user=owner, organization=organization, access=Access.public
     )
+    public_pending_document = DocumentFactory(
+        user=owner,
+        organization=organization,
+        access=Access.public,
+        status=Status.pending,
+    )
     organization_document = DocumentFactory(
         user=owner, organization=organization, access=Access.organization
     )
@@ -37,6 +43,7 @@ def test_document_rules():
     )
     documents = [
         public_document,
+        public_pending_document,
         private_document,
         organization_document,
         invisible_document,
@@ -47,22 +54,27 @@ def test_document_rules():
 
     for user, document, can_view, can_change in [
         (anonymous, public_document, True, False),
+        (anonymous, public_pending_document, False, False),
         (anonymous, organization_document, False, False),
         (anonymous, private_document, False, False),
         (anonymous, invisible_document, False, False),
         (owner, public_document, True, True),
+        (owner, public_pending_document, True, True),
         (owner, organization_document, True, True),
         (owner, private_document, True, True),
         (owner, invisible_document, False, False),
         (edit_collaborator, public_document, True, True),
+        (edit_collaborator, public_pending_document, True, True),
         (edit_collaborator, organization_document, True, True),
         (edit_collaborator, private_document, True, True),
         (edit_collaborator, invisible_document, False, False),
         (view_collaborator, public_document, True, False),
+        (view_collaborator, public_pending_document, True, False),
         (view_collaborator, organization_document, True, False),
         (view_collaborator, private_document, True, False),
         (view_collaborator, invisible_document, False, False),
         (organization_member, public_document, True, True),
+        (organization_member, public_pending_document, True, True),
         (organization_member, organization_document, True, True),
         (organization_member, private_document, False, False),
         (organization_member, invisible_document, False, False),

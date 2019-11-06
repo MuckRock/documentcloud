@@ -356,7 +356,6 @@ BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
 
 # bucket to store files in
 DOCUMENT_BUCKET = env("DOCUMENT_BUCKET", default="documents")
-UPLOAD_BUCKET = env("UPLOAD_BUCKET", default="uploads")
 
 # Processing
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
