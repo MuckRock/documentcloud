@@ -75,6 +75,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "description",
             "file_url",
             "images_remaining",
+            "key",
             "language",
             "organization",
             "page_count",
