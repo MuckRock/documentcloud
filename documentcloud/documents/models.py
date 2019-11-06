@@ -39,7 +39,7 @@ class Document(models.Model):
     status = models.IntegerField(
         _("status"),
         choices=Status.choices,
-        default=Status.pending,
+        default=Status.nofile,
         help_text=_("The processing status of this document"),
     )
 

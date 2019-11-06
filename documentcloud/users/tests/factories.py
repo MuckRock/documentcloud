@@ -4,6 +4,9 @@ from uuid import uuid4
 # Third Party
 import factory
 
+# DocumentCloud
+from documentcloud.organizations.models import Membership
+
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -27,3 +30,10 @@ class UserFactory(factory.django.DjangoModelFactory):
             self.set_password(extracted)
             if create:
                 self.save()
+
+    @factory.post_generation
+    def organizations(self, create, extracted, **kwargs):
+        # pylint: disable=unused-argument
+        if create and extracted:
+            for organization in extracted:
+                Membership.objects.create(user=self, organization=organization)
