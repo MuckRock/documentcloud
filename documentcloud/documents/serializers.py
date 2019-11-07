@@ -159,13 +159,15 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     def get_texts_remaining(self, obj):
         """Get the texts remaining from the processing redis instance"""
         texts_remaining = self._get_redis(obj, "text")
-        if texts_remaining is None: return None
+        if texts_remaining is None:
+            return None
         return int(texts_remaining)
 
     def get_images_remaining(self, obj):
         """Get the images remaining from the processing redis instance"""
         images_remaining = self._get_redis(obj, "image")
-        if images_remaining is None: return None
+        if images_remaining is None:
+            return None
         return int(images_remaining)
 
     def _get_redis(self, obj, key):
@@ -173,7 +175,10 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
         redis_password = settings.REDIS_PROCESSING_PASSWORD
         redis_ = redis.Redis(
-            host=redis_url.host, port=redis_url.port, password=redis_password, health_check_interval=30
+            host=redis_url.host,
+            port=redis_url.port,
+            password=redis_password,
+            health_check_interval=30,
         )
         return redis_.hget(obj.pk, key)
 
