@@ -2,16 +2,16 @@
 import gzip
 import json
 import os
-from urllib.parse import urljoin
 import pickle
+from urllib.parse import urljoin
 
 # Third Party
 import environ
 import furl
 import redis
+import requests
 from listcrunch import crunch
 from PIL import Image
-import requests
 
 env = environ.Env()
 

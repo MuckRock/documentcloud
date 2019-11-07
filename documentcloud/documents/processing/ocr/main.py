@@ -3,16 +3,16 @@ import json
 import logging
 import os
 import time
-import redis
+from urllib.parse import urljoin
 
 # Third Party
 import environ
 import furl
 import numpy as np
+import redis
+import requests
 from cpuprofile import profile_cpu
 from PIL import Image
-from urllib.parse import urljoin
-import requests
 
 env = environ.Env()
 
