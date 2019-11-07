@@ -105,7 +105,7 @@ class AwsStorage:
             self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
 
 
-if environment == "":
+if environment == "local-ci":
     # Support an empty environment to pass CI tests
     storage = {}
     pubsub = {}
