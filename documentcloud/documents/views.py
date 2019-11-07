@@ -4,6 +4,7 @@ from django.db import transaction
 from rest_framework import mixins, parsers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 # Third Party
@@ -28,6 +29,8 @@ from documentcloud.documents.models import (
     Section,
 )
 from documentcloud.documents.serializers import (
+    DataAddRemoveSerializer,
+    DataSerializer,
     DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
@@ -202,3 +205,67 @@ class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             pk=self.kwargs["document_pk"],
         )
         return document.dates.all()
+
+
+class DataViewSet(viewsets.ViewSet):
+    serializer_class = DataSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+
+    def get_object(self, edit=False):
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        if edit:
+            if not self.request.user.has_perm("documents.change_document", document):
+                self.permission_denied(self.request, "You may not edit this document")
+        return document
+
+    def list(self, request, document_pk=None):
+        document = self.get_object()
+        return Response(document.data)
+
+    def retrieve(self, request, pk=None, document_pk=None):
+        document = self.get_object()
+        return Response(document.data.get(pk))
+
+    def update(self, request, pk=None, document_pk=None):
+        document = self.get_object(edit=True)
+        print(request.data)
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        document.data[pk] = serializer.data["values"]
+        document.save()
+        return Response(document.data)
+
+    def partial_update(self, request, pk=None, document_pk=None):
+        document = self.get_object(edit=True)
+        serializer = DataAddRemoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if pk in document.data:
+            document.data[pk].extend(serializer.data.get("values", []))
+            document.data[pk] = [
+                i
+                for i in document.data[pk]
+                if i not in serializer.data.get("remove", [])
+            ]
+        else:
+            document.data[pk] = serializer.data.get("values", [])
+
+        if not document.data[pk]:
+            # remove key if all values are removed
+            del document.data[pk]
+
+        document.save()
+        return Response(document.data)
+
+    def destroy(self, request, pk=None, document_pk=None):
+        document = self.get_object(edit=True)
+
+        if pk in document.data:
+            del document.data[pk]
+            document.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
