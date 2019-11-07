@@ -108,7 +108,7 @@ class AwsStorage:
 if environment == "local-ci":
     # Support an empty environment to pass CI tests
     storage = {}
-    pubsub = {}
+    publisher = {}
     httpsub = {}
 
 elif environment == "local":
