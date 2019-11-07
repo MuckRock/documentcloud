@@ -61,7 +61,7 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-BUCKET = env.str("DOCUMENT_BUCKET", default="")
+DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 # Topic names for the messaging queue
 image_extract_topic = publisher.topic_path(
@@ -140,7 +140,7 @@ def process_pdf(request, _context=None):
     data = get_http_data(request)
 
     # Ensure a PDF file
-    path = os.path.join(BUCKET, data["path"])
+    path = os.path.join(DOCUMENT_BUCKET, data["path"])
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
@@ -151,6 +151,7 @@ def process_pdf(request, _context=None):
     REDIS.hset(doc_id, "image", page_count)
     REDIS.hset(doc_id, "text", page_count)
     # Set Redis bit arrays flooded to 0 to track each page
+    # TODO(freedmand): Flood bits to be resilient for retries (or not, if we want to save some of the work)
     REDIS.setbit(f"{doc_id}-image", page_count - 1, 0)
     REDIS.setbit(f"{doc_id}-text", page_count - 1, 0)
 
@@ -209,7 +210,7 @@ def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
     data = get_pubsub_data(data)
 
-    path = os.path.join(BUCKET, data["path"])  # The PDF file path
+    path = os.path.join(DOCUMENT_BUCKET, data["path"])  # The PDF file path
     page_numbers = data["pages"]  # The page numbers to extract
     index_path = get_index_path(path)  # The path to the PDF index file
 

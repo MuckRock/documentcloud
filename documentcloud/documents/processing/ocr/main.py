@@ -34,7 +34,7 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-BUCKET = env.str("BUCKET", default="")
+DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
@@ -113,7 +113,7 @@ def run_tesseract(data, _context=None):
         logging.warning("No paths/numbers")
         return "Ok"
 
-    path = os.path.join(bucket, paths_and_numbers[0][1])
+    path = os.path.join(DOCUMENT_BUCKET, paths_and_numbers[0][1])
     page_number = paths_and_numbers[0][0]
     doc_id = get_id(path)
     redis_texts_key = f"{doc_id}-text"
