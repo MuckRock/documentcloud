@@ -15,6 +15,7 @@ from rest_framework_nested import routers
 
 # DocumentCloud
 from documentcloud.documents.views import (
+    DataViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
@@ -54,6 +55,7 @@ documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
+documents_router.register("data", DataViewSet, basename="data")
 
 projects_router = routers.NestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)

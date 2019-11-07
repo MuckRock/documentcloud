@@ -1,4 +1,5 @@
 # Django
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
@@ -93,6 +94,8 @@ class Document(models.Model):
     updated_at = AutoLastModifiedField(
         _("updated at"), help_text=_("Timestamp of when the document was last updated")
     )
+
+    data = JSONField(default=dict)
 
     class Meta:
         permissions = (
