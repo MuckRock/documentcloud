@@ -72,6 +72,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "id",
             "access",
             "created_at",
+            "data",
             "description",
             "file_url",
             "images_remaining",
@@ -90,6 +91,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         ]
         extra_kwargs = {
             "created_at": {"read_only": True},
+            "data": {"read_only": True},
             "description": {"required": False},
             "language": {"default": Language.english},
             "organization": {"read_only": True},
@@ -280,3 +282,18 @@ class EntityDateSerializer(serializers.ModelSerializer):
     class Meta:
         model = EntityDate
         fields = ["date", "occurrences"]
+
+
+class DataSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+    values = serializers.ListSerializer(child=serializers.CharField(max_length=200))
+
+
+class DataAddRemoveSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+    values = serializers.ListSerializer(
+        required=False, child=serializers.CharField(max_length=200)
+    )
+    remove = serializers.ListSerializer(
+        required=False, child=serializers.CharField(max_length=200)
+    )

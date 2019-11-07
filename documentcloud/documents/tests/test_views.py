@@ -2,9 +2,6 @@
 from django.conf import settings
 from rest_framework import status
 
-# Standard Library
-import json
-
 # Third Party
 import pytest
 
@@ -37,7 +34,7 @@ class TestDocumentAPI:
         DocumentFactory.create_batch(size)
         response = client.get(f"/api/documents/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_list_filter(self, client, user):
@@ -48,7 +45,7 @@ class TestDocumentAPI:
         DocumentFactory.create_batch(size, user=user)
         response = client.get(f"/api/documents/", {"user": user.pk})
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_list_order(self, client):
@@ -58,7 +55,7 @@ class TestDocumentAPI:
         DocumentFactory(page_count=2)
         response = client.get(f"/api/documents/", {"ordering": "page_count"})
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert [j["page_count"] for j in response_json["results"]] == [1, 2, 3]
 
     def test_list_presigned_url_field(self, client):
@@ -67,7 +64,7 @@ class TestDocumentAPI:
         DocumentFactory(status=Status.success)
         response = client.get(f"/api/documents/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         for doc_json in response_json["results"]:
             assert "presigned_url" not in doc_json
 
@@ -79,7 +76,7 @@ class TestDocumentAPI:
             {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert Document.objects.filter(pk=response_json["id"]).exists()
         assert "presigned_url" not in response_json
 
@@ -88,7 +85,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(f"/api/documents/", {"title": "Test"})
         assert response.status_code == status.HTTP_201_CREATED
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert Document.objects.filter(pk=response_json["id"]).exists()
         assert "presigned_url" in response_json
 
@@ -104,7 +101,7 @@ class TestDocumentAPI:
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         serializer = DocumentSerializer(document)
         assert response_json == serializer.data
         assert response_json["access"] == "public"
@@ -116,7 +113,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=document.user)
         response = client.get(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert "presigned_url" in response_json
 
     def test_retrieve_no_file_shared(self, client):
@@ -126,7 +123,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.get(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert "presigned_url" not in response_json
 
     def test_retrieve_expand(self, client, document):
@@ -135,7 +132,7 @@ class TestDocumentAPI:
             f"/api/documents/{document.pk}/", {"expand": "user,organization"}
         )
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         user_serializer = UserSerializer(document.user)
         organization_serializer = OrganizationSerializer(document.organization)
         assert response_json["user"] == user_serializer.data
@@ -211,7 +208,7 @@ class TestDocumentErrorAPI:
         DocumentErrorFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/errors/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_create(self, client, document):
@@ -222,7 +219,7 @@ class TestDocumentErrorAPI:
             HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert DocumentError.objects.filter(pk=response_json["id"]).exists()
 
     def test_create_bad(self, client, document):
@@ -243,7 +240,7 @@ class TestNoteAPI:
         NoteFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/notes/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_create_public(self, client, document):
@@ -263,7 +260,7 @@ class TestNoteAPI:
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert Note.objects.filter(pk=response_json["id"]).exists()
 
     def test_create_public_bad(self, client, user, document):
@@ -301,7 +298,7 @@ class TestNoteAPI:
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert Note.objects.filter(pk=response_json["id"]).exists()
 
     def test_retrieve(self, client, note):
@@ -309,7 +306,7 @@ class TestNoteAPI:
 
         response = client.get(f"/api/documents/{note.document.pk}/notes/{note.pk}/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         serializer = NoteSerializer(note)
         assert response_json == serializer.data
 
@@ -383,7 +380,7 @@ class TestSectionAPI:
         SectionFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/sections/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_create(self, client, document):
@@ -394,7 +391,7 @@ class TestSectionAPI:
             {"title": "Test", "page_number": 1},
         )
         assert response.status_code == status.HTTP_201_CREATED
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert Section.objects.filter(pk=response_json["id"]).exists()
 
     def test_create_bad(self, client, user, document):
@@ -413,7 +410,7 @@ class TestSectionAPI:
             f"/api/documents/{section.document.pk}/sections/{section.pk}/"
         )
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         serializer = SectionSerializer(section)
         assert response_json == serializer.data
 
@@ -474,7 +471,7 @@ class TestEntityAPI:
         EntityFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/entities/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
 
 
@@ -486,5 +483,138 @@ class TestEntityDateAPI:
         EntityDateFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/dates/")
         assert response.status_code == status.HTTP_200_OK
-        response_json = json.loads(response.content)
+        response_json = response.json()
         assert len(response_json["results"]) == size
+
+
+@pytest.mark.django_db()
+class TestDataAPI:
+    def test_list(self, client):
+        """List the data for a document"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        response = client.get(f"/api/documents/{document.pk}/data/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == document.data
+
+    def test_list_bad(self, client):
+        """List the data for a document you cannot view"""
+        document = DocumentFactory(
+            access=Access.private, data={"color": ["red", "blue"], "state": ["ma"]}
+        )
+        response = client.get(f"/api/documents/{document.pk}/data/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_retrieve(self, client):
+        """List the values for a key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        response = client.get(f"/api/documents/{document.pk}/data/color/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == document.data["color"]
+
+    def test_update(self, client, document):
+        """Add a new key value pair to a document"""
+        client.force_authenticate(user=document.user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["red"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data == {"color": ["red"]}
+
+    def test_update_existing(self, client):
+        """Overwrite a key value pair to a document"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["green", "yellow"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data == {"color": ["green", "yellow"], "state": ["ma"]}
+
+    def test_update_bad(self, client, document, user):
+        """Add a new key value pair to a document for a document you cannot edit"""
+        client.force_authenticate(user=user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["red"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_partial_update(self, client):
+        """Add a new value to an existing key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/data/state/",
+            {"values": ["nj"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data["state"] == ["ma", "nj"]
+
+    def test_partial_update_new(self, client, document):
+        """Add a new value to non existing key"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/data/state/",
+            {"values": ["nj", "ca"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data["state"] == ["nj", "ca"]
+
+    def test_partial_update_remove(self, client):
+        """Remove a value from an existing key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/data/color/",
+            {"remove": ["red"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data["color"] == ["blue"]
+
+    def test_partial_update_add_remove(self, client):
+        """Add and remove values from an existing key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["green"], "remove": ["red"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data["color"] == ["blue", "green"]
+
+    def test_partial_update_remove_all(self, client):
+        """Removing all values removes the key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/data/color/",
+            {"remove": ["red", "blue"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert "color" not in document.data
+
+    def test_destroy(self, client):
+        """Remove a key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.delete(f"/api/documents/{document.pk}/data/state/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        document.refresh_from_db()
+        assert document.data == {"color": ["red", "blue"]}
