@@ -61,7 +61,7 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-BUCKET = env.str("DOCUMENT_BUCKET", default="")
+DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 
 # Topic names for the messaging queue
@@ -141,7 +141,7 @@ def process_pdf(request, _context=None):
     data = get_http_data(request)
 
     # Ensure a PDF file
-    path = os.path.join(BUCKET, data["path"])
+    path = os.path.join(DOCUMENT_BUCKET, data["path"])
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
@@ -149,12 +149,12 @@ def process_pdf(request, _context=None):
 
     # Store the page count in redis
     doc_id = get_id(path)
-    redis.hset(doc_id, "image", page_count)
-    redis.hset(doc_id, "text", page_count)
+    REDIS.hset(doc_id, "image", page_count)
+    REDIS.hset(doc_id, "text", page_count)
     # Set Redis bit arrays flooded to 0 to track each page
     # TODO(freedmand): Flood bits to be resilient for retries (or not, if we want to save some of the work)
-    redis.setbit(f"{doc_id}-image", page_count - 1, 0)
-    redis.setbit(f"{doc_id}-text", page_count - 1, 0)
+    REDIS.setbit(f"{doc_id}-image", page_count - 1, 0)
+    REDIS.setbit(f"{doc_id}-text", page_count - 1, 0)
 
     # Send update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
@@ -211,7 +211,7 @@ def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
     data = get_pubsub_data(data)
 
-    path = os.path.join(BUCKET, data["path"])  # The PDF file path
+    path = os.path.join(DOCUMENT_BUCKET, data["path"])  # The PDF file path
     page_numbers = data["pages"]  # The page numbers to extract
     index_path = get_index_path(path)  # The path to the PDF index file
 
@@ -246,13 +246,13 @@ def extract_image(data, _context=None):
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            if redis.getbit(redis_images_key, page_number) == 0:
+            if REDIS.getbit(redis_images_key, page_number) == 0:
                 # Extract the image.
                 large_image_path = extract_single_page(
                     data["path"], path, doc, page_number
                 )
                 # Decrement pages remaining and set the bit for the page off atomically
-                pipeline = redis.pipeline()
+                pipeline = REDIS.pipeline()
                 images_remaining = pipeline.hincrby(doc_id, "image", -1)
                 pipeline.setbit(redis_images_key, page_number, 1)
                 pipeline.execute()
