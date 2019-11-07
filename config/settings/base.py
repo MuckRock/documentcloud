@@ -288,6 +288,10 @@ LOGGING = {
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
+if DEBUG:
+    LOGGING["loggers"] = {
+        "rules": {"handlers": ["console"], "level": "DEBUG", "propagate": True}
+    }
 
 # Celery
 # ------------------------------------------------------------------------------
