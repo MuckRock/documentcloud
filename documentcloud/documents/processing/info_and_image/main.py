@@ -55,12 +55,12 @@ IMAGE_WIDTHS = [
     )
 ]  # width of images to OCR
 
-
 redis_url = furl.furl(env.str("REDIS_PROCESSING_URL"))
 redis_password = env.str("REDIS_PROCESSING_PASSWORD")
-redis = redis.Redis(host=redis_url.host, port=redis_url.port, password=redis_password, db=0)
+redis = redis.Redis(
+    host=redis_url.host, port=redis_url.port, password=redis_password, db=0
+)
 bucket = env.str("BUCKET", default="")
-
 
 # Topic names for the messaging queue
 image_extract_topic = publisher.topic_path(
@@ -146,8 +146,12 @@ def process_pdf(request, _context=None):
     page_count, page_sizes = write_cache_and_pagesizes(path)
 
     # Store the page count in redis
-    redis.hset(get_id(path), "image", page_count)
-    redis.hset(get_id(path), "text", page_count)
+    doc_id = get_id(path)
+    redis.hset(doc_id, "image", page_count)
+    redis.hset(doc_id, "text", page_count)
+    # Set Redis bit arrays flooded to 0 to track each page
+    redis.setbit(f"{doc_id}-image", page_count - 1, 0)
+    redis.setbit(f"{doc_id}-text", page_count - 1, 0)
 
     # Send update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
@@ -155,7 +159,7 @@ def process_pdf(request, _context=None):
     requests.patch(
         urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
         json={"page_count": page_count, "page_spec": page_spec},
-        headers={'Authorization': f"processing-token {env.str('PROCESSING_TOKEN')}"},
+        headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
 
     # Kick off image processing tasks
@@ -164,12 +168,7 @@ def process_pdf(request, _context=None):
         pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
         publisher.publish(
             image_extract_topic,
-            data=json.dumps(
-                {
-                    "path": data["path"],
-                    "pages": pages,
-                }
-            ).encode("utf8"),
+            data=json.dumps({"path": data["path"], "pages": pages}).encode("utf8"),
         )
 
     return "Ok"
@@ -199,7 +198,7 @@ def extract_single_page(original_path, path, doc, page_number):
             get_pageimage_path(path, page_number, image_suffix), "wb"
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
-        
+
         # TODO: trigger update when thumbnail image is parsed
 
     return get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0])
@@ -222,12 +221,7 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            ocr_topic,
-            data=json.dumps(
-                {
-                    "paths": [page[1] for page in ocr_queue],
-                }
-            ).encode("utf8"),
+            ocr_topic, data=json.dumps({"paths_and_numbers": ocr_queue}).encode("utf8")
         )
 
         ocr_queue.clear()
@@ -242,14 +236,23 @@ def extract_image(data, _context=None):
     ) as zip_file:
         cached = pickle.load(zip_file)
 
+    doc_id = get_id(path)
+    redis_images_key = f"{doc_id}-image"
     with Workspace() as workspace, StorageHandler(
         storage, path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
-            # Extract the image.
-            large_image_path = extract_single_page(data["path"], path, doc, page_number)
-
-            images_remaining = redis.hincrby(get_id(path), "image", -1)
+            # Only process if it has not processed previously
+            if redis.getbit(redis_images_key, page_number) == 0:
+                # Extract the image.
+                large_image_path = extract_single_page(
+                    data["path"], path, doc, page_number
+                )
+                # Decrement pages remaining and set the bit for the page off atomically
+                pipeline = redis.pipeline()
+                images_remaining = pipeline.hincrby(doc_id, "image", -1)
+                pipeline.setbit(redis_images_key, page_number, 1)
+                pipeline.execute()
 
             # Prepare the image to be OCRd.
             ocr_queue.append([page_number, large_image_path])
