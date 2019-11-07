@@ -17,6 +17,7 @@ cffi==1.12.3              # via argon2-cffi, cryptography
 chardet==3.0.4            # via requests
 coreapi==2.3.3
 coreschema==0.0.4         # via coreapi, drf-yasg
+cryptography==2.8
 cpuprofile==1.0.1
 cryptography==2.8
 decorator==4.4.0          # via gcsfs
@@ -36,8 +37,8 @@ django-timezone-field==3.0  # via django-celery-beat
 django==2.2.5
 djangorestframework-simplejwt==4.3.0
 djangorestframework==3.10.3
-docutils==0.15.2          # via botocore
 drf-flex-fields==0.6.1
+docutils==0.15.2          # via botocore
 drf-nested-routers==0.91
 drf-yasg==1.17.0
 ecdsa==0.13.2             # via python-jose
@@ -91,7 +92,7 @@ ruamel.yaml.clib==0.1.2   # via ruamel.yaml
 ruamel.yaml==0.16.5       # via drf-yasg
 rules==2.1
 s3transfer==0.2.1         # via boto3
-six==1.12.0               # via argon2-cffi, cryptography, django-appconf, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core
+six==1.12.0               # via argon2-cffi, django-appconf, drf-yasg, google-api-core, google-auth, grpcio, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core
 smart-open==1.8.4
 social-auth-app-django==3.1.0  # via rest-social-auth
 social-auth-core[openidconnect]==3.2.0
@@ -104,4 +105,4 @@ vine==1.3.0               # via amqp, celery
 zipp==0.6.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
-# setuptools==41.5.0        # via google-api-core, protobuf
+# setuptools==41.4.0        # via google-api-core, protobuf
