@@ -57,7 +57,8 @@ IMAGE_WIDTHS = [
 
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
-REDIS = redis.Redis(host=REDIS_URL.host, port=REDIS_URL.port, db=0)
+REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
+REDIS = redis.Redis(host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0)
 BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 
@@ -194,8 +195,6 @@ def extract_single_page(original_path, path, doc, page_number):
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
         
-        # TODO: trigger update when thumbnail image is parsed
-
         # TODO: trigger update when thumbnail image is parsed
 
     return get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0])
