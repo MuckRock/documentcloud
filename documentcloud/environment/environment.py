@@ -106,7 +106,10 @@ class AwsStorage:
 
 
 if environment == "":
-    pass  # Support an empty environment to pass CI tests
+    # Support an empty environment to pass CI tests
+    storage = {}
+    pubsub = {}
+    httpsub = {}
 
 elif environment == "local":
     from botocore.client import Config
