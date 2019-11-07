@@ -36,6 +36,7 @@ CONFIG = [
                         "REDIS_PROCESSING_URL",
                         "redis://documentcloud_processing_redis:6379/0",
                     ),
+                    ("REDIS_PROCESSING_PASSWORD", ""),
                 ],
             },
             {
