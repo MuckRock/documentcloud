@@ -44,6 +44,23 @@ from documentcloud.users.models import User
 env = environ.Env()
 
 
+class SignedPutURIView(APIView):
+    """
+    Generate a signed url for the user to upload a file to S3.
+    """
+
+    # XXX put this into the doc viewset
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+
+        key = "{}/{}".format(request.user.username, uuid.uuid4())
+        upload_uri = storage.presign_url(key)
+        data = {"key": key, "upload_uri": upload_uri}
+        return Response(data=data, status=status.HTTP_200_OK)
+
+
 class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     permit_list_expands = ["user", "organization"]
