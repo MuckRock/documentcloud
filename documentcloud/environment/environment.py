@@ -108,8 +108,8 @@ class AwsStorage:
 if environment == "local-ci":
     # Support an empty environment to pass CI tests
     storage = {}
-    publisher = {}
-    httpsub = {}
+    from documentcloud.environment.pubsub import publisher
+    from documentcloud.environment.httpsub import httpsub
 
 elif environment == "local":
     from botocore.client import Config
