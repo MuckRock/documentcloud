@@ -81,7 +81,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
         document = self.get_object()
-        path = f"{document.pk}/{document.slug}.pdf"
+        path = f"documents/{document.pk}/{document.slug}.pdf"
         if not storage.exists(f"{settings.DOCUMENT_BUCKET}/{path}"):
             return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
 

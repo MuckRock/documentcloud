@@ -23,7 +23,7 @@ if settings.ENVIRONMENT == "local":
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
 def fetch_file_url(file_url, document_pk):
     document = Document.objects.get(pk=document_pk)
-    path = f"{document_pk}/{document.slug}.pdf"
+    path = f"documents/{document_pk}/{document.slug}.pdf"
     try:
         storage.fetch_url(file_url, f"{settings.DOCUMENT_BUCKET}/{path}")
     except HTTPError as exc:

@@ -152,7 +152,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
-        path = f"{settings.DOCUMENT_BUCKET}/{obj.pk}/{obj.slug}.pdf"
+        path = f"{settings.DOCUMENT_BUCKET}/documents/{obj.pk}/{obj.slug}.pdf"
         return storage.presign_url(path)
 
     def get_texts_remaining(self, obj):
