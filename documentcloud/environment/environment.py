@@ -120,6 +120,11 @@ if environment == "local":
     from documentcloud.environment.pubsub import publisher
     from documentcloud.environment.httpsub import httpsub
 
+elif environment == "local-test":
+    from documentcloud.environment.storage import storage
+    from documentcloud.environment.pubsub import publisher
+    from documentcloud.environment.httpsub import httpsub
+
 elif environment == "aws":
     import requests as httpsub
 
