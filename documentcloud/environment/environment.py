@@ -126,6 +126,7 @@ elif environment == "local-test":
     from documentcloud.environment.httpsub import httpsub
 
 elif environment == "aws":
+    from botocore.client import Config
     import requests as httpsub
 
     storage = AwsStorage({"config": Config(signature_version="s3v4")})
