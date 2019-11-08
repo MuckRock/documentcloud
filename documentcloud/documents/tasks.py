@@ -22,6 +22,7 @@ if settings.ENVIRONMENT == "local":
 
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
 def fetch_file_url(file_url, document_pk):
+    """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
     path = f"documents/{document_pk}/{document.slug}.pdf"
     try:
@@ -48,3 +49,11 @@ def fetch_file_url(file_url, document_pk):
         httpsub.post(
             settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
         )
+
+
+@task
+def process(document_pk, path):
+    """Start the processing"""
+    httpsub.post(
+        settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
+    )
