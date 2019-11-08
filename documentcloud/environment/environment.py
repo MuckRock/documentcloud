@@ -128,7 +128,7 @@ elif environment == "local-test":
 elif environment == "aws":
     import requests as httpsub
 
-    storage = AwsStorage()
+    storage = AwsStorage({"config": Config(signature_version="s3v4")})
     publisher = AwsPubsub()
 
 elif environment == "gcp":
