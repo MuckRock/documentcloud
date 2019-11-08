@@ -35,8 +35,8 @@ from documentcloud.documents.serializers import (
     NoteSerializer,
     SectionSerializer,
 )
-from documentcloud.documents.tasks import fetch_file_url
-from documentcloud.environment.environment import httpsub, storage
+from documentcloud.documents.tasks import fetch_file_url, process
+from documentcloud.environment.environment import storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -87,9 +87,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
         document.status = Status.pending
         document.save()
-        httpsub.post(
-            settings.DOC_PROCESSING_URL, json={"document": document.pk, "path": path}
-        )
+        process.delay(document.pk, path)
         return Response(status=status.HTTP_200_OK)
 
     class Filter(django_filters.FilterSet):
