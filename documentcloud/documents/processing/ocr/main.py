@@ -16,18 +16,22 @@ from PIL import Image
 
 env = environ.Env()
 
-if env.str("ENVIRONMENT").startswith("local"):
-    # Load from Django imports if in a local environment
-    from documentcloud.documents.processing.ocr.tess import Tesseract
-    from documentcloud.documents.processing.ocr.environment import (
-        storage,
+if env.bool("SERVERLESS"):
+    # Load directly as a package to be compatible with cloud functions
+    from pdfium import StorageHandler, Workspace
+    from environment import publisher, storage, get_http_data, get_pubsub_data
+else:
+    # Load from Django imports if in a Django context
+    from documentcloud.documents.processing.info_and_image.pdfium import (
+        StorageHandler,
+        Workspace,
+    )
+    from documentcloud.documents.processing.info_and_image.environment import (
         publisher,
+        storage,
+        get_http_data,
         get_pubsub_data,
     )
-else:
-    # Otherwise, load directly as a package to be compatible with cloud functions
-    from tess import Tesseract
-    from environment import storage, publisher, get_pubsub_data
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")

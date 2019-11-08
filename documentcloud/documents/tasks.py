@@ -9,27 +9,15 @@ from requests.exceptions import HTTPError
 # DocumentCloud
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
-from documentcloud.documents.processing.info_and_image.main import (
-    extract_image,
-    process_pdf,
-)
-from documentcloud.documents.processing.ocr.main import run_tesseract
 from documentcloud.environment.environment import httpsub, storage
 
-
-@task
-def process_file(options):
-    process_pdf(options)
-
-
-@task
-def extract_images(data):
-    extract_image(data)
-
-
-@task
-def ocr_pages(data):
-    run_tesseract(data, None)
+if settings.ENVIRONMENT == "local":
+    # pylint: disable=unused-import
+    from documentcloud.documents.local_tasks import (
+        process_file,
+        extract_images,
+        ocr_pages,
+    )
 
 
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
