@@ -105,13 +105,7 @@ class AwsStorage:
             self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
 
 
-if environment == "local-ci":
-    # Support an empty environment to pass CI tests
-    storage = {}
-    from documentcloud.environment.pubsub import publisher
-    from documentcloud.environment.httpsub import httpsub
-
-elif environment == "local":
+if environment == "local":
     from botocore.client import Config
 
     storage = AwsStorage(
