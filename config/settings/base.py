@@ -221,7 +221,18 @@ CACHES = {
             # http://niwinz.github.io/django-redis/latest/#_memcached_exceptions_behavior
             "IGNORE_EXCEPTIONS": True,
         },
-    }
+    },
+    "processing": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_PROCESSING_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PASSWORD": env("REDIS_PROCESSING_PASSWORD"),
+            # Mimicing memcache behavior.
+            # http://niwinz.github.io/django-redis/latest/#_memcached_exceptions_behavior
+            "IGNORE_EXCEPTIONS": True,
+        },
+    },
 }
 DEFAULT_CACHE_TIMEOUT = 15 * 60
 
