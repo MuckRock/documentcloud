@@ -1,11 +1,10 @@
 # Django
 from django.conf import settings
+from django.core.cache import caches
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 # Third Party
-import furl
-import redis
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -172,15 +171,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def _get_redis(self, obj, key):
         """Get a value from the processing redis instance"""
-        redis_url = furl.furl(settings.REDIS_PROCESSING_URL)
-        redis_password = settings.REDIS_PROCESSING_PASSWORD
-        redis_ = redis.Redis(
-            host=redis_url.host,
-            port=redis_url.port,
-            password=redis_password,
-            health_check_interval=30,
-        )
-        return redis_.hget(obj.pk, key)
+        processing = caches["processing"]
+        redis = processing.client.get_client()
+        return redis.hget(obj.pk, key)
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
