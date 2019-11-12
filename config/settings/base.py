@@ -173,6 +173,13 @@ MEDIA_ROOT = str(APPS_DIR("media"))
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
 MEDIA_URL = "/media/"
 
+PUBLIC_ASSET_URL = env(
+    "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
+)
+PRIVATE_ASSET_URL = env(
+    "PUBLIC_ASSET_URL", default="http://api.dev.documentcloud.org/files/"
+)
+
 # TEMPLATES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#templates

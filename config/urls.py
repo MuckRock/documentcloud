@@ -14,6 +14,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested import routers
 
 # DocumentCloud
+from documentcloud.core.views import FileServer
 from documentcloud.documents.views import (
     DataViewSet,
     DocumentErrorViewSet,
@@ -81,7 +82,10 @@ urlpatterns = [
     path("accounts/logout/", LogoutView.as_view(), name="logout"),
     path("accounts/", include("social_django.urls", namespace="social")),
     path("squarelet/", include("documentcloud.squarelet.urls", namespace="squarelet")),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path(
+        "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"
+    ),
+]
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit

@@ -7,7 +7,7 @@ from django.db import transaction
 from requests.exceptions import HTTPError
 
 # DocumentCloud
-from documentcloud.documents.choices import Status
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.environment.environment import httpsub, storage
 
@@ -25,9 +25,8 @@ if settings.ENVIRONMENT == "local":
 def fetch_file_url(file_url, document_pk):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
-    path = f"documents/{document_pk}/{document.slug}.pdf"
     try:
-        storage.fetch_url(file_url, f"{settings.DOCUMENT_BUCKET}/{path}")
+        storage.fetch_url(file_url, document.pdf_path)
     except HTTPError as exc:
         if (
             exc.response.status_code >= 500
@@ -48,7 +47,8 @@ def fetch_file_url(file_url, document_pk):
         document.status = Status.pending
         document.save()
         httpsub.post(
-            settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
+            settings.DOC_PROCESSING_URL,
+            json={"document": document_pk, "path": document.pdf_path},
         )
 
 
@@ -58,3 +58,16 @@ def process(document_pk, path):
     httpsub.post(
         settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
     )
+
+
+@task
+def delete_document(path):
+    storage.delete(path)
+
+
+@task
+def update_access(document_pk):
+    document = Document.objects.get(pk=document_pk)
+    access = "public" if document.access == Access.public else "private"
+    storage.set_access(document.pdf_path, access)
+    storage.set_access(document.pages_path, access)
