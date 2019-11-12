@@ -23,6 +23,7 @@ env = environ.Env()
 environment = env.str("ENVIRONMENT")
 
 
+# XXX put these into the environment
 def get_http_data(request):
     """Extract data from an HTTP request that works across environments."""
     if hasattr(request, "get_json"):
@@ -74,6 +75,9 @@ class RedisFields:
         return f"{doc_id}:textBits"
 
 
+# XXX own file
+
+
 class AwsPubsub:
     def __init__(self):
         import boto3
@@ -89,12 +93,13 @@ class AwsPubsub:
 
 
 class AwsStorage:
-    def __init__(self, resource_kwargs=None):
+    def __init__(self, resource_kwargs=None, minio=False):
         import boto3
 
         self.resource_kwargs = {} if resource_kwargs is None else resource_kwargs
         self.s3_resource = boto3.resource("s3", **self.resource_kwargs)
         self.s3_client = boto3.client("s3", **self.resource_kwargs)
+        self.minio = minio
 
     def bucket_key(self, file_name):
         return file_name.split("/", 1)
@@ -113,10 +118,10 @@ class AwsStorage:
             transport_params={"resource_kwargs": self.resource_kwargs},
         )
 
-    def presign_url(self, file_name):
+    def presign_url(self, file_name, method_name):
         bucket, key = self.bucket_key(file_name)
         return self.s3_client.generate_presigned_url(
-            "put_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=300
+            method_name, Params={"Bucket": bucket, "Key": key}, ExpiresIn=300
         )
 
     def exists(self, file_name):
@@ -134,6 +139,22 @@ class AwsStorage:
             response.raise_for_status()
             self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
 
+    def delete(self, file_prefix):
+        bucket, prefix = self.bucket_key(file_prefix)
+        bucket = self.s3_resource.Bucket(bucket)
+        keys = [{"Key": obj.key} for obj in bucket.objects.filter(Prefix=prefix)]
+        bucket.delete_objects(Delete={"Objects": keys})
+
+    def set_access(self, file_prefix, access):
+        if self.minio:
+            # minio does not support object ACLs
+            return
+        acls = {"public": "public-read", "private": "private"}
+        bucket, prefix = self.bucket_key(file_prefix)
+        bucket = self.s3_resource.Bucket(bucket)
+        for obj in bucket.objects.filter(Prefix=prefix):
+            obj.Acl().put(ACL=acls[access])
+
 
 if environment == "local":
     from botocore.client import Config
@@ -145,7 +166,8 @@ if environment == "local":
             "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
             "config": Config(signature_version="s3v4"),
             "region_name": "us-east-1",
-        }
+        },
+        minio=True,
     )
     from documentcloud.environment.pubsub import publisher
     from documentcloud.environment.httpsub import httpsub

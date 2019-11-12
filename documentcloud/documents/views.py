@@ -38,7 +38,12 @@ from documentcloud.documents.serializers import (
     NoteSerializer,
     SectionSerializer,
 )
-from documentcloud.documents.tasks import fetch_file_url, process
+from documentcloud.documents.tasks import (
+    delete_document,
+    fetch_file_url,
+    process,
+    update_access,
+)
 from documentcloud.environment.environment import storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
@@ -84,14 +89,22 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
         document = self.get_object()
-        path = f"documents/{document.pk}/{document.slug}.pdf"
-        if not storage.exists(f"{settings.DOCUMENT_BUCKET}/{path}"):
+        if not storage.exists(document.pdf_path):
             return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
 
         document.status = Status.pending
         document.save()
-        process.delay(document.pk, path)
+        process.delay(document.pk, document.pdf_path)
         return Response(status=status.HTTP_200_OK)
+
+    def perform_destroy(self, instance):
+        delete_document.delay(instance.path)
+        super().perform_destroy(instance)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        # XXX only update access if needed
+        update_access.delay(serializer.instance.pk)
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(

@@ -71,6 +71,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         fields = [
             "id",
             "access",
+            "asset_url",
             "created_at",
             "data",
             "description",
@@ -156,8 +157,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
-        path = f"{settings.DOCUMENT_BUCKET}/documents/{obj.pk}/{obj.slug}.pdf"
-        return storage.presign_url(path)
+        return storage.presign_url(obj.pdf_path, "put_object")
 
     def get_images_remaining(self, obj):
         """Get the images remaining from the processing redis instance"""

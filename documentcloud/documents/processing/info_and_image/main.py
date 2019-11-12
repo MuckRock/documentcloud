@@ -14,31 +14,11 @@ import requests
 from listcrunch import crunch_collection
 from PIL import Image
 
-env = environ.Env()
+# Local
+from .environment import get_http_data, get_pubsub_data, publisher, storage
+from .pdfium import StorageHandler, Workspace
 
-if env.bool("SERVERLESS"):
-    # Load directly as a package to be compatible with cloud functions
-    from pdfium import StorageHandler, Workspace
-    from environment import (
-        publisher,
-        storage,
-        get_http_data,
-        get_pubsub_data,
-        RedisFields,
-    )
-else:
-    # Load from Django imports if in a Django context
-    from documentcloud.documents.processing.info_and_image.pdfium import (
-        StorageHandler,
-        Workspace,
-    )
-    from documentcloud.documents.processing.info_and_image.environment import (
-        publisher,
-        storage,
-        get_http_data,
-        get_pubsub_data,
-        RedisFields,
-    )
+env = environ.Env()
 
 DOCUMENT_SUFFIX = ".pdf"
 INDEX_SUFFIX = ".index"
@@ -68,17 +48,17 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 # Topic names for the messaging queue
 pdf_process_topic = publisher.topic_path(
     "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
 )
-image_extract_topic = publisher.topic_path(
-    "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
+IMAGE_EXTRACT_TOPIC = publisher.topic_path(
+    "documentcloud",
+    env.str("IMAGE_EXTRACT_TOPIC", default="page-image-ready-for-extraction"),
 )
-ocr_topic = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
+OCR_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
 )
 
 
@@ -244,7 +224,7 @@ def process_pdf_internal(data, _context=None):
     data = get_pubsub_data(data)
 
     # Ensure a PDF file
-    path = os.path.join(DOCUMENT_BUCKET, data["path"])
+    path = data["path"]
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
@@ -268,7 +248,7 @@ def process_pdf_internal(data, _context=None):
         # Trigger image extraction for each page
         pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
         publisher.publish(
-            image_extract_topic,
+            IMAGE_EXTRACT_TOPIC,
             data=json.dumps({"path": data["path"], "pages": pages}).encode("utf8"),
         )
 
@@ -313,7 +293,7 @@ def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
     data = get_pubsub_data(data)
 
-    path = os.path.join(DOCUMENT_BUCKET, data["path"])  # The PDF file path
+    path = data["path"]  # The PDF file path
     page_numbers = data["pages"]  # The page numbers to extract
     index_path = get_index_path(path)  # The path to the PDF index file
 
@@ -326,7 +306,7 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            ocr_topic, data=json.dumps({"paths_and_numbers": ocr_queue}).encode("utf8")
+            OCR_TOPIC, data=json.dumps({"paths_and_numbers": ocr_queue}).encode("utf8")
         )
 
         ocr_queue.clear()

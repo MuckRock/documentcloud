@@ -18,8 +18,8 @@ services:
       - documentcloud_postgres
       - documentcloud_redis
       - documentcloud_processing_redis
+      - documentcloud_minio
       #- documentcloud_solr
-      #- documentcloud_minio
     volumes:
       - .:/app
     env_file:

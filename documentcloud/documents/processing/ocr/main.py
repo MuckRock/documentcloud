@@ -14,28 +14,18 @@ import requests
 from cpuprofile import profile_cpu
 from PIL import Image
 
+# Local
+from .environment import RedisFields, get_pubsub_data, publisher, storage
+from .tess import Tesseract
+
 env = environ.Env()
 
-if env.bool("SERVERLESS"):
-    # Load directly as a package to be compatible with cloud functions
-    from tess import Tesseract
-    from environment import storage, publisher, get_pubsub_data, RedisFields
-else:
-    # Load from Django imports if in a Django context
-    from documentcloud.documents.processing.ocr.tess import Tesseract
-    from documentcloud.documents.processing.ocr.environment import (
-        storage,
-        publisher,
-        get_pubsub_data,
-        RedisFields,
-    )
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
-DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
@@ -114,7 +104,7 @@ def run_tesseract(data, _context=None):
         logging.warning("No paths/numbers")
         return "Ok"
 
-    path = os.path.join(DOCUMENT_BUCKET, paths_and_numbers[0][1])
+    path = paths_and_numbers[0][1]
     page_number = paths_and_numbers[0][0]
     doc_id = get_id(path)
 

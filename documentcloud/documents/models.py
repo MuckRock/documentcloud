@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
@@ -106,12 +107,36 @@ class Document(models.Model):
             ),
         )
 
-    @property
-    def combined_page_text(self):
-        return "".join(p.text for p in self.pages.all())
-
     def __str__(self):
         return self.title
+
+    @property
+    def path(self):
+        """The path where this documents files are located"""
+        return f"{settings.DOCUMENT_BUCKET}/documents/{self.pk}/"
+
+    @property
+    def pdf_path(self):
+        """The path to the PDF file"""
+        return f"{self.path}{self.slug}.pdf"
+
+    @property
+    def pages_path(self):
+        return f"{self.path}pages/"
+
+    @property
+    def public(self):
+        return self.access == Access.public and self.status in (
+            Status.success,
+            Status.readable,
+        )
+
+    @property
+    def asset_url(self):
+        if self.public:
+            return settings.PUBLIC_ASSET_URL
+        else:
+            return settings.PRIVATE_ASSET_URL
 
 
 class DocumentError(models.Model):
