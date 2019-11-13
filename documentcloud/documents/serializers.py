@@ -1,10 +1,11 @@
 # Django
 from django.conf import settings
-from django.core.cache import caches
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 # Third Party
+from django_redis import get_redis_connection
+from redis.exceptions import RedisError
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -114,6 +115,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
+        self._redis_data = None
         if not isinstance(self.instance, Document) or self.instance.status not in (
             Status.pending,
             Status.readable,
@@ -157,23 +159,25 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_texts_remaining(self, obj):
         """Get the texts remaining from the processing redis instance"""
-        texts_remaining = self._get_redis(obj, "text")
-        if texts_remaining is None:
-            return None
-        return int(texts_remaining)
+        if self._redis_data is None:
+            self._get_redis(obj)
+        return self._redis_data[0]
 
     def get_images_remaining(self, obj):
         """Get the images remaining from the processing redis instance"""
-        images_remaining = self._get_redis(obj, "image")
-        if images_remaining is None:
-            return None
-        return int(images_remaining)
+        if self._redis_data is None:
+            self._get_redis(obj)
+        return self._redis_data[1]
 
-    def _get_redis(self, obj, key):
+    def _get_redis(self, obj):
         """Get a value from the processing redis instance"""
-        processing = caches["processing"]
-        redis = processing.client.get_client()
-        return redis.hget(obj.pk, key)
+        redis = get_redis_connection("processing")
+        try:
+            with redis.pipeline() as pipeline:
+                pipeline.hget(obj.pk, "text").hget(obj.pk, "image")
+                self._redis_data = pipeline.execute()
+        except RedisError:
+            self._redis_data = (None, None)
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
