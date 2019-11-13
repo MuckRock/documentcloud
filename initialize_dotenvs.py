@@ -53,6 +53,7 @@ CONFIG = [
                     ("API_CALLBACK", "http://api.dev.documentcloud.org/api/"),
                     ("PROCESSING_TOKEN", lambda: random_string(64)),
                     ("DOCUMENT_BUCKET", "documents"),
+                    ("SERVERLESS", "False"),
                 ],
             },
             {

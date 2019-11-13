@@ -18,18 +18,14 @@ env = environ.Env()
 
 if env.bool("SERVERLESS"):
     # Load directly as a package to be compatible with cloud functions
-    from pdfium import StorageHandler, Workspace
-    from environment import publisher, storage, get_http_data, get_pubsub_data
+    from tess import Tesseract
+    from environment import storage, publisher, get_pubsub_data
 else:
     # Load from Django imports if in a Django context
-    from documentcloud.documents.processing.info_and_image.pdfium import (
-        StorageHandler,
-        Workspace,
-    )
-    from documentcloud.documents.processing.info_and_image.environment import (
-        publisher,
+    from documentcloud.documents.processing.ocr.tess import Tesseract
+    from documentcloud.documents.processing.ocr.environment import (
         storage,
-        get_http_data,
+        publisher,
         get_pubsub_data,
     )
 
@@ -41,7 +37,7 @@ REDIS = redis.Redis(
 DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
 
 # Ensures running on roughly 2Ghz+ machine
