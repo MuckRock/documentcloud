@@ -1,3 +1,5 @@
+print("STARTING INFO_AND_IMAGE")
+
 # Standard Library
 import gzip
 import json
@@ -55,6 +57,7 @@ IMAGE_WIDTHS = [
     )
 ]  # width of images to OCR
 
+print("ESTABLISHING REDIS")
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
@@ -62,6 +65,8 @@ REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
 DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
+
+print("ESTABLISHED REDIS")
 
 # Topic names for the messaging queue
 pdf_process_topic = publisher.topic_path(
@@ -73,6 +78,8 @@ image_extract_topic = publisher.topic_path(
 ocr_topic = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
+
+print("GOT TOPIC PATHS")
 
 
 def get_index_path(path):
@@ -110,10 +117,12 @@ def write_cache_and_pagesizes(path):
         page sizes.
     """
     # Get the page sizes and initialize a cache of page positions
+    print("LOADING PDF IN")
     with Workspace() as workspace, StorageHandler(
         storage, path, record=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
+        print("GOT PAGE COUNT")
         page_sizes = []
         pagespecs = []
         doc.load_page(page_count - 1)
@@ -121,8 +130,10 @@ def write_cache_and_pagesizes(path):
             page = doc.load_page(i)
             page_sizes.append(page.height / page.width)
             pagespecs.append(f"{page.width}x{page.height}")
+            print("PAGESPEC", i)
         with storage.open(get_pagesize_path(path), "w") as pagesize_file:
             pagesize_file.write(crunch(pagespecs))
+            print("PAGESPEC WROTE")
         cached = pdf_file.cache
 
     # Create an index file that stores the memory locations of each page of the
@@ -151,12 +162,16 @@ def process_pdf_internal(data, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_pubsub_data(data)
 
+    print("GOT PUBSUB DATA")
+
     # Ensure a PDF file
     path = os.path.join(DOCUMENT_BUCKET, data["path"])
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
     page_count, page_sizes = write_cache_and_pagesizes(path)
+
+    print("GOT PAGE SIZES")
 
     # Store the page count in redis
     doc_id = get_id(path)
@@ -167,6 +182,8 @@ def process_pdf_internal(data, _context=None):
     REDIS.setbit(f"{doc_id}-image", page_count - 1, 0)
     REDIS.setbit(f"{doc_id}-text", page_count - 1, 0)
 
+    print("SET REDIS VALUES")
+
     # Send update
     page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
 
@@ -176,6 +193,8 @@ def process_pdf_internal(data, _context=None):
         headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
 
+    print("PATCHED REQUEST")
+
     # Kick off image processing tasks
     for i in range(0, page_count, IMAGE_BATCH):
         # Trigger image extraction for each page
@@ -184,6 +203,8 @@ def process_pdf_internal(data, _context=None):
             image_extract_topic,
             data=json.dumps({"path": data["path"], "pages": pages}).encode("utf8"),
         )
+
+    print("KICKED OFF PUBSUB")
 
     return "Ok"
 
