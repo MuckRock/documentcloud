@@ -231,7 +231,6 @@ class DataViewSet(viewsets.ViewSet):
 
     def update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
-        print(request.data)
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
