@@ -64,12 +64,14 @@ REDIS = redis.Redis(
 DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 # Topic names for the messaging queue
+pdf_process_topic = publisher.topic_path(
+    "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
+)
 image_extract_topic = publisher.topic_path(
-    "documentcloud",
-    env.str("IMAGE_EXTRACT_TOPIC", default="page-image-ready-for-extraction"),
+    "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
 ocr_topic = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
 
 
@@ -138,6 +140,16 @@ def write_cache_and_pagesizes(path):
 def process_pdf(request, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_http_data(request)
+
+    # Launch PDF processing via pubsub
+    publisher.publish(pdf_process_topic, data=json.dumps(data).encode("utf8"))
+
+    return "Ok"
+
+
+def process_pdf_internal(data, _context=None):
+    """Process a PDF file's information and launch extraction tasks."""
+    data = get_pubsub_data(data)
 
     # Ensure a PDF file
     path = os.path.join(DOCUMENT_BUCKET, data["path"])
