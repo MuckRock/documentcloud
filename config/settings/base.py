@@ -228,8 +228,8 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "PASSWORD": env("REDIS_PROCESSING_PASSWORD"),
-            "SOCKET_CONNECT_TIMEOUT": 1,
-            "SOCKET_TIMEOUT": 1,
+            "SOCKET_CONNECT_TIMEOUT": env.int("REDIS_PROCESSING_CONNECT_TIMEOUT", 1),
+            "SOCKET_TIMEOUT": env.int("REDIS_PROCESSING_TIMEOUT", 1),
         },
     },
 }
