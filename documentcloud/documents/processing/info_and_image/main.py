@@ -1,5 +1,3 @@
-print("STARTING INFO_AND_IMAGE")
-
 # Standard Library
 import collections
 import gzip
@@ -65,16 +63,12 @@ IMAGE_WIDTHS = [
     )
 ]  # width of images to OCR
 
-print("ESTABLISHING REDIS")
-
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
     host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
 )
 DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
-
-print("ESTABLISHED REDIS")
 
 # Topic names for the messaging queue
 pdf_process_topic = publisher.topic_path(
@@ -86,8 +80,6 @@ image_extract_topic = publisher.topic_path(
 ocr_topic = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
-
-print("GOT TOPIC PATHS")
 
 
 def get_index_path(path):
@@ -159,12 +151,10 @@ def extract_pagecount(path):
         page sizes.
     """
     # Get the page sizes and initialize a cache of page positions
-    print("LOADING PDF IN")
     with Workspace() as workspace, StorageHandler(
         storage, path, record=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
-        print("GOT PAGE COUNT")
         cached = pdf_file.cache
 
     # Create an index file that stores the memory locations of each page of the
@@ -251,8 +241,6 @@ def process_pdf_internal(data, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_pubsub_data(data)
 
-    print("GOT PUBSUB DATA")
-
     # Ensure a PDF file
     path = os.path.join(DOCUMENT_BUCKET, data["path"])
     if not path.endswith(DOCUMENT_SUFFIX):
@@ -260,22 +248,16 @@ def process_pdf_internal(data, _context=None):
 
     page_count = extract_pagecount(path)
 
-    print("GOT PAGE SIZES")
-
     # Store the page count in redis
     doc_id = get_id(path)
 
     initialize_redis_page_data(doc_id, page_count)
-
-    print("SET REDIS VALUES")
 
     requests.patch(
         urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
         json={"page_count": page_count},
         headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
-
-    print("PATCHED REQUEST")
 
     # Kick off image processing tasks
     for i in range(0, page_count, IMAGE_BATCH):
@@ -285,8 +267,6 @@ def process_pdf_internal(data, _context=None):
             image_extract_topic,
             data=json.dumps({"path": data["path"], "pages": pages}).encode("utf8"),
         )
-
-    print("KICKED OFF PUBSUB")
 
     return "Ok"
 
