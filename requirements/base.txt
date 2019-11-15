@@ -60,7 +60,7 @@ itypes==1.1.0             # via coreapi
 jinja2==2.10.1            # via coreschema
 jmespath==0.9.4           # via boto3, botocore
 kombu==4.6.4              # via celery
-listcrunch==0.0.1
+listcrunch==0.1.0
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 numpy==1.17.3
