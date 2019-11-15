@@ -5,6 +5,7 @@ from celery.task import task
 from documentcloud.documents.processing.info_and_image.main import (
     extract_image,
     process_pdf,
+    process_pdf_internal,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
 
@@ -12,6 +13,11 @@ from documentcloud.documents.processing.ocr.main import run_tesseract
 @task
 def process_file(options):
     process_pdf(options)
+
+
+@task
+def process_file_internal(options):
+    process_pdf_internal(options)
 
 
 @task

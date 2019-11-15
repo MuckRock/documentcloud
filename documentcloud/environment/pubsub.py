@@ -41,16 +41,16 @@ class LocalPubSubClient:
 publisher = LocalPubSubClient()
 
 
-def page_image_ready_for_extraction(data):
+def process_pdf_task(data):
+    from documentcloud.documents.tasks import process_file_internal
+
+    return process_file_internal.delay(data)
+
+
+def extract_image_task(data):
     from documentcloud.documents.tasks import extract_images
 
     return extract_images(data)
-
-
-publisher.register_internal_callback(
-    ("documentcloud", "page-image-ready-for-extraction"),
-    page_image_ready_for_extraction,
-)
 
 
 def ocr_page_task(data):
@@ -59,4 +59,8 @@ def ocr_page_task(data):
     return ocr_pages.delay(data)
 
 
-publisher.register_internal_callback(("documentcloud", "ocr-queue"), ocr_page_task)
+publisher.register_internal_callback(("documentcloud", "pdf-process"), process_pdf_task)
+publisher.register_internal_callback(
+    ("documentcloud", "image-extraction"), extract_image_task
+)
+publisher.register_internal_callback(("documentcloud", "ocr-extraction"), ocr_page_task)

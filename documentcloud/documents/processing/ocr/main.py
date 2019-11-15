@@ -18,19 +18,16 @@ env = environ.Env()
 
 if env.bool("SERVERLESS"):
     # Load directly as a package to be compatible with cloud functions
-    from pdfium import StorageHandler, Workspace
-    from environment import publisher, storage, get_http_data, get_pubsub_data
+    from tess import Tesseract
+    from environment import storage, publisher, get_pubsub_data, RedisFields
 else:
     # Load from Django imports if in a Django context
-    from documentcloud.documents.processing.info_and_image.pdfium import (
-        StorageHandler,
-        Workspace,
-    )
-    from documentcloud.documents.processing.info_and_image.environment import (
-        publisher,
+    from documentcloud.documents.processing.ocr.tess import Tesseract
+    from documentcloud.documents.processing.ocr.environment import (
         storage,
-        get_http_data,
+        publisher,
         get_pubsub_data,
+        RedisFields,
     )
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
@@ -41,7 +38,7 @@ REDIS = redis.Redis(
 DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
 
 # Ensures running on roughly 2Ghz+ machine
@@ -120,10 +117,12 @@ def run_tesseract(data, _context=None):
     path = os.path.join(DOCUMENT_BUCKET, paths_and_numbers[0][1])
     page_number = paths_and_numbers[0][0]
     doc_id = get_id(path)
-    redis_texts_key = f"{doc_id}-text"
+
+    texts_remaining_field = RedisFields.texts_remaining(doc_id)
+    text_bits_field = RedisFields.text_bits(doc_id)
 
     # Only OCR if the page has yet to be OCRd
-    if REDIS.getbit(redis_texts_key, page_number) == 0:
+    if REDIS.getbit(text_bits_field, page_number) == 0:
         ext = "." + path.split(".")[-1]
         assert len(ext) > 1, "Needs an extension"
         # Derive a simple filename for OCRd text
@@ -144,9 +143,9 @@ def run_tesseract(data, _context=None):
 
         # Decrement texts remaining and set the bit for the page off atomically
         pipeline = REDIS.pipeline()
-        texts_remaining = pipeline.hincrby(doc_id, "text", -1)
-        pipeline.setbit(redis_texts_key, page_number, 1)
-        pipeline.execute()
+        pipeline.decr(texts_remaining_field)
+        pipeline.setbit(text_bits_field, page_number, 1)
+        texts_remaining = pipeline.execute()[0]
 
         # Check if finished
         if texts_remaining == 0:

@@ -9,11 +9,13 @@ Globals:
     Environment:
       Variables:
         ENVIRONMENT: aws
+        SERVERLESS: True
         REDIS_PROCESSING_URL: redis://3.233.63.186:6379/0
         REDIS_PROCESSING_PASSWORD: ZSU2bSA3jv3vyciYVqPzQMLBvycMXrOjh81T2dX4DGpH6l1tj54njwx3HJH5eeEgHZvNLPf8UrMismuW6ypiYJ29FUf21YJ0ldJqAXpszdEo4X88LBR0M2Pkb3pW1ESw
         API_CALLBACK: https://api.staging.documentcloud.org/api/
         PROCESSING_TOKEN: WcIzhlOLWWggyvXN82LAajAOZl3qgijpIgdeDH1iNeUnzo6mkVCveDLS8gWzEGun
-        BUCKET: documentcloud-staging-files
+        DOCUMENT_BUCKET: documentcloud-staging-files
+        PDF_PROCESS_TOPIC: pdf-process-staging
         IMAGE_EXTRACT_TOPIC: image-extraction-staging
         OCR_TOPIC: ocr-extraction-staging
         EXTRACT_IMAGE_BATCH: 1
@@ -41,6 +43,20 @@ Resources:
           Properties:
             Path: /process_pdf
             Method: POST
+      Role: arn:aws:iam::844030562261:role/lambda-role
+
+  ProcessPdfInternalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.process_pdf_internal
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Events:
+        ProcessPdfApi:
+          Type: SNS
+          Properties:
+            Topic: arn:aws:sns:us-east-1:844030562261:pdf-process-staging
       Role: arn:aws:iam::844030562261:role/lambda-role
 
   ExtractImageFunction:
