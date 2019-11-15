@@ -143,9 +143,9 @@ def run_tesseract(data, _context=None):
 
         # Decrement texts remaining and set the bit for the page off atomically
         pipeline = REDIS.pipeline()
-        texts_remaining = pipeline.decr(texts_remaining_field)
+        pipeline.decr(texts_remaining_field)
         pipeline.setbit(text_bits_field, page_number, 1)
-        pipeline.execute()
+        texts_remaining = pipeline.execute()[0]
 
         # Check if finished
         if texts_remaining == 0:
