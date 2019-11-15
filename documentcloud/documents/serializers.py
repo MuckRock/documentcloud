@@ -19,7 +19,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.environment.environment import storage
+from documentcloud.environment.environment import storage, RedisFields
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
@@ -157,23 +157,23 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_texts_remaining(self, obj):
         """Get the texts remaining from the processing redis instance"""
-        texts_remaining = self._get_redis(obj, "text")
+        texts_remaining = self._get_redis(RedisFields.texts_remaining(obj.pk))
         if texts_remaining is None:
             return None
         return int(texts_remaining)
 
     def get_images_remaining(self, obj):
         """Get the images remaining from the processing redis instance"""
-        images_remaining = self._get_redis(obj, "image")
+        images_remaining = self._get_redis(RedisFields.images_remaining(obj.pk))
         if images_remaining is None:
             return None
         return int(images_remaining)
 
-    def _get_redis(self, obj, key):
+    def _get_redis(self, obj):
         """Get a value from the processing redis instance"""
         processing = caches["processing"]
         redis = processing.client.get_client()
-        return redis.hget(obj.pk, key)
+        return redis.get(obj)
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):

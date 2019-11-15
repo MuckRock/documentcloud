@@ -44,6 +44,36 @@ def get_pubsub_data(data):
         return json.loads(base64.b64decode(data["data"]).decode("utf-8"))
 
 
+class RedisFields:
+    @staticmethod
+    def images_remaining(doc_id):
+        return f"{doc_id}:image"
+
+    @staticmethod
+    def texts_remaining(doc_id):
+        return f"{doc_id}:text"
+
+    @staticmethod
+    def page_count(doc_id):
+        return f"{doc_id}:pages"
+
+    @staticmethod
+    def dimensions(doc_id):
+        return f"{doc_id}:dimensions"
+
+    @staticmethod
+    def page_dimension(doc_id, page_dimension):
+        return f"{doc_id}:dim{page_dimension}"
+
+    @staticmethod
+    def image_bits(doc_id):
+        return f"{doc_id}:imageBits"
+
+    @staticmethod
+    def text_bits(doc_id):
+        return f"{doc_id}:textBits"
+
+
 class AwsPubsub:
     def __init__(self):
         import boto3

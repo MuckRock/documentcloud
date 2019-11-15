@@ -18,7 +18,13 @@ env = environ.Env()
 if env.bool("SERVERLESS"):
     # Load directly as a package to be compatible with cloud functions
     from pdfium import StorageHandler, Workspace
-    from environment import publisher, storage, get_http_data, get_pubsub_data
+    from environment import (
+        publisher,
+        storage,
+        get_http_data,
+        get_pubsub_data,
+        RedisFields,
+    )
 else:
     # Load from Django imports if in a Django context
     from documentcloud.documents.processing.info_and_image.pdfium import (
@@ -30,6 +36,7 @@ else:
         storage,
         get_http_data,
         get_pubsub_data,
+        RedisFields,
     )
 
 DOCUMENT_SUFFIX = ".pdf"
@@ -162,12 +169,12 @@ def process_pdf_internal(data, _context=None):
     doc_id = get_id(path)
 
     pipeline = REDIS.pipeline()
-    pipeline.hset(doc_id, "image", page_count)
-    pipeline.hset(doc_id, "text", page_count)
+    pipeline.set(RedisFields.images_remaining(doc_id), page_count)
+    pipeline.set(RedisFields.texts_remaining(doc_id), page_count)
     # Set Redis bit arrays flooded to 0 to track each page
     # TODO(freedmand): Flood bits to be resilient for retries (or not, if we want to save some of the work)
-    pipeline.setbit(f"{doc_id}-image", page_count - 1, 0)
-    pipeline.setbit(f"{doc_id}-text", page_count - 1, 0)
+    pipeline.setbit(RedisFields.image_bits(doc_id), page_count - 1, 0)
+    pipeline.setbit(RedisFields.text_bits(doc_id), page_count - 1, 0)
     pipeline.execute()
 
     # Send update
@@ -254,21 +261,22 @@ def extract_image(data, _context=None):
         cached = pickle.load(zip_file)
 
     doc_id = get_id(path)
-    redis_images_key = f"{doc_id}-image"
+    images_remaining_field = RedisFields.images_remaining(doc_id)
+    image_bits_field = RedisFields.image_bits(doc_id)
     with Workspace() as workspace, StorageHandler(
         storage, path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            if REDIS.getbit(redis_images_key, page_number) == 0:
+            if REDIS.getbit(image_bits_field, page_number) == 0:
                 # Extract the image.
                 large_image_path = extract_single_page(
                     data["path"], path, doc, page_number
                 )
                 # Decrement pages remaining and set the bit for the page off atomically
                 pipeline = REDIS.pipeline()
-                images_remaining = pipeline.hincrby(doc_id, "image", -1)
-                pipeline.setbit(redis_images_key, page_number, 1)
+                images_remaining = pipeline.decr(images_remaining_field)
+                pipeline.setbit(image_bits_field, page_number, 1)
                 pipeline.execute()
 
             # Prepare the image to be OCRd.
