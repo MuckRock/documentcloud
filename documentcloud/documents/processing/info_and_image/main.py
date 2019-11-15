@@ -140,6 +140,7 @@ def initialize_redis_page_data(doc_id, page_count):
         pipeline.delete(dimensions_field)
 
     # Ensure atomicity while getting a value with the transaction wrapper around WATCH
+    # See https://pypi.org/project/redis/#pipelines for details
     REDIS.transaction(dimensions_field_update, dimensions_field)
 
 
@@ -175,6 +176,7 @@ def get_redis_pagespec(doc_id):
     pipeline = REDIS.pipeline()
 
     # We cannot use the convenience transacation wrapper since values we watch are dynamic
+    # See https://pypi.org/project/redis/#pipelines for details
     while True:
         try:
             # Start collecting page specs (resets if there's a watch error)
