@@ -175,12 +175,15 @@ def process_pdf_internal(data, _context=None):
 
     # Store the page count in redis
     doc_id = get_id(path)
-    REDIS.hset(doc_id, "image", page_count)
-    REDIS.hset(doc_id, "text", page_count)
+
+    pipeline = REDIS.pipeline()
+    pipeline.hset(doc_id, "image", page_count)
+    pipeline.hset(doc_id, "text", page_count)
     # Set Redis bit arrays flooded to 0 to track each page
     # TODO(freedmand): Flood bits to be resilient for retries (or not, if we want to save some of the work)
-    REDIS.setbit(f"{doc_id}-image", page_count - 1, 0)
-    REDIS.setbit(f"{doc_id}-text", page_count - 1, 0)
+    pipeline.setbit(f"{doc_id}-image", page_count - 1, 0)
+    pipeline.setbit(f"{doc_id}-text", page_count - 1, 0)
+    pipeline.execute()
 
     print("SET REDIS VALUES")
 
