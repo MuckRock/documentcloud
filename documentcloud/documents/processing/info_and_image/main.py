@@ -1,4 +1,5 @@
 # Standard Library
+import collections
 import gzip
 import json
 import os
@@ -10,7 +11,7 @@ import environ
 import furl
 import redis
 import requests
-from listcrunch import crunch
+from listcrunch import crunch_collection
 from PIL import Image
 
 env = environ.Env()
@@ -18,7 +19,13 @@ env = environ.Env()
 if env.bool("SERVERLESS"):
     # Load directly as a package to be compatible with cloud functions
     from pdfium import StorageHandler, Workspace
-    from environment import publisher, storage, get_http_data, get_pubsub_data
+    from environment import (
+        publisher,
+        storage,
+        get_http_data,
+        get_pubsub_data,
+        RedisFields,
+    )
 else:
     # Load from Django imports if in a Django context
     from documentcloud.documents.processing.info_and_image.pdfium import (
@@ -30,6 +37,7 @@ else:
         storage,
         get_http_data,
         get_pubsub_data,
+        RedisFields,
     )
 
 DOCUMENT_SUFFIX = ".pdf"
@@ -55,7 +63,6 @@ IMAGE_WIDTHS = [
     )
 ]  # width of images to OCR
 
-
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
@@ -64,12 +71,14 @@ REDIS = redis.Redis(
 DOCUMENT_BUCKET = env.str("DOCUMENT_BUCKET", default="")
 
 # Topic names for the messaging queue
+pdf_process_topic = publisher.topic_path(
+    "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
+)
 image_extract_topic = publisher.topic_path(
-    "documentcloud",
-    env.str("IMAGE_EXTRACT_TOPIC", default="page-image-ready-for-extraction"),
+    "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
 ocr_topic = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
 
 
@@ -100,7 +109,42 @@ def get_id(pdf_path):
     return pdf_path.split("/")[-2]
 
 
-def write_cache_and_pagesizes(path):
+def initialize_redis_page_data(doc_id, page_count):
+    dimensions_field = RedisFields.dimensions(doc_id)
+    image_bits_field = RedisFields.image_bits(doc_id)
+    text_bits_field = RedisFields.text_bits(doc_id)
+
+    def dimensions_field_update(pipeline):
+        existing_dimensions = pipeline.get(dimensions_field)
+
+        # Put the pipeline back in multi mode
+        pipeline.multi()
+
+        # Set the page count field
+        pipeline.set(RedisFields.page_count(doc_id), page_count)
+
+        # Set pages and texts remaining to page count
+        pipeline.set(RedisFields.images_remaining(doc_id), page_count)
+        pipeline.set(RedisFields.texts_remaining(doc_id), page_count)
+
+        # Set Redis bit arrays flooded to 0 to track each page
+        pipeline.delete(image_bits_field)
+        pipeline.delete(text_bits_field)
+        pipeline.setbit(image_bits_field, page_count - 1, 0)
+        pipeline.setbit(text_bits_field, page_count - 1, 0)
+
+        # Remove any existing dimensions that may be lingering
+        if existing_dimensions is not None:
+            for dimension in existing_dimensions:
+                pipeline.delete(RedisFields.page_dimension(doc_id, dimension))
+        pipeline.delete(dimensions_field)
+
+    # Ensure atomicity while getting a value with the transaction wrapper around WATCH
+    # See https://pypi.org/project/redis/#pipelines for details
+    REDIS.transaction(dimensions_field_update, dimensions_field)
+
+
+def extract_pagecount(path):
     """Parse a PDF and write files to cache PDF information and dimensions.
 
     Returns:
@@ -112,15 +156,6 @@ def write_cache_and_pagesizes(path):
         storage, path, record=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
-        page_sizes = []
-        pagespecs = []
-        doc.load_page(page_count - 1)
-        for i in range(page_count):
-            page = doc.load_page(i)
-            page_sizes.append(page.height / page.width)
-            pagespecs.append(f"{page.width}x{page.height}")
-        with storage.open(get_pagesize_path(path), "w") as pagesize_file:
-            pagesize_file.write(crunch(pagespecs))
         cached = pdf_file.cache
 
     # Create an index file that stores the memory locations of each page of the
@@ -132,35 +167,99 @@ def write_cache_and_pagesizes(path):
         pickle.dump(cached, zip_file)
 
     # Pass the page_count back to the caller.
-    return page_count, page_sizes
+    return page_count
+
+
+def get_redis_pagespec(doc_id):
+    dimensions_field = RedisFields.dimensions(doc_id)
+
+    pipeline = REDIS.pipeline()
+
+    # We cannot use the convenience transacation wrapper since values we watch are dynamic
+    # See https://pypi.org/project/redis/#pipelines for details
+    while True:
+        try:
+            # Start collecting page specs (resets if there's a watch error)
+            pagespec = collections.defaultdict(list)
+
+            pipeline.watch(dimensions_field)
+            # Restart if the dimensions are altered during runtime
+            page_dimensions = pipeline.smembers(dimensions_field)
+            if page_dimensions is None:
+                # If there are no page dimensions, exit with empty pagespec
+                pipeline.execute()
+                break
+
+            for page_dimension in page_dimensions:
+                page_dimension = page_dimension.decode("utf8")
+                page_dimension_field = RedisFields.page_dimension(
+                    doc_id, page_dimension
+                )
+                # Restart if any page dimension is altered during runtime
+                pipeline.watch(page_dimension_field)
+                page_numbers = pipeline.smembers(page_dimension_field)
+                if page_numbers is not None:
+                    for page_number in page_numbers:
+                        page_number = int(page_number.decode("utf8"))
+                        # Set the pagespec for each page number and dimension
+                        pagespec[page_dimension].append(page_number)
+
+            # Run the pipeline
+            pipeline.execute()
+            break
+        except WatchError:
+            continue
+        finally:
+            pipeline.reset()
+
+    return pagespec
+
+
+def write_pagespec(path, doc_id):
+    pagespec = get_redis_pagespec(doc_id)
+    crunched_pagespec = crunch_collection(pagespec)
+    with storage.open(get_pagesize_path(path), "w") as pagesize_file:
+        pagesize_file.write(crunched_pagespec)
+
+    # Send pagespec update
+    requests.patch(
+        urljoin(env.str("API_CALLBACK"), f"documents/{doc_id}/"),
+        json={"page_spec": crunched_pagespec},
+        headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
+    )
 
 
 def process_pdf(request, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_http_data(request)
 
+    # Launch PDF processing via pubsub
+    publisher.publish(pdf_process_topic, data=json.dumps(data).encode("utf8"))
+
+    return "Ok"
+
+
+def process_pdf_internal(data, _context=None):
+    """Process a PDF file's information and launch extraction tasks."""
+    data = get_pubsub_data(data)
+
     # Ensure a PDF file
     path = os.path.join(DOCUMENT_BUCKET, data["path"])
     if not path.endswith(DOCUMENT_SUFFIX):
         return "not a pdf"
 
-    page_count, page_sizes = write_cache_and_pagesizes(path)
+    page_count = extract_pagecount(path)
 
     # Store the page count in redis
     doc_id = get_id(path)
-    REDIS.hset(doc_id, "image", page_count)
-    REDIS.hset(doc_id, "text", page_count)
-    # Set Redis bit arrays flooded to 0 to track each page
-    # TODO(freedmand): Flood bits to be resilient for retries (or not, if we want to save some of the work)
-    REDIS.setbit(f"{doc_id}-image", page_count - 1, 0)
-    REDIS.setbit(f"{doc_id}-text", page_count - 1, 0)
 
-    # Send update
-    page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
+    initialize_redis_page_data(doc_id, page_count)
+
+    initialize_redis_page_data(doc_id, page_count)
 
     requests.patch(
         urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
-        json={"page_count": page_count, "page_spec": page_spec},
+        json={"page_count": page_count},
         headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
 
@@ -203,7 +302,11 @@ def extract_single_page(original_path, path, doc, page_number):
 
         # TODO: trigger update when thumbnail image is parsed
 
-    return get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0])
+    return (
+        get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0]),
+        page.width,
+        page.height,
+    )
 
 
 def extract_image(data, _context=None):
@@ -239,22 +342,35 @@ def extract_image(data, _context=None):
         cached = pickle.load(zip_file)
 
     doc_id = get_id(path)
-    redis_images_key = f"{doc_id}-image"
+    images_remaining_field = RedisFields.images_remaining(doc_id)
+    image_bits_field = RedisFields.image_bits(doc_id)
     with Workspace() as workspace, StorageHandler(
         storage, path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            if REDIS.getbit(redis_images_key, page_number) == 0:
+            if REDIS.getbit(image_bits_field, page_number) == 0:
                 # Extract the image.
-                large_image_path = extract_single_page(
+                large_image_path, width, height = extract_single_page(
                     data["path"], path, doc, page_number
                 )
-                # Decrement pages remaining and set the bit for the page off atomically
+                page_dimension = f"{width}x{height}"
+
+                # Update Redis properties atomically
                 pipeline = REDIS.pipeline()
-                images_remaining = pipeline.hincrby(doc_id, "image", -1)
-                pipeline.setbit(redis_images_key, page_number, 1)
-                pipeline.execute()
+
+                # Update the page dimensions in Redis
+                pipeline.sadd(RedisFields.dimensions(doc_id), page_dimension)
+                pipeline.sadd(
+                    RedisFields.page_dimension(doc_id, page_dimension), page_number
+                )
+                # Decrement pages remaining and set the bit for the page off in Redis
+                pipeline.decr(images_remaining_field)
+                pipeline.setbit(image_bits_field, page_number, 1)
+                images_remaining = pipeline.execute()[2]
+
+                if images_remaining == 0:
+                    write_pagespec(path, doc_id)
 
             # Prepare the image to be OCRd.
             ocr_queue.append([page_number, large_image_path])
