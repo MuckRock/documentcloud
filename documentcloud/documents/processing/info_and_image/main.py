@@ -63,7 +63,6 @@ IMAGE_WIDTHS = [
     )
 ]  # width of images to OCR
 
-
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS = redis.Redis(
@@ -157,15 +156,6 @@ def extract_pagecount(path):
         storage, path, record=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
-        page_sizes = []
-        pagespecs = []
-        doc.load_page(page_count - 1)
-        for i in range(page_count):
-            page = doc.load_page(i)
-            page_sizes.append(page.height / page.width)
-            pagespecs.append(f"{page.width}x{page.height}")
-        with storage.open(get_pagesize_path(path), "w") as pagesize_file:
-            pagesize_file.write(crunch(pagespecs))
         cached = pdf_file.cache
 
     # Create an index file that stores the memory locations of each page of the
@@ -265,8 +255,7 @@ def process_pdf_internal(data, _context=None):
 
     initialize_redis_page_data(doc_id, page_count)
 
-    # Send update
-    page_spec = crunch(page_sizes)  # Compress the spec of each page's dimensions
+    initialize_redis_page_data(doc_id, page_count)
 
     requests.patch(
         urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
