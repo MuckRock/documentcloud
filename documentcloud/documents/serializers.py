@@ -159,14 +159,14 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         path = f"{settings.DOCUMENT_BUCKET}/documents/{obj.pk}/{obj.slug}.pdf"
         return storage.presign_url(path)
 
-    def get_texts_remaining(self, obj):
-        """Get the texts remaining from the processing redis instance"""
+    def get_images_remaining(self, obj):
+        """Get the images remaining from the processing redis instance"""
         if self._redis_data is None:
             self._get_redis(obj)
         return self._redis_data[0]
 
-    def get_images_remaining(self, obj):
-        """Get the images remaining from the processing redis instance"""
+    def get_texts_remaining(self, obj):
+        """Get the texts remaining from the processing redis instance"""
         if self._redis_data is None:
             self._get_redis(obj)
         return self._redis_data[1]
@@ -176,7 +176,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         redis = get_redis_connection("processing")
         try:
             with redis.pipeline() as pipeline:
-                pipeline.hget(obj.pk, "text").hget(obj.pk, "image")
+                pipeline.get(RedisFields.images_remaining(obj.pk)).get(
+                    RedisFields.texts_remaining(obj.pk)
+                )
                 self._redis_data = pipeline.execute()
         except RedisError:
             self._redis_data = (None, None)
