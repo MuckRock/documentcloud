@@ -19,7 +19,7 @@ env = environ.Env()
 if env.bool("SERVERLESS"):
     # Load directly as a package to be compatible with cloud functions
     from tess import Tesseract
-    from environment import storage, publisher, get_pubsub_data
+    from environment import storage, publisher, get_pubsub_data, RedisFields
 else:
     # Load from Django imports if in a Django context
     from documentcloud.documents.processing.ocr.tess import Tesseract
@@ -27,6 +27,7 @@ else:
         storage,
         publisher,
         get_pubsub_data,
+        RedisFields,
     )
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
@@ -116,10 +117,12 @@ def run_tesseract(data, _context=None):
     path = os.path.join(DOCUMENT_BUCKET, paths_and_numbers[0][1])
     page_number = paths_and_numbers[0][0]
     doc_id = get_id(path)
-    redis_texts_key = f"{doc_id}-text"
+
+    texts_remaining_field = RedisFields.texts_remaining(doc_id)
+    text_bits_field = RedisFields.text_bits(doc_id)
 
     # Only OCR if the page has yet to be OCRd
-    if REDIS.getbit(redis_texts_key, page_number) == 0:
+    if REDIS.getbit(text_bits_field, page_number) == 0:
         ext = "." + path.split(".")[-1]
         assert len(ext) > 1, "Needs an extension"
         # Derive a simple filename for OCRd text
@@ -140,8 +143,8 @@ def run_tesseract(data, _context=None):
 
         # Decrement texts remaining and set the bit for the page off atomically
         pipeline = REDIS.pipeline()
-        texts_remaining = pipeline.hincrby(doc_id, "text", -1)
-        pipeline.setbit(redis_texts_key, page_number, 1)
+        texts_remaining = pipeline.decr(texts_remaining_field)
+        pipeline.setbit(text_bits_field, page_number, 1)
         pipeline.execute()
 
         # Check if finished
