@@ -15,7 +15,7 @@ from cpuprofile import profile_cpu
 from PIL import Image
 
 # Local
-from .environment import RedisFields, get_pubsub_data, publisher, storage
+from .environment import get_pubsub_data, publisher, redis_fields, storage
 from .tess import Tesseract
 
 env = environ.Env()
@@ -108,8 +108,8 @@ def run_tesseract(data, _context=None):
     page_number = paths_and_numbers[0][0]
     doc_id = get_id(path)
 
-    texts_remaining_field = RedisFields.texts_remaining(doc_id)
-    text_bits_field = RedisFields.text_bits(doc_id)
+    texts_remaining_field = redis_fields.texts_remaining(doc_id)
+    text_bits_field = redis_fields.text_bits(doc_id)
 
     # Only OCR if the page has yet to be OCRd
     if REDIS.getbit(text_bits_field, page_number) == 0:
