@@ -1,6 +1,3 @@
-# Standard Library
-from uuid import uuid4
-
 # Third Party
 import factory
 

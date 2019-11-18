@@ -7,7 +7,7 @@ from django.db import transaction
 from requests.exceptions import HTTPError
 
 # DocumentCloud
-from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
 from documentcloud.environment import httpsub, storage
 

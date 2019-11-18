@@ -10,7 +10,7 @@ import pytest
 # DocumentCloud
 from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.organizations.tests.factories import OrganizationFactory
-from documentcloud.projects.models import Collaboration, Project, ProjectMembership
+from documentcloud.projects.models import Project
 from documentcloud.projects.serializers import (
     CollaborationSerializer,
     ProjectMembershipSerializer,
