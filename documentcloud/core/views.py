@@ -5,7 +5,7 @@ from django.views.generic import View
 
 # DocumentCloud
 from documentcloud.documents.models import Document
-from documentcloud.environment.environment import storage
+from documentcloud.environment import storage
 
 
 class FileServer(View):
