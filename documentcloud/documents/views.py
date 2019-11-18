@@ -92,8 +92,14 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         if not storage.exists(document.pdf_path):
             return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
 
-        document.status = Status.pending
-        document.save()
+        was_public = document.public
+        with transaction.atomic():
+            document.status = Status.pending
+            document.save()
+            if was_public:
+                # if document is public, mark the files as private while it is being
+                # processed
+                transaction.on_commit(lambda: update_access.delay(document.pk))
         process.delay(document.pk, document.pdf_path)
         return Response(status=status.HTTP_200_OK)
 
@@ -101,10 +107,12 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         delete_document.delay(instance.path)
         super().perform_destroy(instance)
 
+    @transaction.atomic
     def perform_update(self, serializer):
+        was_public = serializer.instance.public
         super().perform_update(serializer)
-        # XXX only update access if needed
-        update_access.delay(serializer.instance.pk)
+        if was_public != serializer.instance.public:
+            transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(
