@@ -1,5 +1,10 @@
 """
-This is only used during tests
+This is an incomplete implementation of the Storage abstraction
+for the local filesystem.  This is only used during tests and implements
+what is needed for the tests which use it.
+
+A more complete abstraction is possible, but deemed unecessary as using MinIO
+is the preferred development environment
 """
 # Django
 from django.conf import settings

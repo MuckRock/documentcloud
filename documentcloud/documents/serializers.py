@@ -20,7 +20,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.environment.environment import storage, RedisFields
+from documentcloud.environment import RedisFields, storage
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 

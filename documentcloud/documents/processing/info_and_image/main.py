@@ -15,7 +15,7 @@ from listcrunch import crunch_collection
 from PIL import Image
 
 # Local
-from .environment import get_http_data, get_pubsub_data, publisher, storage
+from .environment import RedisFields, get_http_data, get_pubsub_data, publisher, storage
 from .pdfium import StorageHandler, Workspace
 
 env = environ.Env()
