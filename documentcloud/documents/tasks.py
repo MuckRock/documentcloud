@@ -11,7 +11,7 @@ from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.environment.environment import httpsub, storage
 
-if settings.ENVIRONMENT == "local":
+if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
     from documentcloud.documents.local_tasks import (
         process_file,
@@ -68,6 +68,6 @@ def delete_document(path):
 @task
 def update_access(document_pk):
     document = Document.objects.get(pk=document_pk)
-    access = "public" if document.access == Access.public else "private"
+    access = "public" if document.public else "private"
     storage.set_access(document.pdf_path, access)
     storage.set_access(document.pages_path, access)
