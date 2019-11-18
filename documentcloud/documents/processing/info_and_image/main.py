@@ -15,7 +15,7 @@ from listcrunch import crunch_collection
 from PIL import Image
 
 # Local
-from .environment import get_http_data, get_pubsub_data, publisher, storage
+from .environment import RedisFields, get_http_data, get_pubsub_data, publisher, storage
 from .pdfium import StorageHandler, Workspace
 
 env = environ.Env()
@@ -50,7 +50,7 @@ REDIS = redis.Redis(
 )
 
 # Topic names for the messaging queue
-pdf_process_topic = publisher.topic_path(
+PDF_PROCESS_TOPIC = publisher.topic_path(
     "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
 )
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
@@ -214,7 +214,7 @@ def process_pdf(request, _context=None):
     data = get_http_data(request)
 
     # Launch PDF processing via pubsub
-    publisher.publish(pdf_process_topic, data=json.dumps(data).encode("utf8"))
+    publisher.publish(PDF_PROCESS_TOPIC, data=json.dumps(data).encode("utf8"))
 
     return "Ok"
 

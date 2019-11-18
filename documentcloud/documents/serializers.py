@@ -1,5 +1,4 @@
 # Django
-from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
@@ -20,7 +19,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.environment.environment import storage, RedisFields
+from documentcloud.environment import RedisFields, storage
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 

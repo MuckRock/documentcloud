@@ -6,6 +6,8 @@ env = environ.Env()
 # Whether to throw an error if a URL is requested that is not registered.
 ERROR_IF_NO_URL = True
 
+# XXX return mocked response object so code can check response codes?
+
 
 class HTTPSub:
     def __init__(self):
