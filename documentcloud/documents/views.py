@@ -44,7 +44,7 @@ from documentcloud.documents.tasks import (
     process,
     update_access,
 )
-from documentcloud.environment.environment import storage
+from documentcloud.environment import storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
