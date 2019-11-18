@@ -1,7 +1,7 @@
 """
 Environment abstraction
 
-This abstracts file storage and serverless function trigering, to allow our code
+This abstracts file storage and serverless function triggering, to allow our code
 to work both locally and in different cloud environments.  This code will be run from
 serverless functions not within a Django context, so no Django code is imported for
 non-local environments.  We also keep all non-local code in this single file so we do
