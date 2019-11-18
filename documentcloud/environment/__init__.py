@@ -1,7 +1,7 @@
 """
 Environment abstraction
 
-This abstracts file storage and serverless function trigering, to allow our code
+This abstracts file storage and serverless function triggering, to allow our code
 to work both locally and in different cloud environments.  This code will be run from
 serverless functions not within a Django context, so no Django code is imported for
 non-local environments.  We also keep all non-local code in this single file so we do
@@ -17,36 +17,6 @@ import environ
 
 env = environ.Env()
 environment = env.str("ENVIRONMENT")
-
-
-class RedisFields:
-    @staticmethod
-    def images_remaining(doc_id):
-        return f"{doc_id}:image"
-
-    @staticmethod
-    def texts_remaining(doc_id):
-        return f"{doc_id}:text"
-
-    @staticmethod
-    def page_count(doc_id):
-        return f"{doc_id}:pages"
-
-    @staticmethod
-    def dimensions(doc_id):
-        return f"{doc_id}:dimensions"
-
-    @staticmethod
-    def page_dimension(doc_id, page_dimension):
-        return f"{doc_id}:dim{page_dimension}"
-
-    @staticmethod
-    def image_bits(doc_id):
-        return f"{doc_id}:imageBits"
-
-    @staticmethod
-    def text_bits(doc_id):
-        return f"{doc_id}:textBits"
 
 
 if environment == "local-minio":

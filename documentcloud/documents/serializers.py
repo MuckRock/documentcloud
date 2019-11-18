@@ -19,7 +19,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.environment import RedisFields, storage
+from documentcloud.environment import redis_fields, storage
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
@@ -175,9 +175,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         redis = get_redis_connection("processing")
         try:
             with redis.pipeline() as pipeline:
-                pipeline.get(RedisFields.images_remaining(obj.pk)).get(
-                    RedisFields.texts_remaining(obj.pk)
-                )
+                pipeline.get(redis_fields.images_remaining(obj.pk))
+                pipeline.get(redis_fields.texts_remaining(obj.pk))
                 self._redis_data = pipeline.execute()
         except RedisError:
             self._redis_data = (None, None)
