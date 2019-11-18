@@ -14,6 +14,7 @@ from documentcloud.users.tests.factories import UserFactory
 
 @pytest.mark.django_db()
 def test_document_rules():
+    # pylint: disable=too-many-locals
     anonymous = AnonymousUser()
     owner = UserFactory()
     edit_collaborator = UserFactory()
