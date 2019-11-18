@@ -15,7 +15,13 @@ from listcrunch import crunch_collection
 from PIL import Image
 
 # Local
-from .environment import RedisFields, get_http_data, get_pubsub_data, publisher, storage
+from .environment import (
+    get_http_data,
+    get_pubsub_data,
+    publisher,
+    redis_fields,
+    storage,
+)
 from .pdfium import StorageHandler, Workspace
 
 env = environ.Env()
@@ -90,9 +96,9 @@ def get_id(pdf_path):
 
 
 def initialize_redis_page_data(doc_id, page_count):
-    dimensions_field = RedisFields.dimensions(doc_id)
-    image_bits_field = RedisFields.image_bits(doc_id)
-    text_bits_field = RedisFields.text_bits(doc_id)
+    dimensions_field = redis_fields.dimensions(doc_id)
+    image_bits_field = redis_fields.image_bits(doc_id)
+    text_bits_field = redis_fields.text_bits(doc_id)
 
     def dimensions_field_update(pipeline):
         existing_dimensions = pipeline.get(dimensions_field)
@@ -101,11 +107,11 @@ def initialize_redis_page_data(doc_id, page_count):
         pipeline.multi()
 
         # Set the page count field
-        pipeline.set(RedisFields.page_count(doc_id), page_count)
+        pipeline.set(redis_fields.page_count(doc_id), page_count)
 
         # Set pages and texts remaining to page count
-        pipeline.set(RedisFields.images_remaining(doc_id), page_count)
-        pipeline.set(RedisFields.texts_remaining(doc_id), page_count)
+        pipeline.set(redis_fields.images_remaining(doc_id), page_count)
+        pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
 
         # Set Redis bit arrays flooded to 0 to track each page
         pipeline.delete(image_bits_field)
@@ -116,7 +122,7 @@ def initialize_redis_page_data(doc_id, page_count):
         # Remove any existing dimensions that may be lingering
         if existing_dimensions is not None:
             for dimension in existing_dimensions:
-                pipeline.delete(RedisFields.page_dimension(doc_id, dimension))
+                pipeline.delete(redis_fields.page_dimension(doc_id, dimension))
         pipeline.delete(dimensions_field)
 
     # Ensure atomicity while getting a value with the transaction wrapper around WATCH
@@ -151,7 +157,7 @@ def extract_pagecount(path):
 
 
 def get_redis_pagespec(doc_id):
-    dimensions_field = RedisFields.dimensions(doc_id)
+    dimensions_field = redis_fields.dimensions(doc_id)
 
     pipeline = REDIS.pipeline()
 
@@ -172,7 +178,7 @@ def get_redis_pagespec(doc_id):
 
             for page_dimension in page_dimensions:
                 page_dimension = page_dimension.decode("utf8")
-                page_dimension_field = RedisFields.page_dimension(
+                page_dimension_field = redis_fields.page_dimension(
                     doc_id, page_dimension
                 )
                 # Restart if any page dimension is altered during runtime
@@ -187,7 +193,7 @@ def get_redis_pagespec(doc_id):
             # Run the pipeline
             pipeline.execute()
             break
-        except WatchError:
+        except redis.exceptions.WatchError:
             continue
         finally:
             pipeline.reset()
@@ -322,8 +328,8 @@ def extract_image(data, _context=None):
         cached = pickle.load(zip_file)
 
     doc_id = get_id(path)
-    images_remaining_field = RedisFields.images_remaining(doc_id)
-    image_bits_field = RedisFields.image_bits(doc_id)
+    images_remaining_field = redis_fields.images_remaining(doc_id)
+    image_bits_field = redis_fields.image_bits(doc_id)
     with Workspace() as workspace, StorageHandler(
         storage, path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
@@ -340,9 +346,9 @@ def extract_image(data, _context=None):
                 pipeline = REDIS.pipeline()
 
                 # Update the page dimensions in Redis
-                pipeline.sadd(RedisFields.dimensions(doc_id), page_dimension)
+                pipeline.sadd(redis_fields.dimensions(doc_id), page_dimension)
                 pipeline.sadd(
-                    RedisFields.page_dimension(doc_id, page_dimension), page_number
+                    redis_fields.page_dimension(doc_id, page_dimension), page_number
                 )
                 # Decrement pages remaining and set the bit for the page off in Redis
                 pipeline.decr(images_remaining_field)
