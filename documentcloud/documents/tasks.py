@@ -26,7 +26,7 @@ def fetch_file_url(file_url, document_pk):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
     try:
-        storage.fetch_url(file_url, document.pdf_path)
+        storage.fetch_url(file_url, document.doc_path)
     except HTTPError as exc:
         if (
             exc.response.status_code >= 500
@@ -48,7 +48,7 @@ def fetch_file_url(file_url, document_pk):
         document.save()
         httpsub.post(
             settings.DOC_PROCESSING_URL,
-            json={"document": document_pk, "path": document.pdf_path},
+            json={"document": document_pk, "path": document.doc_path},
         )
 
 
@@ -69,5 +69,5 @@ def delete_document(path):
 def update_access(document_pk):
     document = Document.objects.get(pk=document_pk)
     access = "public" if document.public else "private"
-    storage.set_access(document.pdf_path, access)
+    storage.set_access(document.doc_path, access)
     storage.set_access(document.pages_path, access)

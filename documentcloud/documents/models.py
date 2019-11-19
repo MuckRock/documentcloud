@@ -12,6 +12,7 @@ from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
+from documentcloud.environment import path
 
 
 class Document(models.Model):
@@ -113,16 +114,17 @@ class Document(models.Model):
     @property
     def path(self):
         """The path where this documents files are located"""
-        return f"{settings.DOCUMENT_BUCKET}/documents/{self.pk}/"
+        return path.path(self.pk)
 
     @property
-    def pdf_path(self):
-        """The path to the PDF file"""
-        return f"{self.path}{self.slug}.pdf"
+    def doc_path(self):
+        """The path to the document file"""
+        return path.doc_path(self.pk, self.slug)
 
     @property
     def pages_path(self):
-        return f"{self.path}pages/"
+        """The path to the pages directory"""
+        return path.pages_path(self.pk)
 
     @property
     def public(self):
