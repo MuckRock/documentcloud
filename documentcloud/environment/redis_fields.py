@@ -1,3 +1,8 @@
+"""
+Helper functions to standardize the name of the fields used to store data in Redis
+"""
+
+
 def images_remaining(doc_id):
     return f"{doc_id}:image"
 
