@@ -16,7 +16,7 @@ from PIL import Image
 
 # Local
 from .common import path, redis_fields
-from .common.environment import get_pubsub_data, publisher, storage
+from .common.environment import get_pubsub_data, encode_pubsub_data, publisher, storage
 from .tess import Tesseract
 
 env = environ.Env()
@@ -84,9 +84,7 @@ def run_tesseract(data, _context=None):
             # Resubmit to queue
             publisher.publish(
                 OCR_TOPIC,
-                data=json.dumps({"paths_and_numbers": paths_and_numbers}).encode(
-                    "utf8"
-                ),
+                data=encode_pubsub_data({"paths_and_numbers": paths_and_numbers}),
             )
             logging.warning("Too slow (speed: %f)", speed)
             return "Too slow, retrying"
@@ -142,9 +140,7 @@ def run_tesseract(data, _context=None):
         # Launch next iteration
         publisher.publish(
             OCR_TOPIC,
-            data=json.dumps({"paths_and_numbers": next_paths_and_numbers}).encode(
-                "utf8"
-            ),
+            data=encode_pubsub_data({"paths_and_numbers": next_paths_and_numbers}),
         )
 
     result["doc_id"] = doc_id
