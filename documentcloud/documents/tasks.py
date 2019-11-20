@@ -48,15 +48,15 @@ def fetch_file_url(file_url, document_pk):
         document.save()
         httpsub.post(
             settings.DOC_PROCESSING_URL,
-            json={"document": document_pk, "path": document.doc_path},
+            json={"doc_id": document_pk, "slug": document.slug},
         )
 
 
 @task
-def process(document_pk, path):
+def process(document_pk, slug):
     """Start the processing"""
     httpsub.post(
-        settings.DOC_PROCESSING_URL, json={"document": document_pk, "path": path}
+        settings.DOC_PROCESSING_URL, json={"doc_id": document_pk, "slug": slug}
     )
 
 

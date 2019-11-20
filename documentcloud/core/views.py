@@ -1,5 +1,5 @@
 # Django
-from django.http.response import HttpResponseRedirect
+from django.http.response import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import View
 
@@ -16,4 +16,8 @@ class FileServer(View):
         url = document.path + kwargs["path"]
         if not document.public:
             url = storage.presign_url(url, "get_object")
+        if request.is_ajax():
+            return JsonResponse({"location": url})
+        else:
+            return HttpResponseRedirect(url)
         return HttpResponseRedirect(url)
