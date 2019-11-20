@@ -9,7 +9,7 @@ from requests.exceptions import HTTPError
 # DocumentCloud
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
-from documentcloud.environment import httpsub, storage
+from documentcloud.common.environment import httpsub, storage
 
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
