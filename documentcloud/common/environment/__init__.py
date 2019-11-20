@@ -23,31 +23,31 @@ if environment == "local-minio":
     from .aws.storage import minio_storage as storage
     from .local.pubsub import publisher
     from .local.httpsub import httpsub
-    from .local.data import get_http_data, get_pubsub_data
+    from .local.data import get_http_data, get_pubsub_data, encode_pubsub_data
 
 elif environment == "local-s3":
     from .aws.storage import storage
     from .local.pubsub import publisher
     from .local.httpsub import httpsub
-    from .local.data import get_http_data, get_pubsub_data
+    from .local.data import get_http_data, get_pubsub_data, encode_pubsub_data
 
 elif environment == "local":
     from .local.storage import storage
     from .local.pubsub import publisher
     from .local.httpsub import httpsub
-    from .local.data import get_http_data, get_pubsub_data
+    from .local.data import get_http_data, get_pubsub_data, encode_pubsub_data
 
 elif environment == "aws":
     from .aws.storage import storage
     from .aws.pubsub import publisher
     from .aws.httpsub import httpsub
-    from .aws.data import get_http_data, get_pubsub_data
+    from .aws.data import get_http_data, get_pubsub_data, encode_pubsub_data
 
 elif environment == "gcp":
     from .gcp.storage import storage
     from .gcp.pubsub import publisher
     from .gcp.httpsub import httpsub
-    from .gcp.data import get_http_data, get_pubsub_data
+    from .gcp.data import get_http_data, get_pubsub_data, encode_pubsub_data
 
     raise RuntimeError("GCP environment is not currently supported")
 else:

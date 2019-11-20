@@ -16,7 +16,13 @@ from PIL import Image
 
 # Local
 from .common import path, redis_fields
-from .common.environment import get_http_data, get_pubsub_data, publisher, storage
+from .common.environment import (
+    get_http_data,
+    get_pubsub_data,
+    encode_pubsub_data,
+    publisher,
+    storage,
+)
 from .pdfium import StorageHandler, Workspace
 
 env = environ.Env()
@@ -188,7 +194,7 @@ def process_pdf(request, _context=None):
     data = get_http_data(request)
 
     # Launch PDF processing via pubsub
-    publisher.publish(PDF_PROCESS_TOPIC, data=json.dumps(data).encode("utf8"))
+    publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
 
     return "Ok"
 
@@ -219,9 +225,7 @@ def process_pdf_internal(data, _context=None):
         pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
         publisher.publish(
             IMAGE_EXTRACT_TOPIC,
-            data=json.dumps({"doc_id": doc_id, "slug": slug, "pages": pages}).encode(
-                "utf8"
-            ),
+            data=encode_pubsub_data({"doc_id": doc_id, "slug": slug, "pages": pages}),
         )
 
     return "Ok"
@@ -278,7 +282,7 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            OCR_TOPIC, data=json.dumps({"paths_and_numbers": ocr_queue}).encode("utf8")
+            OCR_TOPIC, data=encode_pubsub_data({"paths_and_numbers": ocr_queue})
         )
 
         ocr_queue.clear()
