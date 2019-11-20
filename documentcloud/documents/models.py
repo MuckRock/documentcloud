@@ -12,7 +12,7 @@ from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
-from documentcloud.environment import path
+from documentcloud.common import path
 
 
 class Document(models.Model):

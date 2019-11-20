@@ -9,6 +9,7 @@ from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
 from documentcloud.core.choices import Language
+from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import (
@@ -19,7 +20,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.environment import redis_fields, storage
+from documentcloud.common import redis_fields
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
