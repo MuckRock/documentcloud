@@ -44,7 +44,7 @@ from documentcloud.documents.tasks import (
     process,
     update_access,
 )
-from documentcloud.environment import storage
+from documentcloud.common.environment import storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -89,7 +89,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
         document = self.get_object()
-        if not storage.exists(document.pdf_path):
+        if not storage.exists(document.doc_path):
             return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
 
         was_public = document.public
@@ -100,7 +100,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 # if document is public, mark the files as private while it is being
                 # processed
                 transaction.on_commit(lambda: update_access.delay(document.pk))
-        process.delay(document.pk, document.pdf_path)
+        process.delay(document.pk, document.slug)
         return Response(status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):

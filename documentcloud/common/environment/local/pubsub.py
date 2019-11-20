@@ -59,8 +59,14 @@ def ocr_page_task(data):
     return ocr_pages.delay(data)
 
 
-publisher.register_internal_callback(("documentcloud", "pdf-process"), process_pdf_task)
 publisher.register_internal_callback(
-    ("documentcloud", "image-extraction"), extract_image_task
+    ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
+    process_pdf_task,
 )
-publisher.register_internal_callback(("documentcloud", "ocr-extraction"), ocr_page_task)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")),
+    extract_image_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")), ocr_page_task
+)

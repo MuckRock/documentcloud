@@ -47,7 +47,7 @@ CONFIG = [
             {
                 "name": "Processing Environment",
                 "envvars": [
-                    ("ENVIRONMENT", "local"),
+                    ("ENVIRONMENT", "local-minio"),
                     ("SERVERLESS", "False"),
                     ("DOC_PROCESSING_URL", "http://process.dev.documentcloud.org"),
                     ("API_CALLBACK", "http://api.dev.documentcloud.org/api/"),
