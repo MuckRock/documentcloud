@@ -15,7 +15,8 @@ from cpuprofile import profile_cpu
 from PIL import Image
 
 # Local
-from .environment import get_pubsub_data, publisher, redis_fields, storage
+from .common import path, redis_fields
+from .common.environment import get_pubsub_data, publisher, storage
 from .tess import Tesseract
 
 env = environ.Env()
@@ -42,19 +43,14 @@ LARGE_IMAGE_SUFFIX = "-large"
 TXT_EXTENSION = ".txt"
 
 
-def get_id(img_path):
-    """Returns the document ID associated with the image path."""
-    return img_path.split("/")[-3]
-
-
-def ocr_page(path):
+def ocr_page(page_path):
     """Internal method to run OCR on a single page.
 
     Returns:
         The page text.
     """
     # Capture the image as raw pixel data
-    with storage.open(path, "rb") as image_file:
+    with storage.open(page_path, "rb") as image_file:
         img = Image.open(image_file).convert("RGB")
     # Resize only if image is too big (OCR computation is slow with large images)
     if img.width > DESIRED_WIDTH:
@@ -104,31 +100,24 @@ def run_tesseract(data, _context=None):
         logging.warning("No paths/numbers")
         return "Ok"
 
-    path = paths_and_numbers[0][1]
-    page_number = paths_and_numbers[0][0]
-    doc_id = get_id(path)
+    doc_id, slug, page_number, image_path = paths_and_numbers[0]
 
     texts_remaining_field = redis_fields.texts_remaining(doc_id)
     text_bits_field = redis_fields.text_bits(doc_id)
 
     # Only OCR if the page has yet to be OCRd
     if REDIS.getbit(text_bits_field, page_number) == 0:
-        ext = "." + path.split(".")[-1]
-        assert len(ext) > 1, "Needs an extension"
-        # Derive a simple filename for OCRd text
-        new_path = ".".join(path.split(".")[:-1])
-        assert new_path.endswith(LARGE_IMAGE_SUFFIX)
-        new_path = new_path[: -len(LARGE_IMAGE_SUFFIX)] + TXT_EXTENSION
+        text_path = path.page_text_path(doc_id, slug, page_number)
 
         # Benchmark OCR speed
         start_time = time.time()
-        text = ocr_page(path)
+        text = ocr_page(image_path)
 
         elapsed_time = time.time() - start_time
         elapsed_times.append(elapsed_time)
 
         # Write the output text
-        with storage.open(new_path, "wb") as text_file:
+        with storage.open(text_path, "wb") as text_file:
             text_file.write(text.encode("utf8"))
 
         # Decrement texts remaining and set the bit for the page off atomically
@@ -140,7 +129,7 @@ def run_tesseract(data, _context=None):
         # Check if finished
         if texts_remaining == 0:
             requests.patch(
-                urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
+                urljoin(env.str("API_CALLBACK"), f"documents/{doc_id}/"),
                 json={"status": "success"},
                 headers={
                     "Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"
@@ -158,7 +147,7 @@ def run_tesseract(data, _context=None):
             ),
         )
 
-    result["path"] = path
+    result["doc_id"] = doc_id
     result["elapsed"] = elapsed_times
     result["status"] = "Ok"
     result["overall_elapsed"] = time.time() - overall_start
