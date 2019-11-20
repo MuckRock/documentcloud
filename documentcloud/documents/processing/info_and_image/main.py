@@ -15,13 +15,8 @@ from listcrunch import crunch_collection
 from PIL import Image
 
 # Local
-from .environment import (
-    get_http_data,
-    get_pubsub_data,
-    publisher,
-    redis_fields,
-    storage,
-)
+from .common import path, redis_fields
+from .common.environment import get_http_data, get_pubsub_data, publisher, storage
 from .pdfium import StorageHandler, Workspace
 
 env = environ.Env()
@@ -60,39 +55,11 @@ PDF_PROCESS_TOPIC = publisher.topic_path(
     "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
 )
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
-    "documentcloud",
-    env.str("IMAGE_EXTRACT_TOPIC", default="page-image-ready-for-extraction"),
+    "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
 OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-queue")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
-
-
-def get_index_path(path):
-    """Returns the PDF index file corresponding with its file name"""
-    assert path.endswith(DOCUMENT_SUFFIX)
-    return path[: -len(DOCUMENT_SUFFIX)] + INDEX_SUFFIX
-
-
-def get_pagesize_path(path):
-    """Returns the PDF page size file corresponding with its file name"""
-    assert path.endswith(DOCUMENT_SUFFIX)
-    return path[: -len(DOCUMENT_SUFFIX)] + PAGESIZE_SUFFIX
-
-
-def get_pageimage_path(pdf_path, page_number, page_suffix):
-    """Returns the appropriate PDF page image path."""
-    assert pdf_path.endswith(DOCUMENT_SUFFIX)
-    slug = os.path.basename(pdf_path)[: -len(DOCUMENT_SUFFIX)]
-    page_dir = os.path.join(os.path.dirname(pdf_path), "pages")
-    return os.path.join(
-        page_dir, f"{slug}-p{page_number + 1}-{page_suffix}{IMAGE_SUFFIX}"
-    )
-
-
-def get_id(pdf_path):
-    """Returns the document ID associated with the PDF file path."""
-    return pdf_path.split("/")[-2]
 
 
 def initialize_redis_page_data(doc_id, page_count):
@@ -130,7 +97,7 @@ def initialize_redis_page_data(doc_id, page_count):
     REDIS.transaction(dimensions_field_update, dimensions_field)
 
 
-def extract_pagecount(path):
+def extract_pagecount(doc_id, slug):
     """Parse a PDF and write files to cache PDF information and dimensions.
 
     Returns:
@@ -138,15 +105,16 @@ def extract_pagecount(path):
         page sizes.
     """
     # Get the page sizes and initialize a cache of page positions
+    doc_path = path.doc_path(doc_id, slug)
     with Workspace() as workspace, StorageHandler(
-        storage, path, record=True
+        storage, doc_path, record=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
         cached = pdf_file.cache
 
     # Create an index file that stores the memory locations of each page of the
     # PDF file.
-    index_path = get_index_path(path)
+    index_path = path.index_path(doc_id, slug)
     with storage.open(index_path, "wb") as pickle_file, gzip.open(
         pickle_file, "wb"
     ) as zip_file:
@@ -201,10 +169,10 @@ def get_redis_pagespec(doc_id):
     return pagespec
 
 
-def write_pagespec(path, doc_id):
+def write_pagespec(doc_id, slug):
     pagespec = get_redis_pagespec(doc_id)
     crunched_pagespec = crunch_collection(pagespec)
-    with storage.open(get_pagesize_path(path), "w") as pagesize_file:
+    with storage.open(path.pagesize_path(doc_id, slug), "w") as pagesize_file:
         pagesize_file.write(crunched_pagespec)
 
     # Send pagespec update
@@ -230,21 +198,17 @@ def process_pdf_internal(data, _context=None):
     data = get_pubsub_data(data)
 
     # Ensure a PDF file
-    path = data["path"]
-    if not path.endswith(DOCUMENT_SUFFIX):
-        return "not a pdf"
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    doc_path = path.doc_path(doc_id, slug)
 
-    page_count = extract_pagecount(path)
+    page_count = extract_pagecount(doc_id, slug)
 
     # Store the page count in redis
-    doc_id = get_id(path)
-
-    initialize_redis_page_data(doc_id, page_count)
-
     initialize_redis_page_data(doc_id, page_count)
 
     requests.patch(
-        urljoin(env.str("API_CALLBACK"), f"documents/{get_id(path)}/"),
+        urljoin(env.str("API_CALLBACK"), f"documents/{doc_id}/"),
         json={"page_count": page_count},
         headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
     )
@@ -255,13 +219,15 @@ def process_pdf_internal(data, _context=None):
         pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
         publisher.publish(
             IMAGE_EXTRACT_TOPIC,
-            data=json.dumps({"path": data["path"], "pages": pages}).encode("utf8"),
+            data=json.dumps({"doc_id": doc_id, "slug": slug, "pages": pages}).encode(
+                "utf8"
+            ),
         )
 
     return "Ok"
 
 
-def extract_single_page(original_path, path, doc, page_number):
+def extract_single_page(doc_id, slug, doc, page_number):
     """Internal method to extract a single page from a PDF file as an image.
 
     Returns:
@@ -269,7 +235,9 @@ def extract_single_page(original_path, path, doc, page_number):
     """
     # Load the page from the PDF
     page = doc.load_page(page_number)
-    large_image_path = get_pageimage_path(path, page_number, IMAGE_WIDTHS[0][0])
+    large_image_path = path.page_image_path(
+        doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
+    )
 
     # Extract the page as an image with a certain width
     bmp = page.get_bitmap(IMAGE_WIDTHS[0][1], None)
@@ -282,26 +250,24 @@ def extract_single_page(original_path, path, doc, page_number):
             Image.ANTIALIAS,
         )
         with storage.open(
-            get_pageimage_path(path, page_number, image_suffix), "wb"
+            path.page_image_path(doc_id, slug, page_number, image_suffix), "wb"
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
 
         # TODO: trigger update when thumbnail image is parsed
 
-    return (
-        get_pageimage_path(original_path, page_number, IMAGE_WIDTHS[0][0]),
-        page.width,
-        page.height,
-    )
+    return (large_image_path, page.width, page.height)
 
 
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
     data = get_pubsub_data(data)
 
-    path = data["path"]  # The PDF file path
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
-    index_path = get_index_path(path)  # The path to the PDF index file
+    index_path = path.index_path(doc_id, slug)  # The path to the PDF index file
 
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
@@ -327,18 +293,17 @@ def extract_image(data, _context=None):
     ) as zip_file:
         cached = pickle.load(zip_file)
 
-    doc_id = get_id(path)
     images_remaining_field = redis_fields.images_remaining(doc_id)
     image_bits_field = redis_fields.image_bits(doc_id)
     with Workspace() as workspace, StorageHandler(
-        storage, path, record=False, playback=True, cache=cached
+        storage, doc_path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
             if REDIS.getbit(image_bits_field, page_number) == 0:
                 # Extract the image.
                 large_image_path, width, height = extract_single_page(
-                    data["path"], path, doc, page_number
+                    doc_id, slug, doc, page_number
                 )
                 page_dimension = f"{width}x{height}"
 
@@ -356,10 +321,10 @@ def extract_image(data, _context=None):
                 images_remaining = pipeline.execute()[2]
 
                 if images_remaining == 0:
-                    write_pagespec(path, doc_id)
+                    write_pagespec(doc_id, slug)
 
             # Prepare the image to be OCRd.
-            ocr_queue.append([page_number, large_image_path])
+            ocr_queue.append([doc_id, slug, page_number, large_image_path])
             check_and_flush(ocr_queue)
 
     flush(ocr_queue)
