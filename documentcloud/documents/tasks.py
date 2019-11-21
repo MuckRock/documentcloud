@@ -60,6 +60,22 @@ def process(document_pk, slug):
 
 
 @task
+def create_redaction(document_pk, slug, top, left, bottom, right):
+    """Start the processing"""
+    httpsub.post(
+        settings.DOC_PROCESSING_URL,
+        json={
+            "doc_id": document_pk,
+            "slug": slug,
+            "top": top,
+            "left": left,
+            "bottom": bottom,
+            "right": right,
+        },
+    )
+
+
+@task
 def delete_document(path):
     storage.delete(path)
 
