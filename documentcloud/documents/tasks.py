@@ -7,9 +7,9 @@ from django.db import transaction
 from requests.exceptions import HTTPError
 
 # DocumentCloud
+from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
-from documentcloud.common.environment import httpsub, storage
 
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
@@ -57,6 +57,22 @@ def process(document_pk, slug):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL, json={"doc_id": document_pk, "slug": slug}
+    )
+
+
+@task
+def create_redaction(document_pk, slug, top, left, bottom, right):
+    """Start the processing"""
+    httpsub.post(
+        settings.DOC_PROCESSING_URL,
+        json={
+            "doc_id": document_pk,
+            "slug": slug,
+            "top": top,
+            "left": left,
+            "bottom": bottom,
+            "right": right,
+        },
     )
 
 

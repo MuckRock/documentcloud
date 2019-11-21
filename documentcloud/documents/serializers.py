@@ -8,8 +8,9 @@ from redis.exceptions import RedisError
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
-from documentcloud.core.choices import Language
+from documentcloud.common import redis_fields
 from documentcloud.common.environment import storage
+from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import (
@@ -20,7 +21,6 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.common import redis_fields
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
@@ -298,3 +298,27 @@ class DataAddRemoveSerializer(serializers.Serializer):
     remove = serializers.ListSerializer(
         required=False, child=serializers.CharField(max_length=200)
     )
+
+
+class RedactionSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+    top = serializers.IntegerField(min_value=0)
+    left = serializers.IntegerField(min_value=0)
+    bottom = serializers.IntegerField(min_value=0)
+    right = serializers.IntegerField(min_value=0)
+    page = serializers.IntegerField(min_value=0)
+
+    def validate(self, attrs):
+        if attrs["top"] >= attrs["bottom"]:
+            raise serializers.ValidationError("`top` must be less than `bottom`")
+        if attrs["left"] >= attrs["right"]:
+            raise serializers.ValidationError("`top` must be less than `bottom`")
+        request = self.context.get("request")
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if attrs["page"] >= document.page_count:
+            raise serializers.ValidationError(
+                "`page` must be a valid page for the document"
+            )
+
+        return attrs

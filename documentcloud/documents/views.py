@@ -4,7 +4,7 @@ from django.db import transaction
 from rest_framework import mixins, parsers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 # Third Party
@@ -13,6 +13,7 @@ import environ
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
+from documentcloud.common.environment import storage
 from documentcloud.core.filters import ModelChoiceFilter
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
@@ -36,15 +37,16 @@ from documentcloud.documents.serializers import (
     EntityDateSerializer,
     EntitySerializer,
     NoteSerializer,
+    RedactionSerializer,
     SectionSerializer,
 )
 from documentcloud.documents.tasks import (
+    create_redaction,
     delete_document,
     fetch_file_url,
     process,
     update_access,
 )
-from documentcloud.common.environment import storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -289,3 +291,24 @@ class DataViewSet(viewsets.ViewSet):
             document.save()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RedactionViewSet(viewsets.ViewSet):
+    serializer_class = RedactionSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self):
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        if not self.request.user.has_perm("documents.change_document", document):
+            self.permission_denied(self.request, "You may not edit this document")
+        return document
+
+    def create(self, request, document_pk=None):
+        document = self.get_object()
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        create_redaction.delay(document.pk, document.slug, **serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
