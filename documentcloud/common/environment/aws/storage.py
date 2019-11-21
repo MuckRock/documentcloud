@@ -73,13 +73,3 @@ class AwsStorage:
 
 
 storage = AwsStorage()
-minio_storage = AwsStorage(
-    {
-        "endpoint_url": env.str("MINIO_URL"),
-        "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
-        "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
-        "config": Config(signature_version="s3v4"),
-        "region_name": "us-east-1",
-    },
-    minio=True,
-)
