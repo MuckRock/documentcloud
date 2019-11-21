@@ -22,6 +22,7 @@ from documentcloud.documents.views import (
     EntityDateViewSet,
     EntityViewSet,
     NoteViewSet,
+    RedactionViewSet,
     SectionViewSet,
 )
 from documentcloud.organizations.views import OrganizationViewSet
@@ -57,6 +58,7 @@ documents_router.register("entities", EntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
 documents_router.register("data", DataViewSet, basename="data")
+documents_router.register("redactions", RedactionViewSet, basename="redactions")
 
 projects_router = routers.NestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
