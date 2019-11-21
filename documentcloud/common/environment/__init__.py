@@ -20,7 +20,7 @@ environment = env.str("ENVIRONMENT")
 
 
 if environment == "local-minio":
-    from .aws.storage import minio_storage as storage
+    from .minio.storage import storage
     from .local.pubsub import publisher
     from .local.httpsub import httpsub
     from .local.data import get_http_data, get_pubsub_data, encode_pubsub_data

@@ -56,5 +56,3 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # https://pypi.org/project/django-cors-headers/
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]
 CORS_ALLOW_CREDENTIALS = True
-
-MINIO_URL = env("MINIO_URL", default="http://minio.documentcloud.org:9000")
