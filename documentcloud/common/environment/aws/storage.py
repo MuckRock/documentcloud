@@ -1,3 +1,6 @@
+# Standard Library
+import mimetypes
+
 # Third Party
 import boto3
 import environ
@@ -26,12 +29,20 @@ class AwsStorage:
         bucket = self.s3_resource.Bucket(bucket)
         return bucket.Object(key).content_length
 
-    def open(self, file_name, mode="rb"):
+    def open(self, file_name, mode="rb", content_type=None):
+
+        transport_params = {"resource_kwargs": self.resource_kwargs}
+
+        if content_type is None:
+            # attempt to guess content type if not specified
+            content_type = mimetypes.guess_type(file_name)[0]
+
+        if content_type is not None:
+            # set content type if we have one
+            transport_params["multipart_upload_kwargs"] = {"ContentType": content_type}
 
         return smart_open.open(
-            f"s3://{file_name}",
-            mode,
-            transport_params={"resource_kwargs": self.resource_kwargs},
+            f"s3://{file_name}", mode, transport_params=transport_params
         )
 
     def presign_url(self, file_name, method_name):
