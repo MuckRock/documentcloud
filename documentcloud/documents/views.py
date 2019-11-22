@@ -46,7 +46,6 @@ from documentcloud.documents.tasks import (
     fetch_file_url,
     process,
     process_cancel,
-    solr_delete,
     solr_index,
     update_access,
 )
@@ -129,8 +128,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             transaction.on_commit(lambda: process_cancel.delay(document.pk))
 
     def perform_destroy(self, instance):
-        delete_document.delay(instance.path)
-        solr_delete.delay(instance.pk)
+        delete_document.delay(instance.pk, instance.path)
         super().perform_destroy(instance)
 
     @transaction.atomic
@@ -150,17 +148,16 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         # XXX paginate
         query = request.query_params.get("q", "*:*")
         fq_map = {
-            "user": "user_id_i",
-            "organization": "organization_id_i",
-            "access": "access_i",
-            "status": "status_i",
-            "project": "project_ids_is",
+            "user": "user",
+            "organization": "organization",
+            "access": "access",
+            "status": "status",
+            "project": "projects",
             "document": "id",
         }
         field_queries = []
 
         # XXX support multiple values
-        # XXX convert access/status
         for param, solr in fq_map.items():
             if param in request.query_params:
                 value = request.query_params[param]

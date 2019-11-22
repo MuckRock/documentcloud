@@ -162,20 +162,19 @@ class Document(models.Model):
         }
         return {
             "id": self.pk,
-            "user_id_i": self.user_id,
-            "organization_id_i": self.organization_id,
-            "access_i": self.access,
-            "status_i": self.status,
-            "title_t": self.title,
-            # slug: store only
-            "slug_t": self.slug,
-            "source_t": self.source,
-            "description_t": self.description,
-            "language_s": self.language,
-            "created_at_dt": self.created_at.isoformat(),
-            "updated_at_dt": self.updated_at.isoformat(),
-            "page_count_i": self.page_count,
-            "project_ids_is": project_ids,
+            "user": self.user_id,
+            "organization": self.organization_id,
+            "access": self.get_access_display().lower(),
+            "status": self.get_status_display().lower(),
+            "title": self.title,
+            "slug": self.slug,
+            "source": self.source,
+            "description": self.description,
+            "language": self.language,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "page_count": self.page_count,
+            "projects": project_ids,
             **pages,
         }
 
