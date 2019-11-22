@@ -52,7 +52,7 @@ http {
         <% end %>
     }
 
-    limit_req_zone $limit_key zone=one:10m rate=1r/s;
+    limit_req_zone $limit_key zone=one:10m rate=10r/s;
 
     log_format l2met 'measure#nginx.service=$request_time request_id=$http_x_request_id';
     log_format compression '$remote_addr - $remote_user [$time_local] '
