@@ -14,12 +14,29 @@ import requests
 from cpuprofile import profile_cpu
 from PIL import Image
 
-# Local
-from .common import path, redis_fields
-from .common.environment import get_pubsub_data, encode_pubsub_data, publisher, storage
-from .tess import Tesseract
 
 env = environ.Env()
+
+# Imports based on execution context
+# In serverless functions, imports cannot be relative
+if env.str("ENVIRONMENT").startswith("local"):
+    from .common import path, redis_fields
+    from .common.environment import (
+        get_pubsub_data,
+        encode_pubsub_data,
+        publisher,
+        storage,
+    )
+    from .tess import Tesseract
+else:
+    from common import path, redis_fields
+    from common.environment import (
+        get_pubsub_data,
+        encode_pubsub_data,
+        publisher,
+        storage,
+    )
+    from tess import Tesseract
 
 
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
