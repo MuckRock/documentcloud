@@ -1,5 +1,6 @@
 # Standard Library
 import collections
+import importlib
 import gzip
 import json
 import os
@@ -14,18 +15,32 @@ import requests
 from listcrunch import crunch_collection
 from PIL import Image
 
-# Local
-from .common import path, redis_fields
-from .common.environment import (
-    get_http_data,
-    get_pubsub_data,
-    encode_pubsub_data,
-    publisher,
-    storage,
-)
-from .pdfium import StorageHandler, Workspace
 
 env = environ.Env()
+
+# Imports based on execution context
+# In serverless functions, imports cannot be relative
+if env.str("ENVIRONMENT").startswith("local"):
+    from .common import path, redis_fields
+    from .common.environment import (
+        get_http_data,
+        get_pubsub_data,
+        encode_pubsub_data,
+        publisher,
+        storage,
+    )
+    from .pdfium import StorageHandler, Workspace
+else:
+    from common import path, redis_fields
+    from common.environment import (
+        get_http_data,
+        get_pubsub_data,
+        encode_pubsub_data,
+        publisher,
+        storage,
+    )
+    from pdfium import StorageHandler, Workspace
+
 
 DOCUMENT_SUFFIX = ".pdf"
 INDEX_SUFFIX = ".index"
