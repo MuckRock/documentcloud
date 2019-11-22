@@ -84,8 +84,12 @@ def process_cancel(document_pk):
 
 
 @task
-def delete_document(path):
+def delete_document(document_pk, path):
+    # delete files from storage
     storage.delete(path)
+    # delete document from solr index
+    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
+    solr.delete(id=document_pk)
 
 
 @task
@@ -103,9 +107,3 @@ def solr_index(document_pk):
     document = Document.objects.get(pk=document_pk)
     solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
     solr.add([document.solr()], commit=True)
-
-
-@task
-def solr_delete(document_pk):
-    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
-    solr.delete(id=document_pk)
