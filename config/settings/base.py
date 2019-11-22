@@ -173,13 +173,6 @@ MEDIA_ROOT = str(APPS_DIR("media"))
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
 MEDIA_URL = "/media/"
 
-PUBLIC_ASSET_URL = env(
-    "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
-)
-PRIVATE_ASSET_URL = env(
-    "PRIVATE_ASSET_URL", default="http://api.dev.documentcloud.org/files/"
-)
-
 # TEMPLATES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#templates
@@ -359,6 +352,12 @@ MUCKROCK_URL = env("MUCKROCK_URL", default="http://dev.muckrock.com")
 FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="http://dev.foiamachine.org")
 DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://www.dev.documentcloud.org")
 DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://api.dev.documentcloud.org")
+
+PUBLIC_ASSET_URL = env(
+    "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
+)
+PRIVATE_ASSET_URL = env("PRIVATE_ASSET_URL", default=f"{DOCCLOUD_API_URL}/files/")
+
 
 # SESSION/COOKIES
 # ----
