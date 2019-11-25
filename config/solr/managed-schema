@@ -134,6 +134,7 @@
     <dynamicField name="page_no_*" type="text_general" indexed="true" stored="true"/>
     <field name="doctext" type="text_general" indexed="true" stored="false"/>
     <copyField source="page_no_*" dest="doctext"/>
+    <dynamicField name="data_*" type="strings" indexed="true" stored="true"/>
 
     <field name="access" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="created_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
