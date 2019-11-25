@@ -54,6 +54,7 @@ CONFIG = [
                     ("PROCESSING_TOKEN", lambda: random_string(64)),
                     ("DOCUMENT_BUCKET", "documents"),
                     ("SERVERLESS", "False"),
+                    ("TIMEOUTS", "15,30,60,120"),
                 ],
             },
             {

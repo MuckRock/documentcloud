@@ -23,6 +23,10 @@ def page_dimension(doc_id, page_dimension_):
     return f"{doc_id}:dim{page_dimension_}"
 
 
+def is_running(doc_id):
+    return f"{doc_id}:running"
+
+
 def image_bits(doc_id):
     return f"{doc_id}:imageBits"
 

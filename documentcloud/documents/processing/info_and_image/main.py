@@ -29,6 +29,8 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
+    from .common.serverless import tasks
+    from .common.serverless.error_handling import pubsub_function
     from .pdfium import StorageHandler, Workspace
 else:
     from common import path, redis_fields
@@ -39,12 +41,11 @@ else:
         publisher,
         storage,
     )
+    from common.serverless import tasks
+    from common.serverless.error_handling import pubsub_function
     from pdfium import StorageHandler, Workspace
 
 
-DOCUMENT_SUFFIX = ".pdf"
-INDEX_SUFFIX = ".index"
-PAGESIZE_SUFFIX = ".pagesize"
 IMAGE_SUFFIX = ".gif"
 IMAGE_BATCH = env.int(
     "EXTRACT_IMAGE_BATCH", default=55
@@ -64,12 +65,7 @@ IMAGE_WIDTHS = [
         default=["large:1000", "normal:700", "small:180", "thumbnail:60"],
     )
 ]  # width of images to OCR
-
-REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
-REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
-REDIS = redis.Redis(
-    host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
-)
+REDIS = tasks.get_redis()
 
 # Topic names for the messaging queue
 PDF_PROCESS_TOPIC = publisher.topic_path(
@@ -84,6 +80,7 @@ OCR_TOPIC = publisher.topic_path(
 
 
 def initialize_redis_page_data(doc_id, page_count):
+    """Initial Redis fields to manage page dimensions and processing"""
     dimensions_field = redis_fields.dimensions(doc_id)
     image_bits_field = redis_fields.image_bits(doc_id)
     text_bits_field = redis_fields.text_bits(doc_id)
@@ -146,6 +143,7 @@ def extract_pagecount(doc_id, slug):
 
 
 def get_redis_pagespec(doc_id):
+    """Get the dimensions of all pages in a convenient format using Redis"""
     dimensions_field = redis_fields.dimensions(doc_id)
 
     pipeline = REDIS.pipeline()
@@ -191,17 +189,14 @@ def get_redis_pagespec(doc_id):
 
 
 def write_pagespec(doc_id, slug):
+    """Extract and write the dimensions of all pages to a pagespec file"""
     pagespec = get_redis_pagespec(doc_id)
     crunched_pagespec = crunch_collection(pagespec)
     with storage.open(path.pagesize_path(doc_id, slug), "w") as pagesize_file:
         pagesize_file.write(crunched_pagespec)
 
     # Send pagespec update
-    requests.patch(
-        urljoin(env.str("API_CALLBACK"), f"documents/{doc_id}/"),
-        json={"page_spec": crunched_pagespec},
-        headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
-    )
+    tasks.send_update(doc_id, {"page_spec": crunched_pagespec})
 
 
 def process_pdf(request, _context=None):
@@ -214,6 +209,7 @@ def process_pdf(request, _context=None):
     return "Ok"
 
 
+@pubsub_function(REDIS, PDF_PROCESS_TOPIC)
 def process_pdf_internal(data, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_pubsub_data(data)
@@ -223,16 +219,15 @@ def process_pdf_internal(data, _context=None):
     slug = data["slug"]
     doc_path = path.doc_path(doc_id, slug)
 
-    page_count = extract_pagecount(doc_id, slug)
+    # Initialize the processing environment
+    tasks.initialize(REDIS, doc_id)
 
-    # Store the page count in redis
+    # Extract the page count and store it in Redis
+    page_count = extract_pagecount(doc_id, slug)
     initialize_redis_page_data(doc_id, page_count)
 
-    requests.patch(
-        urljoin(env.str("API_CALLBACK"), f"documents/{doc_id}/"),
-        json={"page_count": page_count},
-        headers={"Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"},
-    )
+    # Update the model with the page count
+    tasks.send_update(doc_id, {"page_count": page_count})
 
     # Kick off image processing tasks
     for i in range(0, page_count, IMAGE_BATCH):
@@ -278,6 +273,7 @@ def extract_single_page(doc_id, slug, doc, page_number):
     return (large_image_path, page.width, page.height)
 
 
+@pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
     data = get_pubsub_data(data)

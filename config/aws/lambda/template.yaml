@@ -20,7 +20,8 @@ Globals:
         OCR_TOPIC: ocr-extraction-staging
         EXTRACT_IMAGE_BATCH: 1
         AWS_ARN_PREFIX: arn:aws:sns:us-east-1:844030562261
-    Timeout: 60
+        TIMEOUTS: 15,30,60,120
+    Timeout: 180
     MemorySize: 3008
     VpcConfig:
       SecurityGroupIds:
