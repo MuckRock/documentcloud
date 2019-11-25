@@ -27,7 +27,7 @@ else:
     from common.serverless import tasks
 
 
-TIMEOUTS = env.list("TIMEOUTS", cast=float)
+TIMEOUTS = env.list("TIMEOUTS", cast=int)
 NUM_RETRIES = len(TIMEOUTS)
 RUN_COUNT = "runcount"
 
@@ -47,7 +47,7 @@ def pubsub_function(redis, pubsub_topic):
             doc_id = data["doc_id"]
 
             # Return prematurely if there is an error or all processing is complete
-            if redis.get(redis_fields.is_running(doc_id)) != True:
+            if redis.get(redis_fields.is_running(doc_id)) != b"1":
                 return "Skipping function execution since processing has stopped"
 
             # Handle exceeding maximum number of retries
@@ -55,7 +55,7 @@ def pubsub_function(redis, pubsub_topic):
             if run_count >= NUM_RETRIES:
                 # Error out
                 tasks.send_error(
-                    doc_id, "Function has timed out (max retries exceeded)"
+                    redis, doc_id, "Function has timed out (max retries exceeded)"
                 )
 
             # Set up the timeout
@@ -73,7 +73,7 @@ def pubsub_function(redis, pubsub_topic):
             except Exception as e:
                 # Handle any error that comes up during function execution
                 error_message = str(e)
-                tasks.send_error(doc_id, error_message)
+                tasks.send_error(redis, doc_id, error_message)
                 return f"An error has occurred: {error_message}"
             finally:
                 # Clear out the timeout alarm

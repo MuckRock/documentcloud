@@ -91,6 +91,7 @@ def run_tesseract(data, _context=None):
     overall_start = time.time()
 
     data = get_pubsub_data(data)
+    doc_id = data["doc_id"]
     paths_and_numbers = data["paths_and_numbers"]
 
     result = {}
@@ -102,7 +103,9 @@ def run_tesseract(data, _context=None):
             # Resubmit to queue
             publisher.publish(
                 OCR_TOPIC,
-                data=encode_pubsub_data({"paths_and_numbers": paths_and_numbers}),
+                data=encode_pubsub_data(
+                    {"paths_and_numbers": paths_and_numbers, "doc_id": doc_id}
+                ),
             )
             logging.warning("Too slow (speed: %f)", speed)
             return "Too slow, retrying"
@@ -152,7 +155,9 @@ def run_tesseract(data, _context=None):
         # Launch next iteration
         publisher.publish(
             OCR_TOPIC,
-            data=encode_pubsub_data({"paths_and_numbers": next_paths_and_numbers}),
+            data=encode_pubsub_data(
+                {"paths_and_numbers": next_paths_and_numbers, "doc_id": doc_id}
+            ),
         )
 
     result["doc_id"] = doc_id
