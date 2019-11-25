@@ -160,6 +160,7 @@ class Document(models.Model):
         pages = {
             f"page_no_{i}": self.get_page_text(i) for i in range(1, self.page_count + 1)
         }
+        data = {f"data_{key}": values for key, values in self.data.items()}
         return {
             "id": self.pk,
             "user": self.user_id,
@@ -176,6 +177,7 @@ class Document(models.Model):
             "page_count": self.page_count,
             "projects": project_ids,
             **pages,
+            **data,
         }
 
 
