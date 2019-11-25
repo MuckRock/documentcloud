@@ -13,6 +13,7 @@ import environ
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
+from documentcloud.common.environment import storage
 from documentcloud.core.filters import ModelChoiceFilter
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
@@ -44,7 +45,6 @@ from documentcloud.documents.tasks import (
     process,
     update_access,
 )
-from documentcloud.common.environment import storage
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -148,10 +148,17 @@ class DocumentErrorViewSet(
 
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
-        self.document = get_object_or_404(
-            Document.objects.get_viewable(self.request.user),
-            pk=self.kwargs["document_pk"],
+        valid_token = (
+            hasattr(self.request, "auth")
+            and self.request.auth is not None
+            and "processing" in self.request.auth["permissions"]
         )
+        # Processing scope can access all documents
+        if valid_token:
+            documents = Document.objects.all()
+        else:
+            documents = Document.objects.get_viewable(self.request.user)
+        self.document = get_object_or_404(documents, pk=self.kwargs["document_pk"])
         return self.document.errors.all()
 
     @transaction.atomic
