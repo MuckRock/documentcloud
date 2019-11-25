@@ -27,6 +27,8 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
+    from .common.serverless import error_handling, tasks
+    from .common.serverless.error_handling import pubsub_function
     from .tess import Tesseract
 else:
     from common import path, redis_fields
@@ -36,14 +38,12 @@ else:
         publisher,
         storage,
     )
+    from common.serverless import error_handling, tasks
+    from common.serverless.error_handling import pubsub_function
     from tess import Tesseract
 
 
-REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
-REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
-REDIS = redis.Redis(
-    host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
-)
+REDIS = tasks.get_redis()
 
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
@@ -84,6 +84,7 @@ def ocr_page(page_path):
     return text
 
 
+@pubsub_function(REDIS, OCR_TOPIC)
 def run_tesseract(data, _context=None):
     """Runs OCR on the images passed in, storing the extracted text.
     """
@@ -143,13 +144,7 @@ def run_tesseract(data, _context=None):
 
         # Check if finished
         if texts_remaining == 0:
-            requests.patch(
-                urljoin(env.str("API_CALLBACK"), f"documents/{doc_id}/"),
-                json={"status": "success"},
-                headers={
-                    "Authorization": f"processing-token {env.str('PROCESSING_TOKEN')}"
-                },
-            )
+            tasks.send_complete(REDIS, doc_id)
             return "Ok"
 
     next_paths_and_numbers = paths_and_numbers[1:]
