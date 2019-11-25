@@ -86,7 +86,7 @@ def initialize_redis_page_data(doc_id, page_count):
     text_bits_field = redis_fields.text_bits(doc_id)
 
     def dimensions_field_update(pipeline):
-        existing_dimensions = pipeline.get(dimensions_field)
+        existing_dimensions = pipeline.smembers(dimensions_field)
 
         # Put the pipeline back in multi mode
         pipeline.multi()
@@ -202,6 +202,10 @@ def write_pagespec(doc_id, slug):
 def process_pdf(request, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_http_data(request)
+    doc_id = data["doc_id"]
+
+    # Initialize the processing environment
+    tasks.initialize(REDIS, doc_id)
 
     # Launch PDF processing via pubsub
     publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
@@ -218,9 +222,6 @@ def process_pdf_internal(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     doc_path = path.doc_path(doc_id, slug)
-
-    # Initialize the processing environment
-    tasks.initialize(REDIS, doc_id)
 
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)
@@ -293,7 +294,8 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            OCR_TOPIC, data=encode_pubsub_data({"paths_and_numbers": ocr_queue})
+            OCR_TOPIC,
+            data=encode_pubsub_data({"paths_and_numbers": ocr_queue, "doc_id": doc_id}),
         )
 
         ocr_queue.clear()
