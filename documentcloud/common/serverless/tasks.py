@@ -4,24 +4,20 @@ Helper functions to perform common serverless operations.
 
 # Standard Library
 import json
+import logging
 from urllib.parse import urljoin
 
 # Third Party
 import environ
 import furl
-import redis
+import redis as _redis
 import requests
+
+# Common
+from .. import redis_fields
 
 
 env = environ.Env()
-
-# Imports based on execution context
-# In serverless functions, imports cannot be relative
-if env.str("ENVIRONMENT").startswith("local"):
-    from .. import redis_fields
-else:
-    from common import redis_fields
-
 
 # Common environment variables
 API_CALLBACK = env.str("API_CALLBACK")
@@ -32,12 +28,12 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 
 def get_redis():
     """Opens a connection to Redis and returns it"""
-    return redis.Redis(
+    return _redis.Redis(
         host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
     )
 
 
-def send_update(doc_id, json):
+def send_update(redis, doc_id, json):
     """Sends an update to the API server specified as JSON"""
     if not still_processing(redis, doc_id):
         return
@@ -54,12 +50,12 @@ def send_complete(redis, doc_id):
     if not still_processing(redis, doc_id):
         return
 
-    send_update(doc_id, {"status": "success"})
+    send_update(redis, doc_id, {"status": "success"})
     # Clean out redis
     clean_up(redis, doc_id)
 
 
-def send_error(redis, doc_id, message):
+def send_error(redis, doc_id, message, fatal=False):
     """Sends an error to the API server specified as a string message"""
     if not still_processing(redis, doc_id):
         return
@@ -70,6 +66,13 @@ def send_error(redis, doc_id, message):
         json={"message": message},
         headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
     )
+
+    # Log the error depending on its severity
+    if fatal:
+        logging.error(message)
+    else:
+        logging.warn(message)
+
     clean_up(redis, doc_id)
 
 
