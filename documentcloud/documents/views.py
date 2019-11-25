@@ -29,6 +29,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
+from documentcloud.documents.search import search
 from documentcloud.documents.serializers import (
     DataAddRemoveSerializer,
     DataSerializer,
@@ -138,45 +139,13 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         if was_public != serializer.instance.public:
             transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
         # XXX handle partial updates more optimially
+        # do not index invisible documents
         if serializer.data["status"] == "success":
             transaction.on_commit(lambda: solr_index.delay(serializer.data["id"]))
 
     @action(detail=False, methods=["get"])
     def search(self, request):
-        # XXX filter based on params
-        # XXX filter based on access
-        # XXX paginate
-        query = request.query_params.get("q", "*:*")
-        fq_map = {
-            "user": "user",
-            "organization": "organization",
-            "access": "access",
-            "status": "status",
-            "project": "projects",
-            "document": "id",
-        }
-        field_queries = []
-
-        # XXX support multiple values
-        for param, solr in fq_map.items():
-            if param in request.query_params:
-                value = request.query_params[param]
-                field_queries.append(f"{solr}:{value}")
-
-        solr = pysolr.Solr(
-            settings.SOLR_URL, auth=settings.SOLR_AUTH, search_handler="/mainsearch"
-        )
-        results = solr.search(query, fq=field_queries)
-        response = {
-            "count": results.hits,
-            "next": None,
-            "previous": None,
-            "results": results,
-        }
-        if settings.DEBUG:
-            response["query"] = query
-            response["fq"] = field_queries
-        return Response(response)
+        return Response(search(self.request.user, self.request.query_params))
 
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
