@@ -1,11 +1,15 @@
 # Django
 from django.conf import settings
 
+# Standard Library
+import math
+
 # Third Party
 import pysolr
 
-# XXX paginate
-# XXX text query per field
+# DocumentCloud
+from documentcloud.core.pagination import PageNumberPagination
+
 # XXX data
 
 FIELD_MAP = {
@@ -34,21 +38,21 @@ SOLR = pysolr.Solr(
 )
 
 
-def search(user, query_params):
+def search(user, query_params, base_url):
     query_field, text_query = _text_queries(query_params)
     field_queries = _field_queries(user, query_params)
     sort = SORT_MAP.get(query_params.get("order"), SORT_MAP["score"])
+    rows, start, page = _paginate(query_params)
 
-    results = SOLR.search(text_query, qf=query_field, fq=field_queries, sort=sort)
+    kwargs = {"fq": field_queries, "sort": sort, "rows": rows, "start": start}
+    if query_field is not None:
+        kwargs["qf"] = query_field
 
-    response = _format_response(results)
+    results = SOLR.search(text_query, **kwargs)
+
+    response = _format_response(results, query_params, base_url, page, rows)
     if settings.DEBUG:
-        response["debug"] = {
-            "text_query": text_query,
-            "qf": query_field,
-            "fq": field_queries,
-            "sort": sort,
-        }
+        response["debug"] = {"text_query": text_query, **kwargs}
     return response
 
 
@@ -68,7 +72,7 @@ def _text_queries(query_params):
         for query_field, solr_field in TEXT_MAP.items()
         if query_field in query_params
     }
-    if text_queries:
+    if not text_queries:
         return None, "*:*"
     elif len(text_queries) == 1:
         return list(text_queries.items())[0]
@@ -85,27 +89,65 @@ def _text_queries(query_params):
 
 def _access_filter(user):
     if user.is_authenticated:
-        projects = " OR ".join(
-            str(p) for p in user.projects.values_list("pk", flat=True)
-        )
         organizations = " OR ".join(
             str(o) for o in user.organizations.values_list("pk", flat=True)
         )
-        return (
-            f"(access:public AND status:(success OR readable))"
-            f"OR (user:{user.pk})"
-            f"OR (projects:{projects})"
-            f"OR (access:organization AND organization:({organizations})"
+        projects = " OR ".join(
+            str(p) for p in user.projects.values_list("pk", flat=True)
         )
+        access_filter = (
+            f"(access:public AND status:(success OR readable))"
+            f" OR (user:{user.pk})"
+            f" OR (access:organization AND organization:({organizations}))"
+        )
+        if projects:
+            access_filter += f" OR (projects:{projects})"
+        return access_filter
     else:
         return "access:public AND status:(success OR readable)"
 
 
-def _format_response(results):
+def _paginate(query_params):
+    def get_int(field, default, max_value=None):
+        """Helper function to convert a parameter to an integer"""
+        try:
+            value = int(query_params.get(field, default))
+            if max_value is not None:
+                value = min(value, max_value)
+            return value
+        except ValueError:
+            return default
+
+    rows = get_int(
+        PageNumberPagination.page_size_query_param,
+        PageNumberPagination.page_size,
+        PageNumberPagination.max_page_size,
+    )
+    page = get_int(PageNumberPagination.page_query_param, 1)
+    start = (page - 1) * rows
+    return rows, start, page
+
+
+def _format_response(results, query_params, base_url, page, per_page):
+    query_params = query_params.copy()
+
+    max_page = math.ceil(results.hits / per_page)
+    if page < max_page:
+        query_params["page"] = page + 1
+        next_url = f"{base_url}?{query_params.urlencode()}"
+    else:
+        next_url = None
+
+    if page > 1:
+        query_params["page"] = page - 1
+        previous_url = f"{base_url}?{query_params.urlencode()}"
+    else:
+        previous_url = None
+
     response = {
         "count": results.hits,
-        "next": None,
-        "previous": None,
+        "next": next_url,
+        "previous": previous_url,
         "results": results,
     }
     return response
