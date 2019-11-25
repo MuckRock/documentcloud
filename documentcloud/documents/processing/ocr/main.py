@@ -9,7 +9,6 @@ from urllib.parse import urljoin
 import environ
 import furl
 import numpy as np
-import redis
 import requests
 from cpuprofile import profile_cpu
 from PIL import Image

@@ -196,7 +196,7 @@ def write_pagespec(doc_id, slug):
         pagesize_file.write(crunched_pagespec)
 
     # Send pagespec update
-    tasks.send_update(doc_id, {"page_spec": crunched_pagespec})
+    tasks.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
 
 
 def process_pdf(request, _context=None):
@@ -228,7 +228,7 @@ def process_pdf_internal(data, _context=None):
     initialize_redis_page_data(doc_id, page_count)
 
     # Update the model with the page count
-    tasks.send_update(doc_id, {"page_count": page_count})
+    tasks.send_update(REDIS, doc_id, {"page_count": page_count})
 
     # Kick off image processing tasks
     for i in range(0, page_count, IMAGE_BATCH):
