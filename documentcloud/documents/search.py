@@ -10,8 +10,6 @@ import pysolr
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
 
-# XXX data
-
 FIELD_MAP = {
     "user": "user",
     "organization": "organization",
@@ -48,9 +46,13 @@ def search(user, query_params, base_url):
     if query_field is not None:
         kwargs["qf"] = query_field
 
-    results = SOLR.search(text_query, **kwargs)
+    try:
+        results = SOLR.search(text_query, **kwargs)
+    except pysolr.SolrError as exc:
+        response = {"error": str(exc)}
+    else:
+        response = _format_response(results, query_params, base_url, page, rows)
 
-    response = _format_response(results, query_params, base_url, page, rows)
     if settings.DEBUG:
         response["debug"] = {"text_query": text_query, **kwargs}
     return response
@@ -63,6 +65,16 @@ def _field_queries(user, query_params):
         if param in query_params:
             values = " OR ".join(query_params.getlist(param))
             field_queries.append(f"{field}:({values})")
+
+    data_params = [p for p in query_params if p.startswith("data_")]
+    for param in data_params:
+        values = query_params.getlist(param)
+        if "!" in values:
+            field_queries.append(f"!{param}:(*)")
+        else:
+            values = " OR ".join(query_params.getlist(param))
+            field_queries.append(f"{param}:({values})")
+
     return field_queries
 
 
@@ -148,6 +160,24 @@ def _format_response(results, query_params, base_url, page, per_page):
         "count": results.hits,
         "next": next_url,
         "previous": previous_url,
-        "results": results,
+        "results": _format_data(results),
     }
     return response
+
+
+def _format_data(results):
+    """Collapse the data fields from solr into a single dictionary"""
+
+    def consolidate_data(result):
+        data = {
+            key[len("data_") :]: values
+            for key, values in result.items()
+            if key.startswith("data_")
+        }
+        result = {
+            key: values for key, values in result.items() if not key.startswith("data_")
+        }
+        result["data"] = data
+        return result
+
+    return [consolidate_data(r) for r in results]
