@@ -131,23 +131,28 @@
        EXAMPLE:  name="*_i" will match any field ending in _i (like myid_i, z_i)
        RESTRICTION: the glob-like pattern in the name attribute must have a "*" only at the start or the end.  -->
 
-    <dynamicField name="page_no_*"  type="text_general"    indexed="true"  stored="true"/>   
+    <dynamicField name="page_no_*" type="text_general" indexed="true" stored="true"/>
     <field name="doctext" type="text_general" indexed="true" stored="false"/>
     <copyField source="page_no_*" dest="doctext"/>
 
-  <field name="access" type="string" uninvertible="true" indexed="true" stored="true"/>
-  <field name="created_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
-  <field name="description" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
-  <field name="language" type="string" uninvertible="true" indexed="true" stored="true"/>
-  <field name="organization" type="pint" uninvertible="true" indexed="true" stored="true"/>
-  <field name="page_count" type="pint" uninvertible="true" indexed="true" stored="true"/>
-  <field name="projects" type="pints" uninvertible="true" indexed="true" stored="true"/>
-  <field name="slug" type="string" uninvertible="false" indexed="false" stored="true"/>
-  <field name="source" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
-  <field name="status" type="string" uninvertible="true" indexed="true" stored="true"/>
-  <field name="title" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
-  <field name="updated_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
-  <field name="user" type="pint" uninvertible="true" indexed="true" stored="true"/>
+    <field name="access" type="string" uninvertible="true" indexed="true" stored="true"/>
+    <field name="created_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
+    <field name="description" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
+    <field name="language" type="string" uninvertible="true" indexed="true" stored="true"/>
+    <field name="organization" type="pint" uninvertible="true" indexed="true" stored="true"/>
+    <field name="page_count" type="pint" uninvertible="true" indexed="true" stored="true"/>
+    <field name="projects" type="pints" uninvertible="true" indexed="true" stored="true"/>
+    <field name="slug" type="string" uninvertible="false" indexed="false" stored="true"/>
+    <field name="source" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
+    <field name="status" type="string" uninvertible="true" indexed="true" stored="true"/>
+    <field name="title" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
+    <field name="updated_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
+    <field name="user" type="pint" uninvertible="true" indexed="true" stored="true"/>
+
+    <field name="title_sort" type="string" indexed="true" stored="false"/>
+    <field name="source_sort" type="string" indexed="true" stored="false"/>
+    <copyField source="title" dest="title_sort" />
+    <copyField source="source" dest="source_sort" />
 
     <dynamicField name="*_i"  type="pint"    indexed="true"  stored="true"/>
     <dynamicField name="*_is" type="pints"    indexed="true"  stored="true"/>
