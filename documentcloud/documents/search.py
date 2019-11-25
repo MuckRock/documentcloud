@@ -92,7 +92,7 @@ def _text_queries(query_params):
         # multiple text queries, construct using advanced solr syntax
         query_text = " AND ".join(
             '_query_:"{{!edismax {qf}}}{text}"'.format(
-                qf=f"qf='{qf}'" if qf else "", text=" ".join(text)
+                qf=f"qf='{qf}'" if qf else "", text=text
             )
             for qf, text in text_queries.items()
         )
