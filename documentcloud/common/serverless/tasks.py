@@ -71,7 +71,7 @@ def send_error(redis, doc_id, message, fatal=False):
     if fatal:
         logging.error(message)
     else:
-        logging.warn(message)
+        logging.warning(message)
 
     clean_up(redis, doc_id)
 
