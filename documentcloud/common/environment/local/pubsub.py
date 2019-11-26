@@ -14,6 +14,10 @@ def encode_pubsub_data(data):
     return json.dumps(data).encode("utf8")
 
 
+def encode_published_pubsub_data(data):
+    return {"data": base64.b64encode(data).decode("utf-8")}
+
+
 def decode_pubsub_data(data):
     return json.loads(base64.b64decode(data["data"]).decode("utf-8"))
 
@@ -31,7 +35,7 @@ class LocalPubSubClient:
 
     def publish(self, topic_path, data):
         if topic_path in self.tasks:
-            self.tasks[topic_path]({"data": base64.b64encode(data).decode("utf-8")})
+            self.tasks[topic_path](encode_published_pubsub_data(data))
         else:
             if ERROR_IF_NO_TOPIC:
                 raise ValueError(f"Topic not registered: {topic_path}")

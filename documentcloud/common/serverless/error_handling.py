@@ -22,7 +22,6 @@ from ..environment import get_pubsub_data, encode_pubsub_data, publisher
 env = environ.Env()
 
 TIMEOUTS = env.list("TIMEOUTS", cast=int)
-NUM_RETRIES = len(TIMEOUTS)
 RUN_COUNT = "runcount"
 
 
@@ -30,24 +29,27 @@ class TimeoutError(Exception):
     pass
 
 
-def pubsub_function(redis, pubsub_topic):
+def pubsub_function(redis, pubsub_topic, timeouts=TIMEOUTS):
     def decorator(func):
         def _handle_timeout(signum, frame):
             raise TimeoutError()
 
         def wrapper(*args, **kwargs):
+
             # Get data
             data = get_pubsub_data(args[0])
             doc_id = data["doc_id"]
 
             # Return prematurely if there is an error or all processing is complete
             if not tasks.still_processing(redis, doc_id):
-                logging.warn("Skipping function execution since processing has stopped")
+                logging.warning(
+                    "Skipping function execution since processing has stopped"
+                )
                 return
 
             # Handle exceeding maximum number of retries
             run_count = data.get(RUN_COUNT, 0)
-            if run_count >= NUM_RETRIES:
+            if run_count >= len(timeouts):
                 # Error out
                 tasks.send_error(
                     redis, doc_id, "Function has timed out (max retries exceeded)"
@@ -55,7 +57,7 @@ def pubsub_function(redis, pubsub_topic):
                 return
 
             # Set up the timeout
-            timeout_seconds = TIMEOUTS[run_count]
+            timeout_seconds = timeouts[run_count]
             signal.signal(signal.SIGALRM, _handle_timeout)
             signal.alarm(timeout_seconds)
 
@@ -64,7 +66,7 @@ def pubsub_function(redis, pubsub_topic):
                 return func(*args, **kwargs)
             except TimeoutError:
                 # Retry the function with increased run count
-                logging.warn(f"Function timed out: retrying (run {run_count + 2})")
+                logging.warning(f"Function timed out: retrying (run {run_count + 2})")
                 data[RUN_COUNT] = run_count + 1
                 publisher.publish(pubsub_topic, data=encode_pubsub_data(data))
             except Exception as e:

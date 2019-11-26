@@ -27,6 +27,7 @@ django-debug-toolbar
 django-extensions
 django-coverage-plugin
 pytest-django
+fakeredis
 
 # Processing
 python-Levenshtein
