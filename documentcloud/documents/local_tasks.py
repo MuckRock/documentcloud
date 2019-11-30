@@ -9,22 +9,26 @@ from documentcloud.documents.processing.info_and_image.main import (
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
 
+# Set a high soft time limit so document processing can
+# proceed without timing out.
+SOFT_TIME_LIMIT = 10000
 
-@task
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
 def process_file(options):
     process_pdf(options)
 
 
-@task
+@task(soft_time_limit=SOFT_TIME_LIMIT)
 def process_file_internal(options):
     process_pdf_internal(options)
 
 
-@task
+@task(soft_time_limit=SOFT_TIME_LIMIT)
 def extract_images(data):
     extract_image(data)
 
 
-@task
+@task(soft_time_limit=SOFT_TIME_LIMIT)
 def ocr_pages(data):
     run_tesseract(data, None)

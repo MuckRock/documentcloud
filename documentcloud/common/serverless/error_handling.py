@@ -21,7 +21,9 @@ from ..environment import get_pubsub_data, encode_pubsub_data, publisher
 
 env = environ.Env()
 
+USE_TIMEOUT = env.bool("USE_TIMEOUT", True)
 TIMEOUTS = env.list("TIMEOUTS", cast=int)
+DEFAULT_TIMEOUTS = TIMEOUTS if USE_TIMEOUT else None
 RUN_COUNT = "runcount"
 
 
@@ -29,7 +31,7 @@ class TimeoutError(Exception):
     pass
 
 
-def pubsub_function(redis, pubsub_topic, timeouts=TIMEOUTS):
+def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
     def decorator(func):
         def _handle_timeout(signum, frame):
             raise TimeoutError()
@@ -47,19 +49,20 @@ def pubsub_function(redis, pubsub_topic, timeouts=TIMEOUTS):
                 )
                 return
 
-            # Handle exceeding maximum number of retries
-            run_count = data.get(RUN_COUNT, 0)
-            if run_count >= len(timeouts):
-                # Error out
-                tasks.send_error(
-                    redis, doc_id, "Function has timed out (max retries exceeded)"
-                )
-                return
+            if timeouts is not None:
+                # Handle exceeding maximum number of retries
+                run_count = data.get(RUN_COUNT, 0)
+                if run_count >= len(timeouts):
+                    # Error out
+                    tasks.send_error(
+                        redis, doc_id, "Function has timed out (max retries exceeded)"
+                    )
+                    return
 
-            # Set up the timeout
-            timeout_seconds = timeouts[run_count]
-            signal.signal(signal.SIGALRM, _handle_timeout)
-            signal.alarm(timeout_seconds)
+                # Set up the timeout
+                timeout_seconds = timeouts[run_count]
+                signal.signal(signal.SIGALRM, _handle_timeout)
+                signal.alarm(timeout_seconds)
 
             try:
                 # Run the function as originally intended
