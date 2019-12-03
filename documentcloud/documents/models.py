@@ -155,13 +155,19 @@ class Document(models.Model):
         except ValueError:
             return ""
 
-    def solr(self):
+    def solr(self, fields=None):
+        if fields is None:
+            pages = {
+                f"page_no_{i}": self.get_page_text(i)
+                for i in range(1, self.page_count + 1)
+            }
+        else:
+            # do not get page text for a partial update, as it is slow and
+            # not needed
+            pages = {}
         project_ids = [p.pk for p in self.projects.all()]
-        pages = {
-            f"page_no_{i}": self.get_page_text(i) for i in range(1, self.page_count + 1)
-        }
         data = {f"data_{key}": values for key, values in self.data.items()}
-        return {
+        solr_document = {
             "id": self.pk,
             "user": self.user_id,
             "organization": self.organization_id,
@@ -179,6 +185,15 @@ class Document(models.Model):
             **pages,
             **data,
         }
+
+        if fields:
+            # for partial updates, just return the needed fields
+            new_solr_document = {"id": self.pk}
+            for field in fields:
+                new_solr_document[field] = solr_document.get(field)
+            solr_document = new_solr_document
+
+        return solr_document
 
 
 class DocumentError(models.Model):

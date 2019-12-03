@@ -135,13 +135,21 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     @transaction.atomic
     def perform_update(self, serializer):
         was_public = serializer.instance.public
+        old_status = serializer.instance.status
         super().perform_update(serializer)
         if was_public != serializer.instance.public:
             transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
-        # XXX handle partial updates more optimially
-        # do not index invisible documents
-        if serializer.data["status"] == "success":
-            transaction.on_commit(lambda: solr_index.delay(serializer.data["id"]))
+        # XXX check that this code works as expected
+        if old_status in (Status.pending, Status.readable):
+            # if we were processing, do a full update
+            solr_index.delay(document_pk=serializer.instance.pk)
+        else:
+            # only update the fields that were updated
+            fields = serializer.data.keys()
+            solr_index.delay(
+                document_pk=serializer.instance.pk,
+                field_updates={f: "set" for f in fields},
+            )
 
     @action(detail=False, methods=["get"])
     def search(self, request):
@@ -218,6 +226,15 @@ class DocumentErrorViewSet(
         serializer.save(document_id=self.document.pk)
         self.document.status = Status.error
         self.document.save()
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                solr_documents={
+                    "id": self.document.pk,
+                    "status": self.document.get_status_display().lower(),
+                },
+                field_updates={"status": "set"},
+            )
+        )
 
 
 class NoteViewSet(viewsets.ModelViewSet):
@@ -308,6 +325,7 @@ class DataViewSet(viewsets.ViewSet):
         document = self.get_object()
         return Response(document.data.get(pk))
 
+    @transaction.atomic
     def update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
         serializer = self.serializer_class(data=request.data)
@@ -315,8 +333,18 @@ class DataViewSet(viewsets.ViewSet):
 
         document.data[pk] = serializer.data["values"]
         document.save()
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                solr_documents={
+                    "id": self.document.pk,
+                    f"data_{pk}": document.data["pk"],
+                },
+                field_updates={f"data_{pk}": "set"},
+            )
+        )
         return Response(document.data)
 
+    @transaction.atomic
     def partial_update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
         serializer = DataAddRemoveSerializer(data=request.data)
@@ -337,14 +365,30 @@ class DataViewSet(viewsets.ViewSet):
             del document.data[pk]
 
         document.save()
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                solr_documents={
+                    "id": self.document.pk,
+                    f"data_{pk}": document.data["pk"],
+                },
+                field_updates={f"data_{pk}": "set"},
+            )
+        )
         return Response(document.data)
 
+    @transaction.atomic
     def destroy(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
 
         if pk in document.data:
             del document.data[pk]
             document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    solr_documents={"id": self.document.pk, f"data_{pk}": None},
+                    field_updates={f"data_{pk}": "set"},
+                )
+            )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
