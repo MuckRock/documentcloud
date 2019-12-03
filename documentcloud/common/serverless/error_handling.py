@@ -4,9 +4,7 @@ handling baked in.
 """
 
 # Standard Library
-import errno
 import logging
-import os
 import signal
 from functools import wraps
 
@@ -14,7 +12,6 @@ from functools import wraps
 import environ
 
 # Local
-from .. import redis_fields
 from ..environment import encode_pubsub_data, get_pubsub_data, publisher
 from . import tasks
 
@@ -26,14 +23,14 @@ DEFAULT_TIMEOUTS = TIMEOUTS if USE_TIMEOUT else None
 RUN_COUNT = "runcount"
 
 
-class TimeoutError(Exception):
+class PubSubTimeoutError(Exception):
     pass
 
 
 def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
     def decorator(func):
         def _handle_timeout(signum, frame):
-            raise TimeoutError()
+            raise PubSubTimeoutError()
 
         def wrapper(*args, **kwargs):
 
@@ -46,7 +43,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
                 logging.warning(
                     "Skipping function execution since processing has stopped"
                 )
-                return
+                return "ok"
 
             if timeouts is not None:
                 # Handle exceeding maximum number of retries
@@ -56,7 +53,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
                     tasks.send_error(
                         redis, doc_id, "Function has timed out (max retries exceeded)"
                     )
-                    return
+                    return "ok"
 
                 # Set up the timeout
                 timeout_seconds = timeouts[run_count]
@@ -66,14 +63,14 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
             try:
                 # Run the function as originally intended
                 return func(*args, **kwargs)
-            except TimeoutError:
+            except PubSubTimeoutError:
                 # Retry the function with increased run count
-                logging.warning(f"Function timed out: retrying (run {run_count + 2})")
+                logging.warning("Function timed out: retrying (run %d)", run_count + 2)
                 data[RUN_COUNT] = run_count + 1
                 publisher.publish(pubsub_topic, data=encode_pubsub_data(data))
-            except Exception as e:
+            except Exception as exc:  # pylint: disable=broad-except
                 # Handle any error that comes up during function execution
-                error_message = str(e)
+                error_message = str(exc)
                 tasks.send_error(redis, doc_id, error_message, True)
                 return f"An error has occurred: {error_message}"
             finally:
