@@ -1,7 +1,7 @@
 # Standard Library
 import collections
-import importlib
 import gzip
+import importlib
 import json
 import os
 import pickle
@@ -14,7 +14,6 @@ import redis
 import requests
 from listcrunch import crunch_collection
 from PIL import Image
-
 
 env = environ.Env()
 
