@@ -8,11 +8,11 @@ from django.utils.translation import ugettext_lazy as _
 from autoslug.fields import AutoSlugField
 
 # DocumentCloud
+from documentcloud.common import path
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
-from documentcloud.common import path
 
 
 class Document(models.Model):

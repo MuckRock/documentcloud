@@ -13,7 +13,6 @@ import requests
 from cpuprofile import profile_cpu
 from PIL import Image
 
-
 env = environ.Env()
 
 # Imports based on execution context

@@ -3,6 +3,7 @@ import os
 import tempfile
 
 # DocumentCloud
+from documentcloud.common.environment.local.storage import storage
 from documentcloud.documents.processing.info_and_image.pdfium import (
     StorageHandler,
     Workspace,
@@ -10,7 +11,6 @@ from documentcloud.documents.processing.info_and_image.pdfium import (
 from documentcloud.documents.processing.tests.imagediff import same_images
 from documentcloud.documents.processing.tests.report_test_case import ReportTestCase
 from documentcloud.documents.processing.tests.textdiff import same_text
-from documentcloud.common.environment.local.storage import storage
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 pdfs = os.path.join(base_dir, "pdfs")

@@ -4,8 +4,8 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import View
 
 # DocumentCloud
-from documentcloud.documents.models import Document
 from documentcloud.common.environment import storage
+from documentcloud.documents.models import Document
 
 
 class FileServer(View):
