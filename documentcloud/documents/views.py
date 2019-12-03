@@ -44,6 +44,7 @@ from documentcloud.documents.tasks import (
     delete_document,
     fetch_file_url,
     process,
+    process_cancel,
     update_access,
 )
 from documentcloud.organizations.models import Organization
@@ -94,6 +95,11 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         if not storage.exists(document.doc_path):
             return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
 
+        if document.status in (Status.pending, Status.readable):
+            return Response(
+                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
         was_public = document.public
         with transaction.atomic():
             document.status = Status.pending
@@ -104,6 +110,20 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 transaction.on_commit(lambda: update_access.delay(document.pk))
         process.delay(document.pk, document.slug)
         return Response(status=status.HTTP_200_OK)
+
+    @process.mapping.delete
+    def cancel_process(self, request, pk=None):
+        """Cancel processing for a document"""
+        document = self.get_object()
+        if document.status not in (Status.pending, Status.readable):
+            return Response(
+                {"error": "Not processing"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        with transaction.atomic():
+            document.status = Status.error
+            document.save()
+            document.errors.create(message="Processing was cancelled")
+            transaction.on_commit(lambda: process_cancel.delay(document.pk))
 
     def perform_destroy(self, instance):
         delete_document.delay(instance.path)
