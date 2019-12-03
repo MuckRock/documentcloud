@@ -16,6 +16,14 @@ from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.tests.factories import UserFactory
 
 
+def pytest_ignore_collect(path, config):
+    """Do not recurse into symlinks when collecting tests
+    Used to ignore symlinks we have in processing to the common module
+    """
+    if path.isdir() and path.islink():
+        return True
+
+
 @pytest.fixture
 def user():
     return UserFactory()
