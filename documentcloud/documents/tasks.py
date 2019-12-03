@@ -60,17 +60,15 @@ def process(document_pk, slug):
 
 
 @task
-def create_redaction(document_pk, slug, top, left, bottom, right):
+def create_redaction(document_pk, slug, redactions):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
         json={
+            "method": "redact",
             "doc_id": document_pk,
             "slug": slug,
-            "top": top,
-            "left": left,
-            "bottom": bottom,
-            "right": right,
+            "redactions": redactions,
         },
     )
 
