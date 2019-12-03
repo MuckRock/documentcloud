@@ -312,13 +312,12 @@ class RedactionSerializer(serializers.Serializer):
         if attrs["top"] >= attrs["bottom"]:
             raise serializers.ValidationError("`top` must be less than `bottom`")
         if attrs["left"] >= attrs["right"]:
-            raise serializers.ValidationError("`top` must be less than `bottom`")
-        request = self.context.get("request")
+            raise serializers.ValidationError("`left` must be less than `right`")
+        return attrs
+
+    def validate_page(self, value):
         view = self.context.get("view")
         document = Document.objects.get(pk=view.kwargs["document_pk"])
-        if attrs["page"] >= document.page_count:
-            raise serializers.ValidationError(
-                "`page` must be a valid page for the document"
-            )
-
-        return attrs
+        if value >= document.page_count:
+            raise serializers.ValidationError("Must be a valid page for the document")
+        return value

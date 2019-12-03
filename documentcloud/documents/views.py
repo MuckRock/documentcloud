@@ -293,7 +293,7 @@ class DataViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class RedactionViewSet(viewsets.ViewSet):
+class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = RedactionSerializer
     permission_classes = (IsAuthenticated,)
 
@@ -306,9 +306,9 @@ class RedactionViewSet(viewsets.ViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
-    def create(self, request, document_pk=None):
+    def create(self, request, *args, **kwargs):
         document = self.get_object()
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.get_serializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
-        create_redaction.delay(document.pk, document.slug, **serializer.data)
+        create_redaction.delay(document.pk, document.slug, serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
