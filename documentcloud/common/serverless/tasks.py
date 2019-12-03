@@ -3,7 +3,6 @@ Helper functions to perform common serverless operations.
 """
 
 # Standard Library
-import json
 import logging
 from urllib.parse import urljoin
 

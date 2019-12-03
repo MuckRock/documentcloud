@@ -1,5 +1,4 @@
 # Standard Library
-import base64
 import json
 
 

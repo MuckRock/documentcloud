@@ -25,9 +25,8 @@ redis = fakeredis.FakeStrictRedis(server=server)
 initialize(redis, 1)
 
 
-def communicate_data(*args):
+def communicate_data(*args):  # pylint: disable=unused-argument
     """A simple method to inspect for data communicated in test methods"""
-    pass
 
 
 def encode(data):
