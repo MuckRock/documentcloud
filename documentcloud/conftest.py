@@ -20,8 +20,8 @@ def pytest_ignore_collect(path, config):
     """Do not recurse into symlinks when collecting tests
     Used to ignore symlinks we have in processing to the common module
     """
-    if path.isdir() and path.islink():
-        return True
+    # pylint: disable=unused-argument
+    return path.isdir() and path.islink()
 
 
 @pytest.fixture
