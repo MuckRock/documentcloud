@@ -4,20 +4,19 @@ handling baked in.
 """
 
 # Standard Library
-from functools import wraps
 import errno
 import logging
 import os
 import signal
+from functools import wraps
 
-# Third party
+# Third Party
 import environ
 
-# Common
-from . import tasks
+# Local
 from .. import redis_fields
-from ..environment import get_pubsub_data, encode_pubsub_data, publisher
-
+from ..environment import encode_pubsub_data, get_pubsub_data, publisher
+from . import tasks
 
 env = environ.Env()
 

@@ -1,16 +1,21 @@
-from functools import wraps
-import fakeredis
-import json
+# Standard Library
 import time
 import uuid
-import unittest
-from unittest.mock import patch, call
+from functools import wraps
+from unittest.mock import call, patch
 
-from ..environment import get_pubsub_data, encode_pubsub_data, publisher
-from ..environment.local.pubsub import encode_published_pubsub_data
-from .error_handling import pubsub_function
-from .tasks import initialize, send_update
+# Third Party
+import fakeredis
 
+# DocumentCloud
+from documentcloud.common.environment import (
+    encode_pubsub_data,
+    get_pubsub_data,
+    publisher,
+)
+from documentcloud.common.environment.local.pubsub import encode_published_pubsub_data
+from documentcloud.common.serverless.error_handling import pubsub_function
+from documentcloud.common.serverless.tasks import initialize, send_update
 
 server = fakeredis.FakeServer()
 redis = fakeredis.FakeStrictRedis(server=server)
@@ -73,8 +78,8 @@ def timeout_on_second_try(data):
     communicate_data("Done", data)
 
 
-class TestErrorHandling(unittest.TestCase):
-    @patch("documentcloud.common.serverless.test_error_handling.communicate_data")
+class TestErrorHandling:
+    @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
     @patch("documentcloud.common.serverless.tasks.send_update")
     @patch("documentcloud.common.serverless.tasks.send_error")
     def test_success_on_first_try(
@@ -83,12 +88,12 @@ class TestErrorHandling(unittest.TestCase):
         success_on_first_try(encode({"doc_id": 1}))
         mock_send_error.assert_not_called()
         mock_send_update.assert_not_called()
-        self.assertEqual(
-            mock_communicate_data.mock_calls,
-            [call("Pending", {"doc_id": 1}), call("Done", {"doc_id": 1})],
-        )
+        assert mock_communicate_data.mock_calls == [
+            call("Pending", {"doc_id": 1}),
+            call("Done", {"doc_id": 1}),
+        ]
 
-    @patch("documentcloud.common.serverless.test_error_handling.communicate_data")
+    @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
     @patch("documentcloud.common.serverless.tasks.send_update")
     @patch("documentcloud.common.serverless.tasks.send_error")
     def test_success_on_third_try(
@@ -97,17 +102,14 @@ class TestErrorHandling(unittest.TestCase):
         success_on_third_try(encode({"doc_id": 1}))
         mock_send_error.assert_not_called()
         mock_send_update.assert_not_called()
-        self.assertEqual(
-            mock_communicate_data.mock_calls,
-            [
-                call("Pending", {"doc_id": 1}),
-                call("Pending", {"doc_id": 1, "runcount": 1}),
-                call("Pending", {"doc_id": 1, "runcount": 2}),
-                call("Done", {"doc_id": 1, "runcount": 2}),
-            ],
-        )
+        assert mock_communicate_data.mock_calls == [
+            call("Pending", {"doc_id": 1}),
+            call("Pending", {"doc_id": 1, "runcount": 1}),
+            call("Pending", {"doc_id": 1, "runcount": 2}),
+            call("Done", {"doc_id": 1, "runcount": 2}),
+        ]
 
-    @patch("documentcloud.common.serverless.test_error_handling.communicate_data")
+    @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
     @patch("documentcloud.common.serverless.tasks.send_update")
     @patch("documentcloud.common.serverless.tasks.send_error")
     def test_timeout_on_first_try(
@@ -118,7 +120,7 @@ class TestErrorHandling(unittest.TestCase):
         mock_send_update.assert_not_called()
         mock_communicate_data.assert_called_once_with("Pending", {"doc_id": 1})
 
-    @patch("documentcloud.common.serverless.test_error_handling.communicate_data")
+    @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
     @patch("documentcloud.common.serverless.tasks.send_update")
     @patch("documentcloud.common.serverless.tasks.send_error")
     def test_timeout_on_second_try(
@@ -127,10 +129,7 @@ class TestErrorHandling(unittest.TestCase):
         timeout_on_second_try(encode({"doc_id": 1}))
         mock_send_error.assert_called_once()
         mock_send_update.assert_not_called()
-        self.assertEqual(
-            mock_communicate_data.mock_calls,
-            [
-                call("Pending", {"doc_id": 1}),
-                call("Pending", {"doc_id": 1, "runcount": 1}),
-            ],
-        )
+        assert mock_communicate_data.mock_calls == [
+            call("Pending", {"doc_id": 1}),
+            call("Pending", {"doc_id": 1, "runcount": 1}),
+        ]
