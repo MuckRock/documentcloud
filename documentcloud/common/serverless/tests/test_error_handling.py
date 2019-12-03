@@ -13,9 +13,11 @@ from documentcloud.common.environment import (
     get_pubsub_data,
     publisher,
 )
-from documentcloud.common.environment.local.pubsub import encode_published_pubsub_data
-from documentcloud.common.serverless.error_handling import pubsub_function
-from documentcloud.common.serverless.tasks import initialize, send_update
+
+# Local
+from ...environment.local.pubsub import encode_published_pubsub_data
+from ..error_handling import pubsub_function
+from ..tasks import initialize
 
 server = fakeredis.FakeServer()
 redis = fakeredis.FakeStrictRedis(server=server)
