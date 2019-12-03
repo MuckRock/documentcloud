@@ -14,7 +14,6 @@ import redis as _redis
 import requests
 
 # Local
-# Common
 from .. import redis_fields
 
 env = environ.Env()
