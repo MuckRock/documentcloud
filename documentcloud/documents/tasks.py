@@ -74,6 +74,15 @@ def create_redaction(document_pk, slug, redactions):
 
 
 @task
+def process_cancel(document_pk):
+    """Stop the processing"""
+    # TODO this
+    httpsub.post(
+        settings.DOC_PROCESSING_URL, json={"method": "cancel", "doc_id": document_pk}
+    )
+
+
+@task
 def delete_document(path):
     storage.delete(path)
 
