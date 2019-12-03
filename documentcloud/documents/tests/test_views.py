@@ -2,6 +2,9 @@
 from django.conf import settings
 from rest_framework import status
 
+# Standard Library
+from unittest.mock import patch
+
 # Third Party
 import pytest
 
@@ -618,3 +621,85 @@ class TestDataAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         document.refresh_from_db()
         assert document.data == {"color": ["red", "blue"]}
+
+
+@pytest.mark.django_db()
+class TestRedactionAPI:
+    @patch("documentcloud.documents.tasks.create_redaction.delay")
+    def test_create(self, mock_create_redaction, client):
+        """Create multiple redactions"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        data = [
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+        ]
+        response = client.post(
+            f"/api/documents/{document.pk}/redactions/", data, format="json"
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_create_redaction.assert_called_once_with(document.pk, document.slug, data)
+
+    def test_create_anonymous(self, client):
+        """You cannot create redactions if you are not logged in"""
+        document = DocumentFactory(page_count=2)
+        data = [
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+        ]
+        response = client.post(
+            f"/api/documents/{document.pk}/redactions/", data, format="json"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_no_view(self, client, user):
+        """You cannot create redactions on documents you cannot view"""
+        document = DocumentFactory(page_count=2, access=Access.private)
+        client.force_authenticate(user=user)
+        data = [
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+        ]
+        response = client.post(
+            f"/api/documents/{document.pk}/redactions/", data, format="json"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_create_no_edit(self, client, user):
+        """You cannot create redactions on documents you cannot edit"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=user)
+        data = [
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+        ]
+        response = client.post(
+            f"/api/documents/{document.pk}/redactions/", data, format="json"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_bad_page(self, client):
+        """You cannot create redactions on pages that don't exist"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        data = [
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 2},
+        ]
+        response = client.post(
+            f"/api/documents/{document.pk}/redactions/", data, format="json"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_shape(self, client):
+        """You cannot create redactions with bad dimensions"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        data = [
+            {"top": 30, "left": 10, "bottom": 20, "right": 20, "page": 0},
+            {"top": 30, "left": 50, "bottom": 40, "right": 40, "page": 1},
+        ]
+        response = client.post(
+            f"/api/documents/{document.pk}/redactions/", data, format="json"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
