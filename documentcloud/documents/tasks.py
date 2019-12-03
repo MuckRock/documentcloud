@@ -101,9 +101,18 @@ def update_access(document_pk):
 
 
 # XXX error handling / retry
-# XXX commit policy
 @task
-def solr_index(document_pk):
-    document = Document.objects.get(pk=document_pk)
-    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
-    solr.add([document.solr()], commit=True)
+def solr_index(document_pk=None, solr_documents=None, field_updates=None):
+    if document_pk is not None:
+        document = Document.objects.get(pk=document_pk)
+        if field_updates:
+            solr_documents = [document.solr(field_updates.keys())]
+        else:
+            solr_documents = [document.solr()]
+
+    if solr_documents is not None:
+        if not isinstance(solr_documents, list):
+            solr_documents = [solr_documents]
+
+        solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
+        solr.add(solr_documents, fieldUpdates=field_updates)

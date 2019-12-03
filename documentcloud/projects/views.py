@@ -8,6 +8,7 @@ import django_filters
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
+from documentcloud.documents.tasks import solr_index
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.projects.serializers import (
     CollaborationSerializer,
@@ -60,6 +61,7 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
         )
         return project.projectmembership_set.all()
 
+    @transaction.atomic
     def perform_create(self, serializer):
         """Specify the project"""
         project = Project.objects.get(pk=self.kwargs["project_pk"])
@@ -68,6 +70,28 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
                 "You do not have permission to add documents to this project"
             )
         serializer.save(project=project)
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                solr_documents={
+                    "id": serializer.data["document"].pk,
+                    "projects": project.pk,
+                },
+                field_updates={"projects": "add"},
+            )
+        )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                solr_documents={
+                    "id": instance.document_id,
+                    "projects": instance.project_id,
+                },
+                field_updates={"projects": "remove"},
+            )
+        )
 
 
 class CollaborationViewSet(
