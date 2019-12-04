@@ -10,11 +10,11 @@ CODE_DIR=awsbin/ocr
 [ -d "$CODE_DIR" ] || mkdir -p $CODE_DIR
 
 # Copy the code from the Django app
-cp -Lr ../../../documentcloud/documents/processing/ocr/* $CODE_DIR
+cp -Lr ../../../documentcloud/documents/processing/ocr/* $CODE_DIR 2>/dev/null || :
 
 # Sub in Amazon Linux compiled Tesseract libraries
 rm -r $CODE_DIR/tesseract
-cp -r ocr_libraries/ $CODE_DIR/tesseract
+cp -r ocr_libraries/ $CODE_DIR/tesseract 2>/dev/null || :
 
 # Set AWS requirements
 cp cloud-requirements.txt $CODE_DIR/cloud-requirements.txt
