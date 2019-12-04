@@ -13,7 +13,7 @@ import environ
 
 # Local
 from ..environment import encode_pubsub_data, get_pubsub_data, publisher
-from . import tasks
+from . import utils
 
 env = environ.Env()
 
@@ -39,7 +39,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
             doc_id = data["doc_id"]
 
             # Return prematurely if there is an error or all processing is complete
-            if not tasks.still_processing(redis, doc_id):
+            if not utils.still_processing(redis, doc_id):
                 logging.warning(
                     "Skipping function execution since processing has stopped"
                 )
@@ -50,7 +50,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
                 run_count = data.get(RUN_COUNT, 0)
                 if run_count >= len(timeouts):
                     # Error out
-                    tasks.send_error(
+                    utils.send_error(
                         redis, doc_id, "Function has timed out (max retries exceeded)"
                     )
                     return "ok"
@@ -71,7 +71,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
             except Exception as exc:  # pylint: disable=broad-except
                 # Handle any error that comes up during function execution
                 error_message = str(exc)
-                tasks.send_error(redis, doc_id, error_message, True)
+                utils.send_error(redis, doc_id, error_message, True)
                 return f"An error has occurred: {error_message}"
             finally:
                 # Clear out the timeout alarm

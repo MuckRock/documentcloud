@@ -23,7 +23,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
-    from documentcloud.common.serverless import tasks
+    from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.info_and_image.pdfium import (
         StorageHandler,
@@ -38,7 +38,7 @@ else:
         publisher,
         storage,
     )
-    from common.serverless import tasks
+    from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
     from pdfium import StorageHandler, Workspace
 
@@ -64,7 +64,7 @@ IMAGE_WIDTHS = [
         default=["large:1000", "normal:700", "small:180", "thumbnail:60"],
     )
 ]  # width of images to OCR
-REDIS = tasks.get_redis()
+REDIS = utils.get_redis()
 
 # Topic names for the messaging queue
 PDF_PROCESS_TOPIC = publisher.topic_path(
@@ -196,7 +196,7 @@ def write_pagespec(doc_id, slug):
         pagesize_file.write(crunched_pagespec)
 
     # Send pagespec update
-    tasks.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
+    utils.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
 
 
 def process_pdf(request, _context=None):
@@ -205,7 +205,7 @@ def process_pdf(request, _context=None):
     doc_id = data["doc_id"]
 
     # Initialize the processing environment
-    tasks.initialize(REDIS, doc_id)
+    utils.initialize(REDIS, doc_id)
 
     # Launch PDF processing via pubsub
     publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
@@ -227,7 +227,7 @@ def process_pdf_internal(data, _context=None):
     initialize_redis_page_data(doc_id, page_count)
 
     # Update the model with the page count
-    tasks.send_update(REDIS, doc_id, {"page_count": page_count})
+    utils.send_update(REDIS, doc_id, {"page_count": page_count})
 
     # Kick off image processing tasks
     for i in range(0, page_count, IMAGE_BATCH):

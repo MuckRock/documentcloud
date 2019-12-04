@@ -22,7 +22,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
-    from documentcloud.common.serverless import tasks
+    from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
@@ -33,14 +33,14 @@ else:
         publisher,
         storage,
     )
-    from common.serverless import tasks
+    from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
     from tess import Tesseract
 
     sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
 
 
-REDIS = tasks.get_redis()
+REDIS = utils.get_redis()
 
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
@@ -144,7 +144,7 @@ def run_tesseract(data, _context=None):
 
         # Check if finished
         if texts_remaining == 0:
-            tasks.send_complete(REDIS, doc_id)
+            utils.send_complete(REDIS, doc_id)
             return "Ok"
 
     next_paths_and_numbers = paths_and_numbers[1:]

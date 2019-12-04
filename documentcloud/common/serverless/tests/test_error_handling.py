@@ -17,7 +17,7 @@ from documentcloud.common.environment import (
 # Local
 from ...environment.local.pubsub import encode_published_pubsub_data
 from ..error_handling import pubsub_function
-from ..tasks import initialize
+from ..utils import initialize
 
 server = fakeredis.FakeServer()
 redis = fakeredis.FakeStrictRedis(server=server)
@@ -81,8 +81,8 @@ def timeout_on_second_try(data):
 
 class TestErrorHandling:
     @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
-    @patch("documentcloud.common.serverless.tasks.send_update")
-    @patch("documentcloud.common.serverless.tasks.send_error")
+    @patch("documentcloud.common.serverless.utils.send_update")
+    @patch("documentcloud.common.serverless.utils.send_error")
     def test_success_on_first_try(
         self, mock_send_error, mock_send_update, mock_communicate_data
     ):
@@ -95,8 +95,8 @@ class TestErrorHandling:
         ]
 
     @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
-    @patch("documentcloud.common.serverless.tasks.send_update")
-    @patch("documentcloud.common.serverless.tasks.send_error")
+    @patch("documentcloud.common.serverless.utils.send_update")
+    @patch("documentcloud.common.serverless.utils.send_error")
     def test_success_on_third_try(
         self, mock_send_error, mock_send_update, mock_communicate_data
     ):
@@ -111,8 +111,8 @@ class TestErrorHandling:
         ]
 
     @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
-    @patch("documentcloud.common.serverless.tasks.send_update")
-    @patch("documentcloud.common.serverless.tasks.send_error")
+    @patch("documentcloud.common.serverless.utils.send_update")
+    @patch("documentcloud.common.serverless.utils.send_error")
     def test_timeout_on_first_try(
         self, mock_send_error, mock_send_update, mock_communicate_data
     ):
@@ -122,8 +122,8 @@ class TestErrorHandling:
         mock_communicate_data.assert_called_once_with("Pending", {"doc_id": 1})
 
     @patch("documentcloud.common.serverless.tests.test_error_handling.communicate_data")
-    @patch("documentcloud.common.serverless.tasks.send_update")
-    @patch("documentcloud.common.serverless.tasks.send_error")
+    @patch("documentcloud.common.serverless.utils.send_update")
+    @patch("documentcloud.common.serverless.utils.send_error")
     def test_timeout_on_second_try(
         self, mock_send_error, mock_send_update, mock_communicate_data
     ):
