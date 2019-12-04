@@ -6,10 +6,8 @@ import time
 # Third Party
 import environ
 import numpy as np
-import sentry_sdk
 from cpuprofile import profile_cpu
 from PIL import Image
-from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 env = environ.Env()
 
@@ -36,6 +34,10 @@ else:
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
     from tess import Tesseract
+
+    # only initialize sentry on serverless
+    import sentry_sdk
+    from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
     sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
 
