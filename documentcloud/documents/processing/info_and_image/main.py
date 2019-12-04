@@ -6,8 +6,10 @@ import pickle
 # Third Party
 import environ
 import redis
+import sentry_sdk
 from listcrunch import crunch_collection
 from PIL import Image
+from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 env = environ.Env()
 
@@ -39,6 +41,8 @@ else:
     from common.serverless import tasks
     from common.serverless.error_handling import pubsub_function
     from pdfium import StorageHandler, Workspace
+
+    sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
 
 
 IMAGE_SUFFIX = ".gif"
