@@ -6,11 +6,11 @@ ignore=migrations
 
 [FORMAT]
 max-line-length=88
-good-names=pk,x,y
+good-names=pk,x,y,i
 max-args=6
 
 [MESSAGES CONTROL]
-disable=missing-docstring,too-many-ancestors,too-few-public-methods,bad-continuation,no-else-return,no-member,attribute-defined-outside-init,no-self-use,similarities
+disable=missing-docstring,too-many-ancestors,too-few-public-methods,bad-continuation,no-else-return,no-member,attribute-defined-outside-init,no-self-use,similarities,import-outside-toplevel,cyclic-import
 
 [TYPECHECK]
 generated-members=REQUEST,acl_users,aq_parent,"[a-zA-Z]+_set{1,2}",save,delete

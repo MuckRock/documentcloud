@@ -35,11 +35,11 @@ def same_images(
 
     Borrows techniques from:
       https://docs.opencv.org/3.4.0/d7/d4d/tutorial_py_thresholding.html
-    
+
     Arguments:
       test_image {str} -- The file name of the first image.
       expected_image {str} -- The file name of the second image.
-    
+
     Keyword Arguments:
       report_generator {Optional[ReportGenerator]} -- An HTML test output report
           generator. If one is specified, results from the image comparison task are
@@ -55,10 +55,11 @@ def same_images(
           difference image.
       threshold {int} -- The number of differing pixels that are acceptable to consider
           two images matching. (default: {0})
-    
+
     Returns:
       bool -- Whether the two images are identical (True) or not (False)
     """
+    # pylint: disable=too-many-arguments, too-many-locals
     # Read the images from file names.
     im1 = cv2.imread(test_image)
     im2 = cv2.imread(expected_image)
@@ -102,16 +103,16 @@ def same_images(
         )
 
         # Show the processed images.
-        with tempfile.NamedTemporaryFile(suffix=".png") as f1:
-            with tempfile.NamedTemporaryFile(suffix=".png") as f2:
+        with tempfile.NamedTemporaryFile(suffix=".png") as file1:
+            with tempfile.NamedTemporaryFile(suffix=".png") as file2:
                 # Show the difference image.
-                with tempfile.NamedTemporaryFile(suffix=".png") as f3:
-                    cv2.imwrite(f1.name, im1)
-                    cv2.imwrite(f2.name, im2)
-                    cv2.imwrite(f3.name, full)
+                with tempfile.NamedTemporaryFile(suffix=".png") as file3:
+                    cv2.imwrite(file1.name, im1)
+                    cv2.imwrite(file2.name, im2)
+                    cv2.imwrite(file3.name, full)
 
                     report_generator.add_images(
-                        [f1.name, f2.name, f3.name],
+                        [file1.name, file2.name, file3.name],
                         [
                             "Processed test image",
                             "Processed expected image",
@@ -120,7 +121,7 @@ def same_images(
                     )
 
         report_generator.add_text(
-            "Difference pixels: %d (%d or fewer desired)" % (diff_pix, threshold),
+            "Difference pixels: %s (%d or fewer desired)" % (diff_pix, threshold),
             "color: green;" if passes else "font-weight: bold; color: red;",
         )
         report_generator.add_horizontal_rule()
