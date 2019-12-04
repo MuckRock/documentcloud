@@ -1,36 +1,32 @@
 # Standard Library
 import collections
 import gzip
-import importlib
-import json
-import os
 import pickle
-from urllib.parse import urljoin
 
 # Third Party
 import environ
-import furl
 import redis
-import requests
 from listcrunch import crunch_collection
 from PIL import Image
 
 env = environ.Env()
 
 # Imports based on execution context
-# In serverless functions, imports cannot be relative
 if env.str("ENVIRONMENT").startswith("local"):
-    from .common import path, redis_fields
-    from .common.environment import (
+    from documentcloud.common import path, redis_fields
+    from documentcloud.common.environment import (
         get_http_data,
         get_pubsub_data,
         encode_pubsub_data,
         publisher,
         storage,
     )
-    from .common.serverless import tasks
-    from .common.serverless.error_handling import pubsub_function
-    from .pdfium import StorageHandler, Workspace
+    from documentcloud.common.serverless import tasks
+    from documentcloud.common.serverless.error_handling import pubsub_function
+    from documentcloud.documents.processing.info_and_image.pdfium import (
+        StorageHandler,
+        Workspace,
+    )
 else:
     from common import path, redis_fields
     from common.environment import (
@@ -147,7 +143,8 @@ def get_redis_pagespec(doc_id):
 
     pipeline = REDIS.pipeline()
 
-    # We cannot use the convenience transacation wrapper since values we watch are dynamic
+    # We cannot use the convenience transacation wrapper since values we watch
+    # are dynamic
     # See https://pypi.org/project/redis/#pipelines for details
     while True:
         try:
@@ -220,7 +217,6 @@ def process_pdf_internal(data, _context=None):
     # Ensure a PDF file
     doc_id = data["doc_id"]
     slug = data["slug"]
-    doc_path = path.doc_path(doc_id, slug)
 
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)

@@ -10,6 +10,7 @@ from documentcloud.documents.models import Document
 
 class FileServer(View):
     def get(self, request, *args, **kwargs):
+        # pylint: disable=unused-argument
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )

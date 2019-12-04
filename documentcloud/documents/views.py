@@ -1,5 +1,4 @@
 # Django
-from django.conf import settings
 from django.db import transaction
 from rest_framework import mixins, parsers, status, viewsets
 from rest_framework.decorators import action
@@ -88,6 +87,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     @action(detail=True, methods=["post"])
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
+        # pylint: disable=unused-argument
         document = self.get_object()
         if not storage.exists(document.doc_path):
             return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
@@ -236,6 +236,7 @@ class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 class DataViewSet(viewsets.ViewSet):
+    # pylint: disable=unused-argument
     serializer_class = DataSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
 

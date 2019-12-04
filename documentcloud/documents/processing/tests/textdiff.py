@@ -18,7 +18,7 @@ def same_text(
     threshold: float = 0.95,
 ) -> bool:
     """Returns whether two specified text strings have mostly the same content.
-    
+
     Uses the Levenshtein distance to align and compare two passages of text. The
     reported similarity score is based on the Levenshtein distance divided by the
     maximum length of the input texts. Anything above a certain threshold is reported as
@@ -27,7 +27,7 @@ def same_text(
     Arguments:
         test_text {str} -- The first string.
         expected_text {str} -- The expected content.
-    
+
     Keyword Arguments:
         report_generator {Optional[ReportGenerator]} -- An HTML test output report
             generator. If one is specified, results from the text comparison task are
@@ -38,7 +38,7 @@ def same_text(
             whitespace-invariant. (default: {True})
         threshold {float} -- The Levenshtein similarity quotient threshold. Anything at
             or above this treshhold will be considered similar. (default: {0.95})
-    
+
     Returns:
         bool -- Whether the two texts are identical enough (True) or not (False).
     """

@@ -1,33 +1,28 @@
 # Standard Library
 import json
 import logging
-import os
 import time
-from urllib.parse import urljoin
 
 # Third Party
 import environ
-import furl
 import numpy as np
-import requests
 from cpuprofile import profile_cpu
 from PIL import Image
 
 env = environ.Env()
 
 # Imports based on execution context
-# In serverless functions, imports cannot be relative
 if env.str("ENVIRONMENT").startswith("local"):
-    from .common import path, redis_fields
-    from .common.environment import (
+    from documentcloud.common import path, redis_fields
+    from documentcloud.common.environment import (
         get_pubsub_data,
         encode_pubsub_data,
         publisher,
         storage,
     )
-    from .common.serverless import error_handling, tasks
-    from .common.serverless.error_handling import pubsub_function
-    from .tess import Tesseract
+    from documentcloud.common.serverless import tasks
+    from documentcloud.common.serverless.error_handling import pubsub_function
+    from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
     from common import path, redis_fields
     from common.environment import (
@@ -36,7 +31,7 @@ else:
         publisher,
         storage,
     )
-    from common.serverless import error_handling, tasks
+    from common.serverless import tasks
     from common.serverless.error_handling import pubsub_function
     from tess import Tesseract
 
@@ -73,7 +68,7 @@ def ocr_page(page_path):
         img = img.resize((DESIRED_WIDTH, round(img.height * resize)), Image.ANTIALIAS)
 
     img_data = np.array(img.convert("RGB"))
-    height, width, depth = img_data.shape
+    height, width, depth = img_data.shape  # pylint: disable=unpacking-non-sequence
 
     # Run Tesseract OCR on the image
     tess = Tesseract()

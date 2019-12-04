@@ -17,8 +17,8 @@ pdfs = os.path.join(base_dir, "pdfs")
 images = os.path.join(base_dir, "images")
 texts = os.path.join(base_dir, "texts")
 
-with open(os.path.join(texts, "pg2.txt"), "r") as f:
-    page2_text = f.read()
+with open(os.path.join(texts, "pg2.txt"), "r") as pg2_file:
+    page2_text = pg2_file.read()
 
 desired_texts = [None, page2_text, None]
 
@@ -31,9 +31,9 @@ class PDFProcessorTest(ReportTestCase):
             pdf_path = os.path.join(pdfs, "doc_3.pdf")
             self.report_generator.add_pdf(pdf_path)
 
-            with Workspace() as ws, StorageHandler(
+            with Workspace() as workspace, StorageHandler(
                 storage, pdf_path
-            ) as f, ws.load_document_custom(f) as doc:
+            ) as file_, workspace.load_document_custom(file_) as doc:
                 # Assert correct page count.
                 self.assertEqual(doc.page_count, 3)
                 for i in range(doc.page_count):
