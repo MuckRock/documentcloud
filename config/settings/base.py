@@ -221,17 +221,7 @@ CACHES = {
             # http://niwinz.github.io/django-redis/latest/#_memcached_exceptions_behavior
             "IGNORE_EXCEPTIONS": True,
         },
-    },
-    "processing": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env("REDIS_PROCESSING_URL"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "PASSWORD": env("REDIS_PROCESSING_PASSWORD"),
-            "SOCKET_CONNECT_TIMEOUT": env.int("REDIS_PROCESSING_CONNECT_TIMEOUT", 1),
-            "SOCKET_TIMEOUT": env.int("REDIS_PROCESSING_TIMEOUT", 1),
-        },
-    },
+    }
 }
 DEFAULT_CACHE_TIMEOUT = 15 * 60
 
@@ -379,6 +369,8 @@ DOCUMENT_BUCKET = env("DOCUMENT_BUCKET", default="documents")
 
 # Processing
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
+PROGRESS_URL = env("PROGRESS_URL", default="")
+PROGRESS_TIMEOUT = env.int("PROGRESS_TIMEOUT", default=1)
 
 # Auth
 LOGIN_URL = "/accounts/login/squarelet"
@@ -393,9 +385,6 @@ SIMPLE_JWT = {
     "AUDIENCE": ["documentcloud"],
     "USER_ID_FIELD": "uuid",
 }
-
-REDIS_PROCESSING_URL = env("REDIS_PROCESSING_URL")
-REDIS_PROCESSING_PASSWORD = env("REDIS_PROCESSING_PASSWORD")
 
 PROCESSING_TOKEN = env("PROCESSING_TOKEN")
 

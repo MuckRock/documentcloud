@@ -18,4 +18,11 @@ def process_callback(request, _context):
     return process_pdf(request.json())
 
 
+def progress_callback(request, _context):
+    from documentcloud.documents.processing.info_and_image.main import get_progress
+
+    return get_progress(request.json())
+
+
 adapter.register_uri("POST", env("DOC_PROCESSING_URL"), json=process_callback)
+adapter.register_uri("POST", env("PROGRESS_URL"), json=progress_callback)

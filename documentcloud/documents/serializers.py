@@ -1,15 +1,15 @@
 # Django
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 # Third Party
-from django_redis import get_redis_connection
-from redis.exceptions import RedisError
+import requests
+from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
-from documentcloud.common import redis_fields
-from documentcloud.common.environment import storage
+from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.fields import ChoiceField
@@ -118,7 +118,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
-        self._redis_data = None
+        self._progress_data = None
         if not isinstance(self.instance, Document) or self.instance.status not in (
             Status.pending,
             Status.readable,
@@ -161,26 +161,28 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_images_remaining(self, obj):
         """Get the images remaining from the processing redis instance"""
-        if self._redis_data is None:
-            self._get_redis(obj)
-        return self._redis_data[0]
+        if self._progress_data is None:
+            self._get_progress(obj)
+        return self._progress_data["images_remaining"]
 
     def get_texts_remaining(self, obj):
         """Get the texts remaining from the processing redis instance"""
-        if self._redis_data is None:
-            self._get_redis(obj)
-        return self._redis_data[1]
+        if self._progress_data is None:
+            self._get_progress(obj)
+        return self._progress_data["texts_remaining"]
 
-    def _get_redis(self, obj):
-        """Get a value from the processing redis instance"""
-        redis = get_redis_connection("processing")
+    def _get_progress(self, obj):
+        """Get the progress data from the serverless function"""
         try:
-            with redis.pipeline() as pipeline:
-                pipeline.get(redis_fields.images_remaining(obj.pk))
-                pipeline.get(redis_fields.texts_remaining(obj.pk))
-                self._redis_data = pipeline.execute()
-        except RedisError:
-            self._redis_data = (None, None)
+            response = httpsub.post(
+                settings.PROGRESS_URL,
+                json={"doc_id": obj.pk},
+                timeout=settings.PROGRESS_TIMEOUT,
+            )
+            response.raise_for_status()
+            self._progress_data = response.json()
+        except RequestException:
+            self._progress_data = {"texts_remaining": None, "images_remaining": None}
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):

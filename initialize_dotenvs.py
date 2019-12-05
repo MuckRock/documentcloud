@@ -49,7 +49,8 @@ CONFIG = [
                 "envvars": [
                     ("ENVIRONMENT", "local-minio"),
                     ("SERVERLESS", "False"),
-                    ("DOC_PROCESSING_URL", "http://process.dev.documentcloud.org"),
+                    ("DOC_PROCESSING_URL", "mock://process.dev.documentcloud.org"),
+                    ("PROGRESS_URL", "mock://progress.dev.documentcloud.org"),
                     ("API_CALLBACK", "http://api.dev.documentcloud.org/api/"),
                     ("PROCESSING_TOKEN", lambda: random_string(64)),
                     ("DOCUMENT_BUCKET", "documents"),
