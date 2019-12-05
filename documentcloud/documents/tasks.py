@@ -14,7 +14,6 @@ from documentcloud.documents.models import Document
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
     from documentcloud.documents.local_tasks import (
-        process_file,
         process_file_internal,
         extract_images,
         ocr_pages,
