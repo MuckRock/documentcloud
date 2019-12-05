@@ -1,36 +1,21 @@
 # Third Party
 import environ
+import requests
+import requests_mock
 
 env = environ.Env()
 
-# Whether to throw an error if a URL is requested that is not registered.
-ERROR_IF_NO_URL = True
-
-# XXX return mocked response object so code can check response codes?
-
-
-class HTTPSub:
-    def __init__(self):
-        self.tasks = {}
-
-    def register_internal_route(self, url, callback_fn):
-        self.tasks[url] = callback_fn
-
-    def post(self, url, json):
-        if url in self.tasks:
-            self.tasks[url](json)
-        elif ERROR_IF_NO_URL:
-            raise ValueError(f"HTTP route not registered: {url}")
-
 
 # Define http sub client and subscriptions
-httpsub = HTTPSub()
+httpsub = requests.Session()
+adapter = requests_mock.Adapter()
+httpsub.mount("mock", adapter)
 
 
-def process_file_task(data):
-    from documentcloud.documents.tasks import process_file
+def process_callback(request, _context):
+    from documentcloud.documents.processing.info_and_image.main import process_pdf
 
-    return process_file.delay(data)
+    return process_pdf(request.json())
 
 
-httpsub.register_internal_route(env.str("DOC_PROCESSING_URL"), process_file_task)
+adapter.register_uri("POST", env("DOC_PROCESSING_URL"), json=process_callback)

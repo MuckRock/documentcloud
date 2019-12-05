@@ -4,6 +4,7 @@ Werkzeug
 ipdb
 Sphinx
 psycopg2 --no-binary psycopg2
+pip-tools
 
 # Testing
 # ------------------------------------------------------------------------------
@@ -30,6 +31,8 @@ pytest-django
 fakeredis
 
 # Processing
+# ------------------------------------------------------------------------------
 python-Levenshtein
 Unidecode
 opencv-python
+requests-mock

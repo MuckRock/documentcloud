@@ -4,7 +4,6 @@ from celery.task import task
 # DocumentCloud
 from documentcloud.documents.processing.info_and_image.main import (
     extract_image,
-    process_pdf,
     process_pdf_internal,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
@@ -12,11 +11,6 @@ from documentcloud.documents.processing.ocr.main import run_tesseract
 # Set a high soft time limit so document processing can
 # proceed without timing out.
 SOFT_TIME_LIMIT = 10000
-
-
-@task(soft_time_limit=SOFT_TIME_LIMIT)
-def process_file(options):
-    process_pdf(options)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)
