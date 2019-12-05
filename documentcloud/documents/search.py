@@ -17,9 +17,6 @@ FIELD_MAP = {
     "status": "status",
     "project": "projects",
     "document": "id",
-}
-TEXT_MAP = {
-    "q": None,
     "title": "title",
     "source": "source",
     "description": "description",
@@ -37,14 +34,12 @@ SOLR = pysolr.Solr(
 
 
 def search(user, query_params, base_url):
-    query_field, text_query = _text_queries(query_params)
+    text_query = query_params.get("q", "*:*")
     field_queries = _field_queries(user, query_params)
     sort = SORT_MAP.get(query_params.get("order"), SORT_MAP["score"])
     rows, start, page = _paginate(query_params)
 
     kwargs = {"fq": field_queries, "sort": sort, "rows": rows, "start": start}
-    if query_field is not None:
-        kwargs["qf"] = query_field
 
     try:
         results = SOLR.search(text_query, **kwargs)
@@ -76,27 +71,6 @@ def _field_queries(user, query_params):
             field_queries.append(f"{param}:({values})")
 
     return field_queries
-
-
-def _text_queries(query_params):
-    text_queries = {
-        solr_field: query_params[query_field]
-        for query_field, solr_field in TEXT_MAP.items()
-        if query_field in query_params
-    }
-    if not text_queries:
-        return None, "*:*"
-    elif len(text_queries) == 1:
-        return list(text_queries.items())[0]
-    else:
-        # multiple text queries, construct using advanced solr syntax
-        query_text = " AND ".join(
-            '_query_:"{{!edismax {qf}}}{text}"'.format(
-                qf=f"qf='{qf}'" if qf else "", text=text
-            )
-            for qf, text in text_queries.items()
-        )
-        return None, query_text
 
 
 def _access_filter(user):
