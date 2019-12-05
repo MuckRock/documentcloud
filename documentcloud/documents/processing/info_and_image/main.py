@@ -8,6 +8,7 @@ import environ
 import redis
 from listcrunch import crunch_collection
 from PIL import Image
+from redis.exceptions import RedisError
 
 env = environ.Env()
 
@@ -220,7 +221,6 @@ def process_pdf_internal(data, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_pubsub_data(data)
 
-    # Ensure a PDF file
     doc_id = data["doc_id"]
     slug = data["slug"]
 
@@ -348,3 +348,19 @@ def extract_image(data, _context=None):
     flush(ocr_queue)
 
     return "Ok"
+
+
+def get_progress(request, _context=None):
+    """Get progress information from redis"""
+    data = get_http_data(request)
+    doc_id = data["doc_id"]
+
+    try:
+        with REDIS.pipeline() as pipeline:
+            pipeline.get(redis_fields.images_remaining(doc_id))
+            pipeline.get(redis_fields.texts_remaining(doc_id))
+            images, texts = [int(i) if i is not None else i for i in pipeline.execute()]
+    except RedisError:
+        images, texts = (None, None)
+
+    return {"images_remaining": images, "texts_remaining": texts}

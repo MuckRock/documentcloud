@@ -245,9 +245,10 @@ class DataViewSet(viewsets.ViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        if edit:
-            if not self.request.user.has_perm("documents.change_document", document):
-                self.permission_denied(self.request, "You may not edit this document")
+        if edit and not self.request.user.has_perm(
+            "documents.change_document", document
+        ):
+            self.permission_denied(self.request, "You may not edit this document")
         return document
 
     def list(self, request, document_pk=None):
