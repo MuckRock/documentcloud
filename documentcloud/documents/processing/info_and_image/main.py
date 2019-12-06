@@ -367,4 +367,4 @@ def get_progress(request, _context=None):
         logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
         images, texts = (None, None)
 
-    return {"images_remaining": images, "texts_remaining": texts}
+    return {"images": images, "texts": texts}

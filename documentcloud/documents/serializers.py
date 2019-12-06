@@ -159,7 +159,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             response.raise_for_status()
             return response.json()
         except RequestException:
-            return {"texts_remaining": None, "images_remaining": None}
+            return {"texts": None, "images": None}
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
