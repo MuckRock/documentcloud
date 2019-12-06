@@ -118,16 +118,20 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         super().perform_update(serializer)
         if was_public != serializer.instance.public:
             transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
-        # XXX check that this code works as expected
         if old_status in (Status.pending, Status.readable):
             # if we were processing, do a full update
-            solr_index.delay(document_pk=serializer.instance.pk)
+            transaction.on_commit(
+                lambda: solr_index.delay(document_pk=serializer.instance.pk)
+            )
         else:
             # only update the fields that were updated
+            # XXX check that this code works as expected
             fields = serializer.data.keys()
-            solr_index.delay(
-                document_pk=serializer.instance.pk,
-                field_updates={f: "set" for f in fields},
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    document_pk=serializer.instance.pk,
+                    field_updates={f: "set" for f in fields},
+                )
             )
 
     @action(detail=False, methods=["get"])
