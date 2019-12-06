@@ -1,7 +1,9 @@
 # Standard Library
 import collections
 import gzip
+import logging
 import pickle
+import sys
 
 # Third Party
 import environ
@@ -11,6 +13,7 @@ from PIL import Image
 from redis.exceptions import RedisError
 
 env = environ.Env()
+logger = logging.getLogger(__name__)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -360,7 +363,8 @@ def get_progress(request, _context=None):
             pipeline.get(redis_fields.images_remaining(doc_id))
             pipeline.get(redis_fields.texts_remaining(doc_id))
             images, texts = [int(i) if i is not None else i for i in pipeline.execute()]
-    except RedisError:
+    except RedisError as exc:
+        logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
         images, texts = (None, None)
 
     return {"images_remaining": images, "texts_remaining": texts}
