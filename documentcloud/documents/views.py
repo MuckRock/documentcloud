@@ -147,8 +147,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             )
         else:
             # only update the fields that were updated
-            # XXX check that this code works as expected
-            fields = serializer.data.keys()
+            fields = serializer.validated_data.keys()
             transaction.on_commit(
                 lambda: solr_index.delay(
                     document_pk=serializer.instance.pk,
