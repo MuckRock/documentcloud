@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.urls import reverse
 
 # Standard Library
 import math
@@ -33,7 +34,7 @@ SOLR = pysolr.Solr(
 )
 
 
-def search(user, query_params, base_url):
+def search(user, query_params):
     text_query = query_params.get("q", "*:*")
     field_queries = _field_queries(user, query_params)
     sort = SORT_MAP.get(query_params.get("order"), SORT_MAP["score"])
@@ -46,7 +47,7 @@ def search(user, query_params, base_url):
     except pysolr.SolrError as exc:
         response = {"error": str(exc)}
     else:
-        response = _format_response(results, query_params, base_url, page, rows)
+        response = _format_response(results, query_params, page, rows)
 
     if settings.DEBUG:
         response["debug"] = {"text_query": text_query, **kwargs}
@@ -114,7 +115,8 @@ def _paginate(query_params):
     return rows, start, page
 
 
-def _format_response(results, query_params, base_url, page, per_page):
+def _format_response(results, query_params, page, per_page):
+    base_url = settings.DOCCLOUD_API_URL + reverse("document-search")
     query_params = query_params.copy()
 
     max_page = math.ceil(results.hits / per_page)
