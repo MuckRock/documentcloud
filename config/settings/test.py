@@ -50,3 +50,8 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+# Solr
+# ------------------------------------------------------------------------------
+SOLR_URL = "http://documentcloud_test_solr:8983/solr/documentcloud_test"
+SOLR_AUTH = None

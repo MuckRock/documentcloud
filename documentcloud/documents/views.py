@@ -157,13 +157,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
     @action(detail=False, methods=["get"])
     def search(self, request):
-        return Response(
-            search(
-                self.request.user,
-                self.request.query_params,
-                self.request.build_absolute_uri("?"),
-            )
-        )
+        return Response(search(self.request.user, self.request.query_params))
 
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
