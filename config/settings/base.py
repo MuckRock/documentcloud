@@ -393,3 +393,4 @@ ENVIRONMENT = env("ENVIRONMENT")
 # ------------------------------------------------------------------------------
 SOLR_URL = env("SOLR_URL", default="http://documentcloud_solr:8983/solr/documentcloud")
 SOLR_AUTH = None
+SOLR_SEARCH_HANDLER = env("SOLR_SEARCH_HANDLER", default="/mainsearch")

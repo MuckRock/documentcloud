@@ -279,6 +279,12 @@ class TestSearch:
         response = self.search("document=3", user=1)
         assert response["count"] == 1
 
+    def test_search_invisible_owner(self):
+        """Test searching for an invisible document you own"""
+
+        response = self.search("document=16", user=6)
+        assert response["count"] == 0
+
     def test_search_private_organization(self):
         """Test searching for a document shared via organization"""
 

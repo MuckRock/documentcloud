@@ -98,6 +98,12 @@ class Document(models.Model):
         _("updated at"), help_text=_("Timestamp of when the document was last updated")
     )
 
+    solr_dirty = models.BooleanField(
+        _("solr dirty"),
+        default=False,
+        help_text=_("Tracks if the Solr Index is out of date with the SQL model"),
+    )
+
     data = JSONField(default=dict)
 
     class Meta:
@@ -111,6 +117,21 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        """Mark this model's solr index as being out of date on every save"""
+        # pylint: disable=arguments-differ
+        self.solr_dirty = True
+        super().save(*args, **kwargs)
+
+    @transaction.atomic
+    def destroy(self):
+        from documentcloud.documents.tasks import delete_document_files, solr_delete
+
+        self.status = Status.deleted
+        self.save()
+        transaction.on_commit(lambda: delete_document_files.delay(self.path))
+        transaction.on_commit(lambda: solr_delete.delay(self.pk))
 
     @property
     def path(self):
@@ -188,7 +209,11 @@ class Document(models.Model):
 
         if fields:
             # for partial updates, just return the needed fields
+            fields = list(fields)
             new_solr_document = {"id": self.pk}
+            fields.append("updated_at")
+            if "title" in fields:
+                fields.append("slug")
             for field in fields:
                 new_solr_document[field] = solr_document.get(field)
             solr_document = new_solr_document
