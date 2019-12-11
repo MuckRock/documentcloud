@@ -25,6 +25,8 @@ from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.models import User
 from documentcloud.users.tests.factories import UserFactory
 
+# pylint: disable=too-many-public-methods
+
 
 @pytest.yield_fixture(autouse=True, scope="module")
 def setup(django_db_setup, django_db_blocker):
