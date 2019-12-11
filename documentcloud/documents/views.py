@@ -44,7 +44,6 @@ from documentcloud.documents.serializers import (
 )
 from documentcloud.documents.tasks import (
     create_redaction,
-    delete_document,
     fetch_file_url,
     process,
     process_cancel,
@@ -130,8 +129,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             transaction.on_commit(lambda: process_cancel.delay(document.pk))
 
     def perform_destroy(self, instance):
-        delete_document.delay(instance.pk, instance.path)
-        super().perform_destroy(instance)
+        instance.destroy()
 
     @transaction.atomic
     def perform_update(self, serializer):
@@ -142,16 +140,13 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
         if old_status in (Status.pending, Status.readable):
             # if we were processing, do a full update
-            transaction.on_commit(
-                lambda: solr_index.delay(document_pk=serializer.instance.pk)
-            )
+            transaction.on_commit(lambda: solr_index.delay(serializer.instance.pk))
         else:
             # only update the fields that were updated
             fields = serializer.validated_data.keys()
             transaction.on_commit(
                 lambda: solr_index.delay(
-                    document_pk=serializer.instance.pk,
-                    field_updates={f: "set" for f in fields},
+                    serializer.instance.pk, field_updates={f: "set" for f in fields}
                 )
             )
 
@@ -163,7 +158,9 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     def page_search(self, request, pk=None):
         query = request.query_params.get("q", "*:*")
         solr = pysolr.Solr(
-            settings.SOLR_URL, auth=settings.SOLR_AUTH, search_handler="/mainsearch"
+            settings.SOLR_URL,
+            auth=settings.SOLR_AUTH,
+            search_handler=settings.SOLR_SEARCH_HANDLER,
         )
         results = solr.search(query, fq=f"id:{pk}")
         pages = [int(p.rsplit("_", 1)[1]) for p in results.highlighting.get(pk, {})]
@@ -226,7 +223,8 @@ class DocumentErrorViewSet(
         self.document.save()
         transaction.on_commit(
             lambda: solr_index.delay(
-                solr_documents={
+                self.document.pk,
+                solr_document={
                     "id": self.document.pk,
                     "status": self.document.get_status_display().lower(),
                 },
@@ -333,7 +331,8 @@ class DataViewSet(viewsets.ViewSet):
         document.save()
         transaction.on_commit(
             lambda: solr_index.delay(
-                solr_documents={
+                self.document.pk,
+                solr_document={
                     "id": self.document.pk,
                     f"data_{pk}": document.data["pk"],
                 },
@@ -365,7 +364,8 @@ class DataViewSet(viewsets.ViewSet):
         document.save()
         transaction.on_commit(
             lambda: solr_index.delay(
-                solr_documents={
+                self.document.pk,
+                solr_document={
                     "id": self.document.pk,
                     f"data_{pk}": document.data["pk"],
                 },
@@ -383,7 +383,8 @@ class DataViewSet(viewsets.ViewSet):
             document.save()
             transaction.on_commit(
                 lambda: solr_index.delay(
-                    solr_documents={"id": self.document.pk, f"data_{pk}": None},
+                    self.document.pk,
+                    solr_document={"id": self.document.pk, f"data_{pk}": None},
                     field_updates={f"data_{pk}": "set"},
                 )
             )

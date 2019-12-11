@@ -30,7 +30,9 @@ SORT_MAP = {
     "source": "source_sort asc, created_at desc",
 }
 SOLR = pysolr.Solr(
-    settings.SOLR_URL, auth=settings.SOLR_AUTH, search_handler="/mainsearch"
+    settings.SOLR_URL,
+    auth=settings.SOLR_AUTH,
+    search_handler=settings.SOLR_SEARCH_HANDLER,
 )
 
 
@@ -55,7 +57,7 @@ def search(user, query_params):
 
 
 def _field_queries(user, query_params):
-    field_queries = [_access_filter(user)]
+    field_queries = _access_filter(user)
 
     for param, field in FIELD_MAP.items():
         if param in query_params:
@@ -89,9 +91,9 @@ def _access_filter(user):
         )
         if projects:
             access_filter += f" OR (projects:{projects})"
-        return access_filter
+        return ["!access:invisible", access_filter]
     else:
-        return "access:public AND status:(success OR readable)"
+        return ["access:public", "status:(success OR readable)"]
 
 
 def _paginate(query_params):
