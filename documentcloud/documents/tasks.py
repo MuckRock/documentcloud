@@ -1,5 +1,6 @@
 # Django
-from celery.task import task
+from celery.schedules import crontab
+from celery.task import periodic_task, task
 from django.conf import settings
 from django.db import transaction
 
@@ -9,7 +10,7 @@ from requests.exceptions import HTTPError
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
-from documentcloud.documents.choices import Status
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 
 if settings.ENVIRONMENT.startswith("local"):
@@ -62,12 +63,20 @@ def process(document_pk, slug):
 
 
 @task
-def delete_document(document_pk, path):
+def delete_document_files(path):
     # delete files from storage
     storage.delete(path)
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+def solr_delete(document_pk):
     # delete document from solr index
     solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
     solr.delete(id=document_pk)
+
+    # after succesfully deleting from solr, we can delete the correspodning
+    # record from the database
+    Document.objects.filter(pk=document_pk).delete()
 
 
 @task
@@ -78,19 +87,38 @@ def update_access(document_pk):
     storage.set_access(document.pages_path, access)
 
 
-# XXX error handling / retry
-@task
-def solr_index(document_pk=None, solr_documents=None, field_updates=None):
-    if document_pk is not None:
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+def solr_index(document_pk, solr_document=None, field_updates=None):
+    if solr_document is None:
         document = Document.objects.get(pk=document_pk)
         if field_updates:
-            solr_documents = [document.solr(field_updates.keys())]
+            solr_document = document.solr(field_updates.keys())
         else:
-            solr_documents = [document.solr()]
+            solr_document = document.solr()
 
-    if solr_documents is not None:
-        if not isinstance(solr_documents, list):
-            solr_documents = [solr_documents]
+    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
+    solr.add([solr_document], fieldUpdates=field_updates)
 
-        solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
-        solr.add(solr_documents, fieldUpdates=field_updates)
+    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+
+
+@periodic_task(run_every=crontab(hour=1))
+def solr_index_dirty():
+    """Task to try and index all dirty models once a day"""
+    solr = pysolr.Solr(
+        settings.SOLR_URL,
+        auth=settings.SOLR_AUTH,
+        search_handler=settings.SOLR_SEARCH_HANDLER,
+    )
+    # check to make sure the solr server is responsive before trying to index
+    try:
+        solr.search("*:*")
+    except pysolr.SolrError:
+        return
+
+    # XXX should we bulk these?
+    for document in Document.objects.filter(solr_dirty=True):
+        if document.status == Status.deleted:
+            solr_delete.delay(document.pk)
+        else:
+            solr_index.delay(document.pk)

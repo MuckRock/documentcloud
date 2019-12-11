@@ -31,3 +31,5 @@ class Status(DjangoChoices):
     error = ChoiceItem(3, _("Error"), api=True)
     # There is no file yet
     nofile = ChoiceItem(4, _("No file"), api=True)
+    # There is no file yet
+    deleted = ChoiceItem(5, _("Deleted"), api=False)

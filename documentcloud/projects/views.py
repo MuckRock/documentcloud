@@ -72,7 +72,8 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
         serializer.save(project=project)
         transaction.on_commit(
             lambda: solr_index.delay(
-                solr_documents={
+                serializer.data["document"].pk,
+                solr_document={
                     "id": serializer.data["document"].pk,
                     "projects": project.pk,
                 },
@@ -85,7 +86,8 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
         super().perform_destroy(instance)
         transaction.on_commit(
             lambda: solr_index.delay(
-                solr_documents={
+                instance.document_id,
+                solr_document={
                     "id": instance.document_id,
                     "projects": instance.project_id,
                 },
