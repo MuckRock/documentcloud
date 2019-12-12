@@ -200,14 +200,7 @@ class DocumentErrorViewSet(
         self.document.status = Status.error
         self.document.save()
         transaction.on_commit(
-            lambda: solr_index.delay(
-                self.document.pk,
-                solr_document={
-                    "id": self.document.pk,
-                    "status": self.document.get_status_display().lower(),
-                },
-                field_updates={"status": "set"},
-            )
+            lambda: solr_index.delay(self.document.pk, field_updates={"status": "set"})
         )
 
 
@@ -308,12 +301,7 @@ class DataViewSet(viewsets.ViewSet):
         document.save()
         transaction.on_commit(
             lambda: solr_index.delay(
-                self.document.pk,
-                solr_document={
-                    "id": self.document.pk,
-                    f"data_{pk}": document.data["pk"],
-                },
-                field_updates={f"data_{pk}": "set"},
+                self.document.pk, field_updates={f"data_{pk}": "set"}
             )
         )
         return Response(document.data)
@@ -341,12 +329,7 @@ class DataViewSet(viewsets.ViewSet):
         document.save()
         transaction.on_commit(
             lambda: solr_index.delay(
-                self.document.pk,
-                solr_document={
-                    "id": self.document.pk,
-                    f"data_{pk}": document.data["pk"],
-                },
-                field_updates={f"data_{pk}": "set"},
+                self.document.pk, field_updates={f"data_{pk}": "set"}
             )
         )
         return Response(document.data)
@@ -360,9 +343,7 @@ class DataViewSet(viewsets.ViewSet):
             document.save()
             transaction.on_commit(
                 lambda: solr_index.delay(
-                    self.document.pk,
-                    solr_document={"id": self.document.pk, f"data_{pk}": None},
-                    field_updates={f"data_{pk}": "set"},
+                    self.document.pk, field_updates={f"data_{pk}": "set"}
                 )
             )
 
