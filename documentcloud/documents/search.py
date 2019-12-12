@@ -3,13 +3,17 @@ from django.conf import settings
 from django.urls import reverse
 
 # Standard Library
+import logging
 import math
+import sys
 
 # Third Party
 import pysolr
 
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
+
+logger = logging.getLogger(__name__)
 
 FIELD_MAP = {
     "user": "user",
@@ -37,6 +41,12 @@ SOLR = pysolr.Solr(
 
 
 def search(user, query_params):
+    """
+    Given a user and query_params, perform a search for documents in Solr
+    `user` is used to restrict access on documents - it may be an anonymous user
+    `query_params` allows for text queries, other filters, sorting, and paginating
+    """
+    # if no text query is given, use "*:*" to search for all documents
     text_query = query_params.get("q", "*:*")
     field_queries = _field_queries(user, query_params)
     sort = SORT_MAP.get(query_params.get("order"), SORT_MAP["score"])
@@ -47,7 +57,14 @@ def search(user, query_params):
     try:
         results = SOLR.search(text_query, **kwargs)
     except pysolr.SolrError as exc:
-        response = {"error": str(exc)}
+        logger.error(
+            "Solr Error: User: %s Query Params: %s Exc: %s",
+            user,
+            query_params,
+            exc,
+            exc_info=sys.exc_info(),
+        )
+        response = {"error": "There has been an error with your search query"}
     else:
         response = _format_response(results, query_params, page, rows)
 
@@ -57,13 +74,18 @@ def search(user, query_params):
 
 
 def _field_queries(user, query_params):
+    """Field queries restrict the search for a non-text query based on the
+    given value for a given field
+    """
     field_queries = _access_filter(user)
 
+    # handle generally supported filter fields
     for param, field in FIELD_MAP.items():
         if param in query_params:
             values = " OR ".join(query_params.getlist(param))
             field_queries.append(f"{field}:({values})")
 
+    # handle filtering on user defined data
     data_params = [p for p in query_params if p.startswith("data_")]
     for param in data_params:
         values = query_params.getlist(param)
@@ -77,6 +99,7 @@ def _field_queries(user, query_params):
 
 
 def _access_filter(user):
+    """Restrict the user to documents that have access to"""
     if user.is_authenticated:
         organizations = " OR ".join(
             str(o) for o in user.organizations.values_list("pk", flat=True)
@@ -97,6 +120,8 @@ def _access_filter(user):
 
 
 def _paginate(query_params):
+    """Emulate the Django Rest Framework pagination style"""
+
     def get_int(field, default, max_value=None):
         """Helper function to convert a parameter to an integer"""
         try:
@@ -118,6 +143,7 @@ def _paginate(query_params):
 
 
 def _format_response(results, query_params, page, per_page):
+    """Emulate the Django Rest Framework response format"""
     base_url = settings.DOCCLOUD_API_URL + reverse("document-search")
     query_params = query_params.copy()
 
