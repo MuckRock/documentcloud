@@ -4,6 +4,10 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 
+# Standard Library
+import logging
+import sys
+
 # Third Party
 from autoslug.fields import AutoSlugField
 
@@ -14,6 +18,8 @@ from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
+
+logger = logging.getLogger(__name__)
 
 
 class Document(models.Model):
@@ -173,7 +179,14 @@ class Document(models.Model):
                 .read()
                 .decode("utf8")
             )
-        except ValueError:
+        except ValueError as exc:
+            logger.error(
+                "Error getting page text: Document: %d Page: %d Exception: %s",
+                self.pk,
+                page_number,
+                exc,
+                exc_info=sys.exc_info(),
+            )
             return ""
 
     def solr(self, fields=None):
