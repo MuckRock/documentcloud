@@ -13,9 +13,9 @@ httpsub.mount("mock", adapter)
 
 
 def process_callback(request, _context):
-    from documentcloud.documents.processing.utils.main import process_pdf
+    from documentcloud.documents.processing.utils.main import process_doc
 
-    return process_pdf(request.json())
+    return process_doc(request.json())
 
 
 def progress_callback(request, _context):
