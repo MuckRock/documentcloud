@@ -1,0 +1,6 @@
+-r cloud-requirements.txt
+
+django-environ==0.4.5
+requests==2.22.0
+redis==3.2.1
+furl==2.1.0
