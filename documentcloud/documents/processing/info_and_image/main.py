@@ -1,9 +1,7 @@
 # Standard Library
 import collections
 import gzip
-import logging
 import pickle
-import sys
 
 # Third Party
 import environ
@@ -13,7 +11,6 @@ from PIL import Image
 from redis.exceptions import RedisError
 
 env = environ.Env()
-logger = logging.getLogger(__name__)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -205,20 +202,6 @@ def write_pagespec(doc_id, slug):
     utils.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
 
 
-def process_pdf(request, _context=None):
-    """Process a PDF file's information and launch extraction tasks."""
-    data = get_http_data(request)
-    doc_id = data["doc_id"]
-
-    # Initialize the processing environment
-    utils.initialize(REDIS, doc_id)
-
-    # Launch PDF processing via pubsub
-    publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
-
-    return "Ok"
-
-
 @pubsub_function(REDIS, PDF_PROCESS_TOPIC)
 def process_pdf_internal(data, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
@@ -351,20 +334,3 @@ def extract_image(data, _context=None):
     flush(ocr_queue)
 
     return "Ok"
-
-
-def get_progress(request, _context=None):
-    """Get progress information from redis"""
-    data = get_http_data(request)
-    doc_id = data["doc_id"]
-
-    try:
-        with REDIS.pipeline() as pipeline:
-            pipeline.get(redis_fields.images_remaining(doc_id))
-            pipeline.get(redis_fields.texts_remaining(doc_id))
-            images, texts = [int(i) if i is not None else i for i in pipeline.execute()]
-    except RedisError as exc:
-        logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
-        images, texts = (None, None)
-
-    return {"images": images, "texts": texts}
