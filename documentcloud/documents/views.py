@@ -112,7 +112,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 # processed
                 transaction.on_commit(lambda: update_access.delay(document.pk))
         process.delay(document.pk, document.slug)
-        return Response(status=status.HTTP_200_OK)
+        return Response("OK", status=status.HTTP_200_OK)
 
     @process.mapping.delete
     def cancel_process(self, request, pk=None):
@@ -127,6 +127,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             document.save()
             document.errors.create(message="Processing was cancelled")
             transaction.on_commit(lambda: process_cancel.delay(document.pk))
+            return Response("OK", status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
         instance.destroy()
