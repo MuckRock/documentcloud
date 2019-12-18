@@ -18,6 +18,7 @@ from ctypes import (
     c_void_p,
     cdll,
 )
+import collections
 
 # Third Party
 import PIL.Image
@@ -102,8 +103,30 @@ class Bitmap:
         self.workspace.fpdf_bitmap_destroy(self.bitmap)
         del self.bitmap
 
-    def render(self, storage, filename, image_format="gif"):
-        # Use PIL
+    def fill_rect(self, x1, y1, x2, y2, fill=0xFF000000):
+        # Fill a rectangle with percent-specified coordinates
+        assert (
+            x1 >= 0
+            and x1 <= 1
+            and x2 >= 0
+            and x2 <= 1
+            and y1 >= 0
+            and y1 <= 1
+            and y2 >= 0
+            and y2 <= 1
+        ), "Coordinates out of bounds"
+        min_x = round(min(x1, x2) * self.width)
+        max_x = round(max(x1, x2) * self.width)
+        min_y = round(min(y1, y2) * self.height)
+        max_y = round(max(y1, y2) * self.height)
+        width = max_x - min_x
+        height = max_y - min_y
+        self.workspace.fpdf_bitmap_fill_rect(
+            self.bitmap, min_x, min_y, width, height, fill
+        )
+
+    def get_image(self):
+        # Use PIL to get an image buffer
         bufflen = self.width * self.height * 4
         bitmap = self.workspace.fpdf_get_bitmap_buffer(self.bitmap)
         bitmap = ctypes.cast(bitmap, ctypes.POINTER((bufflen * ctypes.c_ubyte)))
@@ -114,6 +137,10 @@ class Bitmap:
         # pylint: disable=invalid-name
         b, g, r, _a = img.split()
         img = PIL.Image.merge("RGB", (r, g, b))
+        return img
+
+    def render(self, storage, filename, image_format="gif"):
+        img = self.get_image()
         with storage.open(filename, "wb") as image_file:
             img.save(image_file, format=image_format)
         return img
@@ -140,6 +167,56 @@ class Document:
         self.workspace.fpdf_close_document(self.doc)
         del self.doc
 
+    def redact_pages(self, redactions):
+        """Returns a new PDF doc with the specified pages redacted.
+        
+        Redactions are specified in the following format:
+        
+        [
+            {
+                "page": 0,  # 0-based
+                "x1": 0.25,  # percent of page width
+                "x2": 0.75,  # percent of page width
+                "y1": 0.34,  # percent of page height
+                "y2": 0.80,  # percent of page height
+            },
+            ...
+        ]"""
+        # Organize redaction objects by page number
+        redactions_by_page = collections.defaultdict(list)
+        for redaction in redactions:
+            redactions_by_page[redaction["page"]].append(redaction)
+        pages = sorted(redactions_by_page.keys())
+
+        # Start creating the new document
+        new_doc = self.workspace.new_document()
+        current_page = 0
+        for page_number in range(self.page_count):
+            # Iterate each page and redact or import
+            if page_number in pages:
+                # Apply all redactions for an individual page
+                old_page = self.load_page(page_number)
+                page_bitmap = old_page.get_bitmap(old_page.width * 2, None)
+                for redaction in redactions_by_page[page_number]:
+                    page_bitmap.fill_rect(
+                        redaction["x1"],
+                        redaction["y1"],
+                        redaction["x2"],
+                        redaction["y2"],
+                        0xFF000000,  # black
+                    )
+                redacted_page = new_doc.add_page(old_page.width, old_page.height)
+                redacted_page.add_bitmap(
+                    page_bitmap, 0, 0, old_page.width, old_page.height
+                )
+                redacted_page.save()
+            else:
+                # Import each unredacted page unchanged
+                # TODO: Investigate if there's a performance boost
+                # from bulk-importing runs of unused pages
+                new_doc.import_pages(self, f"{page_number + 1}", page_number)
+        return new_doc
+
     def load_page(self, page_number):
         result = self.workspace.fpdf_load_page(self.doc, page_number)
         if not result:
@@ -155,6 +232,9 @@ class Document:
             self.workspace.fpdf_page_new(self.doc, self.page_count, width, height),
         )
 
+    def remove_page(self, page_number):
+        self.workspace.fpdf_page_delete(self.doc, page_number)
+
     def load_font_from_file(self, filename):
         with open(filename, "rb") as font_file:
             contents = bytearray(font_file.read())
@@ -163,6 +243,14 @@ class Document:
         font = self.workspace.fpdf_text_load_font(self.doc, font_buffer, buff_len, 2, 0)
         self.loaded_fonts.append(font)
         return font
+
+    def import_pages(self, other_doc, page_range, insert_index):
+        result = self.workspace.fpdf_import_pages(
+            self.doc, other_doc.doc, fpdf_string(page_range), insert_index
+        )
+        if result != 1:
+            error = self.workspace.pdfium.FPDF_GetLastError()
+            assert False, f"ERROR ({result}) {error}: unable to import pages"
 
     @property
     def serif_font(self):
@@ -182,8 +270,8 @@ class Document:
             self._monospace = self.load_font_from_file("courier.ttf")
         return self._monospace
 
-    def save(self, filename):
-        with open(filename, "wb") as doc_file:
+    def save(self, storage, filename):
+        with storage.open(filename, "wb") as doc_file:
 
             @CFUNCTYPE(c_int, c_void_p, c_void_p, c_ulong)
             def write_block(_fpdf_filewrite, p_data, size):
@@ -279,7 +367,9 @@ class Page:
         self.set_desired_transform(text_obj, x, y + height, width, -1)
 
         # Set transparent fill
-        assert self.workspace.fpdf_page_obj_set_fill_color(text_obj, 0, 0, 0, 0) == 1
+        assert (
+            self.workspace.fpdf_page_obj_set_fill_color(text_obj, 0, 255, 0, 255) == 1
+        )
 
         # Insert the object into the page.
         self.workspace.fpdf_insert_object(self.page, text_obj)
@@ -412,8 +502,14 @@ class Workspace:
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_int, c_double, c_double)
         self.fpdf_page_new = prototype(("FPDFPage_New", self.pdfium))
 
+        prototype = CFUNCTYPE(None, c_void_p, c_int)
+        self.fpdf_page_delete = prototype(("FPDFPage_Delete", self.pdfium))
+
         prototype = CFUNCTYPE(None, c_void_p, c_void_p)
         self.fpdf_insert_object = prototype(("FPDFPage_InsertObject", self.pdfium))
+
+        prototype = CFUNCTYPE(c_int, c_void_p, c_void_p, c_char_p, c_int)
+        self.fpdf_import_pages = prototype(("FPDF_ImportPages", self.pdfium))
 
         # Text object
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_float)

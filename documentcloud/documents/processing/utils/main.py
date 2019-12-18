@@ -34,18 +34,30 @@ REDIS = utils.get_redis()
 PDF_PROCESS_TOPIC = publisher.topic_path(
     "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
 )
+REDACT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
+)
 
 
 def process_doc(request, _context=None):
     """Central command to run processing on a doc"""
     data = get_http_data(request)
     doc_id = data["doc_id"]
+    job_type = data["type"]
 
     # Initialize the processing environment
     utils.initialize(REDIS, doc_id)
 
     # Launch PDF processing via pubsub
-    publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
+    if job_type == "process_pdf":
+        publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
+    elif job_type == "redact_doc":
+        publisher.publish(REDACT_TOPIC, data=encode_pubsub_data(data))
+    else:
+        logger.error(
+            "Invalid doc processing type: %s", job_type, exc_info=sys.exc_info()
+        )
+        return "Error"
 
     return "Ok"
 

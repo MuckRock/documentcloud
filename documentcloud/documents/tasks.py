@@ -47,7 +47,7 @@ def fetch_file_url(file_url, document_pk):
         document.save()
         httpsub.post(
             settings.DOC_PROCESSING_URL,
-            json={"doc_id": document_pk, "slug": document.slug},
+            json={"doc_id": document_pk, "slug": document.slug, "type": "process_pdf"},
         )
 
 
