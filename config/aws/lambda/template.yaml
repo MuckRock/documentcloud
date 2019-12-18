@@ -31,12 +31,12 @@ Globals:
         - subnet-092558d1765347ad9
 Transform: AWS::Serverless-2016-10-31
 Resources:
-  ProcessPdfFunction:
+  ProcessDocFunction:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.7
-      Handler: main.process_pdf
-      CodeUri: ./awsbin/info_and_image
+      Handler: main.process_doc
+      CodeUri: ./awsbin/utils
       # Trigger function via HTTP
       Environment:
         Variables:
@@ -45,15 +45,33 @@ Resources:
         ProcessPdfApi:
           Type: Api
           Properties:
-            Path: /process_pdf
+            Path: /process_doc
             Method: POST
       Role: arn:aws:iam::844030562261:role/lambda-role
 
-  ProcessPdfInternalFunction:
+  GetProgressFunction:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.7
-      Handler: main.process_pdf_internal
+      Handler: main.get_progress
+      CodeUri: ./awsbin/utils
+      # Trigger function via HTTP
+      Environment:
+        Variables:
+          TIMEOUTS: 1,2,5
+      Events:
+        ProcessPdfApi:
+          Type: Api
+          Properties:
+            Path: /get_progress
+            Method: POST
+      Role: arn:aws:iam::844030562261:role/lambda-role
+
+  ProcessPdfFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.process_pdf
       CodeUri: ./awsbin/info_and_image
       # Trigger function via SNS
       Environment:
@@ -81,6 +99,23 @@ Resources:
           Type: SNS
           Properties:
             Topic: arn:aws:sns:us-east-1:844030562261:image-extraction-staging
+      Role: arn:aws:iam::844030562261:role/lambda-role
+
+  RedactDocFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.redact_doc
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: 60,120,240
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: arn:aws:sns:us-east-1:844030562261:redact-doc-staging
       Role: arn:aws:iam::844030562261:role/lambda-role
 
   RunTesseractFunction:
