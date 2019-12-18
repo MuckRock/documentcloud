@@ -84,33 +84,6 @@ OCR_TOPIC = publisher.topic_path(
 )
 
 
-def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
-    """Initialize Redis fields to manage processing for partial updates.
-
-    dirty_pages specifies which pages need to be reextracted. For instance,
-    after redacting several pages, only those pages need to be reprocessed
-    after the whole document is remade.
-    """
-
-    image_bits_field = redis_fields.image_bits(doc_id)
-    text_bits_field = redis_fields.text_bits(doc_id)
-
-    pipeline = REDIS.pipeline()
-    pipeline.set(redis_fields.page_count(doc_id), page_count)
-
-    # Set images/texts remaining equal to number of dirty pages
-    pipeline.set(redis_fields.images_remaining(doc_id), len(dirty_pages))
-    pipeline.set(redis_fields.texts_remaining(doc_id), len(dirty_pages))
-
-    # Set Redis bit arrays flooded to 1 to track each page.
-    # Just the dirty pages will be set to 0 to indicate
-    # reprocessing is needed.
-    pipeline.delete(image_bits_field)
-    pipeline.delete(text_bits_field)
-    pipeline.setbit(image_bits_field, page_count - 1, 0)
-    pipeline.setbit(text_bits_field, page_count - 1, 0)
-
-
 def initialize_redis_page_data(doc_id, page_count, dirty_pages=None):
     """Initialize Redis fields to manage page dimensions and processing"""
     dimensions_field = redis_fields.dimensions(doc_id)
@@ -145,6 +118,37 @@ def initialize_redis_page_data(doc_id, page_count, dirty_pages=None):
     # Ensure atomicity while getting a value with the transaction wrapper around WATCH
     # See https://pypi.org/project/redis/#pipelines for details
     REDIS.transaction(dimensions_field_update, dimensions_field)
+
+
+def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
+    """Initialize Redis fields to manage processing for partial updates.
+
+    dirty_pages specifies which pages need to be reextracted. For instance,
+    after redacting several pages, only those pages need to be reprocessed
+    after the whole document is remade.
+    """
+
+    image_bits_field = redis_fields.image_bits(doc_id)
+    text_bits_field = redis_fields.text_bits(doc_id)
+
+    pipeline = REDIS.pipeline()
+    pipeline.set(redis_fields.page_count(doc_id), page_count)
+
+    # Set images/texts remaining equal to number of dirty pages
+    pipeline.set(redis_fields.images_remaining(doc_id), len(dirty_pages))
+    pipeline.set(redis_fields.texts_remaining(doc_id), len(dirty_pages))
+
+    # Set Redis bit arrays flooded to 1 to track each page.
+    # Just the dirty pages will be set to 0 to indicate
+    # reprocessing is needed.
+    pipeline.delete(image_bits_field)
+    pipeline.delete(text_bits_field)
+    for i in range(page_count):
+        pipeline.setbit(image_bits_field, i, 0 if i in dirty_pages else 1)
+        pipeline.setbit(text_bits_field, i, 0 if i in dirty_pages else 1)
+
+    # Execute the pipeline atomically
+    pipeline.execute()
 
 
 def extract_pagecount(doc_id, slug):
@@ -233,7 +237,7 @@ def write_pagespec(doc_id, slug):
 
 
 @pubsub_function(REDIS, PDF_PROCESS_TOPIC)
-def process_pdf_internal(data, _context=None):
+def process_pdf(data, _context=None):
     """Process a PDF file's information and launch extraction tasks."""
     data = get_pubsub_data(data)
 
@@ -253,7 +257,9 @@ def process_pdf_internal(data, _context=None):
         pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
         publisher.publish(
             IMAGE_EXTRACT_TOPIC,
-            data=encode_pubsub_data({"doc_id": doc_id, "slug": slug, "pages": pages}),
+            data=encode_pubsub_data(
+                {"doc_id": doc_id, "slug": slug, "pages": pages, "partial": False}
+            ),
         )
 
     return "Ok"
@@ -301,6 +307,7 @@ def extract_image(data, _context=None):
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
     index_path = path.index_path(doc_id, slug)  # The path to the PDF index file
+    partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
 
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
@@ -344,17 +351,20 @@ def extract_image(data, _context=None):
                 # Update Redis properties atomically
                 pipeline = REDIS.pipeline()
 
-                # Update the page dimensions in Redis
-                pipeline.sadd(redis_fields.dimensions(doc_id), page_dimension)
-                pipeline.sadd(
-                    redis_fields.page_dimension(doc_id, page_dimension), page_number
-                )
                 # Decrement pages remaining and set the bit for the page off in Redis
                 pipeline.decr(images_remaining_field)
                 pipeline.setbit(image_bits_field, page_number, 1)
-                images_remaining = pipeline.execute()[2]
 
-                if images_remaining == 0:
+                if not partial:
+                    # Update the page dimensions in Redis
+                    pipeline.sadd(redis_fields.dimensions(doc_id), page_dimension)
+                    pipeline.sadd(
+                        redis_fields.page_dimension(doc_id, page_dimension), page_number
+                    )
+
+                images_remaining = pipeline.execute()[0]
+
+                if images_remaining == 0 and not partial:
                     write_pagespec(doc_id, slug)
 
             # Prepare the image to be OCRd.
@@ -380,4 +390,19 @@ def redact_doc(data, _context=None):
     for redaction in redactions:
         dirty_pages.add(redaction["page"])
 
-    extract_pagecount(doc_id, slug)
+    page_count = extract_pagecount(doc_id, slug)
+    initialize_partial_redis_page_data(doc_id, page_count, dirty_pages)
+
+    # Kick off image processing tasks
+    dirty_pages_list = sorted(dirty_pages)
+    for pages in [
+        dirty_pages_list[i : i + IMAGE_BATCH]
+        for i in range(0, len(dirty_pages_list), IMAGE_BATCH)
+    ]:
+        # Iterate dirty pages in batches and trigger image extraction
+        publisher.publish(
+            IMAGE_EXTRACT_TOPIC,
+            data=encode_pubsub_data(
+                {"doc_id": doc_id, "slug": slug, "pages": pages, "partial": True}
+            ),
+        )
