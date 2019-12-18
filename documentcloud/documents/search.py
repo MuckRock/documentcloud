@@ -48,6 +48,8 @@ def search(user, query_params):
     """
     # if no text query is given, use "*:*" to search for all documents
     text_query = query_params.get("q", "*:*")
+    # remove curly braces to disallow subqueries
+    text_query.replace("{", "").replace("}", "")
     field_queries = _field_queries(user, query_params)
     sort = SORT_MAP.get(query_params.get("order"), SORT_MAP["score"])
     rows, start, page = _paginate(query_params)
