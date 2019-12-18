@@ -178,6 +178,18 @@ def extract_pagecount(doc_id, slug):
     return page_count
 
 
+def redact_document_and_overwrite(doc_id, slug, redactions):
+    """Redacts a document and overwrites the original PDF."""
+    doc_path = path.doc_path(doc_id, slug)
+    with Workspace() as workspace, StorageHandler(
+        storage, doc_path
+    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+        new_doc = doc.redact_pages(redactions)
+
+        # Overwrite the original doc
+        new_doc.save(storage, doc_path)
+
+
 def get_redis_pagespec(doc_id):
     """Get the dimensions of all pages in a convenient format using Redis"""
     dimensions_field = redis_fields.dimensions(doc_id)
@@ -389,6 +401,9 @@ def redact_doc(data, _context=None):
     dirty_pages = set()
     for redaction in redactions:
         dirty_pages.add(redaction["page"])
+
+    # Perform the actual redactions
+    redact_document_and_overwrite(doc_id, slug, redactions)
 
     page_count = extract_pagecount(doc_id, slug)
     initialize_partial_redis_page_data(doc_id, page_count, dirty_pages)
