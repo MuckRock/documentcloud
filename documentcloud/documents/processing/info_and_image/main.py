@@ -76,13 +76,43 @@ PDF_PROCESS_TOPIC = publisher.topic_path(
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
+REDACT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
+)
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
 
 
-def initialize_redis_page_data(doc_id, page_count):
-    """Initial Redis fields to manage page dimensions and processing"""
+def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
+    """Initialize Redis fields to manage processing for partial updates.
+
+    dirty_pages specifies which pages need to be reextracted. For instance,
+    after redacting several pages, only those pages need to be reprocessed
+    after the whole document is remade.
+    """
+
+    image_bits_field = redis_fields.image_bits(doc_id)
+    text_bits_field = redis_fields.text_bits(doc_id)
+
+    pipeline = REDIS.pipeline()
+    pipeline.set(redis_fields.page_count(doc_id), page_count)
+
+    # Set images/texts remaining equal to number of dirty pages
+    pipeline.set(redis_fields.images_remaining(doc_id), len(dirty_pages))
+    pipeline.set(redis_fields.texts_remaining(doc_id), len(dirty_pages))
+
+    # Set Redis bit arrays flooded to 1 to track each page.
+    # Just the dirty pages will be set to 0 to indicate
+    # reprocessing is needed.
+    pipeline.delete(image_bits_field)
+    pipeline.delete(text_bits_field)
+    pipeline.setbit(image_bits_field, page_count - 1, 0)
+    pipeline.setbit(text_bits_field, page_count - 1, 0)
+
+
+def initialize_redis_page_data(doc_id, page_count, dirty_pages=None):
+    """Initialize Redis fields to manage page dimensions and processing"""
     dimensions_field = redis_fields.dimensions(doc_id)
     image_bits_field = redis_fields.image_bits(doc_id)
     text_bits_field = redis_fields.text_bits(doc_id)
@@ -334,3 +364,20 @@ def extract_image(data, _context=None):
     flush(ocr_queue)
 
     return "Ok"
+
+
+@pubsub_function(REDIS, REDACT_TOPIC)
+def redact_doc(data, _context=None):
+    """Redacts a document and reprocesses altered pages."""
+    data = get_pubsub_data(data)
+
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    redactions = data["redactions"]
+
+    # Get dirty pages
+    dirty_pages = set()
+    for redaction in redactions:
+        dirty_pages.add(redaction["page"])
+
+    extract_pagecount(doc_id, slug)
