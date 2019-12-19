@@ -49,7 +49,11 @@ def fetch_file_url(file_url, document_pk):
         document.save()
         httpsub.post(
             settings.DOC_PROCESSING_URL,
-            json={"doc_id": document_pk, "slug": document.slug, "type": "process_pdf"},
+            json={
+                "doc_id": document_pk,
+                "slug": document.slug,
+                "method": "process_pdf",
+            },
         )
 
 
@@ -57,7 +61,8 @@ def fetch_file_url(file_url, document_pk):
 def process(document_pk, slug):
     """Start the processing"""
     httpsub.post(
-        settings.DOC_PROCESSING_URL, json={"doc_id": document_pk, "slug": slug}
+        settings.DOC_PROCESSING_URL,
+        json={"doc_id": document_pk, "slug": slug, "method": "process_pdf"},
     )
 
 
@@ -67,7 +72,7 @@ def create_redaction(document_pk, slug, redactions):
     httpsub.post(
         settings.DOC_PROCESSING_URL,
         json={
-            "method": "redact",
+            "method": "redact_doc",
             "doc_id": document_pk,
             "slug": slug,
             "redactions": redactions,
@@ -78,9 +83,9 @@ def create_redaction(document_pk, slug, redactions):
 @task
 def process_cancel(document_pk):
     """Stop the processing"""
-    # TODO this
     httpsub.post(
-        settings.DOC_PROCESSING_URL, json={"method": "cancel", "doc_id": document_pk}
+        settings.DOC_PROCESSING_URL,
+        json={"method": "cancel_doc_processing", "doc_id": document_pk},
     )
 
 

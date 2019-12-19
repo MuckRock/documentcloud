@@ -43,7 +43,7 @@ def process_doc(request, _context=None):
     """Central command to run processing on a doc"""
     data = get_http_data(request)
     doc_id = data["doc_id"]
-    job_type = data["type"]
+    job_type = data["method"]
 
     # Initialize the processing environment
     utils.initialize(REDIS, doc_id)
@@ -53,6 +53,9 @@ def process_doc(request, _context=None):
         publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
     elif job_type == "redact_doc":
         publisher.publish(REDACT_TOPIC, data=encode_pubsub_data(data))
+    elif job_type == "cancel_doc_processing":
+        print("CLEANING UP PROCESSING")
+        utils.clean_up(REDIS, doc_id)
     else:
         logger.error(
             "Invalid doc processing type: %s", job_type, exc_info=sys.exc_info()
