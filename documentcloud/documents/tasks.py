@@ -19,6 +19,7 @@ if settings.ENVIRONMENT.startswith("local"):
         process_file_internal,
         extract_images,
         ocr_pages,
+        redact_document,
     )
 
 
@@ -67,8 +68,8 @@ def process(document_pk, slug):
 
 
 @task
-def create_redaction(document_pk, slug, redactions):
-    """Start the processing"""
+def redact(document_pk, slug, redactions):
+    """Start the redacting"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
         json={
