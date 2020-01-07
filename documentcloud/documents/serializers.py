@@ -278,17 +278,17 @@ class DataAddRemoveSerializer(serializers.Serializer):
 
 class RedactionSerializer(serializers.Serializer):
     # pylint: disable=abstract-method
-    top = serializers.IntegerField(min_value=0)
-    left = serializers.IntegerField(min_value=0)
-    bottom = serializers.IntegerField(min_value=0)
-    right = serializers.IntegerField(min_value=0)
+    x1 = serializers.FloatField(min_value=0, max_value=1)
+    x2 = serializers.FloatField(min_value=0, max_value=1)
+    y1 = serializers.FloatField(min_value=0, max_value=1)
+    y2 = serializers.FloatField(min_value=0, max_value=1)
     page = serializers.IntegerField(min_value=0)
 
     def validate(self, attrs):
-        if attrs["top"] >= attrs["bottom"]:
-            raise serializers.ValidationError("`top` must be less than `bottom`")
-        if attrs["left"] >= attrs["right"]:
-            raise serializers.ValidationError("`left` must be less than `right`")
+        if attrs["x1"] >= attrs["x2"]:
+            raise serializers.ValidationError("`x1` must be less than `x2`")
+        if attrs["y1"] >= attrs["y2"]:
+            raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
 
     def validate_page(self, value):

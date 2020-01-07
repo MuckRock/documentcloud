@@ -5,6 +5,7 @@ from celery.task import task
 from documentcloud.documents.processing.info_and_image.main import (
     extract_image,
     process_pdf,
+    redact_doc,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
 
@@ -26,3 +27,8 @@ def extract_images(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def ocr_pages(data):
     run_tesseract(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def redact_document(data):
+    redact_doc(data, None)

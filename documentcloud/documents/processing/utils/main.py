@@ -54,7 +54,6 @@ def process_doc(request, _context=None):
     elif job_type == "redact_doc":
         publisher.publish(REDACT_TOPIC, data=encode_pubsub_data(data))
     elif job_type == "cancel_doc_processing":
-        print("CLEANING UP PROCESSING")
         utils.clean_up(REDIS, doc_id)
     else:
         logger.error(

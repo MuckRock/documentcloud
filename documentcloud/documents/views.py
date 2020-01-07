@@ -43,12 +43,12 @@ from documentcloud.documents.serializers import (
     SectionSerializer,
 )
 from documentcloud.documents.tasks import (
-    create_redaction,
     fetch_file_url,
     process,
     process_cancel,
     solr_index,
     update_access,
+    redact,
 )
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
@@ -391,5 +391,21 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         document = self.get_object()
         serializer = self.get_serializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
-        create_redaction.delay(document.pk, document.slug, serializer.data)
+
+        if document.status in (Status.pending, Status.readable):
+            return Response(
+                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # TODO: maybe refactor general processing checks as a mixin
+        was_public = document.public
+        with transaction.atomic():
+            document.status = Status.pending
+            document.save()
+            if was_public:
+                # if document is public, mark the files as private while it is being
+                # processed
+                transaction.on_commit(lambda: update_access.delay(document.pk))
+
+        redact.delay(document.pk, document.slug, serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

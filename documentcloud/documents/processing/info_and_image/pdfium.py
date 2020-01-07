@@ -276,7 +276,7 @@ class Document:
             @CFUNCTYPE(c_int, c_void_p, c_void_p, c_ulong)
             def write_block(_fpdf_filewrite, p_data, size):
                 data = ctypes.cast(p_data, ctypes.POINTER((size * ctypes.c_ubyte)))
-                doc_file.write(data.contents)
+                doc_file.write(bytearray(data.contents))
                 return 1
 
             # Write with incremental rendering

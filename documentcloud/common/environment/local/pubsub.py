@@ -63,6 +63,12 @@ def ocr_page_task(data):
     return ocr_pages.delay(data)
 
 
+def redact_doc_task(data):
+    from documentcloud.documents.tasks import redact_document
+
+    return redact_document.delay(data)
+
+
 publisher.register_internal_callback(
     ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
     process_pdf_task,
@@ -73,4 +79,7 @@ publisher.register_internal_callback(
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")), ocr_page_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("REDACT_TOPIC", default="redact-doc")), redact_doc_task
 )
