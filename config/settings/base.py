@@ -2,6 +2,9 @@
 Base settings to build other settings files upon.
 """
 
+# Standard Library
+from tempfile import NamedTemporaryFile
+
 # Third Party
 import environ
 
@@ -392,5 +395,22 @@ ENVIRONMENT = env("ENVIRONMENT")
 # Solr
 # ------------------------------------------------------------------------------
 SOLR_URL = env("SOLR_URL", default="http://documentcloud_solr:8983/solr/documentcloud")
-SOLR_AUTH = None
+SOLR_USERNAME = env("SOLR_USERNAME", default="")
+SOLR_PASSWORD = env("SOLR_PASSWORD", default="")
+if SOLR_USERNAME and SOLR_PASSWORD:
+    SOLR_AUTH = (SOLR_USERNAME, SOLR_PASSWORD)
+else:
+    SOLR_AUTH = None
 SOLR_SEARCH_HANDLER = env("SOLR_SEARCH_HANDLER", default="/mainsearch")
+# The certificate needs to be in a file if present
+SOLR_VERIFY = env.str("SOLR_VERIFY", multiline=True, default="")
+if SOLR_VERIFY:
+    # if present, put the contents into a named temp file
+    # and set the var to the name of the file
+    cert = NamedTemporaryFile(delete=False)
+    cert.write(SOLR_VERIFY.encode("ascii"))
+    cert.close()
+    SOLR_VERIFY = cert.name
+else:
+    # otherwise set to true, which uses default certificates to verify
+    SOLR_VERIFY = True
