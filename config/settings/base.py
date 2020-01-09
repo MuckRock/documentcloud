@@ -383,7 +383,7 @@ SESSION_COOKIE_SAMESITE = None
 
 SIMPLE_JWT = {
     "ALGORITHM": "RS256",
-    "VERIFYING_KEY": env("JWT_VERIFYING_KEY").replace("\\n", "\n"),
+    "VERIFYING_KEY": env.str("JWT_VERIFYING_KEY", multiline=True),
     "AUDIENCE": ["documentcloud"],
     "USER_ID_FIELD": "uuid",
 }
