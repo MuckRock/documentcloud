@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'cloud-staging
+Description: 'info-and-image-staging
 
-  SAM template for PDF extraction and optical character recognition staging cloud functions
+  SAM template for cloud functions related to DocumentCloud
 
   '
 Globals:
@@ -18,6 +18,7 @@ Globals:
         PDF_PROCESS_TOPIC: pdf-process-staging
         IMAGE_EXTRACT_TOPIC: image-extraction-staging
         OCR_TOPIC: ocr-extraction-staging
+        SENTRY_DSN: https://3520d3b835eb42c480c58b9af72f0210@sentry.io/1844864
         EXTRACT_IMAGE_BATCH: 20
         OCR_BATH: 5
         AWS_ARN_PREFIX: arn:aws:sns:us-east-1:844030562261

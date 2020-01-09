@@ -7,7 +7,8 @@ env = environ.Env()
 
 
 # Define http sub client and subscriptions
-httpsub = requests.Session()
+from documentcloud.common.session import session as httpsub
+
 adapter = requests_mock.Adapter()
 httpsub.mount("mock", adapter)
 

@@ -1,7 +1,5 @@
 # Third Party
 import environ
-import requests
-import requests_mock
 import logging
 import sys
 
@@ -15,11 +13,17 @@ if env.str("ENVIRONMENT").startswith("local"):
         get_http_data,
         publisher,
         encode_pubsub_data,
+        processing_auth,
     )
     from documentcloud.common.serverless import utils
 else:
     from common import redis_fields
-    from common.environment import get_http_data, publisher, encode_pubsub_data
+    from common.environment import (
+        get_http_data,
+        publisher,
+        encode_pubsub_data,
+        processing_auth,
+    )
     from common.serverless import utils
 
     # only initialize sentry on serverless
@@ -39,6 +43,7 @@ REDACT_TOPIC = publisher.topic_path(
 )
 
 
+@processing_auth
 def process_doc(request, _context=None):
     """Central command to run processing on a doc"""
     data = get_http_data(request)
@@ -64,6 +69,7 @@ def process_doc(request, _context=None):
     return "Ok"
 
 
+@processing_auth
 def get_progress(request, _context=None):
     """Get progress information from redis"""
     data = get_http_data(request)
