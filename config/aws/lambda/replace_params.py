@@ -30,24 +30,18 @@ with open("template_params.yaml", "r") as f:
     contents = f.read()
 
 # Grab all the topics mentioned
-topics = list(set(re.findall(r'"{{resolve:ssm:([a-zA-Z_.-]+):latest}}"', contents)))
+topics = list(set(re.findall(r'"{{resolve:ssm:([a-zA-Z0-9_.-]+):latest}}"', contents)))
 
 # Build up a topic map
 topic_map = {}
 
 for subtopics in batch(topics, 10):
     # AWS can process 10 parameters at a time, so we batch topics
-    command = [
-        "aws",
-        "ssm",
-        "get-parameters",
-        "--names",
-        *subtopics,
-        "--query",
-        "Parameters[*].{Name:Name,Value:Value}",
-        "--output",
-        "json",
-    ]
+    command = (
+        ["aws", "ssm", "get-parameters", "--names"]
+        + subtopics
+        + ["--query", "Parameters[*].{Name:Name,Value:Value}", "--output", "json"]
+    )
 
     # Run the command to receive multiple parameters at once and update the map
     output = json.loads(run_command(command))
@@ -63,7 +57,7 @@ def aws_replace(match):
 
 # Resolve the contents and write to template.yaml
 resolved_contents = re.sub(
-    r'"{{resolve:ssm:([a-zA-Z_.-]+):latest}}"', aws_replace, contents
+    r'"{{resolve:ssm:([a-zA-Z0-9_.-]+):latest}}"', aws_replace, contents
 )
 
 with open("template.yaml", "w") as f:
