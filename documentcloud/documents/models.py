@@ -150,11 +150,6 @@ class Document(models.Model):
         return path.doc_path(self.pk, self.slug)
 
     @property
-    def pages_path(self):
-        """The path to the pages directory"""
-        return path.pages_path(self.pk)
-
-    @property
     def public(self):
         return self.access == Access.public and self.status in (
             Status.success,
@@ -171,11 +166,7 @@ class Document(models.Model):
     def get_page_text(self, page_number):
         try:
             return (
-                storage.open(
-                    f"{settings.DOCUMENT_BUCKET}/{self.pk}/pages/"
-                    f"{self.slug}-p{page_number}.txt",
-                    "rb",
-                )
+                storage.open(path.page_text_path(self.pk, self.slug, page_number), "rb")
                 .read()
                 .decode("utf8")
             )
