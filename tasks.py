@@ -218,9 +218,3 @@ def deploy_lambdas(c):
     """Deploy lambda functions on AWS"""
     c.run("cd config/aws/lambda; ./deploy.sh")
 
-
-@task
-def set_aws_param(c, key, value):
-    """Update an AWS parameter store parameter"""
-    c.run(f'aws ssm put-parameter --name "{key}" --value "{value}"')
-

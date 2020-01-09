@@ -3,6 +3,7 @@
 set -e
 
 # Build and deploy the lambda function
+python3 replace_params.py && \
 ./build.sh && \
 sam build && \
 sam package --output-template packaged.yaml --s3-bucket cloud-functions-test && \
