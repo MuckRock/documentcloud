@@ -1,0 +1,70 @@
+"""
+Writes a `template.yaml` file based on `template_params.yaml` using parameters
+from AWS parameter store.
+
+Because `template.yaml` files cannot automatically resolve to the latest
+version of a given parameter, we perform a pre-compilation step that involves
+using the AWS cli to look up each requested parameter with the latest version
+and sub it into the template.
+
+This is a hack until this issue is resolved:
+https://github.com/aws-cloudformation/aws-cloudformation-coverage-roadmap/issues/75
+"""
+
+import re, os, json, subprocess
+
+# from https://stackoverflow.com/a/8290508
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx : min(ndx + n, l)]
+
+
+# Adapted from https://stackoverflow.com/a/4760517
+def run_command(cmd):
+    return subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode("utf-8")
+
+
+# Begin by processing the parameterized template yaml
+with open("template_params.yaml", "r") as f:
+    contents = f.read()
+
+# Grab all the topics mentioned
+topics = list(set(re.findall(r'"{{resolve:ssm:([a-zA-Z_.-]+):latest}}"', contents)))
+
+# Build up a topic map
+topic_map = {}
+
+for subtopics in batch(topics, 10):
+    # AWS can process 10 parameters at a time, so we batch topics
+    command = [
+        "aws",
+        "ssm",
+        "get-parameters",
+        "--names",
+        *subtopics,
+        "--query",
+        "Parameters[*].{Name:Name,Value:Value}",
+        "--output",
+        "json",
+    ]
+
+    # Run the command to receive multiple parameters at once and update the map
+    output = json.loads(run_command(command))
+    for value in output:
+        topic_map[value["Name"]] = value["Value"]
+
+
+# A replacement function that subs the resolve expressions with the topic map
+def aws_replace(match):
+    key_name = match.group(1)
+    return topic_map[key_name]
+
+
+# Resolve the contents and write to template.yaml
+resolved_contents = re.sub(
+    r'"{{resolve:ssm:([a-zA-Z_.-]+):latest}}"', aws_replace, contents
+)
+
+with open("template.yaml", "w") as f:
+    f.write(resolved_contents)
