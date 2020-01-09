@@ -37,17 +37,11 @@ topic_map = {}
 
 for subtopics in batch(topics, 10):
     # AWS can process 10 parameters at a time, so we batch topics
-    command = [
-        "aws",
-        "ssm",
-        "get-parameters",
-        "--names",
-        *subtopics,
-        "--query",
-        "Parameters[*].{Name:Name,Value:Value}",
-        "--output",
-        "json",
-    ]
+    command = (
+        ["aws", "ssm", "get-parameters", "--names"]
+        + subtopics
+        + ["--query", "Parameters[*].{Name:Name,Value:Value}", "--output", "json"]
+    )
 
     # Run the command to receive multiple parameters at once and update the map
     output = json.loads(run_command(command))
