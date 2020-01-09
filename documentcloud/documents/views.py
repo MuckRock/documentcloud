@@ -10,7 +10,6 @@ from rest_framework.response import Response
 # Third Party
 import django_filters
 import environ
-import pysolr
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
@@ -30,7 +29,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
-from documentcloud.documents.search import search
+from documentcloud.documents.search import SOLR, search
 from documentcloud.documents.serializers import (
     DataAddRemoveSerializer,
     DataSerializer,
@@ -158,12 +157,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
         query = request.query_params.get("q", "*:*")
-        solr = pysolr.Solr(
-            settings.SOLR_URL,
-            auth=settings.SOLR_AUTH,
-            search_handler=settings.SOLR_SEARCH_HANDLER,
-        )
-        results = solr.search(query, fq=f"id:{pk}")
+        results = SOLR.search(query, fq=f"id:{pk}")
         pages = [int(p.rsplit("_", 1)[1]) for p in results.highlighting.get(pk, {})]
         return Response({"results": pages})
 
