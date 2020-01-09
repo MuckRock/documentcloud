@@ -7,3 +7,6 @@ set -e
 
 # Run ocr build script
 ./build_ocr.sh
+
+# Run utils build script
+./build_utils.sh

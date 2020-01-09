@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'cloud-staging
+Description: 'info-and-image-staging
 
-  SAM template for PDF extraction and optical character recognition staging cloud functions
+  SAM template for cloud functions related to DocumentCloud
 
   '
 Globals:
@@ -10,17 +10,18 @@ Globals:
       Variables:
         ENVIRONMENT: aws
         SERVERLESS: True
-        REDIS_PROCESSING_URL: redis://3.233.63.186:6379/0
-        REDIS_PROCESSING_PASSWORD: ZSU2bSA3jv3vyciYVqPzQMLBvycMXrOjh81T2dX4DGpH6l1tj54njwx3HJH5eeEgHZvNLPf8UrMismuW6ypiYJ29FUf21YJ0ldJqAXpszdEo4X88LBR0M2Pkb3pW1ESw
-        API_CALLBACK: https://api.staging.documentcloud.org/api/
-        PROCESSING_TOKEN: WcIzhlOLWWggyvXN82LAajAOZl3qgijpIgdeDH1iNeUnzo6mkVCveDLS8gWzEGun
-        DOCUMENT_BUCKET: documentcloud-staging-files
-        PDF_PROCESS_TOPIC: pdf-process-staging
-        IMAGE_EXTRACT_TOPIC: image-extraction-staging
-        OCR_TOPIC: ocr-extraction-staging
-        EXTRACT_IMAGE_BATCH: 20
-        OCR_BATH: 5
-        AWS_ARN_PREFIX: arn:aws:sns:us-east-1:844030562261
+        EXTRACT_IMAGE_BATCH: "{{resolve:ssm:staging-EXTRACT_IMAGE_BATCH:latest}}"
+        OCR_BATCH: "{{resolve:ssm:staging-OCR_BATCH:latest}}"
+        REDIS_PROCESSING_URL: "{{resolve:ssm:staging-REDIS_PROCESSING_URL:latest}}"
+        REDIS_PROCESSING_PASSWORD: "{{resolve:ssm:staging-REDIS_PROCESSING_PASSWORD:latest}}"
+        API_CALLBACK: "{{resolve:ssm:staging-API_CALLBACK:latest}}"
+        PROCESSING_TOKEN: "{{resolve:ssm:staging-PROCESSING_TOKEN:latest}}"
+        DOCUMENT_BUCKET: "{{resolve:ssm:staging-DOCUMENT_BUCKET:latest}}"
+        PDF_PROCESS_TOPIC: "{{resolve:ssm:staging-PDF_PROCESS_TOPIC:latest}}"
+        IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:staging-IMAGE_EXTRACT_TOPIC:latest}}"
+        OCR_TOPIC: "{{resolve:ssm:staging-OCR_TOPIC:latest}}"
+        SENTRY_DSN: "{{resolve:ssm:staging-SENTRY_DSN:latest}}"
+        AWS_ARN_PREFIX: "{{resolve:ssm:staging-AWS_ARN_PREFIX:latest}}"
     Timeout: 300
     MemorySize: 3008
     VpcConfig:
