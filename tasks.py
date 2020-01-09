@@ -211,3 +211,16 @@ def heroku(c, staging=False):
     else:
         app = "documentcloud"
     c.run(f"heroku run --app {app} python manage.py shell_plus")
+
+
+@task
+def deploy_lambdas(c):
+    """Deploy lambda functions on AWS"""
+    c.run("cd config/aws/lambda; ./deploy.sh")
+
+
+@task
+def set_aws_param(c, key, value):
+    """Update an AWS parameter store parameter"""
+    c.run(f'aws ssm put-parameter --name "{key}" --value "{value}"')
+
