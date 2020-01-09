@@ -290,4 +290,5 @@ compose/local/pdfium/test_pdfs/*
 
 # Compiled AWS lambda functions
 awsbin/
+template.yaml
 packaged.yaml
