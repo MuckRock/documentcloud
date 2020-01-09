@@ -1,3 +1,3 @@
 # pylint: disable=unused-import
 
-from common.session import session as httpsub
+from documentcloud.common.session import session as httpsub
