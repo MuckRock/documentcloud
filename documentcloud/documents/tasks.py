@@ -10,8 +10,9 @@ from requests.exceptions import HTTPError
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
-from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
+from documentcloud.documents.search import SOLR
 
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
@@ -93,8 +94,7 @@ def delete_document_files(path):
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
 def solr_delete(document_pk):
     # delete document from solr index
-    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
-    solr.delete(id=document_pk)
+    SOLR.delete(id=document_pk)
 
     # after succesfully deleting from solr, we can delete the correspodning
     # record from the database
@@ -118,8 +118,7 @@ def solr_index(document_pk, solr_document=None, field_updates=None):
         else:
             solr_document = document.solr()
 
-    solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
-    solr.add([solr_document], fieldUpdates=field_updates)
+    SOLR.add([solr_document], fieldUpdates=field_updates)
 
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
@@ -127,14 +126,9 @@ def solr_index(document_pk, solr_document=None, field_updates=None):
 @periodic_task(run_every=crontab(hour=1))
 def solr_index_dirty():
     """Task to try and index all dirty models once a day"""
-    solr = pysolr.Solr(
-        settings.SOLR_URL,
-        auth=settings.SOLR_AUTH,
-        search_handler=settings.SOLR_SEARCH_HANDLER,
-    )
     # check to make sure the solr server is responsive before trying to index
     try:
-        solr.search("*:*")
+        SOLR.search("*:*")
     except pysolr.SolrError:
         return
 
