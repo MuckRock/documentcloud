@@ -30,7 +30,7 @@ with open("template_params.yaml", "r") as f:
     contents = f.read()
 
 # Grab all the topics mentioned
-topics = list(set(re.findall(r'"{{resolve:ssm:([a-zA-Z_.-]+):latest}}"', contents)))
+topics = list(set(re.findall(r'"{{resolve:ssm:([a-zA-Z0-9_.-]+):latest}}"', contents)))
 
 # Build up a topic map
 topic_map = {}
@@ -57,7 +57,7 @@ def aws_replace(match):
 
 # Resolve the contents and write to template.yaml
 resolved_contents = re.sub(
-    r'"{{resolve:ssm:([a-zA-Z_.-]+):latest}}"', aws_replace, contents
+    r'"{{resolve:ssm:([a-zA-Z0-9_.-]+):latest}}"', aws_replace, contents
 )
 
 with open("template.yaml", "w") as f:
