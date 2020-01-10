@@ -189,8 +189,8 @@ class Document(models.Model):
         """
         if fields is None:
             pages = {
-                f"page_no_{i}": self.get_page_text(i)
-                for i in range(1, self.page_count + 1)
+                f"page_no_{i + 1}": self.get_page_text(i)
+                for i in range(self.page_count)
             }
         else:
             # do not get page text for a partial update, as it is slow and
