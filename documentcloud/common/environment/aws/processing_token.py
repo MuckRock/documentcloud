@@ -17,23 +17,8 @@ def processing_auth(func):
         event = args[0]
         headers = event["headers"]
 
-        def auth_failed():
+        if headers.get(AUTHORIZATION) != f"processing-token {PROCESSING_TOKEN}":
             raise Exception("Authentication Failed.")
-
-        if AUTHORIZATION in headers and headers[AUTHORIZATION] is not None:
-            auth = headers[AUTHORIZATION]
-            parts = auth.split(" ")
-
-            # Authorization token is of form:
-            # f"processing-token: {PROCESSING_TOKEN}"
-            if len(parts) != 2:
-                auth_failed()
-            if parts[0] != "processing-token":
-                auth_failed()
-            if parts[1] != PROCESSING_TOKEN:
-                auth_failed()
-        else:
-            auth_failed()
 
         # If all passes, auth succeeded
         return func(*args, **kwargs)
