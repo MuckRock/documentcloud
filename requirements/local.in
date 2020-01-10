@@ -25,7 +25,6 @@ pylint-celery
 factory-boy
 
 django-debug-toolbar
-django-extensions
 django-coverage-plugin
 pytest-django
 fakeredis
