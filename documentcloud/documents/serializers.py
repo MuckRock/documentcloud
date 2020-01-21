@@ -3,6 +3,10 @@ from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
+# Standard Library
+import logging
+import sys
+
 # Third Party
 import requests
 from requests.exceptions import RequestException
@@ -23,6 +27,8 @@ from documentcloud.documents.models import (
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):
@@ -155,7 +161,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
             response.raise_for_status()
             return response.json()
-        except RequestException:
+        except RequestException as exc:
+            logger.warning(
+                "Error getting progress for document %d, exception %s",
+                obj.pk,
+                exc,
+                exc_info=sys.exc_info(),
+            )
             return {"texts": None, "images": None}
 
 
