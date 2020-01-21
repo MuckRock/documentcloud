@@ -111,8 +111,7 @@ def solr_delete(document_pk):
 def update_access(document_pk):
     document = Document.objects.get(pk=document_pk)
     access = "public" if document.public else "private"
-    storage.set_access(document.doc_path, access)
-    storage.set_access(document.pages_path, access)
+    storage.set_access(document.path, access)
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
