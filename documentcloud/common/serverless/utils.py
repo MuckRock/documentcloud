@@ -26,6 +26,9 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 
 def get_redis():
     """Opens a connection to Redis and returns it"""
+    if not REDIS_PASSWORD or REDIS_PASSWORD.isspace():
+        # Empty string should open a Redis connection without password
+        return _redis.Redis(host=REDIS_URL.host, port=REDIS_URL.port, db=0)
     return _redis.Redis(
         host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
     )

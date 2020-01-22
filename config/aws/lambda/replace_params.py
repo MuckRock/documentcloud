@@ -52,6 +52,8 @@ for subtopics in batch(topics, 10):
 # A replacement function that subs the resolve expressions with the topic map
 def aws_replace(match):
     key_name = match.group(1)
+    if not topic_map[key_name] or topic_map[key_name].isspace():
+        return '""'
     return topic_map[key_name]
 
 
