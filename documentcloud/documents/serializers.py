@@ -151,6 +151,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         has_file_url = (
             not is_list
             and hasattr(self, "initial_data")
+            and isinstance(self.initial_data, dict)  # guard against bulk creations
             and self.initial_data.get("file_url")
         )
         has_file = is_document and self.instance.status != Status.nofile

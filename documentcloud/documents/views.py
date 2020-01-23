@@ -78,16 +78,31 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             queryset = queryset.get_viewable(self.request.user)
         return queryset
 
-    @transaction.atomic
-    def perform_create(self, serializer):
+    def create(self, request):
+        """Handle single and bulk creations"""
+        if isinstance(request.data, list):
+            serializer = self.get_serializer(data=request.data, many=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_bulk_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return super().create(request)
 
-        file_url = serializer.validated_data.pop("file_url", None)
+    def perform_bulk_create(self, serializer):
+        return self.perform_create(serializer, bulk=True)
+
+    @transaction.atomic
+    def perform_create(self, serializer, bulk=False):
+
+        # only support file_url for non-bulk creations
+        if not bulk:
+            file_url = serializer.validated_data.pop("file_url", None)
 
         document = serializer.save(
             user=self.request.user, organization=self.request.user.organization
         )
 
-        if file_url is not None:
+        if not bulk and file_url is not None:
             transaction.on_commit(lambda: fetch_file_url.delay(file_url, document.pk))
 
     @action(detail=True, methods=["post"])
