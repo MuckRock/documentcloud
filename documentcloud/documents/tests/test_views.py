@@ -195,6 +195,24 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.page_count == 42
 
+    def test_bulk_update(self, client, user):
+        """Test updating multiple documents"""
+        # XXX test permission handling, missing documents for bulk updates
+        client.force_authenticate(user=user)
+        documents = DocumentFactory.create_batch(2, user=user, access=Access.private)
+        response = client.patch(
+            f"/api/documents/",
+            [
+                {"id": documents[0].pk, "access": "public"},
+                {"id": documents[1].pk, "access": "public"},
+            ],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        for document in documents:
+            document.refresh_from_db()
+            assert document.access == Access.public
+
     def test_destroy(self, client, document):
         """Test destroying a document"""
         client.force_authenticate(user=document.user)
