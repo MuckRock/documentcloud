@@ -626,20 +626,20 @@ class TestDataAPI:
 
 @pytest.mark.django_db()
 class TestRedactionAPI:
-    @patch("documentcloud.documents.tasks.create_redaction.delay")
-    def test_create(self, mock_create_redaction, client):
+    def test_create(self, client, mocker):
         """Create multiple redactions"""
+        mock_redact = mocker.patch("documentcloud.documents.views.redact")
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page": 0},
+            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
         )
         assert response.status_code == status.HTTP_201_CREATED
-        mock_create_redaction.assert_called_once_with(document.pk, document.slug, data)
+        mock_redact.delay.assert_called_once_with(document.pk, document.slug, data)
 
     def test_create_anonymous(self, client):
         """You cannot create redactions if you are not logged in"""
