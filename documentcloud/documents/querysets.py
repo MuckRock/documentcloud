@@ -44,8 +44,7 @@ class NoteQuerySet(models.QuerySet):
                 Q(access=Access.public)
                 # you can see notes you own
                 | Q(user=user)
-                # you can see organization level notes in your
-                # organization
+                # you can see organization level notes in your organization
                 | Q(
                     access=Access.organization,
                     organization__in=user.organizations.all(),

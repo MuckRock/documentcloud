@@ -197,7 +197,6 @@ class TestDocumentAPI:
 
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
-        # XXX test permission handling, missing documents for bulk updates
         client.force_authenticate(user=user)
         documents = DocumentFactory.create_batch(2, user=user, access=Access.private)
         response = client.patch(
@@ -213,6 +212,39 @@ class TestDocumentAPI:
             document.refresh_from_db()
             assert document.access == Access.public
 
+    def test_bulk_update_bad(self, client, user):
+        """Test updating multiple documents, without permissions for all"""
+        client.force_authenticate(user=user)
+        good_document = DocumentFactory(user=user, access=Access.public)
+        bad_document = DocumentFactory(access=Access.public)
+        response = client.patch(
+            f"/api/documents/",
+            [
+                {"id": good_document.pk, "access": "private"},
+                {"id": bad_document.pk, "access": "private"},
+            ],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        good_document.refresh_from_db()
+        assert good_document.access == Access.public
+        bad_document.refresh_from_db()
+        assert bad_document.access == Access.public
+
+    def test_bulk_update_missing(self, client, user):
+        """Test updating multiple documents, with some missing"""
+        client.force_authenticate(user=user)
+        document = DocumentFactory(user=user, access=Access.private)
+        response = client.patch(
+            f"/api/documents/",
+            [{"id": document.pk, "access": "public"}, {"id": 1234, "access": "public"}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        document.refresh_from_db()
+        assert document.access == Access.private
+        assert not Document.objects.filter(pk=1234).exists()
+
     def test_destroy(self, client, document):
         """Test destroying a document"""
         client.force_authenticate(user=document.user)
@@ -220,6 +252,48 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         document.refresh_from_db()
         assert document.status == Status.deleted
+
+    def test_bulk_destroy(self, client, user):
+        """Test deleting multiple documents"""
+        client.force_authenticate(user=user)
+        documents = DocumentFactory.create_batch(4, user=user)
+        response = client.delete(
+            "/api/documents/?id__in={}".format(
+                ",".join(str(d.pk) for d in documents[:2])
+            )
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        # make sure only first 2 were deleted
+        for document in documents[:2]:
+            document.refresh_from_db()
+            assert document.status == Status.deleted
+        for document in documents[2:]:
+            document.refresh_from_db()
+            assert document.status != Status.deleted
+
+    def test_bulk_destroy_no_filter(self, client, user):
+        """May not delete *all* the documents"""
+        client.force_authenticate(user=user)
+        documents = DocumentFactory.create_batch(2, user=user)
+        response = client.delete(f"/api/documents/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        for document in documents:
+            document.refresh_from_db()
+            assert document.status != Status.deleted
+
+    def test_bulk_destroy_bad(self, client, user):
+        """Test deleting multiple documents without permission"""
+        client.force_authenticate(user=user)
+        good_document = DocumentFactory(user=user, access=Access.public)
+        bad_document = DocumentFactory(access=Access.public)
+        response = client.delete(
+            f"/api/documents/?id__in={good_document.pk},{bad_document.pk}"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        good_document.refresh_from_db()
+        assert good_document.status != Status.deleted
+        bad_document.refresh_from_db()
+        assert bad_document.status != Status.deleted
 
 
 @pytest.mark.django_db()
