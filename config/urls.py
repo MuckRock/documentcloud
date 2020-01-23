@@ -14,6 +14,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested import routers
 
 # DocumentCloud
+from documentcloud.core.routers import BulkRouter
 from documentcloud.core.views import FileServer
 from documentcloud.documents.views import (
     DataViewSet,
@@ -45,7 +46,7 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
-router = routers.DefaultRouter()
+router = BulkRouter()
 router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
