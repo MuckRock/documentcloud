@@ -138,6 +138,8 @@ def solr_index_dirty():
         return
 
     # XXX should we bulk these?
+    # XXX check all deleted documents
+    # XXX put a limit on these
     for document in Document.objects.filter(solr_dirty=True):
         if document.status == Status.deleted:
             solr_delete.delay(document.pk)
