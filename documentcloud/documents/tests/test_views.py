@@ -200,7 +200,8 @@ class TestDocumentAPI:
         client.force_authenticate(user=document.user)
         response = client.delete(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert not Document.objects.filter(pk=document.pk).exists()
+        document.refresh_from_db()
+        assert document.status == Status.deleted
 
 
 @pytest.mark.django_db()
