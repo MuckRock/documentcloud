@@ -64,6 +64,9 @@ class Project(models.Model):
         _("updated at"), help_text=_("Timestamp of when the project was last updated")
     )
 
+    class Meta:
+        ordering = ("slug",)
+
     def __str__(self):
         return self.title if self.title else "-Untitled-"
 
@@ -91,6 +94,9 @@ class ProjectMembership(models.Model):
         ),
     )
 
+    class Meta:
+        ordering = ("id",)
+
 
 class Collaboration(models.Model):
     """A user collaborating on a project"""
@@ -117,3 +123,6 @@ class Collaboration(models.Model):
         related_name="+",
         help_text=_("The user who created this collaboration"),
     )
+
+    class Meta:
+        ordering = ("id",)
