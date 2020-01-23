@@ -11,6 +11,7 @@ pip-tools
 mypy
 pytest
 pytest-sugar
+pytest-mock
 
 # Code quality
 # ------------------------------------------------------------------------------
