@@ -1,6 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
+from django.db.models.query import QuerySet
 from rest_framework import mixins, parsers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -45,9 +46,9 @@ from documentcloud.documents.tasks import (
     fetch_file_url,
     process,
     process_cancel,
+    redact,
     solr_index,
     update_access,
-    redact,
 )
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
@@ -133,22 +134,44 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
     @transaction.atomic
     def perform_update(self, serializer):
-        was_public = serializer.instance.public
-        old_status = serializer.instance.status
-        super().perform_update(serializer)
-        if was_public != serializer.instance.public:
-            transaction.on_commit(lambda: update_access.delay(serializer.instance.pk))
-        if old_status in (Status.pending, Status.readable):
-            # if we were processing, do a full update
-            transaction.on_commit(lambda: solr_index.delay(serializer.instance.pk))
+        # work for regular and bulk updates
+        if isinstance(serializer.instance, QuerySet):
+            instances = serializer.instance
+            validated_datas = serializer.validated_data
         else:
-            # only update the fields that were updated
-            fields = serializer.validated_data.keys()
-            transaction.on_commit(
-                lambda: solr_index.delay(
-                    serializer.instance.pk, field_updates={f: "set" for f in fields}
+            instances = [serializer.instance]
+            validated_datas = [serializer.validated_data]
+
+        was_publics = [i.public for i in instances]
+        old_statuses = [i.status for i in instances]
+        super().perform_update(serializer)
+        for instance, validated_data, was_public, old_status in zip(
+            instances, validated_datas, was_publics, old_statuses
+        ):
+            if was_public != instance.public:
+                transaction.on_commit(lambda i=instance: update_access.delay(i.pk))
+            if old_status in (Status.pending, Status.readable):
+                # if we were processing, do a full update
+                transaction.on_commit(lambda i=instance: solr_index.delay(i.pk))
+            else:
+                # only update the fields that were updated
+                fields = validated_data.keys()
+                transaction.on_commit(
+                    lambda i=instance: solr_index.delay(
+                        i.pk, field_updates={f: "set" for f in fields}
+                    )
                 )
-            )
+
+    def bulk_partial_update(self, request):
+        serializer = self.get_serializer(
+            self.filter_queryset(self.get_queryset()),
+            data=request.data,
+            many=True,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
     def search(self, request):
