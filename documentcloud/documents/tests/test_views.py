@@ -100,6 +100,20 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_bulk_create(self, client, user):
+        """Create multiple documents"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/",
+            [{"title": "Test 1"}, {"title": "Test 2"}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert (
+            Document.objects.filter(pk__in=[d["id"] for d in response.json()]).count()
+            == 2
+        )
+
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")
