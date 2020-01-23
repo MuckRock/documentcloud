@@ -54,5 +54,11 @@ class LocalStorage:
     def open(self, filename, mode="w"):
         return LocalStorageFile(self, filename, mode)
 
+    def presign_url(self, file_name, method_name):
+        return file_name
+
+    def exists(self, file_name):
+        return os.path.exists(os.path.join(settings.MEDIA_ROOT, file_name))
+
 
 storage = LocalStorage()
