@@ -77,6 +77,7 @@ def setup(django_db_setup, django_db_blocker):
 
 
 @pytest.mark.django_db()
+@pytest.mark.solr
 class TestSearch:
 
     default_query_string = "per_page=10&order=created_at"
