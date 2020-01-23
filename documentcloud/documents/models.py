@@ -113,6 +113,7 @@ class Document(models.Model):
     data = JSONField(default=dict)
 
     class Meta:
+        ordering = ("created_at",)
         permissions = (
             (
                 "process_document",
@@ -248,6 +249,9 @@ class DocumentError(models.Model):
     )
     message = models.TextField(_("message"), help_text=_("The error message"))
 
+    class Meta:
+        ordering = ("document", "created_at")
+
     def __str__(self):
         return self.message
 
@@ -344,6 +348,9 @@ class Note(models.Model):
         _("updated at"), help_text=_("Timestamp of when the note was last updated")
     )
 
+    class Meta:
+        ordering = ("document", "page_number")
+
     def __str__(self):
         return self.title
 
@@ -362,6 +369,9 @@ class Section(models.Model):
         _("page number"), help_text=_("Which page this section appears on")
     )
     title = models.TextField(_("title"), help_text=_("A title for the section"))
+
+    class Meta:
+        ordering = ("document", "page_number")
 
     def __str__(self):
         return self.title
@@ -411,6 +421,9 @@ class Entity(models.Model):
         help_text=_("Where this entity occurs in the document"),
     )
 
+    class Meta:
+        ordering = ("document", "-relevance")
+
 
 class EntityDate(models.Model):
     """A date within a document"""
@@ -430,4 +443,5 @@ class EntityDate(models.Model):
     )
 
     class Meta:
+        ordering = ("document", "date")
         unique_together = (("document", "date"),)

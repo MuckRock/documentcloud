@@ -119,6 +119,9 @@ class Organization(models.Model):
         ),
     )
 
+    class Meta:
+        ordering = ("slug",)
+
     def __str__(self):
         if self.individual:
             return f"{self.name} (Individual)"
