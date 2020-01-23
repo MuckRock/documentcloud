@@ -163,15 +163,44 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 )
 
     def bulk_partial_update(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+        if len(request.data) != len(queryset):
+            return Response(
+                {"error": "Bad document ID"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        for document in queryset:
+            if not request.user.has_perm("documents.change_document", document):
+                return Response(
+                    {"error": f"Do not have permission to edit {document.pk}"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
         serializer = self.get_serializer(
-            self.filter_queryset(self.get_queryset()),
-            data=request.data,
-            many=True,
-            partial=True,
+            queryset, data=request.data, many=True, partial=True
         )
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def bulk_destroy(self, request):
+        if "id__in" not in request.GET:
+            return Response(
+                {"error": "May not bulk delete unless you explicitly specify IDs"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        for document in queryset:
+            if not request.user.has_perm("documents.delete_document", document):
+                return Response(
+                    {"error": f"Do not have permission to delete {document.pk}"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        for document in queryset:
+            self.perform_destroy(document)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get"])
     def search(self, request):
@@ -202,6 +231,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 "status": ["exact"],
                 "created_at": ["lt", "gt"],
                 "page_count": ["exact", "lt", "gt"],
+                "id": ["in"],
             }
 
     filterset_class = Filter
