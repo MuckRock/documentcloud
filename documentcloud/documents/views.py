@@ -94,15 +94,52 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
         # pylint: disable=unused-argument
+        # XXX do we limit this to documents you can edit?
         document = self.get_object()
+        error = self._check_process(document)
+        if error:
+            return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            self._process(document)
+            return Response("OK", status=status.HTTP_200_OK)
+
+    @action(detail=False, url_path="process", methods=["post"])
+    def bulk_process(self, request):
+        """Bulk process documents"""
+        if "ids" not in request.data:
+            return Response(
+                {"error": "`ids` not specified"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        documents = Document.objects.filter(pk__in=request.data["ids"])
+
+        errors = []
+        for document in documents:
+            error = self._check_process(document)
+            if error:
+                errors.append(error)
+        if errors:
+            return Response({"error": errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        for document in documents:
+            self._process(document)
+        return Response("OK", status=status.HTTP_200_OK)
+
+    def _check_process(self, document):
+        """Check the document is in a suitable state for processing"""
+
+        if not self.request.user.has_perm("documents.change_document", document):
+            return f"You do not have permission to edit document {document.pk}"
+
         if not storage.exists(document.doc_path):
-            return Response({"error": "No file"}, status=status.HTTP_400_BAD_REQUEST)
+            return f"No File: {document.pk}"
 
         if document.status in (Status.pending, Status.readable):
-            return Response(
-                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return f"Already processing: {document.pk}"
 
+        return None
+
+    def _process(self, document):
+        """Process a document after you have uploaded the file"""
         was_public = document.public
         with transaction.atomic():
             document.status = Status.pending
@@ -112,7 +149,6 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 # processed
                 transaction.on_commit(lambda: update_access.delay(document.pk))
         process.delay(document.pk, document.slug)
-        return Response("OK", status=status.HTTP_200_OK)
 
     @process.mapping.delete
     def cancel_process(self, request, pk=None):
@@ -168,12 +204,13 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             return Response(
                 {"error": "Bad document ID"}, status=status.HTTP_400_BAD_REQUEST
             )
+        errors = []
         for document in queryset:
             if not request.user.has_perm("documents.change_document", document):
-                return Response(
-                    {"error": f"Do not have permission to edit {document.pk}"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                errors.append(f"Do not have permission to edit {document.pk}")
+        if errors:
+            return Response({"error": errors}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = self.get_serializer(
             queryset, data=request.data, many=True, partial=True
         )
@@ -190,12 +227,12 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
         queryset = self.filter_queryset(self.get_queryset())
 
+        errors = []
         for document in queryset:
             if not request.user.has_perm("documents.delete_document", document):
-                return Response(
-                    {"error": f"Do not have permission to delete {document.pk}"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                errors.append(f"Do not have permission to delete {document.pk}")
+        if errors:
+            return Response({"error": errors}, status=status.HTTP_403_FORBIDDEN)
 
         for document in queryset:
             self.perform_destroy(document)
