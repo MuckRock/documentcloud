@@ -14,6 +14,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         get_http_data,
         publisher,
         encode_pubsub_data,
+        encode_response,
         processing_auth,
     )
     from documentcloud.common.serverless import utils
@@ -23,6 +24,7 @@ else:
         get_http_data,
         publisher,
         encode_pubsub_data,
+        encode_response,
         processing_auth,
     )
     from common.serverless import utils
@@ -67,7 +69,7 @@ def process_doc(request, _context=None):
         )
         return "Error"
 
-    return "Ok"
+    return encode_response("Ok")
 
 
 @processing_auth
@@ -85,4 +87,4 @@ def get_progress(request, _context=None):
         logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
         images, texts = (None, None)
 
-    return {"images": images, "texts": texts}
+    return encode_response({"images": images, "texts": texts})
