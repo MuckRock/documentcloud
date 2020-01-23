@@ -295,6 +295,99 @@ class TestDocumentAPI:
         bad_document.refresh_from_db()
         assert bad_document.status != Status.deleted
 
+    def test_process(self, client, document, mocker):
+        """Test processing a document"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(f"/api/documents/{document.pk}/process/")
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.status == Status.pending
+        mock_process.delay.assert_called_with(document.pk, document.slug)
+
+    def test_process_bad(self, client, user, document, mocker):
+        """Test processing a document you do not have edit permissions to"""
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=user)
+        response = client.post(f"/api/documents/{document.pk}/process/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_process_no_file(self, client, document, mocker):
+        """Test processing a document without a file"""
+        # pretend the file does not exist
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=False
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(f"/api/documents/{document.pk}/process/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_process_bad_status(self, client, mocker):
+        """Test processing a document without a file"""
+        document = DocumentFactory(status=Status.pending)
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(f"/api/documents/{document.pk}/process/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_process(self, client, user, mocker):
+        """Test processing multiple documents"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        documents = DocumentFactory.create_batch(2, user=user)
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/process/",
+            {"ids": [d.pk for d in documents]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        for document in documents:
+            document.refresh_from_db()
+            assert document.status == Status.pending
+            mock_process.delay.assert_any_call(document.pk, document.slug)
+
+    def test_bulk_process_no_ids(self, client, user, mocker):
+        """Test processing multiple documents without specifying the documents"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=user)
+        response = client.post(f"/api/documents/process/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_process_bad(self, client, user, mocker):
+        """Test processing multiple documents without permission"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        good_document = DocumentFactory(user=user, access=Access.public)
+        bad_document = DocumentFactory(access=Access.public)
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/process/",
+            {"ids": [good_document.pk, bad_document.pk]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
 
 @pytest.mark.django_db()
 class TestDocumentErrorAPI:
