@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
@@ -29,6 +30,22 @@ from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
+
+
+class DocumentListSerializer(serializers.ListSerializer):
+    def update(self, instance, validated_data):
+        # Maps for id->instance and id->data item.
+        doc_mapping = {doc.id: doc for doc in instance}
+        data_mapping = {item["id"]: item for item in validated_data}
+
+        # Perform creations and updates.
+        ret = []
+        for doc_id, data in data_mapping.items():
+            doc = doc_mapping.get(doc_id)
+            if doc:
+                ret.append(self.child.update(doc, data))
+
+        return ret
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):
@@ -63,6 +80,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     class Meta:
         model = Document
+        list_serializer_class = DocumentListSerializer
         fields = [
             "id",
             "access",
@@ -88,6 +106,10 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "created_at": {"read_only": True},
             "data": {"read_only": True},
             "description": {"required": False},
+            "id": {
+                "read_only": False,
+                "required": False,
+            },  # XXX make sure doesnt affect non bulk
             "language": {"default": Language.english},
             "organization": {"read_only": True},
             "page_count": {"read_only": True},
@@ -120,14 +142,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             del self.fields["remaining"]
 
         is_create = self.instance is None
-        is_list = isinstance(self.instance, list)
+        is_list = isinstance(self.instance, (list, QuerySet))
         is_document = isinstance(self.instance, Document)
 
         is_owner = is_create or (
             is_document and request and self.instance.user == request.user
         )
-        has_file_url = hasattr(self, "initial_data") and self.initial_data.get(
-            "file_url"
+        has_file_url = (
+            not is_list
+            and hasattr(self, "initial_data")
+            and self.initial_data.get("file_url")
         )
         has_file = is_document and self.instance.status != Status.nofile
         if (is_create and has_file_url) or is_list or has_file or not is_owner:
