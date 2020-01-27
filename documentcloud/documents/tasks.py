@@ -18,6 +18,7 @@ if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
     from documentcloud.documents.local_tasks import (
         process_file_internal,
+        cache_pages,
         extract_images,
         ocr_pages,
         redact_document,

@@ -59,6 +59,12 @@ LARGE_IMAGE_SUFFIX = "-large"
 TXT_EXTENSION = ".txt"
 
 
+def write_text_file(text_path, text):
+    """Helper method to write a text file."""
+    with storage.open(text_path, "wb") as text_file:
+        text_file.write(text.encode("utf8"))
+
+
 def ocr_page(page_path):
     """Internal method to run OCR on a single page.
 
@@ -120,11 +126,8 @@ def run_tesseract(data, _context=None):
 
     doc_id, slug, page_number, image_path = paths_and_numbers[0]
 
-    texts_remaining_field = redis_fields.texts_remaining(doc_id)
-    text_bits_field = redis_fields.text_bits(doc_id)
-
     # Only OCR if the page has yet to be OCRd
-    if REDIS.getbit(text_bits_field, page_number) == 0:
+    if not utils.page_ocrd(REDIS, doc_id, page_number):
         text_path = path.page_text_path(doc_id, slug, page_number)
 
         # Benchmark OCR speed
@@ -135,17 +138,11 @@ def run_tesseract(data, _context=None):
         elapsed_times.append(elapsed_time)
 
         # Write the output text
-        with storage.open(text_path, "wb") as text_file:
-            text_file.write(text.encode("utf8"))
+        write_text_file(text_path, text)
 
-        # Decrement texts remaining and set the bit for the page off atomically
-        pipeline = REDIS.pipeline()
-        pipeline.decr(texts_remaining_field)
-        pipeline.setbit(text_bits_field, page_number, 1)
-        texts_remaining = pipeline.execute()[0]
-
-        # Check if finished
-        if texts_remaining == 0:
+        # Decrement the texts remaining, sending complete if done.
+        texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
+        if texts_finished:
             utils.send_complete(REDIS, doc_id)
             return "Ok"
 

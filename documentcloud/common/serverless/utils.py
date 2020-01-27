@@ -111,3 +111,53 @@ def clean_up(redis, doc_id):
         pipeline.delete(dimensions_field)
 
     redis.transaction(remove_all, dimensions_field)
+
+
+def page_extracted(redis, doc_id, page_number):
+    """Returns if the page has already had its image extracted."""
+    image_bits_field = redis_fields.image_bits(doc_id)
+    return redis.getbit(image_bits_field, page_number) != 0
+
+
+def page_ocrd(redis, doc_id, page_number):
+    """Returns if the page has already been OCRd."""
+    text_bits_field = redis_fields.text_bits(doc_id)
+    return redis.getbit(text_bits_field, page_number) != 0
+
+
+def register_page_task(redis, doc_id, page_number, remaining_field, bits_field):
+    """Registers a generic Redis page task, returning the remaining count."""
+
+    # Start a pipeline to atomically decrement remaining and toggle page
+    pipeline = redis.pipeline()
+    pipeline.decr(remaining_field)
+    pipeline.setbit(bits_field, page_number, 1)
+
+    remaining = pipeline.execute()[0]
+    return remaining
+
+
+def register_page_extracted(redis, doc_id, page_number):
+    """Register a single page as being extracted. Return true if all done."""
+    # Decrement the images remaining
+    images_remaining = register_page_task(
+        redis,
+        doc_id,
+        page_number,
+        redis_fields.images_remaining(doc_id),
+        redis_fields.image_bits(doc_id),
+    )
+    return images_remaining == 0
+
+
+def register_page_ocrd(redis, doc_id, page_number):
+    """Register a single page as being OCRd. Return true if all done."""
+    # Decrement the texts remaining
+    texts_remaining = register_page_task(
+        redis,
+        doc_id,
+        page_number,
+        redis_fields.texts_remaining(doc_id),
+        redis_fields.text_bits(doc_id),
+    )
+    return texts_remaining == 0
