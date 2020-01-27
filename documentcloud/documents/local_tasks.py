@@ -3,8 +3,9 @@ from celery.task import task
 
 # DocumentCloud
 from documentcloud.documents.processing.info_and_image.main import (
-    extract_image,
     process_pdf,
+    process_page_cache,
+    extract_image,
     redact_doc,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
@@ -17,6 +18,11 @@ SOFT_TIME_LIMIT = 10000
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def process_file_internal(options):
     process_pdf(options)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def cache_pages(options):
+    process_page_cache(options)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)

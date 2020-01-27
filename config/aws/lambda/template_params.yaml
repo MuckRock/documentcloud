@@ -1,9 +1,9 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'info-and-image-staging
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "info-and-image-staging
 
   SAM template for cloud functions related to DocumentCloud
 
-  '
+  "
 Globals:
   Function:
     Environment:
@@ -18,6 +18,7 @@ Globals:
         PROCESSING_TOKEN: "{{resolve:ssm:staging-PROCESSING_TOKEN:latest}}"
         DOCUMENT_BUCKET: "{{resolve:ssm:staging-DOCUMENT_BUCKET:latest}}"
         PDF_PROCESS_TOPIC: "{{resolve:ssm:staging-PDF_PROCESS_TOPIC:latest}}"
+        PAGE_CACHE_TOPIC: "{{resolve:ssm:staging-PAGE_CACHE_TOPIC:latest}}"
         IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:staging-IMAGE_EXTRACT_TOPIC:latest}}"
         OCR_TOPIC: "{{resolve:ssm:staging-OCR_TOPIC:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:staging-REDACT_TOPIC:latest}}"
@@ -84,6 +85,23 @@ Resources:
           Type: SNS
           Properties:
             Topic: "{{resolve:ssm:staging-PDF_PROCESS_TOPIC_INTERNAL:latest}}"
+      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+
+  ProcessPageCacheFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.process_page_cache
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:staging-PAGE_CACHE_TIMEOUT:latest}}"
+      Events:
+        ProcessPdfApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:staging-PAGE_CACHE_TOPIC_INTERNAL:latest}}"
       Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
 
   ExtractImageFunction:
