@@ -51,6 +51,12 @@ def process_pdf_task(data):
     return process_file_internal.delay(data)
 
 
+def page_cache_task(data):
+    from documentcloud.documents.tasks import cache_pages
+
+    return cache_pages.delay(data)
+
+
 def extract_image_task(data):
     from documentcloud.documents.tasks import extract_images
 
@@ -72,6 +78,10 @@ def redact_doc_task(data):
 publisher.register_internal_callback(
     ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
     process_pdf_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("PAGE_CACHE_TOPIC", default="page-cache")),
+    page_cache_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")),

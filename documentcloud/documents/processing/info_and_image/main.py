@@ -8,7 +8,6 @@ import environ
 import redis
 from listcrunch import crunch_collection
 from PIL import Image
-from redis.exceptions import RedisError
 
 env = environ.Env()
 
@@ -16,7 +15,6 @@ env = environ.Env()
 if env.str("ENVIRONMENT").startswith("local"):
     from documentcloud.common import path, redis_fields
     from documentcloud.common.environment import (
-        get_http_data,
         get_pubsub_data,
         encode_pubsub_data,
         publisher,
@@ -31,7 +29,6 @@ if env.str("ENVIRONMENT").startswith("local"):
 else:
     from common import path, redis_fields
     from common.environment import (
-        get_http_data,
         get_pubsub_data,
         encode_pubsub_data,
         publisher,
@@ -73,6 +70,9 @@ REDIS = utils.get_redis()
 PDF_PROCESS_TOPIC = publisher.topic_path(
     "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
 )
+PAGE_CACHE_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("PAGE_CACHE_TOPIC", default="page-cache")
+)
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
@@ -84,7 +84,7 @@ OCR_TOPIC = publisher.topic_path(
 )
 
 
-def initialize_redis_page_data(doc_id, page_count, dirty_pages=None):
+def initialize_redis_page_data(doc_id, page_count):
     """Initialize Redis fields to manage page dimensions and processing"""
     dimensions_field = redis_fields.dimensions(doc_id)
     image_bits_field = redis_fields.image_bits(doc_id)
@@ -151,6 +151,44 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
     pipeline.execute()
 
 
+def write_cache(filename, cache):
+    """Helper method to write a cache file."""
+    with storage.open(filename, "wb") as pickle_file, gzip.open(
+        pickle_file, "wb"
+    ) as zip_file:
+        pickle.dump(cache, zip_file)
+
+
+def read_cache(filename):
+    """Helper method to read a cache file."""
+    with storage.open(filename, "rb") as pickle_file, gzip.open(
+        pickle_file, "rb"
+    ) as zip_file:
+        return pickle.load(zip_file)
+
+
+def write_text_file(text_path, text):
+    """Helper method to write text file."""
+    with storage.open(text_path, "wb") as text_file:
+        text_file.write(text.encode("utf8"))
+
+
+def write_pagespec_file(doc_id, slug, crunched_pagespec):
+    """Helper method to write pagespec file."""
+    with storage.open(path.pagesize_path(doc_id, slug), "w") as pagesize_file:
+        pagesize_file.write(crunched_pagespec)
+
+
+def write_pagespec(doc_id, slug):
+    """Extract and write the dimensions of all pages to a pagespec file"""
+    pagespec = get_redis_pagespec(doc_id)
+    crunched_pagespec = crunch_collection(pagespec)
+    write_pagespec_file(doc_id, slug, crunched_pagespec)
+
+    # Send pagespec update
+    utils.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
+
+
 def extract_pagecount(doc_id, slug):
     """Parse a PDF and write files to cache PDF information and dimensions.
 
@@ -161,18 +199,9 @@ def extract_pagecount(doc_id, slug):
     # Get the page sizes and initialize a cache of page positions
     doc_path = path.doc_path(doc_id, slug)
     with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=True
+        storage, doc_path, record=False
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
-        cached = pdf_file.cache
-
-    # Create an index file that stores the memory locations of each page of the
-    # PDF file.
-    index_path = path.index_path(doc_id, slug)
-    with storage.open(index_path, "wb") as pickle_file, gzip.open(
-        pickle_file, "wb"
-    ) as zip_file:
-        pickle.dump(cached, zip_file)
 
     # Pass the page_count back to the caller.
     return page_count
@@ -181,11 +210,11 @@ def extract_pagecount(doc_id, slug):
 def redact_document_and_overwrite(doc_id, slug, redactions):
     """Redacts a document and overwrites the original PDF."""
     doc_path = path.doc_path(doc_id, slug)
-    with Workspace() as workspace, StorageHandler(
-        storage, doc_path
-    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
-        new_doc = doc.redact_pages(redactions)
 
+    with Workspace() as workspace, workspace.load_document_entirely(
+        storage, doc_path
+    ) as doc:
+        new_doc = doc.redact_pages(redactions)
         # Overwrite the original doc
         new_doc.save(storage, doc_path)
 
@@ -237,15 +266,57 @@ def get_redis_pagespec(doc_id):
     return pagespec
 
 
-def write_pagespec(doc_id, slug):
-    """Extract and write the dimensions of all pages to a pagespec file"""
-    pagespec = get_redis_pagespec(doc_id)
-    crunched_pagespec = crunch_collection(pagespec)
-    with storage.open(path.pagesize_path(doc_id, slug), "w") as pagesize_file:
-        pagesize_file.write(crunched_pagespec)
+@pubsub_function(REDIS, PAGE_CACHE_TOPIC)
+def process_page_cache(data, _context=None):
+    """Memoize the memory accesses of all the pages of a PDF in a cache."""
+    data = get_pubsub_data(data)
 
-    # Send pagespec update
-    utils.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    dirty = data["dirty"] if "dirty" in data else None
+
+    doc_path = path.doc_path(doc_id, slug)
+
+    # Read the entire document into memory
+    with Workspace() as workspace, StorageHandler(
+        storage, doc_path, record=True, playback=False, cache=None, read_all=True
+    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+        # Load the final page to memoize all page accesses
+        page_count = doc.page_count
+        doc.load_page(page_count - 1)
+        cached = pdf_file.cache
+
+        # Create an index file that stores the memory locations of each page of the
+        # PDF file.
+        write_cache(path.index_path(doc_id, slug), cached)
+
+        # Method to publish image batches
+        def pub(pages):
+            if pages:
+                publisher.publish(
+                    IMAGE_EXTRACT_TOPIC,
+                    data=encode_pubsub_data(
+                        {
+                            "doc_id": doc_id,
+                            "slug": slug,
+                            "pages": pages,
+                            "partial": dirty,
+                        }
+                    ),
+                )
+
+        # Trigger image extraction tasks for each page
+        if dirty:
+            # If only dirty pages are flagged, process the relevant ones in batches
+            dirty = sorted(dirty)
+            for i in range(0, len(dirty), IMAGE_BATCH):
+                pages = [dirty[i] for i in range(0, min(IMAGE_BATCH, len(dirty)))]
+                pub(pages)
+        else:
+            # Otherwise, process all pages in batches
+            for i in range(0, page_count, IMAGE_BATCH):
+                pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
+                pub(pages)
 
 
 @pubsub_function(REDIS, PDF_PROCESS_TOPIC)
@@ -263,31 +334,25 @@ def process_pdf(data, _context=None):
     # Update the model with the page count
     utils.send_update(REDIS, doc_id, {"page_count": page_count})
 
-    # Kick off image processing tasks
-    for i in range(0, page_count, IMAGE_BATCH):
-        # Trigger image extraction for each page
-        pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
-        publisher.publish(
-            IMAGE_EXTRACT_TOPIC,
-            data=encode_pubsub_data(
-                {"doc_id": doc_id, "slug": slug, "pages": pages, "partial": False}
-            ),
-        )
+    # Kick off page cache processing
+    publisher.publish(
+        PAGE_CACHE_TOPIC, data=encode_pubsub_data({"doc_id": doc_id, "slug": slug})
+    )
 
     return "Ok"
 
 
-def extract_single_page(doc_id, slug, doc, page_number):
+def get_large_image_path(doc_id, slug, page_number):
+    """Return the path for the largest image size."""
+    return path.page_image_path(doc_id, slug, page_number, IMAGE_WIDTHS[0][0])
+
+
+def extract_single_page(doc_id, slug, page, page_number, large_image_path):
     """Internal method to extract a single page from a PDF file as an image.
 
     Returns:
         The path to the newly rendered large image path.
     """
-    # Load the page from the PDF
-    page = doc.load_page(page_number)
-    large_image_path = path.page_image_path(
-        doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
-    )
 
     # Extract the page as an image with a certain width
     bmp = page.get_bitmap(IMAGE_WIDTHS[0][1], None)
@@ -304,9 +369,7 @@ def extract_single_page(doc_id, slug, doc, page_number):
         ) as img_f:
             img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
 
-        # TODO: trigger update when thumbnail image is parsed
-
-    return (large_image_path, page.width, page.height)
+    return (page.width, page.height)
 
 
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
@@ -318,7 +381,6 @@ def extract_image(data, _context=None):
     slug = data["slug"]
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
-    index_path = path.index_path(doc_id, slug)  # The path to the PDF index file
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
 
     # Store a queue of pages to OCR to fill the batch
@@ -341,47 +403,67 @@ def extract_image(data, _context=None):
             flush(ocr_queue)
 
     # Open the PDF file with the cached index
-    with storage.open(index_path, "rb") as pickle_file, gzip.open(
-        pickle_file, "rb"
-    ) as zip_file:
-        cached = pickle.load(zip_file)
+    cached = read_cache(path.index_path(doc_id, slug))
 
-    images_remaining_field = redis_fields.images_remaining(doc_id)
-    image_bits_field = redis_fields.image_bits(doc_id)
     with Workspace() as workspace, StorageHandler(
         storage, doc_path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            if REDIS.getbit(image_bits_field, page_number) == 0:
+            large_image_path = path.page_image_path(
+                doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
+            )
+            page = None
+            if not utils.page_extracted(REDIS, doc_id, page_number):
                 # Extract the image.
-                large_image_path, width, height = extract_single_page(
-                    doc_id, slug, doc, page_number
+                if page is None:
+                    page = doc.load_page(page_number)
+                width, height = extract_single_page(
+                    doc_id, slug, page, page_number, large_image_path
                 )
                 page_dimension = f"{width}x{height}"
 
-                # Update Redis properties atomically
-                pipeline = REDIS.pipeline()
-
-                # Decrement pages remaining and set the bit for the page off in Redis
-                pipeline.decr(images_remaining_field)
-                pipeline.setbit(image_bits_field, page_number, 1)
-
                 if not partial:
-                    # Update the page dimensions in Redis
+                    # Update the page dimensions in Redis atomically
+                    pipeline = REDIS.pipeline()
                     pipeline.sadd(redis_fields.dimensions(doc_id), page_dimension)
                     pipeline.sadd(
                         redis_fields.page_dimension(doc_id, page_dimension), page_number
                     )
+                    pipeline.execute()
 
-                images_remaining = pipeline.execute()[0]
+                images_finished = utils.register_page_extracted(
+                    REDIS, doc_id, page_number
+                )
 
-                if images_remaining == 0 and not partial:
+                # Write the pagespec dimensions if all images have finished and
+                # it's not a partial update.
+                if images_finished and not partial:
                     write_pagespec(doc_id, slug)
 
-            # Prepare the image to be OCRd.
-            ocr_queue.append([doc_id, slug, page_number, large_image_path])
-            check_and_flush(ocr_queue)
+            if not utils.page_ocrd(REDIS, doc_id, page_number):
+                # Extract page text if possible
+                if page is None:
+                    page = doc.load_page(page_number)
+
+                text = page.text
+                if text is not None and len(text.strip()) > 0:
+                    text_path = path.page_text_path(doc_id, slug, page_number)
+
+                    # Page already has text inside
+                    write_text_file(text_path, text)
+
+                    # Decrement the texts remaining, sending complete if done.
+                    texts_finished = utils.register_page_ocrd(
+                        REDIS, doc_id, page_number
+                    )
+                    if texts_finished:
+                        utils.send_complete(REDIS, doc_id)
+                        return "Ok"
+                else:
+                    # Prepare the image to be OCRd.
+                    ocr_queue.append([doc_id, slug, page_number, large_image_path])
+                    check_and_flush(ocr_queue)
 
     flush(ocr_queue)
 
@@ -408,16 +490,13 @@ def redact_doc(data, _context=None):
     page_count = extract_pagecount(doc_id, slug)
     initialize_partial_redis_page_data(doc_id, page_count, dirty_pages)
 
-    # Kick off image processing tasks
+    # Kick off page cache processing
     dirty_pages_list = sorted(dirty_pages)
-    for pages in [
-        dirty_pages_list[i : i + IMAGE_BATCH]
-        for i in range(0, len(dirty_pages_list), IMAGE_BATCH)
-    ]:
-        # Iterate dirty pages in batches and trigger image extraction
-        publisher.publish(
-            IMAGE_EXTRACT_TOPIC,
-            data=encode_pubsub_data(
-                {"doc_id": doc_id, "slug": slug, "pages": pages, "partial": True}
-            ),
-        )
+    publisher.publish(
+        PAGE_CACHE_TOPIC,
+        data=encode_pubsub_data(
+            {"doc_id": doc_id, "slug": slug, "dirty": dirty_pages_list}
+        ),
+    )
+
+    return "Ok"
