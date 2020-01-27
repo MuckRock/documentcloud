@@ -4,7 +4,6 @@ import requests
 import requests_mock
 
 # DocumentCloud
-# Define http sub client and subscriptions
 from documentcloud.common.session import session as httpsub
 
 env = environ.Env()
