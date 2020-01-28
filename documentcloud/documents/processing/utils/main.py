@@ -1,8 +1,10 @@
+# Standard Library
+import logging
+import sys
+
 # Third Party
 import environ
-import logging
 from redis.exceptions import RedisError
-import sys
 
 env = environ.Env()
 logger = logging.getLogger(__name__)

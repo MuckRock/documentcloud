@@ -220,10 +220,10 @@ class NoteSerializer(serializers.ModelSerializer):
             "access",
             "title",
             "content",
-            "top",
-            "left",
-            "bottom",
-            "right",
+            "x1",
+            "x2",
+            "y1",
+            "y2",
             "created_at",
             "updated_at",
         ]
@@ -253,8 +253,15 @@ class NoteSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_page(self, value):
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if value >= document.page_count:
+            raise serializers.ValidationError("Must be a valid page for the document")
+        return value
+
     def validate(self, attrs):
-        """Check the access level"""
+        """Check the access level and coordinates"""
         request = self.context.get("request")
         view = self.context.get("view")
         document = Document.objects.get(pk=view.kwargs["document_pk"])
@@ -266,6 +273,16 @@ class NoteSerializer(serializers.ModelSerializer):
                 "You may only create public or draft notes on documents you have "
                 "edit access to"
             )
+
+        # Bounds should either all be set or not set at all
+        if all(attr not in attrs for attr in ("x1", "x2", "y1", "y2")):
+            return attrs
+
+        # If bounds were set, ensure they are in range
+        if attrs["x1"] >= attrs["x2"]:
+            raise serializers.ValidationError("`x1` must be less than `x2`")
+        if attrs["y1"] >= attrs["y2"]:
+            raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
 
 

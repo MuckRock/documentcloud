@@ -1,4 +1,5 @@
 # Standard Library
+import collections
 import ctypes
 import os
 from ctypes import (
@@ -18,7 +19,6 @@ from ctypes import (
     c_void_p,
     cdll,
 )
-import collections
 
 # Third Party
 import PIL.Image
