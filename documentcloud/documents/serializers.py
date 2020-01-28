@@ -261,7 +261,7 @@ class NoteSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        """Check the access level"""
+        """Check the access level and coordinates"""
         request = self.context.get("request")
         view = self.context.get("view")
         document = Document.objects.get(pk=view.kwargs["document_pk"])
@@ -275,12 +275,7 @@ class NoteSerializer(serializers.ModelSerializer):
             )
 
         # Bounds should either all be set or not set at all
-        if (
-            "x1" not in attrs
-            and "x2" not in attrs
-            and "y1" not in attrs
-            and "y2" not in attrs
-        ):
+        if all(attr not in attrs for attr in ("x1", "x2", "y1", "y2")):
             return attrs
 
         # If bounds were set, ensure they are in range
