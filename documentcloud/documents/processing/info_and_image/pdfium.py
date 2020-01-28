@@ -1,4 +1,5 @@
 # Standard Library
+import collections
 import ctypes
 import os
 import tempfile
@@ -19,7 +20,6 @@ from ctypes import (
     c_void_p,
     cdll,
 )
-import collections
 
 # Third Party
 import PIL.Image
@@ -106,15 +106,8 @@ class Bitmap:
 
     def fill_rect(self, x1, y1, x2, y2, fill=0xFF000000):
         # Fill a rectangle with percent-specified coordinates
-        assert (
-            x1 >= 0
-            and x1 <= 1
-            and x2 >= 0
-            and x2 <= 1
-            and y1 >= 0
-            and y1 <= 1
-            and y2 >= 0
-            and y2 <= 1
+        assert all(
+            coord >= 0 and coord <= 1 for coord in (x1, x2, y1, y2)
         ), "Coordinates out of bounds"
         min_x = round(min(x1, x2) * self.width)
         max_x = round(max(x1, x2) * self.width)
@@ -175,9 +168,9 @@ class Document:
 
     def redact_pages(self, redactions):
         """Returns a new PDF doc with the specified pages redacted.
-        
+
         Redactions are specified in the following format:
-        
+
         [
             {
                 "page": 0,  # 0-based
@@ -621,8 +614,8 @@ class Workspace:
     def load_document_entirely(self, storage, path, password=None):
         # Create a tmp file and cache the entire file
         tmp_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
-        with storage.open(path, "rb") as f:
-            tmp_file.write(f.read())
+        with storage.open(path, "rb") as storage_file:
+            tmp_file.write(storage_file.read())
         tmp_file.close()
 
         # Load the document with Pdfium from the tmp file
@@ -670,8 +663,8 @@ class StorageHandler:
         if self.read_all:
             # Create a tmp file and cache the entire file
             self.tmp_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
-            with storage.open(filename, "rb") as f:
-                self.tmp_file.write(f.read())
+            with storage.open(filename, "rb") as storage_file:
+                self.tmp_file.write(storage_file.read())
             self.tmp_file.close()
             self.size = os.path.getsize(self.tmp_file.name)
             self.handle = open(self.tmp_file.name, "rb").__enter__()

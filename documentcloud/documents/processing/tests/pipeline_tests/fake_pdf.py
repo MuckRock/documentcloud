@@ -4,11 +4,11 @@ class FakePdf:
         
         The pages are specified in a format indicating which pages need "OCR".
         For example:
-        
+
           `..o.o`
 
         indicates a 5 page PDF document where the 3rd and 5th pages need OCR.
-        
+
         """
         self.pages = pages
         self.page_count = len(pages)

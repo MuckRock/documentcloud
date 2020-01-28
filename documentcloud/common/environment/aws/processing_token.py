@@ -1,7 +1,6 @@
 # Third Party
 import environ
 
-
 env = environ.Env()
 
 # Common environment variables

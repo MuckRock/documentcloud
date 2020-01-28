@@ -13,7 +13,7 @@ env = environ.Env()
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
-    from documentcloud.common import path, redis_fields
+    from documentcloud.common import path
     from documentcloud.common.environment import (
         get_pubsub_data,
         encode_pubsub_data,
@@ -24,7 +24,7 @@ if env.str("ENVIRONMENT").startswith("local"):
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
-    from common import path, redis_fields
+    from common import path
     from common.environment import (
         get_pubsub_data,
         encode_pubsub_data,

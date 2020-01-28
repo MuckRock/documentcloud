@@ -3,9 +3,9 @@ from celery.task import task
 
 # DocumentCloud
 from documentcloud.documents.processing.info_and_image.main import (
-    process_pdf,
-    process_page_cache,
     extract_image,
+    process_page_cache,
+    process_pdf,
     redact_doc,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
