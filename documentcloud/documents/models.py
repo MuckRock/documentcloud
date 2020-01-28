@@ -1,7 +1,7 @@
 # Django
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 
@@ -323,28 +323,36 @@ class Note(models.Model):
         null=True,
         blank=True,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_("The left-most coordinate of the note in percantage of the page size"),
+        help_text=_(
+            "The left-most coordinate of the note in percantage of the page size"
+        ),
     )
     x2 = models.FloatField(
         _("x2"),
         null=True,
         blank=True,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_("The right-most coordinate of the note in percantage of the page size"),
+        help_text=_(
+            "The right-most coordinate of the note in percantage of the page size"
+        ),
     )
     y1 = models.FloatField(
         _("y1"),
         null=True,
         blank=True,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_("The top-most coordinate of the note in percantage of the page size"),
+        help_text=_(
+            "The top-most coordinate of the note in percantage of the page size"
+        ),
     )
     y2 = models.FloatField(
         _("y2"),
         null=True,
         blank=True,
         validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_("The bottom-most coordinate of the note in percantage of the page size"),
+        help_text=_(
+            "The bottom-most coordinate of the note in percantage of the page size"
+        ),
     )
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the note was created")
