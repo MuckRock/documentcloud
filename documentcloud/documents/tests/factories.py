@@ -53,10 +53,10 @@ class NoteFactory(factory.django.DjangoModelFactory):
     title = factory.Sequence(lambda n: f"Note #{n}")
     content = factory.Faker("text")
     access = Access.public
-    top = 10
-    left = 20
-    bottom = 100
-    right = 50
+    x1 = 0.1
+    x2 = 0.2
+    y1 = 0.3
+    y2 = 0.4
 
     class Meta:
         model = "documents.Note"
