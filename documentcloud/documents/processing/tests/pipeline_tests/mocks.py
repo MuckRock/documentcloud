@@ -3,14 +3,18 @@ Exports a method `patch_pipeline` which mocks all aspects of the processing
 pipeline necessary to unit test the full processing stack.
 """
 
-from contextlib import ExitStack
+# Standard Library
 import functools
+from contextlib import ExitStack
 from unittest.mock import patch
+
+# Third Party
 from config import celery_app
+
+# DocumentCloud
 from documentcloud.common import path
-from documentcloud.common.serverless.utils import initialize, get_redis
-from documentcloud.documents.processing.info_and_image.main import IMAGE_WIDTHS
-from .fake_pdf import FakePage
+from documentcloud.common.serverless.utils import get_redis, initialize
+from documentcloud.documents.processing.tests.pipeline_tests.fake_pdf import FakePage
 
 docs = {}
 
@@ -38,29 +42,29 @@ def patch_env(env):
         patches.append(patch(f"{OCR}.main.{key}", value, create=True))
 
     stack = ExitStack()
-    for p in patches:
-        stack.enter_context(p)
+    for patch in patches:
+        stack.enter_context(patch)
     return stack
 
 
 # Mock methods
-def page_loaded(pg):
+def page_loaded(page):
     pass
 
 
-def cache_hit(pg):
+def cache_hit(page):
     pass
 
 
-def cache_miss(pg):
+def cache_miss(page):
     pass
 
 
-def cache_written(fn, cache):
+def cache_written(filename, cache):
     pass
 
 
-def cache_read(fn, cache):
+def cache_read(filename, cache):
     pass
 
 
@@ -99,8 +103,8 @@ class Workspace:
     def __init__(self, handler, password=None):
         self.handler = handler
         self.password = password
-        self.fn = handler.filename
-        self.doc = docs[self.fn]
+        self.filename = handler.filename
+        self.doc = docs[self.filename]
 
     def __enter__(self):
         return self
@@ -115,13 +119,13 @@ class Workspace:
 
     def trigger_cache(self, number):
         """Simulate loading a page and needing to access all previous pages."""
-        for pg in range(number + 1):
-            if pg in self.handler.cache:
-                cache_hit(pg)
+        for page in range(number + 1):
+            if page in self.handler.cache:
+                cache_hit(page)
             else:
-                cache_miss(pg)
+                cache_miss(page)
                 if self.handler.record:
-                    self.handler.cache[pg] = True
+                    self.handler.cache[page] = True
 
     def load_page(self, number):
         page_loaded(number)
@@ -158,15 +162,15 @@ class StorageOpen:
 files_cached = {}
 
 
-def write_cache(fn, cache):
-    files_cached[fn] = cache
-    cache_written(fn, cache)
+def write_cache(filename, cache):
+    files_cached[filename] = cache
+    cache_written(filename, cache)
 
 
-def read_cache(fn):
-    if fn in files_cached:
-        cache_read(fn, files_cached[fn])
-        return files_cached[fn]
+def read_cache(filename):
+    if filename in files_cached:
+        cache_read(filename, files_cached[filename])
+        return files_cached[filename]
     else:
         raise KeyError("Cache file not found")
 
@@ -206,7 +210,7 @@ def send_error(_, doc_id, message, fatal=False):
     error_sent(doc_id, message, fatal)
 
 
-def patch_pipeline(f):
+def patch_pipeline(func):
     """Jumbo patch method to mock entire processing pipeline."""
 
     ENVIRONMENT = "documentcloud.common.environment"
@@ -257,7 +261,7 @@ def patch_pipeline(f):
     @patch(SEND_UPDATE_MOCK, send_update)
     @patch(SEND_COMPLETE_MOCK, send_complete)
     @patch(SEND_ERROR_MOCK, send_error)
-    @functools.wraps(f)
+    @functools.wraps(func)
     def functor(
         test,
         mock_error_sent,
@@ -278,7 +282,7 @@ def patch_pipeline(f):
         celery_app.conf.task_always_eager = True
 
         # Pass lower-level mocks in a dict structure for caller
-        result = f(
+        result = func(
             test,
             {
                 "page_loaded": mock_page_loaded,

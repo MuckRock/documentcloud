@@ -45,9 +45,9 @@ from documentcloud.documents.tasks import (
     fetch_file_url,
     process,
     process_cancel,
+    redact,
     solr_index,
     update_access,
-    redact,
 )
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project

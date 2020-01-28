@@ -125,7 +125,7 @@ def page_ocrd(redis, doc_id, page_number):
     return redis.getbit(text_bits_field, page_number) != 0
 
 
-def register_page_task(redis, doc_id, page_number, remaining_field, bits_field):
+def register_page_task(redis, page_number, remaining_field, bits_field):
     """Registers a generic Redis page task, returning the remaining count."""
 
     # Start a pipeline to atomically decrement remaining and toggle page
@@ -133,8 +133,7 @@ def register_page_task(redis, doc_id, page_number, remaining_field, bits_field):
     pipeline.decr(remaining_field)
     pipeline.setbit(bits_field, page_number, 1)
 
-    remaining = pipeline.execute()[0]
-    return remaining
+    return pipeline.execute()[0]
 
 
 def register_page_extracted(redis, doc_id, page_number):
@@ -142,7 +141,6 @@ def register_page_extracted(redis, doc_id, page_number):
     # Decrement the images remaining
     images_remaining = register_page_task(
         redis,
-        doc_id,
         page_number,
         redis_fields.images_remaining(doc_id),
         redis_fields.image_bits(doc_id),
@@ -155,7 +153,6 @@ def register_page_ocrd(redis, doc_id, page_number):
     # Decrement the texts remaining
     texts_remaining = register_page_task(
         redis,
-        doc_id,
         page_number,
         redis_fields.texts_remaining(doc_id),
         redis_fields.text_bits(doc_id),

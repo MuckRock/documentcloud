@@ -8,7 +8,6 @@ import environ
 import redis
 from listcrunch import crunch_collection
 from PIL import Image
-from redis.exceptions import RedisError
 
 env = environ.Env()
 
@@ -85,7 +84,7 @@ OCR_TOPIC = publisher.topic_path(
 )
 
 
-def initialize_redis_page_data(doc_id, page_count, dirty_pages=None):
+def initialize_redis_page_data(doc_id, page_count):
     """Initialize Redis fields to manage page dimensions and processing"""
     dimensions_field = redis_fields.dimensions(doc_id)
     image_bits_field = redis_fields.image_bits(doc_id)
@@ -152,17 +151,17 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
     pipeline.execute()
 
 
-def write_cache(fn, cache):
+def write_cache(filename, cache):
     """Helper method to write a cache file."""
-    with storage.open(fn, "wb") as pickle_file, gzip.open(
+    with storage.open(filename, "wb") as pickle_file, gzip.open(
         pickle_file, "wb"
     ) as zip_file:
         pickle.dump(cache, zip_file)
 
 
-def read_cache(fn):
+def read_cache(filename):
     """Helper method to read a cache file."""
-    with storage.open(fn, "rb") as pickle_file, gzip.open(
+    with storage.open(filename, "rb") as pickle_file, gzip.open(
         pickle_file, "rb"
     ) as zip_file:
         return pickle.load(zip_file)
@@ -269,6 +268,7 @@ def get_redis_pagespec(doc_id):
 
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
+    """Memoize the memory accesses of all the pages of a PDF in a cache."""
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
@@ -278,10 +278,6 @@ def process_page_cache(data, _context=None):
     doc_path = path.doc_path(doc_id, slug)
 
     # Read the entire document into memory
-    pdf_file = StorageHandler(
-        storage, doc_path, record=True, playback=False, cache=None, read_all=True
-    )
-
     with Workspace() as workspace, StorageHandler(
         storage, doc_path, record=True, playback=False, cache=None, read_all=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
@@ -312,12 +308,9 @@ def process_page_cache(data, _context=None):
         # Trigger image extraction tasks for each page
         if dirty:
             # If only dirty pages are flagged, process the relevant ones in batches
-            dirty_overlap = sorted(set(dirty).intersection(set(range(0, page_count))))
-            for i in range(0, len(dirty_overlap), IMAGE_BATCH):
-                pages = [
-                    dirty_overlap[i]
-                    for i in range(0, min(IMAGE_BATCH, len(dirty_overlap)))
-                ]
+            dirty = sorted(dirty)
+            for i in range(0, len(dirty), IMAGE_BATCH):
+                pages = [dirty[i] for i in range(0, min(IMAGE_BATCH, len(dirty)))]
                 pub(pages)
         else:
             # Otherwise, process all pages in batches
@@ -388,7 +381,6 @@ def extract_image(data, _context=None):
     slug = data["slug"]
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
-    index_path = path.index_path(doc_id, slug)  # The path to the PDF index file
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
 
     # Store a queue of pages to OCR to fill the batch
@@ -413,7 +405,6 @@ def extract_image(data, _context=None):
     # Open the PDF file with the cached index
     cached = read_cache(path.index_path(doc_id, slug))
 
-    images_remaining_field = redis_fields.images_remaining(doc_id)
     with Workspace() as workspace, StorageHandler(
         storage, doc_path, record=False, playback=True, cache=cached
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
