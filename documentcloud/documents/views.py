@@ -203,7 +203,14 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                 transaction.on_commit(lambda i=instance: update_access.delay(i.pk))
             if old_status in (Status.pending, Status.readable):
                 # if we were processing, do a full update
-                transaction.on_commit(lambda i=instance: solr_index.delay(i.pk))
+                if instance.status == Status.success:
+                    # if it was processed succesfully, index the text
+                    transaction.on_commit(
+                        lambda i=instance: solr_index.delay(i.pk, index_text=True)
+                    )
+                else:
+                    # if it is not done processing or error, just update other fields
+                    transaction.on_commit(lambda i=instance: solr_index.delay(i.pk))
             else:
                 # only update the fields that were updated
                 fields = validated_data.keys()
