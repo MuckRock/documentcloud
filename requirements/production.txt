@@ -8,6 +8,7 @@
 
 amqp==2.5.1
 argon2-cffi==19.1.0
+backcall==0.1.0
 billiard==3.6.1.0
 boto3==1.9.252
 boto==2.49.0
@@ -62,7 +63,10 @@ gunicorn==19.9.0
 idna==2.8
 importlib-metadata==0.21
 inflection==0.3.1
+ipython-genutils==0.2.0
+ipython==7.11.1
 itypes==1.1.0
+jedi==0.16.0
 jinja2==2.10.1
 jmespath==0.9.4
 kombu==4.6.4
@@ -73,12 +77,18 @@ numpy==1.17.3
 oauthlib==3.1.0
 orderedmultidict==1.0.1
 packaging==19.2
+parso==0.6.0
+pexpect==4.8.0
+pickleshare==0.7.5
 pillow==6.1.0
+prompt-toolkit==3.0.3
 protobuf==3.10.0
 psycopg2==2.8.3
+ptyprocess==0.6.0
 pyasn1-modules==0.2.7
 pyasn1==0.4.7
 pycparser==2.19
+pygments==2.5.2
 pyjwt==1.7.1
 pyparsing==2.4.2
 pysolr==3.8.1
@@ -107,9 +117,11 @@ social-auth-app-django==3.1.0
 social-auth-core[openidconnect]==3.2.0
 sqlparse==0.3.0
 text-unidecode==1.2
+traitlets==4.3.3
 typing-extensions==3.7.4
 typing==3.7.4.1           # via collectfast
 uritemplate==3.0.0
 urllib3==1.25.3
 vine==1.3.0
+wcwidth==0.1.8
 zipp==0.6.0
