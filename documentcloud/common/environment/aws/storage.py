@@ -70,7 +70,10 @@ class AwsStorage:
         bucket, prefix = self.bucket_key(file_prefix)
         bucket = self.s3_resource.Bucket(bucket)
         keys = [{"Key": obj.key} for obj in bucket.objects.filter(Prefix=prefix)]
-        bucket.delete_objects(Delete={"Objects": keys})
+        # can only delete 1000 at a time
+        key_chunks = [keys[i : i + 1000] for i in range(0, len(keys), 1000)]
+        for chunk in key_chunks:
+            bucket.delete_objects(Delete={"Objects": chunk})
 
     def set_access(self, file_prefix, access):
         if self.minio:

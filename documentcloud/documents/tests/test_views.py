@@ -40,13 +40,24 @@ class TestDocumentAPI:
         response_json = response.json()
         assert len(response_json["results"]) == size
 
-    def test_list_filter(self, client, user):
+    def test_list_filter_user(self, client, user):
         """List a subset of documents"""
         size = 5
         client.force_authenticate(user=user)
         DocumentFactory.create_batch(size)
         DocumentFactory.create_batch(size, user=user)
         response = client.get(f"/api/documents/", {"user": user.pk})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert len(response_json["results"]) == size
+
+    def test_list_filter_status(self, client, user):
+        """List a subset of documents"""
+        size = 5
+        client.force_authenticate(user=user)
+        DocumentFactory.create_batch(size, user=user, status=Status.success)
+        DocumentFactory.create_batch(size, user=user, status=Status.error)
+        response = client.get(f"/api/documents/", {"status": "success"})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
