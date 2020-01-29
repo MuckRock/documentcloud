@@ -1,6 +1,7 @@
 # Django
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 
@@ -317,29 +318,41 @@ class Note(models.Model):
     )
     title = models.TextField(_("title"), help_text=_("A title for the note"))
     content = models.TextField(_("content"), help_text=_("The contents of the note"))
-    top = models.PositiveSmallIntegerField(
-        _("top"),
+    x1 = models.FloatField(
+        _("x1"),
         null=True,
         blank=True,
-        help_text=_("The top coordinate of the note in percantage of the page size"),
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text=_(
+            "The left-most coordinate of the note in percantage of the page size"
+        ),
     )
-    left = models.PositiveSmallIntegerField(
-        _("left"),
+    x2 = models.FloatField(
+        _("x2"),
         null=True,
         blank=True,
-        help_text=_("The left coordinate of the note in percantage of the page size"),
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text=_(
+            "The right-most coordinate of the note in percantage of the page size"
+        ),
     )
-    bottom = models.PositiveSmallIntegerField(
-        _("bottom"),
+    y1 = models.FloatField(
+        _("y1"),
         null=True,
         blank=True,
-        help_text=_("The bottom coordinate of the note in percantage of the page size"),
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text=_(
+            "The top-most coordinate of the note in percantage of the page size"
+        ),
     )
-    right = models.PositiveSmallIntegerField(
-        _("right"),
+    y2 = models.FloatField(
+        _("y2"),
         null=True,
         blank=True,
-        help_text=_("The right coordinate of the note in percantage of the page size"),
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text=_(
+            "The bottom-most coordinate of the note in percantage of the page size"
+        ),
     )
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the note was created")

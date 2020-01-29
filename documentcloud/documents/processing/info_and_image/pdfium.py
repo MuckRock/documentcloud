@@ -1,6 +1,8 @@
 # Standard Library
+import collections
 import ctypes
 import os
+import tempfile
 from ctypes import (
     CFUNCTYPE,
     POINTER,
@@ -18,7 +20,6 @@ from ctypes import (
     c_void_p,
     cdll,
 )
-import collections
 
 # Third Party
 import PIL.Image
@@ -105,15 +106,8 @@ class Bitmap:
 
     def fill_rect(self, x1, y1, x2, y2, fill=0xFF000000):
         # Fill a rectangle with percent-specified coordinates
-        assert (
-            x1 >= 0
-            and x1 <= 1
-            and x2 >= 0
-            and x2 <= 1
-            and y1 >= 0
-            and y1 <= 1
-            and y2 >= 0
-            and y2 <= 1
+        assert all(
+            coord >= 0 and coord <= 1 for coord in (x1, x2, y1, y2)
         ), "Coordinates out of bounds"
         min_x = round(min(x1, x2) * self.width)
         max_x = round(max(x1, x2) * self.width)
@@ -147,10 +141,13 @@ class Bitmap:
 
 
 class Document:
-    def __init__(self, workspace, doc):
+    def __init__(self, workspace, doc, closing_task=None):
         self.workspace = workspace
         self.doc = doc
         self.loaded_fonts = []
+
+        # Clean-up task after the document is gone
+        self.closing_task = closing_task
 
         self._serif = None
         self._sans = None
@@ -166,12 +163,14 @@ class Document:
             self.workspace.fpdf_font_close(font)
         self.workspace.fpdf_close_document(self.doc)
         del self.doc
+        if self.closing_task is not None:
+            self.closing_task()
 
     def redact_pages(self, redactions):
         """Returns a new PDF doc with the specified pages redacted.
-        
+
         Redactions are specified in the following format:
-        
+
         [
             {
                 "page": 0,  # 0-based
@@ -190,11 +189,37 @@ class Document:
 
         # Start creating the new document
         new_doc = self.workspace.new_document()
-        current_page = 0
+
+        # Tally up bulk operations and redactions
+        operations = []
+        current_run = []
+
+        def end_current_run(current_run):
+            if current_run:
+                operations.append(
+                    {
+                        "type": "bulk",
+                        "index": current_run[0],
+                        "pages": f"{current_run[0] + 1}-{current_run[-1] + 1}",
+                    }
+                )
+                current_run.clear()
+
+        # Tally runs of pages for bulk importing
         for page_number in range(self.page_count):
-            # Iterate each page and redact or import
             if page_number in pages:
-                # Apply all redactions for an individual page
+                end_current_run(current_run)
+                operations.append({"type": "redact", "page": page_number})
+            else:
+                current_run.append(page_number)
+        end_current_run(current_run)
+
+        for operation in operations:
+            # Iterate each page and redact or import
+            if operation["type"] == "redact":
+                page_number = operation["page"]
+
+                # Apply redactions
                 old_page = self.load_page(page_number)
                 page_bitmap = old_page.get_bitmap(old_page.width * 2, None)
                 for redaction in redactions_by_page[page_number]:
@@ -211,10 +236,9 @@ class Document:
                 )
                 redacted_page.save()
             else:
-                # Import each unredacted page unchanged
-                # TODO: Investigate if there's a performance boost
-                # from bulk-importing runs of unused pages
-                new_doc.import_pages(self, f"{page_number + 1}", page_number)
+                # Import runs of unchanged pages in bulk
+                new_doc.import_pages(self, operation["pages"], operation["index"])
+
         return new_doc
 
     def load_page(self, page_number):
@@ -390,7 +414,7 @@ class Page:
     def text(self):
         text_page = self.workspace.fpdf_text_load_page(self.page)
         num_chars = self.workspace.fpdf_text_count_chars(text_page)
-        char_buffer = (c_ushort * num_chars)()
+        char_buffer = (c_ushort * (num_chars + 1))()
         chars_read = self.workspace.fpdf_text_get_text(
             text_page, 0, num_chars, char_buffer
         )
@@ -587,6 +611,24 @@ class Workspace:
 
         return Document(self, result)
 
+    def load_document_entirely(self, storage, path, password=None):
+        # Create a tmp file and cache the entire file
+        tmp_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
+        with storage.open(path, "rb") as storage_file:
+            tmp_file.write(storage_file.read())
+        tmp_file.close()
+
+        # Load the document with Pdfium from the tmp file
+        result = self.fpdf_load_document(
+            fpdf_string(tmp_file.name), fpdf_string(password)
+        )
+        if not result:
+            error = self.pdfium.FPDF_GetLastError()
+            assert False, f"ERROR {error}: unable to load document from tmp"
+
+        # Return a document that removes the tmp file when it's closed
+        return Document(self, result, lambda: os.remove(tmp_file.name))
+
     def load_document_custom(self, handler, password=None):
         file_reader = FPDFFileAccess(handler.size, handler.get_block, None)
         document = self.fpdf_load_custom_document(
@@ -604,18 +646,38 @@ class Workspace:
 
 
 class StorageHandler:
-    def __init__(self, storage, filename, record=False, playback=False, cache=None):
-        self.handle = storage.open(filename, "rb").__enter__()
+    def __init__(
+        self,
+        storage,
+        filename,
+        record=False,
+        playback=False,
+        cache=None,
+        read_all=False,
+    ):
+        self.filename = filename
+        self.read_all = read_all
         self.cache = {} if cache is None else cache
-        self.size = storage.size(filename)
+        self.record = record
+
+        if self.read_all:
+            # Create a tmp file and cache the entire file
+            self.tmp_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
+            with storage.open(filename, "rb") as storage_file:
+                self.tmp_file.write(storage_file.read())
+            self.tmp_file.close()
+            self.size = os.path.getsize(self.tmp_file.name)
+            self.handle = open(self.tmp_file.name, "rb").__enter__()
+        else:
+            # Read from abstracted storage
+            self.handle = storage.open(filename, "rb").__enter__()
+            self.size = storage.size(filename)
 
         @CFUNCTYPE(c_int, c_void_p, c_ulong, c_ubyte_p, c_ulong)
         def get_block(_param, position, p_buf, size):
             if playback and (position, size) in self.cache:
-                data = cache[(position, size)]
+                data = self.cache[(position, size)]
             else:
-                if playback:
-                    print((position, size))
                 # Seek in PDF file
                 self.handle.seek(position, os.SEEK_SET)
 
@@ -635,3 +697,5 @@ class StorageHandler:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.handle.close()
+        if self.read_all:
+            os.remove(self.tmp_file.name)
