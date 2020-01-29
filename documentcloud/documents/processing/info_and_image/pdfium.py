@@ -2,7 +2,7 @@
 import collections
 import ctypes
 import os
-import tempfile
+import io
 from ctypes import (
     CFUNCTYPE,
     POINTER,
@@ -141,13 +141,10 @@ class Bitmap:
 
 
 class Document:
-    def __init__(self, workspace, doc, closing_task=None):
+    def __init__(self, workspace, doc):
         self.workspace = workspace
         self.doc = doc
         self.loaded_fonts = []
-
-        # Clean-up task after the document is gone
-        self.closing_task = closing_task
 
         self._serif = None
         self._sans = None
@@ -163,8 +160,6 @@ class Document:
             self.workspace.fpdf_font_close(font)
         self.workspace.fpdf_close_document(self.doc)
         del self.doc
-        if self.closing_task is not None:
-            self.closing_task()
 
     def redact_pages(self, redactions):
         """Returns a new PDF doc with the specified pages redacted.
@@ -419,11 +414,11 @@ class Page:
             text_page, 0, num_chars, char_buffer
         )
         assert (
-            chars_read >= num_chars
+            chars_read <= num_chars + 1
         ), f"Text extraction error: {chars_read} read, {num_chars} expected"
         self.workspace.fpdf_text_close_page(text_page)
 
-        text_content = ctypes.string_at(char_buffer, num_chars * 2)
+        text_content = ctypes.string_at(char_buffer, chars_read * 2)
         # Decode and normalize line endings
         return text_content.decode("utf-16le").replace("\r\n", "\n").replace("\r", "\n")
 
@@ -612,22 +607,8 @@ class Workspace:
         return Document(self, result)
 
     def load_document_entirely(self, storage, path, password=None):
-        # Create a tmp file and cache the entire file
-        tmp_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
-        with storage.open(path, "rb") as storage_file:
-            tmp_file.write(storage_file.read())
-        tmp_file.close()
-
-        # Load the document with Pdfium from the tmp file
-        result = self.fpdf_load_document(
-            fpdf_string(tmp_file.name), fpdf_string(password)
-        )
-        if not result:
-            error = self.pdfium.FPDF_GetLastError()
-            assert False, f"ERROR {error}: unable to load document from tmp"
-
-        # Return a document that removes the tmp file when it's closed
-        return Document(self, result, lambda: os.remove(tmp_file.name))
+        handler = StorageHandler(storage, path, False, False, None, read_all=True)
+        return self.load_document_custom(handler, password)
 
     def load_document_custom(self, handler, password=None):
         file_reader = FPDFFileAccess(handler.size, handler.get_block, None)
@@ -661,13 +642,11 @@ class StorageHandler:
         self.record = record
 
         if self.read_all:
-            # Create a tmp file and cache the entire file
-            self.tmp_file = tempfile.NamedTemporaryFile(mode="wb", delete=False)
+            # Create a temporary file in memory and cache the entire file
             with storage.open(filename, "rb") as storage_file:
-                self.tmp_file.write(storage_file.read())
-            self.tmp_file.close()
-            self.size = os.path.getsize(self.tmp_file.name)
-            self.handle = open(self.tmp_file.name, "rb").__enter__()
+                self.mem_file = io.BytesIO(storage_file.read())
+            self.size = self.mem_file.getbuffer().nbytes
+            self.handle = self.mem_file.__enter__()
         else:
             # Read from abstracted storage
             self.handle = storage.open(filename, "rb").__enter__()
@@ -697,5 +676,3 @@ class StorageHandler:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.handle.close()
-        if self.read_all:
-            os.remove(self.tmp_file.name)
