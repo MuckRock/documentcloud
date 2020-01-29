@@ -4,6 +4,7 @@ Helper functions to perform common serverless operations.
 
 # Standard Library
 import logging
+import sys
 from urllib.parse import urljoin
 
 # Third Party
@@ -70,9 +71,9 @@ def send_error(redis, doc_id, message, fatal=False):
 
     # Log the error depending on its severity
     if fatal:
-        logging.error(message)
+        logging.error(message, exc_info=sys.exc_info())
     else:
-        logging.warning(message)
+        logging.warning(message, exc_info=sys.exc_info())
 
     clean_up(redis, doc_id)
 
