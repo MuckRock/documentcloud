@@ -121,13 +121,13 @@ def update_access(document_pk):
     time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
     soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
 )
-def solr_index(document_pk, solr_document=None, field_updates=None):
+def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     if solr_document is None:
         document = Document.objects.get(pk=document_pk)
         if field_updates:
-            solr_document = document.solr(field_updates.keys())
+            solr_document = document.solr(field_updates.keys(), index_text=index_text)
         else:
-            solr_document = document.solr()
+            solr_document = document.solr(index_text=index_text)
 
     SOLR.add([solr_document], fieldUpdates=field_updates)
 
