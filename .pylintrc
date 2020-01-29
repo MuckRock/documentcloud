@@ -6,7 +6,7 @@ ignore=migrations
 
 [FORMAT]
 max-line-length=88
-good-names=pk,x,y,i
+good-names=pk,x,y,i,x1,x2,y1,y2
 max-args=6
 
 [MESSAGES CONTROL]
