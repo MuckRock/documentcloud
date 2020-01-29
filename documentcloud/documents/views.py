@@ -21,7 +21,7 @@ from documentcloud.core.permissions import (
     DocumentErrorTokenPermissions,
     DocumentTokenPermissions,
 )
-from documentcloud.documents.choices import Status
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import (
     Document,
     DocumentError,
@@ -279,6 +279,18 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         user = ModelChoiceFilter(model=User)
         organization = ModelChoiceFilter(model=Organization)
         project = ModelChoiceFilter(model=Project, field_name="projects")
+        access = django_filters.CharFilter(method="filter_access")
+        status = django_filters.CharFilter(method="filter_status")
+
+        def filter_access(self, queryset, name, value):
+            return self.filter_choices(Access.choices, queryset, name, value)
+
+        def filter_status(self, queryset, name, value):
+            return self.filter_choices(Status.choices, queryset, name, value)
+
+        def filter_choices(self, choices, queryset, name, value):
+            value_map = {v.lower(): k for k, v in choices}
+            return queryset.filter(**{name: value_map.get(value.lower())})
 
         class Meta:
             model = Document
