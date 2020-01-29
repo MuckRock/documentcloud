@@ -182,14 +182,14 @@ class Document(models.Model):
             )
             return ""
 
-    def solr(self, fields=None):
+    def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
 
         fields is a sequence of field names to restrict indexing to
         This is useful when the document has already been indexed, and you just
         need to update a subset of fields
         """
-        if fields is None:
+        if index_text:
             pages = {
                 f"page_no_{i + 1}": self.get_page_text(i)
                 for i in range(self.page_count)
