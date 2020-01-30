@@ -490,7 +490,9 @@ def assemble_page_text(data, _context=None):
     slug = data["slug"]
 
     results = utils.get_all_page_text(REDIS, doc_id)
-    concatenated_text = b"\n\n".join([page["contents"].encode('utf-8') for page in results["pages"]])
+    concatenated_text = b"\n\n".join(
+        [page["contents"].encode("utf-8") for page in results["pages"]]
+    )
 
     # Write the concatenated text file
     with storage.open(path.text_path(doc_id, slug), "wb") as concatenated_file:
@@ -498,7 +500,7 @@ def assemble_page_text(data, _context=None):
 
     # Write the json text file
     with storage.open(path.json_text_path(doc_id, slug), "wb") as json_file:
-        json_file.write(json.dumps(results).encode('utf-8'))
+        json_file.write(json.dumps(results).encode("utf-8"))
 
     utils.send_complete(REDIS, doc_id)
     return "Ok"
