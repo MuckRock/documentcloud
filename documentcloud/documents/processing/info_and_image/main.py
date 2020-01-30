@@ -154,6 +154,9 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
         pipeline.setbit(image_bits_field, i, 0 if i in dirty_pages else 1)
         pipeline.setbit(text_bits_field, i, 0 if i in dirty_pages else 1)
 
+    # Remove any existing page text
+    pipeline.delete(redis_fields.page_text(doc_id))
+
     # Execute the pipeline atomically
     pipeline.execute()
 
@@ -400,7 +403,9 @@ def extract_image(data, _context=None):
         # Trigger ocr pipeline
         publisher.publish(
             OCR_TOPIC,
-            data=encode_pubsub_data({"paths_and_numbers": ocr_queue, "doc_id": doc_id}),
+            data=encode_pubsub_data(
+                {"paths_and_numbers": ocr_queue, "doc_id": doc_id, "partial": partial}
+            ),
         )
 
         ocr_queue.clear()
@@ -468,7 +473,9 @@ def extract_image(data, _context=None):
                     if texts_finished:
                         publisher.publish(
                             ASSEMBLE_TEXT_TOPIC,
-                            encode_pubsub_data({"doc_id": doc_id, "slug": slug}),
+                            encode_pubsub_data(
+                                {"doc_id": doc_id, "slug": slug, "partial": partial}
+                            ),
                         )
                         return "Ok"
                 else:
@@ -488,8 +495,26 @@ def assemble_page_text(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
 
     results = utils.get_all_page_text(REDIS, doc_id)
+
+    if partial:
+        # Patch the old results in if it's a partial update
+        with storage.open(path.json_text_path(doc_id, slug), "rb") as json_file:
+            old_results = json.loads(json_file.read())
+
+        for result in results["pages"]:
+            page = result["page"]
+            # Patch in the new patch
+            old_results["pages"][page] = result
+
+        # Patch in the updated time
+        old_results["updated"] = results["updated"]
+
+        # Overwrite the original results
+        results = old_results
+
     concatenated_text = b"\n\n".join(
         [page["contents"].encode("utf-8") for page in results["pages"]]
     )
