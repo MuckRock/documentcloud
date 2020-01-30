@@ -506,7 +506,7 @@ def assemble_page_text(data, _context=None):
 
         for result in results["pages"]:
             page = result["page"]
-            # Patch in the new patch
+            # Patch in the new page
             old_results["pages"][page] = result
 
         # Patch in the updated time
