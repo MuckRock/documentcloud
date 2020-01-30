@@ -47,6 +47,10 @@ REDIS = utils.get_redis()
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
+ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
+)
+OCR_VERSION = env.str("OCR_VERSION", default="tess4")
 
 # Ensures running on roughly 2Ghz+ machine
 SPEED_THRESHOLD = env.float("SPEED_THRESHOLD", default=0.0039)
@@ -139,11 +143,15 @@ def run_tesseract(data, _context=None):
 
         # Write the output text
         write_text_file(text_path, text)
+        utils.write_page_text(REDIS, doc_id, page_number, text, OCR_VERSION)
 
         # Decrement the texts remaining, sending complete if done.
         texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
         if texts_finished:
-            utils.send_complete(REDIS, doc_id)
+            publisher.publish(
+                ASSEMBLE_TEXT_TOPIC,
+                encode_pubsub_data({"doc_id": doc_id, "slug": slug}),
+            )
             return "Ok"
 
     next_paths_and_numbers = paths_and_numbers[1:]
