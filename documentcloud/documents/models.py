@@ -6,6 +6,7 @@ from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 
 # Standard Library
+import json
 import logging
 import sys
 
@@ -182,6 +183,22 @@ class Document(models.Model):
             )
             return ""
 
+    def get_all_page_text(self):
+        try:
+            return json.loads(
+                storage.open(path.json_text_path(self.pk, self.slug), "rb")
+                .read()
+                .decode("utf8")
+            )
+        except ValueError as exc:
+            logger.error(
+                "Error getting all page text: Document: %d Exception: %s",
+                self.pk,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+            return ""
+
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
 
@@ -190,9 +207,14 @@ class Document(models.Model):
         need to update a subset of fields
         """
         if index_text:
+            page_text = self.get_all_page_text()
+            # only update the index with pages which have changed
+            # in the latest update
+            updated = page_text["updated"]
             pages = {
-                f"page_no_{i + 1}": self.get_page_text(i)
+                f"page_no_{i + 1}": page_text["pages"][i]["contents"]
                 for i in range(self.page_count)
+                if page_text["pages"][i]["updated"] == updated
             }
         else:
             # do not get page text for a partial update, as it is slow and
