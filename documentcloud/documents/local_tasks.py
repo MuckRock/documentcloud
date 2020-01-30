@@ -3,10 +3,10 @@ from celery.task import task
 
 # DocumentCloud
 from documentcloud.documents.processing.info_and_image.main import (
+    assemble_page_text,
     extract_image,
     process_page_cache,
     process_pdf,
-    assemble_page_text,
     redact_doc,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
