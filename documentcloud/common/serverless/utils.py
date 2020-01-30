@@ -37,14 +37,14 @@ def get_redis():
     )
 
 
-def send_update(redis, doc_id, json):
+def send_update(redis, doc_id, json_):
     """Sends an update to the API server specified as JSON"""
     if not still_processing(redis, doc_id):
         return
 
     requests.patch(
         urljoin(API_CALLBACK, f"documents/{doc_id}/"),
-        json=json,
+        json=json_,
         headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
     )
 
