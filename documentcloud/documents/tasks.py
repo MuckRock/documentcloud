@@ -116,12 +116,7 @@ def update_access(document_pk):
     storage.set_access(document.path, access)
 
 
-@task(
-    autoretry_for=(pysolr.SolrError,),
-    retry_backoff=60,
-    time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
-    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
-)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     if solr_document is None:
         document = Document.objects.get(pk=document_pk)
