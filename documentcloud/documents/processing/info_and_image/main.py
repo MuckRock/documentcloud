@@ -1,6 +1,7 @@
 # Standard Library
 import collections
 import gzip
+import json
 import pickle
 
 # Third Party
@@ -76,6 +77,9 @@ PAGE_CACHE_TOPIC = publisher.topic_path(
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
+ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
+)
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
@@ -114,6 +118,9 @@ def initialize_redis_page_data(doc_id, page_count):
             for dimension in existing_dimensions:
                 pipeline.delete(redis_fields.page_dimension(doc_id, dimension))
         pipeline.delete(dimensions_field)
+
+        # Remove any existing page text
+        pipeline.delete(redis_fields.page_text(doc_id))
 
     # Ensure atomicity while getting a value with the transaction wrapper around WATCH
     # See https://pypi.org/project/redis/#pipelines for details
@@ -452,13 +459,17 @@ def extract_image(data, _context=None):
 
                     # Page already has text inside
                     write_text_file(text_path, text)
+                    utils.write_page_text(REDIS, doc_id, page_number, text, None)
 
                     # Decrement the texts remaining, sending complete if done.
                     texts_finished = utils.register_page_ocrd(
                         REDIS, doc_id, page_number
                     )
                     if texts_finished:
-                        utils.send_complete(REDIS, doc_id)
+                        publisher.publish(
+                            ASSEMBLE_TEXT_TOPIC,
+                            encode_pubsub_data({"doc_id": doc_id, "slug": slug}),
+                        )
                         return "Ok"
                 else:
                     # Prepare the image to be OCRd.
@@ -467,6 +478,29 @@ def extract_image(data, _context=None):
 
     flush(ocr_queue)
 
+    return "Ok"
+
+
+@pubsub_function(REDIS, ASSEMBLE_TEXT_TOPIC)
+def assemble_page_text(data, _context=None):
+    """Assembles a single page text file containing the doc's entire page text."""
+    data = get_pubsub_data(data)
+
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+
+    results = utils.get_all_page_text(REDIS, doc_id)
+    concatenated_text = b"\n\n".join([page["contents"].encode('utf-8') for page in results["pages"]])
+
+    # Write the concatenated text file
+    with storage.open(path.text_path(doc_id, slug), "wb") as concatenated_file:
+        concatenated_file.write(concatenated_text)
+
+    # Write the json text file
+    with storage.open(path.json_text_path(doc_id, slug), "wb") as json_file:
+        json_file.write(json.dumps(results).encode('utf-8'))
+
+    utils.send_complete(REDIS, doc_id)
     return "Ok"
 
 

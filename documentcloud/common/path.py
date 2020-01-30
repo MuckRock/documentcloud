@@ -14,6 +14,7 @@ INDEX_SUFFIX = "index"
 PAGESIZE_SUFFIX = "pagesize"
 IMAGE_SUFFIX = "gif"
 TEXT_SUFFIX = "txt"
+JSON_TEXT_SUFFIX = "txt.json"
 
 
 def path(doc_id):
@@ -44,6 +45,11 @@ def pagesize_path(doc_id, slug):
 def text_path(doc_id, slug):
     """The path to the text file"""
     return file_path(doc_id, slug, TEXT_SUFFIX)
+
+
+def json_text_path(doc_id, slug):
+    """The path to the json text file"""
+    return file_path(doc_id, slug, JSON_TEXT_SUFFIX)
 
 
 def pages_path(doc_id):

@@ -6,6 +6,7 @@ from documentcloud.documents.processing.info_and_image.main import (
     extract_image,
     process_page_cache,
     process_pdf,
+    assemble_page_text,
     redact_doc,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
@@ -33,6 +34,11 @@ def extract_images(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def ocr_pages(data):
     run_tesseract(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def assemble_text(data):
+    assemble_page_text(data, None)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)

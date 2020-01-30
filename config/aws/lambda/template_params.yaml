@@ -12,6 +12,7 @@ Globals:
         SERVERLESS: True
         EXTRACT_IMAGE_BATCH: "{{resolve:ssm:staging-EXTRACT_IMAGE_BATCH:latest}}"
         OCR_BATCH: "{{resolve:ssm:staging-OCR_BATCH:latest}}"
+        OCR_VERSION: "{{resolve:ssm:staging-OCR_VERSION:latest}}"
         REDIS_PROCESSING_URL: "{{resolve:ssm:staging-REDIS_PROCESSING_URL:latest}}"
         REDIS_PROCESSING_PASSWORD: "{{resolve:ssm:staging-REDIS_PROCESSING_PASSWORD:latest}}"
         API_CALLBACK: "{{resolve:ssm:staging-API_CALLBACK:latest}}"
@@ -21,6 +22,7 @@ Globals:
         PAGE_CACHE_TOPIC: "{{resolve:ssm:staging-PAGE_CACHE_TOPIC:latest}}"
         IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:staging-IMAGE_EXTRACT_TOPIC:latest}}"
         OCR_TOPIC: "{{resolve:ssm:staging-OCR_TOPIC:latest}}"
+        ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TOPIC:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:staging-REDACT_TOPIC:latest}}"
         SENTRY_DSN: "{{resolve:ssm:staging-SENTRY_DSN:latest}}"
         AWS_ARN_PREFIX: "{{resolve:ssm:staging-AWS_ARN_PREFIX:latest}}"
@@ -154,4 +156,21 @@ Resources:
           Type: SNS
           Properties:
             Topic: "{{resolve:ssm:staging-OCR_TOPIC_INTERNAL:latest}}"
+      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+
+  AssembleTextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.assemble_page_text
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TIMEOUT:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TOPIC_INTERNAL:latest}}"
       Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
