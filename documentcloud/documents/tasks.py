@@ -21,6 +21,7 @@ if settings.ENVIRONMENT.startswith("local"):
         cache_pages,
         extract_images,
         ocr_pages,
+        assemble_text,
         redact_document,
     )
 

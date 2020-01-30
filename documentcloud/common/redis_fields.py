@@ -19,8 +19,12 @@ def dimensions(doc_id):
     return f"{doc_id}:dimensions"
 
 
-def page_dimension(doc_id, page_dimension_):
-    return f"{doc_id}:dim{page_dimension_}"
+def page_dimension(doc_id, page_dimension):
+    return f"{doc_id}:dim{page_dimension}"
+
+
+def page_text(doc_id):
+    return f"{doc_id}:pagetext"
 
 
 def is_running(doc_id):

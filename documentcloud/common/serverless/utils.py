@@ -3,8 +3,10 @@ Helper functions to perform common serverless operations.
 """
 
 # Standard Library
+import json
 import logging
 import sys
+import time
 from urllib.parse import urljoin
 
 # Third Party
@@ -53,7 +55,8 @@ def send_complete(redis, doc_id):
         return
 
     send_update(redis, doc_id, {"status": "success"})
-    # Clean out redis
+
+    # Clean out Redis
     clean_up(redis, doc_id)
 
 
@@ -75,6 +78,7 @@ def send_error(redis, doc_id, message, fatal=False):
     else:
         logging.warning(message, exc_info=sys.exc_info())
 
+    # Clean out Redis
     clean_up(redis, doc_id)
 
 
@@ -102,6 +106,7 @@ def clean_up(redis, doc_id):
             redis_fields.is_running(doc_id),
             redis_fields.image_bits(doc_id),
             redis_fields.text_bits(doc_id),
+            redis_fields.page_text(doc_id),
         )
 
         # Remove any existing dimensions that may be lingering
@@ -159,3 +164,34 @@ def register_page_ocrd(redis, doc_id, page_number):
         redis_fields.text_bits(doc_id),
     )
     return texts_remaining == 0
+
+
+def write_page_text(redis, doc_id, page_number, page_text, ocr):
+    """Write page text to Redis."""
+    redis.hset(
+        redis_fields.page_text(doc_id),
+        f"{page_number}",
+        json.dumps({"text": page_text, "ocr": ocr}),
+    )
+
+
+def get_all_page_text(redis, doc_id):
+    """Read all the page text stored in Redis."""
+    page_text_map = redis.hgetall(redis_fields.page_text(doc_id))
+    pages = sorted([int(page_number) for page_number in page_text_map.keys()])
+
+    # Annotate the results with the current timestamp
+    current_millis = int(round(time.time() * 1000))
+
+    def get_page(page_number):
+        """Helper function to return a page from Redis's result set."""
+        contents = json.loads(page_text_map[f"{page_number}".encode("utf-8")])
+        return {
+            "page": page_number,
+            "contents": contents["text"],
+            "ocr": contents["ocr"],
+            "updated": current_millis,
+        }
+
+    results = [get_page(page_number) for page_number in pages]
+    return {"updated": current_millis, "pages": results}
