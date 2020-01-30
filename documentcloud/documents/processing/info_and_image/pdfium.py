@@ -1,8 +1,8 @@
 # Standard Library
 import collections
 import ctypes
-import os
 import io
+import os
 from ctypes import (
     CFUNCTYPE,
     POINTER,
