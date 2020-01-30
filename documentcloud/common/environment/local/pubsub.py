@@ -69,6 +69,12 @@ def ocr_page_task(data):
     return ocr_pages.delay(data)
 
 
+def assemble_text_task(data):
+    from documentcloud.documents.tasks import assemble_text
+
+    return assemble_text.delay(data)
+
+
 def redact_doc_task(data):
     from documentcloud.documents.tasks import redact_document
 
@@ -89,6 +95,10 @@ publisher.register_internal_callback(
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")), ocr_page_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")),
+    assemble_text_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("REDACT_TOPIC", default="redact-doc")), redact_doc_task
