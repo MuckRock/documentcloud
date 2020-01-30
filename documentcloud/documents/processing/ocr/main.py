@@ -102,6 +102,7 @@ def run_tesseract(data, _context=None):
     data = get_pubsub_data(data)
     doc_id = data["doc_id"]
     paths_and_numbers = data["paths_and_numbers"]
+    partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
 
     result = {}
 
@@ -150,7 +151,9 @@ def run_tesseract(data, _context=None):
         if texts_finished:
             publisher.publish(
                 ASSEMBLE_TEXT_TOPIC,
-                encode_pubsub_data({"doc_id": doc_id, "slug": slug}),
+                encode_pubsub_data(
+                    {"doc_id": doc_id, "slug": slug, "partial": partial}
+                ),
             )
             return "Ok"
 
