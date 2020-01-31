@@ -125,6 +125,14 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             return Response(
                 {"error": "`ids` not specified"}, status=status.HTTP_400_BAD_REQUEST
             )
+        if len(request.data["ids"]) > settings.REST_BULK_LIMIT:
+            return Response(
+                {
+                    "error": "Bulk API operations are limited to "
+                    f"{settings.REST_BULK_LIMIT} documents at a time"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         documents = Document.objects.filter(pk__in=request.data["ids"])
 
         errors = []
@@ -244,6 +252,14 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         if "id__in" not in request.GET:
             return Response(
                 {"error": "May not bulk delete unless you explicitly specify IDs"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(request.GET["id__in"].split(",")) > settings.REST_BULK_LIMIT:
+            return Response(
+                {
+                    "error": "Bulk API operations are limited to "
+                    f"{settings.REST_BULK_LIMIT} documents at a time"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

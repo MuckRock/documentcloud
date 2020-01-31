@@ -47,6 +47,14 @@ class DocumentListSerializer(serializers.ListSerializer):
 
         return ret
 
+    def validate(self, attrs):
+        if len(attrs) > settings.REST_BULK_LIMIT:
+            raise serializers.ValidationError(
+                f"Bulk API operations are limited to {settings.REST_BULK_LIMIT} "
+                "documents at a time"
+            )
+        return attrs
+
 
 class DocumentSerializer(FlexFieldsModelSerializer):
 

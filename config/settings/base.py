@@ -400,6 +400,8 @@ PROCESSING_TOKEN = env("PROCESSING_TOKEN")
 
 ENVIRONMENT = env("ENVIRONMENT")
 
+REST_BULK_LIMIT = env.int("REST_BULK_LIMIT", default=25)
+
 # Solr
 # ------------------------------------------------------------------------------
 SOLR_URL = env("SOLR_URL", default="http://documentcloud_solr:8983/solr/documentcloud")
