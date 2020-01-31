@@ -125,6 +125,16 @@ class TestDocumentAPI:
             == 2
         )
 
+    def test_bulk_create_excess(self, client, user):
+        """Attempt to create too many documents"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/",
+            [{"title": f"Test {i}"} for i in range(settings.REST_BULK_LIMIT + 1)],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_retrieve(self, client, document):
         """Test retrieving a document"""
         response = client.get(f"/api/documents/{document.pk}/")
@@ -270,6 +280,18 @@ class TestDocumentAPI:
         assert document.access == Access.private
         assert not Document.objects.filter(pk=1234).exists()
 
+    def test_bulk_update_excess(self, client, user):
+        """Attempt to update too many documents"""
+        client.force_authenticate(user=user)
+        num = settings.REST_BULK_LIMIT + 1
+        documents = DocumentFactory.create_batch(num, user=user, access=Access.private)
+        response = client.patch(
+            f"/api/documents/",
+            [{"id": document.pk, "access": "public"} for document in documents],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_destroy(self, client, document):
         """Test destroying a document"""
         client.force_authenticate(user=document.user)
@@ -319,6 +341,16 @@ class TestDocumentAPI:
         assert good_document.status != Status.deleted
         bad_document.refresh_from_db()
         assert bad_document.status != Status.deleted
+
+    def test_bulk_destroy_excess(self, client, user):
+        """Attempt to delete too many documents"""
+        client.force_authenticate(user=user)
+        num = settings.REST_BULK_LIMIT + 1
+        documents = DocumentFactory.create_batch(num, user=user)
+        response = client.delete(
+            "/api/documents/?id__in={}".format(",".join(str(d.pk) for d in documents))
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_process(self, client, document, mocker):
         """Test processing a document"""
@@ -409,6 +441,22 @@ class TestDocumentAPI:
         response = client.post(
             f"/api/documents/process/",
             {"ids": [good_document.pk, bad_document.pk]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_process_excess(self, client, user, mocker):
+        """Test processing multiple documents"""
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        num = settings.REST_BULK_LIMIT + 1
+        documents = DocumentFactory.create_batch(num, user=user)
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/process/",
+            {"ids": [d.pk for d in documents]},
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
