@@ -1,4 +1,5 @@
 # Standard Library
+import io
 import mimetypes
 
 # Third Party
@@ -44,6 +45,11 @@ class AwsStorage:
         return smart_open.open(
             f"s3://{file_name}", mode, transport_params=transport_params
         )
+
+    def simple_upload(self, filename, contents):
+        bucket, key = self.bucket_key(filename)
+        with io.BytesIO(contents) as mem_file:
+            self.s3_client.upload_fileobj(mem_file, bucket, key)
 
     def presign_url(self, file_name, method_name):
         bucket, key = self.bucket_key(file_name)

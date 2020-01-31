@@ -1,6 +1,7 @@
 # Standard Library
 import collections
 import gzip
+import io
 import json
 import pickle
 
@@ -166,10 +167,12 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
 
 def write_cache(filename, cache):
     """Helper method to write a cache file."""
-    with storage.open(filename, "wb") as pickle_file, gzip.open(
-        pickle_file, "wb"
-    ) as zip_file:
+    mem_file = io.BytesIO()
+    with gzip.open(mem_file, "wb") as zip_file:
         pickle.dump(cache, zip_file)
+
+    storage.simple_upload(filename, mem_file.getvalue())
+    mem_file.close()
 
 
 def read_cache(filename):
@@ -182,14 +185,14 @@ def read_cache(filename):
 
 def write_text_file(text_path, text):
     """Helper method to write text file."""
-    with storage.open(text_path, "wb") as text_file:
-        text_file.write(text.encode("utf8"))
+    storage.simple_upload(text_path, text.encode("utf8"))
 
 
 def write_pagespec_file(doc_id, slug, crunched_pagespec):
     """Helper method to write pagespec file."""
-    with storage.open(path.pagesize_path(doc_id, slug), "w") as pagesize_file:
-        pagesize_file.write(crunched_pagespec)
+    storage.simple_upload(
+        path.pagesize_path(doc_id, slug), crunched_pagespec.encode("utf8")
+    )
 
 
 def write_pagespec(doc_id, slug):
@@ -377,10 +380,14 @@ def extract_single_page(doc_id, slug, page, page_number, large_image_path):
             (image_width, round(img_buffer.height * (image_width / img_buffer.width))),
             Image.ANTIALIAS,
         )
-        with storage.open(
-            path.page_image_path(doc_id, slug, page_number, image_suffix), "wb"
-        ) as img_f:
-            img.save(img_f, format=IMAGE_SUFFIX[1:].lower())
+
+        mem_file = io.BytesIO()
+        img.save(mem_file, format=IMAGE_SUFFIX[1:].lower())
+        storage.simple_upload(
+            path.page_image_path(doc_id, slug, page_number, image_suffix),
+            mem_file.getvalue(),
+        )
+        mem_file.close()
 
     return (page.width, page.height)
 
@@ -529,12 +536,12 @@ def assemble_page_text(data, _context=None):
     )
 
     # Write the concatenated text file
-    with storage.open(path.text_path(doc_id, slug), "wb") as concatenated_file:
-        concatenated_file.write(concatenated_text)
+    storage.simple_upload(path.text_path(doc_id, slug), concatenated_text)
 
     # Write the json text file
-    with storage.open(path.json_text_path(doc_id, slug), "wb") as json_file:
-        json_file.write(json.dumps(results).encode("utf-8"))
+    storage.simple_upload(
+        path.json_text_path(doc_id, slug), json.dumps(results).encode("utf-8")
+    )
 
     utils.send_complete(REDIS, doc_id)
     return "Ok"

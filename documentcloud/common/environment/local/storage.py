@@ -54,6 +54,10 @@ class LocalStorage:
     def open(self, filename, mode="w"):
         return LocalStorageFile(self, filename, mode)
 
+    def simple_upload(self, filename, contents):
+        with self.open(filename, "wb") as local_file:
+            local_file.write(filename)
+
     def presign_url(self, file_name, method_name):
         return file_name
 
