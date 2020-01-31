@@ -24,6 +24,7 @@ Globals:
         OCR_TOPIC: "{{resolve:ssm:staging-OCR_TOPIC:latest}}"
         ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TOPIC:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:staging-REDACT_TOPIC:latest}}"
+        BLOCK_SIZE: "{{resolve:ssm:staging-BLOCK_SIZE:latest}}"
         SENTRY_DSN: "{{resolve:ssm:staging-SENTRY_DSN:latest}}"
         AWS_ARN_PREFIX: "{{resolve:ssm:staging-AWS_ARN_PREFIX:latest}}"
     Timeout: "{{resolve:ssm:staging-TIMEOUT:latest}}"

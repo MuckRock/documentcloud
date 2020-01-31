@@ -135,11 +135,19 @@ def register_page_task(redis, page_number, remaining_field, bits_field):
     """Registers a generic Redis page task, returning the remaining count."""
 
     # Start a pipeline to atomically decrement remaining and toggle page
-    pipeline = redis.pipeline()
-    pipeline.decr(remaining_field)
-    pipeline.setbit(bits_field, page_number, 1)
+    def decrement_remaining(pipeline):
+        existing_value = pipeline.getbit(bits_field, page_number)
+        if existing_value == 1:
+            # Page has already been extracted
+            pipeline.multi()
+            pipeline.get(remaining_field)
+            return
 
-    return pipeline.execute()[0]
+        pipeline.multi()
+        pipeline.decr(remaining_field)
+        pipeline.setbit(bits_field, page_number, 1)
+
+    return redis.transaction(decrement_remaining, bits_field)[0]
 
 
 def register_page_extracted(redis, doc_id, page_number):

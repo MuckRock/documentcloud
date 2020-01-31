@@ -626,6 +626,65 @@ class Workspace:
         return Document(self, doc)
 
 
+class StorageCacher:
+    """Wraps a file handle into a structure that caches evenly sized blocks."""
+
+    def __init__(self, handle, file_size, block_size):
+        self.handle = handle
+        # The size of the actual file being wrapped
+        self.file_size = file_size
+
+        # The internal block size
+        self.block_size = block_size
+
+        # The current seek position
+        self.seek_position = 0
+
+        # Create all the possible blocks
+        self.blocks = {}
+
+    def seek(self, position, _flag):
+        self.seek_position = position
+
+    def read(self, num_bytes):
+        return self._read(self.seek_position, num_bytes)
+
+    def close(self):
+        self.handle.close()
+
+    def _get_block(self, idx):
+        assert idx <= (self.file_size - 1) // self.block_size
+        if idx in self.blocks:
+            # The block is already cached
+            return self.blocks[idx]
+
+        # Request the block and cache it
+        self.handle.seek(idx * self.block_size, os.SEEK_SET)
+        self.blocks[idx] = self.handle.read(self.block_size)
+        return self.blocks[idx]
+
+    def _read(self, start_pos, num_bytes):
+        # Calculate which block to read from
+        block_idx = start_pos // self.block_size
+
+        # Calculate offsets
+        block_start = block_idx * self.block_size
+        block_start_offset = start_pos - block_start
+        block_end_offset = min(block_start_offset + num_bytes, self.block_size)
+
+        # Extract the appropriate contents from the block
+        contents = self._get_block(block_idx)[block_start_offset:block_end_offset]
+
+        if num_bytes > block_end_offset - block_start_offset:
+            # If the read contents span an additional block, recursively return that
+            return contents + self._read(
+                block_start + self.block_size,
+                num_bytes - block_end_offset + block_start_offset,
+            )
+        else:
+            return contents
+
+
 class StorageHandler:
     def __init__(
         self,
@@ -635,6 +694,7 @@ class StorageHandler:
         playback=False,
         cache=None,
         read_all=False,
+        block_size=None,
     ):
         self.filename = filename
         self.read_all = read_all
@@ -651,6 +711,11 @@ class StorageHandler:
             # Read from abstracted storage
             self.handle = storage.open(filename, "rb").__enter__()
             self.size = storage.size(filename)
+
+        # If block size is used, storage cacher wraps the reads into retrieving
+        # blocks, for more efficient read access.
+        if block_size is not None:
+            self.handle = StorageCacher(self.handle, self.size, block_size)
 
         @CFUNCTYPE(c_int, c_void_p, c_ulong, c_ubyte_p, c_ulong)
         def get_block(_param, position, p_buf, size):

@@ -51,6 +51,9 @@ IMAGE_BATCH = env.int(
     "EXTRACT_IMAGE_BATCH", default=55
 )  # Number of images to extract with each function
 OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
+BLOCK_SIZE = env.int(
+    "BLOCK_SIZE", 8 * 1024 * 1024
+)  # Block size to use for reading chunks of the PDF
 
 
 def parse_extract_width(width_str):
@@ -418,7 +421,13 @@ def extract_image(data, _context=None):
     cached = read_cache(path.index_path(doc_id, slug))
 
     with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=False, playback=True, cache=cached
+        storage,
+        doc_path,
+        record=False,
+        playback=True,
+        cache=cached,
+        read_all=False,
+        block_size=BLOCK_SIZE,
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
