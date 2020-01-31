@@ -283,13 +283,15 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         status = django_filters.CharFilter(method="filter_status")
 
         def filter_access(self, queryset, name, value):
-            return self.filter_choices(Access.choices, queryset, name, value)
+            return self.filter_choices(Access, queryset, name, value)
 
         def filter_status(self, queryset, name, value):
-            return self.filter_choices(Status.choices, queryset, name, value)
+            return self.filter_choices(Status, queryset, name, value)
 
         def filter_choices(self, choices, queryset, name, value):
-            value_map = {v.lower(): k for k, v in choices}
+            value_map = {
+                label.lower(): choice.value for label, choice in choices._fields.items()
+            }
             return queryset.filter(**{name: value_map.get(value.lower())})
 
         class Meta:
