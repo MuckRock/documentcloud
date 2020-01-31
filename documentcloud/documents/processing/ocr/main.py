@@ -65,8 +65,7 @@ TXT_EXTENSION = ".txt"
 
 def write_text_file(text_path, text):
     """Helper method to write a text file."""
-    with storage.open(text_path, "wb") as text_file:
-        text_file.write(text.encode("utf8"))
+    storage.simple_upload(text_path, text.encode("utf8"))
 
 
 def ocr_page(page_path):
