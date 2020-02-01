@@ -215,7 +215,7 @@ def extract_pagecount(doc_id, slug):
     # Get the page sizes and initialize a cache of page positions
     doc_path = path.doc_path(doc_id, slug)
     with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=False
+        storage, doc_path, record=False, block_size=BLOCK_SIZE
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         page_count = doc.page_count
 
@@ -295,7 +295,13 @@ def process_page_cache(data, _context=None):
 
     # Read the entire document into memory
     with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=True, playback=False, cache=None, read_all=True
+        storage,
+        doc_path,
+        record=True,
+        playback=False,
+        cache=None,
+        read_all=True,
+        block_size=BLOCK_SIZE,
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         # Load the final page to memoize all page accesses
         page_count = doc.page_count
