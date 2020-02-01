@@ -135,8 +135,9 @@ class Bitmap:
 
     def render(self, storage, filename, image_format="gif"):
         img = self.get_image()
-        with storage.open(filename, "wb") as image_file:
-            img.save(image_file, format=image_format)
+        mem_file = io.BytesIO()
+        img.save(mem_file, format=image_format)
+        storage.simple_upload(filename, mem_file.getvalue())
         return img
 
 
