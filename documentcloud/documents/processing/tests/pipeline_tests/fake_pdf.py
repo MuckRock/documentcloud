@@ -1,7 +1,7 @@
 class FakePdf:
     def __init__(self, pages):
         """Initializes the fake PDF with a string containing its pages.
-        
+
         The pages are specified in a format indicating which pages need "OCR".
         For example:
 
