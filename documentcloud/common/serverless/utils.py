@@ -72,11 +72,20 @@ def send_error(redis, doc_id, message, fatal=False):
         headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
     )
 
+    try:
+        # Try to log additional Redis information if possible
+        additional_error = f"""
+Page count: {redis.get(redis_fields.page_count(doc_id))}
+Images remaining: {redis.get(redis_fields.images_remaining(doc_id))}
+Texts remaining: {redis.get(redis_fields.texts_remaining(doc_id))}"""
+    except:
+        additional_error = ""
+
     # Log the error depending on its severity
     if fatal:
-        logging.error(message, exc_info=sys.exc_info())
+        logging.error(message + additional_error, exc_info=sys.exc_info())
     else:
-        logging.warning(message, exc_info=sys.exc_info())
+        logging.warning(message + additional_error, exc_info=sys.exc_info())
 
     # Clean out Redis
     clean_up(redis, doc_id)

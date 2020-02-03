@@ -52,8 +52,9 @@ IMAGE_BATCH = env.int(
     "EXTRACT_IMAGE_BATCH", default=55
 )  # Number of images to extract with each function
 OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
+PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 2 * 1024 * 1024)
 BLOCK_SIZE = env.int(
-    "BLOCK_SIZE", 8 * 1024 * 1024
+    "BLOCK_SIZE", 501 * 1024 * 1024
 )  # Block size to use for reading chunks of the PDF
 
 
@@ -348,6 +349,13 @@ def process_pdf(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+
+    # Ensure PDF size is within the limit
+    doc_path = path.doc_path(doc_id, slug)
+    if storage.size(doc_path) > PDF_SIZE_LIMIT:
+        # If not, remove the PDF
+        storage.delete(path.path(doc_id))
+        raise Exception("Uploaded PDF too big")
 
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)
