@@ -296,13 +296,7 @@ def process_page_cache(data, _context=None):
 
     # Read the entire document into memory
     with Workspace() as workspace, StorageHandler(
-        storage,
-        doc_path,
-        record=True,
-        playback=False,
-        cache=None,
-        read_all=True,
-        block_size=BLOCK_SIZE,
+        storage, doc_path, record=True, playback=False, cache=None, read_all=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         # Load the final page to memoize all page accesses
         page_count = doc.page_count
