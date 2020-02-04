@@ -4,6 +4,7 @@ import gzip
 import io
 import json
 import pickle
+import time
 
 # Third Party
 import environ
@@ -52,9 +53,9 @@ IMAGE_BATCH = env.int(
     "EXTRACT_IMAGE_BATCH", default=55
 )  # Number of images to extract with each function
 OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
-PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 2 * 1024 * 1024)
+PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 BLOCK_SIZE = env.int(
-    "BLOCK_SIZE", 501 * 1024 * 1024
+    "BLOCK_SIZE", 8 * 1024 * 1024
 )  # Block size to use for reading chunks of the PDF
 
 
@@ -91,6 +92,10 @@ REDACT_TOPIC = publisher.topic_path(
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
 )
+
+
+class PdfSizeError(Exception):
+    pass
 
 
 def initialize_redis_page_data(doc_id, page_count):
@@ -349,7 +354,7 @@ def process_pdf(data, _context=None):
     if storage.size(doc_path) > PDF_SIZE_LIMIT:
         # If not, remove the PDF
         storage.delete(path.path(doc_id))
-        raise Exception("Uploaded PDF too big")
+        raise PdfSizeError()
 
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)

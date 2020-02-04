@@ -74,10 +74,12 @@ def send_error(redis, doc_id, message, fatal=False):
 
     try:
         # Try to log additional Redis information if possible
-        additional_error = f"""
-Page count: {redis.get(redis_fields.page_count(doc_id))}
-Images remaining: {redis.get(redis_fields.images_remaining(doc_id))}
-Texts remaining: {redis.get(redis_fields.texts_remaining(doc_id))}"""
+        additional_error = (
+            "\n",
+            f"Page count: {redis.get(redis_fields.page_count(doc_id))}"
+            f"Images remaining: {redis.get(redis_fields.images_remaining(doc_id))}"
+            f"Texts remaining: {redis.get(redis_fields.texts_remaining(doc_id))}",
+        )
     except:
         additional_error = ""
 
