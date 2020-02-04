@@ -312,6 +312,7 @@ CELERY_SLOW_TASK_SOFT_TIME_LIMIT = env.int(
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_IMPORTS = ["documentcloud.squarelet.tasks"]
 CELERY_REDIS_MAX_CONNECTIONS = env.int("CELERY_REDIS_MAX_CONNECTIONS", default=40)
+CELERY_IGNORE_RESULTS = True
 
 # django-compressor
 # ------------------------------------------------------------------------------
