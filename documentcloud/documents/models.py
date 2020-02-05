@@ -339,7 +339,9 @@ class Note(models.Model):
         help_text=_("Designates who may access this document by default"),
     )
     title = models.TextField(_("title"), help_text=_("A title for the note"))
-    content = models.TextField(_("content"), help_text=_("The contents of the note"))
+    content = models.TextField(
+        _("content"), blank=True, help_text=_("The contents of the note")
+    )
     x1 = models.FloatField(
         _("x1"),
         null=True,
