@@ -421,7 +421,11 @@ class Page:
 
         text_content = ctypes.string_at(char_buffer, chars_read * 2)
         # Decode and normalize line endings
-        return text_content.decode("utf-16le").replace("\r\n", "\n").replace("\r", "\n")
+        return (
+            text_content.decode("utf-16le", "ignore")
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+        )
 
     @property
     def rotation(self):
