@@ -240,6 +240,7 @@ class NoteSerializer(serializers.ModelSerializer):
             "organization": {"read_only": True},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
+            "content": {"required": False},
         }
 
     def validate_access(self, value):
