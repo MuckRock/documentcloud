@@ -167,7 +167,7 @@ def _format_response(results, query_params, page, per_page):
         "count": results.hits,
         "next": next_url,
         "previous": previous_url,
-        "results": _format_data(results),
+        "results": _format_data(_format_highlights(results)),
     }
     return response
 
@@ -188,3 +188,9 @@ def _format_data(results):
         return result
 
     return [consolidate_data(r) for r in results]
+
+
+def _format_highlights(results):
+    """Put the highlight data with the corresponding document"""
+
+    return [{**r, "highlights": results.highlighting.get(r["id"])} for r in results]
