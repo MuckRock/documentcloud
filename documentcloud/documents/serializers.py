@@ -244,6 +244,7 @@ class NoteSerializer(FlexFieldsModelSerializer):
             "organization",
             "page_number",
             "access",
+            "edit_access",
             "title",
             "content",
             "x1",
