@@ -8,6 +8,7 @@ import json
 import pytest
 
 # DocumentCloud
+from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.organizations.tests.factories import OrganizationFactory
 from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
@@ -45,6 +46,15 @@ class TestUserAPI:
         response_json = json.loads(response.content)
         serializer = UserSerializer(user)
         assert response_json == serializer.data
+
+    def test_retrieve_me_expanded(self, client, user):
+        """Test retrieving the currently logged in user"""
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/users/me/", {"expand": "organization"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        organization_serializer = OrganizationSerializer(user.organization)
+        assert response_json["organization"] == organization_serializer.data
 
     def test_retrieve_me_anonymous(self, client):
         """me endpoint doesn't work for logged out users"""

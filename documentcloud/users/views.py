@@ -3,6 +3,7 @@ from rest_framework import mixins, viewsets
 
 # Third Party
 import django_filters
+from rest_flex_fields.views import FlexFieldsMixin
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
@@ -14,6 +15,7 @@ from documentcloud.users.serializers import UserSerializer
 
 class UserViewSet(
     # Cannot create or destroy users
+    FlexFieldsMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
