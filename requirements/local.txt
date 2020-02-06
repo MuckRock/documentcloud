@@ -6,6 +6,7 @@
 #
 --no-binary psycopg2
 
+-e git+git://github.com/elritsch/python-sharedmock#egg=python-sharedmock
 alabaster==0.7.12         # via sphinx
 amqp==2.5.1
 appdirs==1.4.3            # via black
@@ -99,6 +100,7 @@ orderedmultidict==1.0.1
 packaging==19.2
 parso==0.6.0
 pathspec==0.6.0           # via black
+pebble==4.5.0
 pexpect==4.8.0
 pickleshare==0.7.5
 pillow==6.1.0
