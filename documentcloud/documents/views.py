@@ -188,6 +188,9 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             return Response("OK", status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
+        if instance.status in (Status.pending, Status.readable):
+            # if still processing, cancel before deleting
+            process_cancel.delay(instance.pk)
         instance.destroy()
 
     @transaction.atomic
