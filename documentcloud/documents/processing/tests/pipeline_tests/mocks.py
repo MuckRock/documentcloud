@@ -261,6 +261,7 @@ def patch_pipeline(func):
     @patch(SEND_UPDATE_MOCK, send_update)
     @patch(SEND_COMPLETE_MOCK, send_complete)
     @patch(SEND_ERROR_MOCK, send_error)
+    @patch(f"{SERVERLESS}.error_handling.USE_TIMEOUT", False)
     @functools.wraps(func)
     def functor(
         test,

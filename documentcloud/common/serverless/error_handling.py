@@ -41,7 +41,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
                 )
                 return "ok"
 
-            if timeouts is not None:
+            if USE_TIMEOUT and timeouts is not None:
                 # Handle exceeding maximum number of retries
                 run_count = data.get(RUN_COUNT, 0)
                 if run_count >= len(timeouts):
