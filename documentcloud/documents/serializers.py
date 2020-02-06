@@ -86,6 +86,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         ),
     )
 
+    edit_access = serializers.SerializerMethodField(
+        label=_("Edit Access"),
+        read_only=True,
+        help_text=_("Does the current user have edit access to this document"),
+    )
+
     class Meta:
         model = Document
         list_serializer_class = DocumentListSerializer
@@ -96,6 +102,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "created_at",
             "data",
             "description",
+            "edit_access",
             "file_url",
             "language",
             "organization",
@@ -202,6 +209,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 exc_info=sys.exc_info(),
             )
             return {"texts": None, "images": None}
+
+    def get_edit_access(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        return request.user.has_perm("documents.change_document", obj)
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
