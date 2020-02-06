@@ -9,6 +9,7 @@ django-celery-beat
 python-redis-lock[django]
 furl
 ipython
+pebble
 
 # Django
 # ------------------------------------------------------------------------------

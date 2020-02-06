@@ -6,10 +6,13 @@ handling baked in.
 # Standard Library
 import logging
 import signal
+from concurrent.futures import TimeoutError
+from datetime import datetime
 from functools import wraps
 
 # Third Party
 import environ
+from pebble import concurrent
 
 # Local
 from ..environment import encode_pubsub_data, get_pubsub_data, publisher
@@ -23,15 +26,8 @@ DEFAULT_TIMEOUTS = TIMEOUTS if USE_TIMEOUT else None
 RUN_COUNT = "runcount"
 
 
-class PubSubTimeoutError(Exception):
-    pass
-
-
 def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
     def decorator(func):
-        def _handle_timeout(signum, frame):
-            raise PubSubTimeoutError()
-
         def wrapper(*args, **kwargs):
 
             # Get data
@@ -57,13 +53,16 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
 
                 # Set up the timeout
                 timeout_seconds = timeouts[run_count]
-                signal.signal(signal.SIGALRM, _handle_timeout)
-                signal.alarm(timeout_seconds)
+                concurrent_func = concurrent.process(timeout=timeout_seconds)(func)
+                future = concurrent_func(*args, **kwargs)
+                func_ = future.result
+            else:
+                func_ = lambda: func(*args, **kwargs)
 
             try:
                 # Run the function as originally intended
-                return func(*args, **kwargs)
-            except PubSubTimeoutError:
+                return func_()
+            except TimeoutError:
                 # Retry the function with increased run count
                 logging.warning("Function timed out: retrying (run %d)", run_count + 2)
                 data[RUN_COUNT] = run_count + 1
@@ -73,9 +72,6 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
                 error_message = str(exc)
                 utils.send_error(redis, doc_id, error_message, True)
                 return f"An error has occurred: {error_message}"
-            finally:
-                # Clear out the timeout alarm
-                signal.alarm(0)
 
         return wraps(func)(wrapper)
 
