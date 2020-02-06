@@ -224,7 +224,7 @@ class DocumentErrorSerializer(serializers.ModelSerializer):
         extra_kwargs = {"created_at": {"read_only": True}}
 
 
-class NoteSerializer(serializers.ModelSerializer):
+class NoteSerializer(FlexFieldsModelSerializer):
     access = ChoiceField(
         Access,
         default=Access.private,
@@ -254,6 +254,10 @@ class NoteSerializer(serializers.ModelSerializer):
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
             "content": {"required": False},
+        }
+        expandable_fields = {
+            "user": (UserSerializer, {"source": "user"}),
+            "organization": (OrganizationSerializer, {"source": "organization"}),
         }
 
     def validate_access(self, value):
