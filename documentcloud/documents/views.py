@@ -109,7 +109,6 @@ class DocumentViewSet(FlexFieldsModelViewSet):
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
         # pylint: disable=unused-argument
-        # XXX do we limit this to documents you can edit?
         document = self.get_object()
         error = self._check_process(document)
         if error:
