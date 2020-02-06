@@ -230,6 +230,11 @@ class NoteSerializer(FlexFieldsModelSerializer):
         default=Access.private,
         help_text=Note._meta.get_field("access").help_text,
     )
+    edit_access = serializers.SerializerMethodField(
+        label=_("Edit Access"),
+        read_only=True,
+        help_text=_("Does the current user have edit access to this note"),
+    )
 
     class Meta:
         model = Note
@@ -310,6 +315,12 @@ class NoteSerializer(FlexFieldsModelSerializer):
         if attrs["y1"] >= attrs["y2"]:
             raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
+
+    def get_edit_access(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        return request.user.has_perm("documents.change_note", obj)
 
 
 class SectionSerializer(serializers.ModelSerializer):
