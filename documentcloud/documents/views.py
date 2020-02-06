@@ -365,8 +365,9 @@ class DocumentErrorViewSet(
         )
 
 
-class NoteViewSet(viewsets.ModelViewSet):
+class NoteViewSet(FlexFieldsModelViewSet):
     serializer_class = NoteSerializer
+    permit_list_expands = ["user", "organization"]
     queryset = Note.objects.none()
 
     def get_queryset(self):

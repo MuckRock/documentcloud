@@ -572,6 +572,19 @@ class TestNoteAPI:
         serializer = NoteSerializer(note)
         assert response_json == serializer.data
 
+    def test_retrieve_expand(self, client, note):
+        """Test retrieving a note with an expanded user and organization"""
+        response = client.get(
+            f"/api/documents/{note.document.pk}/notes/{note.pk}/",
+            {"expand": "user,organization"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        user_serializer = UserSerializer(note.user)
+        organization_serializer = OrganizationSerializer(note.organization)
+        assert response_json["user"] == user_serializer.data
+        assert response_json["organization"] == organization_serializer.data
+
     def test_retrieve_bad(self, client):
         """Test retrieving a note you do not have access to"""
 
