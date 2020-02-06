@@ -2,12 +2,16 @@
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
+# Third Party
+from rest_flex_fields.serializers import FlexFieldsModelSerializer
+
 # DocumentCloud
 from documentcloud.organizations.models import Organization
+from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(FlexFieldsModelSerializer):
     organization = serializers.IntegerField(
         source="organization.pk",
         label=_("Active Organization"),
@@ -33,6 +37,9 @@ class UserSerializer(serializers.ModelSerializer):
             "name": {"read_only": True},
             "organizations": {"read_only": True},
             "username": {"read_only": True},
+        }
+        expandable_fields = {
+            "organization": (OrganizationSerializer, {"source": "organization"})
         }
 
     def validate_organization(self, value):
