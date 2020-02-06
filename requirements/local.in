@@ -12,6 +12,7 @@ mypy
 pytest
 pytest-sugar
 pytest-mock
+-e git://github.com/elritsch/python-sharedmock#egg=python-sharedmock
 
 # Code quality
 # ------------------------------------------------------------------------------

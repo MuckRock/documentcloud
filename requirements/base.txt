@@ -72,6 +72,7 @@ oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via furl
 packaging==19.2           # via drf-yasg
 parso==0.6.0              # via jedi
+pebble==4.5.0
 pexpect==4.8.0            # via ipython
 pickleshare==0.7.5        # via ipython
 pillow==6.1.0

@@ -78,6 +78,7 @@ oauthlib==3.1.0
 orderedmultidict==1.0.1
 packaging==19.2
 parso==0.6.0
+pebble==4.5.0
 pexpect==4.8.0
 pickleshare==0.7.5
 pillow==6.1.0
