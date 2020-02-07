@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models.query import QuerySet
+from django.db.models.query import Prefetch, QuerySet
 from rest_framework import mixins, parsers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -11,7 +11,7 @@ from rest_framework.response import Response
 # Third Party
 import django_filters
 import environ
-from rest_flex_fields import FlexFieldsModelViewSet
+from rest_flex_fields import FlexFieldsModelViewSet, is_expanded
 
 # DocumentCloud
 from documentcloud.common.environment import storage
@@ -73,9 +73,17 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             and "processing" in self.request.auth["permissions"]
         )
         # Processing scope can access all documents
-        queryset = Document.objects.select_related("user", "organization")
+        queryset = Document.objects.all()
         if not valid_token:
             queryset = queryset.get_viewable(self.request.user)
+
+        if is_expanded(self.request, "user"):
+            queryset = queryset.prefetch_related(
+                Prefetch("user", queryset=User.objects.preload_list())
+            )
+        if is_expanded(self.request, "organization"):
+            queryset = queryset.select_related("organization")
+
         return queryset
 
     def create(self, request):
@@ -376,7 +384,14 @@ class NoteViewSet(FlexFieldsModelViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        return document.notes.get_viewable(self.request.user)
+        queryset = document.notes.get_viewable(self.request.user)
+        if is_expanded(self.request, "user"):
+            queryset = queryset.prefetch_related(
+                Prefetch("user", queryset=User.objects.preload_list())
+            )
+        if is_expanded(self.request, "organization"):
+            queryset = queryset.select_related("organization")
+        return queryset
 
     def perform_create(self, serializer):
         """Specify the document, user and organization"""
