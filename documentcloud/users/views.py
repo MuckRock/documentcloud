@@ -1,4 +1,5 @@
 # Django
+from django.db.models import Prefetch
 from rest_framework import mixins, viewsets
 
 # Third Party
@@ -7,7 +8,7 @@ from rest_flex_fields.views import FlexFieldsMixin
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.organizations.models import Organization
+from documentcloud.organizations.models import Membership, Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
@@ -26,7 +27,14 @@ class UserViewSet(
 
     def get_queryset(self):
         return User.objects.get_viewable(self.request.user).prefetch_related(
-            "organizations"
+            "organizations",
+            Prefetch(
+                "memberships",
+                queryset=Membership.objects.filter(active=True).select_related(
+                    "organization"
+                ),
+                to_attr="active_memberships",
+            ),
         )
 
     def get_object(self):
