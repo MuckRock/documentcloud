@@ -1,5 +1,4 @@
 # Django
-from django.db.models import Prefetch
 from rest_framework import mixins, viewsets
 
 # Third Party
@@ -8,7 +7,7 @@ from rest_flex_fields.views import FlexFieldsMixin
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
-from documentcloud.organizations.models import Membership, Organization
+from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
@@ -26,16 +25,7 @@ class UserViewSet(
     queryset = User.objects.none()
 
     def get_queryset(self):
-        return User.objects.get_viewable(self.request.user).prefetch_related(
-            "organizations",
-            Prefetch(
-                "memberships",
-                queryset=Membership.objects.filter(active=True).select_related(
-                    "organization"
-                ),
-                to_attr="active_memberships",
-            ),
-        )
+        return User.objects.get_viewable(self.request.user).preload_list()
 
     def get_object(self):
         """Allow one to lookup themselves by specifying `me` as the pk"""
