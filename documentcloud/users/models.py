@@ -119,6 +119,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def organization(self):
         """Get the user's active organization"""
+        # first check the prefetch cache, for performance reasons
+        if hasattr(self, "active_memberships"):
+            return self.active_memberships[0].organization
+
         return (
             self.memberships.select_related("organization")
             .get(active=True)
