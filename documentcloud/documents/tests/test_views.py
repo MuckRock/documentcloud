@@ -505,8 +505,9 @@ class TestNoteAPI:
         response_json = response.json()
         assert len(response_json["results"]) == size
 
-    def test_create_public(self, client, document):
+    def test_create_public(self, client):
         """Create a public note"""
+        document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         response = client.post(
             f"/api/documents/{document.pk}/notes/",
@@ -525,8 +526,9 @@ class TestNoteAPI:
         response_json = response.json()
         assert Note.objects.filter(pk=response_json["id"]).exists()
 
-    def test_create_public_bad(self, client, user, document):
+    def test_create_public_bad(self, client, user):
         """You may only create public notes on documents you can edit"""
+        document = DocumentFactory(page_count=2)
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/{document.pk}/notes/",
@@ -543,8 +545,9 @@ class TestNoteAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_private(self, client, user, document):
+    def test_create_private(self, client, user):
         """Create a private note"""
+        document = DocumentFactory(page_count=2)
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/{document.pk}/notes/",
@@ -562,6 +565,22 @@ class TestNoteAPI:
         assert response.status_code == status.HTTP_201_CREATED
         response_json = response.json()
         assert Note.objects.filter(pk=response_json["id"]).exists()
+
+    def test_create_bad_page(self, client):
+        """Create a note on a non existing page"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/notes/",
+            {"title": "Test", "page_number": 2, "access": "public"},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        response = client.post(
+            f"/api/documents/{document.pk}/notes/",
+            {"title": "Test", "page_number": -1, "access": "public"},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_retrieve(self, client, note):
         """Test retrieving a note"""
@@ -651,8 +670,9 @@ class TestSectionAPI:
         response_json = response.json()
         assert len(response_json["results"]) == size
 
-    def test_create(self, client, document):
+    def test_create(self, client):
         """Create a section"""
+        document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         response = client.post(
             f"/api/documents/{document.pk}/sections/",
@@ -662,12 +682,45 @@ class TestSectionAPI:
         response_json = response.json()
         assert Section.objects.filter(pk=response_json["id"]).exists()
 
-    def test_create_bad(self, client, user, document):
+    def test_create_bad_permission(self, client, user):
         """You may only create sections on documents you can edit"""
+        document = DocumentFactory(page_count=2)
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/{document.pk}/sections/",
             {"title": "Test", "page_number": 1},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_page(self, client):
+        """You may not create sections on non existent pages"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+
+        response = client.post(
+            f"/api/documents/{document.pk}/sections/",
+            {"title": "Test", "page_number": 9},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        response = client.post(
+            f"/api/documents/{document.pk}/sections/",
+            {"title": "Test", "page_number": -1},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_duplicate(self, client):
+        """You may not create more than one section per page"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+
+        response = client.post(
+            f"/api/documents/{document.pk}/sections/",
+            {"title": "Test", "page_number": 0},
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response = client.post(
+            f"/api/documents/{document.pk}/sections/",
+            {"title": "Test", "page_number": 0},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -896,8 +949,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         data = [
-            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page": 0},
-            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page": 1},
+            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page_number": 0},
+            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -909,8 +962,8 @@ class TestRedactionAPI:
         """You cannot create redactions if you are not logged in"""
         document = DocumentFactory(page_count=2)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -922,8 +975,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2, access=Access.private)
         client.force_authenticate(user=user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -935,8 +988,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 1},
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -948,8 +1001,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page": 2},
+            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
+            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 2},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -961,8 +1014,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         data = [
-            {"top": 30, "left": 10, "bottom": 20, "right": 20, "page": 0},
-            {"top": 30, "left": 50, "bottom": 40, "right": 40, "page": 1},
+            {"top": 30, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
+            {"top": 30, "left": 50, "bottom": 40, "right": 40, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"

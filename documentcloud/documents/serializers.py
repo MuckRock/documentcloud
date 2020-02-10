@@ -32,6 +32,15 @@ from documentcloud.users.serializers import UserSerializer
 logger = logging.getLogger(__name__)
 
 
+class PageNumberValidationMixin:
+    def validate_page_number(self, value):
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if value >= document.page_count or value < 0:
+            raise serializers.ValidationError("Must be a valid page for the document")
+        return value
+
+
 class DocumentListSerializer(serializers.ListSerializer):
     def update(self, instance, validated_data):
         # Maps for id->instance and id->data item.
@@ -224,7 +233,7 @@ class DocumentErrorSerializer(serializers.ModelSerializer):
         extra_kwargs = {"created_at": {"read_only": True}}
 
 
-class NoteSerializer(FlexFieldsModelSerializer):
+class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
     access = ChoiceField(
         Access,
         default=Access.private,
@@ -279,13 +288,6 @@ class NoteSerializer(FlexFieldsModelSerializer):
             )
         return value
 
-    def validate_page(self, value):
-        view = self.context.get("view")
-        document = Document.objects.get(pk=view.kwargs["document_pk"])
-        if value >= document.page_count:
-            raise serializers.ValidationError("Must be a valid page for the document")
-        return value
-
     def validate(self, attrs):
         """Check the access level and coordinates"""
         # Bounds should either all be set or not set at all
@@ -306,10 +308,21 @@ class NoteSerializer(FlexFieldsModelSerializer):
         return request.user.has_perm("documents.change_note", obj)
 
 
-class SectionSerializer(serializers.ModelSerializer):
+class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Section
         fields = ["id", "page_number", "title"]
+
+    def validate_page_number(self, value):
+        value = super().validate_page_number(value)
+
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if document.sections.filter(page_number=value).exists():
+            raise serializers.ValidationError(
+                f"You may not add more than one section to a page"
+            )
+        return value
 
     def validate(self, attrs):
         """Check the permissions"""
@@ -350,13 +363,13 @@ class DataAddRemoveSerializer(serializers.Serializer):
     )
 
 
-class RedactionSerializer(serializers.Serializer):
+class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
     # pylint: disable=abstract-method
     x1 = serializers.FloatField(min_value=0, max_value=1)
     x2 = serializers.FloatField(min_value=0, max_value=1)
     y1 = serializers.FloatField(min_value=0, max_value=1)
     y2 = serializers.FloatField(min_value=0, max_value=1)
-    page = serializers.IntegerField(min_value=0)
+    page_number = serializers.IntegerField(min_value=0)
 
     def validate(self, attrs):
         if attrs["x1"] >= attrs["x2"]:
@@ -364,10 +377,3 @@ class RedactionSerializer(serializers.Serializer):
         if attrs["y1"] >= attrs["y2"]:
             raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
-
-    def validate_page(self, value):
-        view = self.context.get("view")
-        document = Document.objects.get(pk=view.kwargs["document_pk"])
-        if value >= document.page_count:
-            raise serializers.ValidationError("Must be a valid page for the document")
-        return value
