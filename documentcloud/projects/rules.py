@@ -4,7 +4,7 @@
 from rules import add_perm, always_deny, is_authenticated, predicate
 
 # DocumentCloud
-from documentcloud.documents.rules import skip_if_not_obj
+from documentcloud.core.rules import skip_if_not_obj
 
 # These predicates are for projects
 
