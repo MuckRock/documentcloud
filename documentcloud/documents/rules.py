@@ -90,9 +90,18 @@ add_perm("documents.add_document", is_authenticated)
 add_perm("documents.change_document", can_change_document)
 add_perm("documents.delete_document", can_change_document)
 
+# XXX refactor into separate files
+
+
+@predicate
+@skip_if_not_obj
+def change_change_note_document(user, note):
+    return can_change_document(user, note.document)
+
+
 can_change_note = is_authenticated & (
     (~has_access(Access.invisible) & is_owner)
-    | (has_access(Access.organization, Access.public) & is_organization)
+    | (has_access(Access.organization, Access.public) & change_change_note_document)
 )
 can_view_note = has_access(Access.public) | can_change_note
 

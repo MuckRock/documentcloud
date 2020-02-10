@@ -267,21 +267,15 @@ class NoteSerializer(FlexFieldsModelSerializer):
         }
 
     def validate_access(self, value):
-        if (
-            self.instance
-            and self.instance.access == Access.private
-            and value != Access.private
+        request = self.context.get("request")
+        view = self.context.get("view")
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if value in (Access.public, Access.organization) and not request.user.has_perm(
+            "documents.change_document", document
         ):
             raise serializers.ValidationError(
-                "May not make a private note public or draft"
-            )
-        if (
-            self.instance
-            and self.instance.access != Access.private
-            and value == Access.private
-        ):
-            raise serializers.ValidationError(
-                "May not make a public or draft note private"
+                "You may only create public or draft notes on documents you have "
+                "edit access to"
             )
         return value
 
@@ -294,18 +288,6 @@ class NoteSerializer(FlexFieldsModelSerializer):
 
     def validate(self, attrs):
         """Check the access level and coordinates"""
-        request = self.context.get("request")
-        view = self.context.get("view")
-        document = Document.objects.get(pk=view.kwargs["document_pk"])
-        if attrs.get("access") in (
-            Access.public,
-            Access.organization,
-        ) and not request.user.has_perm("documents.change_document", document):
-            raise serializers.ValidationError(
-                "You may only create public or draft notes on documents you have "
-                "edit access to"
-            )
-
         # Bounds should either all be set or not set at all
         if all(attr not in attrs for attr in ("x1", "x2", "y1", "y2")):
             return attrs
