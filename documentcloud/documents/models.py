@@ -289,7 +289,7 @@ class Page(models.Model):
         related_name="pages",
         help_text=_("The document this page belongs to"),
     )
-    page_number = models.IntegerField(
+    page_number = models.PositiveIntegerField(
         _("page number"), db_index=True, help_text=_("The page number")
     )
     text = models.TextField(_("text"), help_text=_("The text on this page"))
@@ -402,13 +402,14 @@ class Section(models.Model):
         related_name="sections",
         help_text=_("The document this section belongs to"),
     )
-    page_number = models.IntegerField(
+    page_number = models.PositiveIntegerField(
         _("page number"), help_text=_("Which page this section appears on")
     )
     title = models.TextField(_("title"), help_text=_("A title for the section"))
 
     class Meta:
         ordering = ("document", "page_number")
+        unique_together = (("document", "page_number"),)
 
     def __str__(self):
         return self.title
