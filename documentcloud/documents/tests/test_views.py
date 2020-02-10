@@ -611,7 +611,7 @@ class TestNoteAPI:
         assert note.title == title
 
     def test_update_access(self, client, note):
-        """A note may be switched between public and organization"""
+        """A note's access may be freely changed on a document you can edit"""
         client.force_authenticate(user=note.user)
         response = client.patch(
             f"/api/documents/{note.document.pk}/notes/{note.pk}/",
@@ -621,21 +621,14 @@ class TestNoteAPI:
         note.refresh_from_db()
         assert note.access == Access.organization
 
-    def test_update_access_bad_to_private(self, client, note):
-        """A note may not be switched from public/organization to private"""
-        client.force_authenticate(user=note.user)
+    def test_update_access_bad_from_private(self, client, user):
+        """A note may not be switched from private to public/organization
+        if you do not have edit access on the document
+        """
+        note = NoteFactory(user=user, access=Access.private)
+        client.force_authenticate(user=user)
         response = client.patch(
-            f"/api/documents/{note.document.pk}/notes/{note.pk}/", {"access": "private"}
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_update_access_bad_from_private(self, client):
-        """A note may not be switched from public/organization to private"""
-        note = NoteFactory(access=Access.private)
-        client.force_authenticate(user=note.user)
-        response = client.patch(
-            f"/api/documents/{note.document.pk}/notes/{note.pk}/",
-            {"access": "organization"},
+            f"/api/documents/{note.document.pk}/notes/{note.pk}/", {"access": "public"}
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 

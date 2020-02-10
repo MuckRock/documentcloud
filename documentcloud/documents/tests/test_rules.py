@@ -88,24 +88,39 @@ def test_document_rules():
 @pytest.mark.django_db()
 def test_note_rules():
     anonymous = AnonymousUser()
-    owner = UserFactory()
-    organization_member = UserFactory()
+    owner = UserFactory(name="owner")
+    organization_member = UserFactory(name="org")
+    edit_collaborator = UserFactory(name="edit")
+    view_collaborator = UserFactory(name="view")
 
     organization = OrganizationFactory(members=[owner, organization_member])
     organization_member.organization = organization
 
     public_note = NoteFactory(
-        user=owner, organization=organization, access=Access.public
+        user=owner, organization=organization, access=Access.public, title="public"
     )
     organization_note = NoteFactory(
-        user=owner, organization=organization, access=Access.organization
+        user=owner, organization=organization, access=Access.organization, title="org"
     )
     private_note = NoteFactory(
-        user=owner, organization=organization, access=Access.private
+        user=owner, organization=organization, access=Access.private, title="private"
     )
     invisible_note = NoteFactory(
-        user=owner, organization=organization, access=Access.invisible
+        user=owner,
+        organization=organization,
+        access=Access.invisible,
+        title="invisible",
     )
+
+    documents = [
+        public_note.document,
+        organization_note.document,
+        private_note.document,
+        invisible_note.document,
+    ]
+
+    ProjectFactory(collaborators=[edit_collaborator], edit_documents=documents)
+    ProjectFactory(collaborators=[view_collaborator], documents=documents)
 
     for user, note, can_view, can_change in [
         (anonymous, public_note, True, False),
@@ -116,11 +131,25 @@ def test_note_rules():
         (owner, organization_note, True, True),
         (owner, private_note, True, True),
         (owner, invisible_note, False, False),
-        (organization_member, public_note, True, True),
-        (organization_member, organization_note, True, True),
+        (organization_member, public_note, True, False),
+        (organization_member, organization_note, False, False),
         (organization_member, private_note, False, False),
         (organization_member, invisible_note, False, False),
+        (edit_collaborator, public_note, True, True),
+        (edit_collaborator, organization_note, True, True),
+        (edit_collaborator, private_note, False, False),
+        (edit_collaborator, invisible_note, False, False),
+        (view_collaborator, public_note, True, False),
+        (view_collaborator, organization_note, False, False),
+        (view_collaborator, private_note, False, False),
+        (view_collaborator, invisible_note, False, False),
     ]:
-        assert user.has_perm("documents.view_note", note) is can_view
-        assert user.has_perm("documents.change_note", note) is can_change
-        assert user.has_perm("documents.delete_note", note) is can_change
+        assert (
+            user.has_perm("documents.view_note", note) is can_view
+        ), f"{user.get_full_name()} - {note.title}"
+        assert (
+            user.has_perm("documents.change_note", note) is can_change
+        ), f"{user.get_full_name()} - {note.title}"
+        assert (
+            user.has_perm("documents.delete_note", note) is can_change
+        ), f"{user.get_full_name()} - {note.title}"
