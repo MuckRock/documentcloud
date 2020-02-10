@@ -54,13 +54,24 @@ def is_collaborator(user, document):
     return document.projects.filter(collaborators=user).exists()
 
 
+# you must be logged in to have edit access
 can_change = is_authenticated & (
+    # nobody has any access to invisible documents
+    # you do have edit access if you are the owner or the document is shared
+    # with you for editing through a project
     (~has_access(Access.invisible) & (is_owner | is_edit_collaborator))
+    # you also can have access if you are in the same organization
+    # and the access is organization or public
     | (has_access(Access.organization, Access.public) & is_organization)
 )
 can_view = (
+    # public documents which have succesfully processed or in readable state
+    # can be viewed by everyone
     (has_access(Access.public) & has_status(Status.success, Status.readable))
+    # if you have edit access you also have view access
     | can_change
+    # if the document is not invisible and the document is shared with you
+    # for viewing through a project
     | (~has_access(Access.invisible) & is_authenticated & is_collaborator)
 )
 
