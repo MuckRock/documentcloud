@@ -1,4 +1,5 @@
 # Django
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 # DocumentCloud
@@ -78,13 +79,25 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
 
 
 class CollaborationSerializer(serializers.ModelSerializer):
+    email = serializers.SlugRelatedField(
+        label=_("Email"),
+        source="user",
+        slug_field="email",
+        write_only=True,
+        queryset=User.objects.all(),
+        help_text=_("The email address of the user you wish to add as a collaborator"),
+    )
+
     class Meta:
         model = Collaboration
-        fields = ["user"]
-        extra_kwargs = {"user": {"queryset": User.objects.none()}}
+        fields = ["user", "email"]
+        extra_kwargs = {"user": {"read_only": True}}
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        request = self.context.get("request")
-        if request and request.user:
-            self.fields["user"].queryset = User.objects.get_viewable(request.user)
+    def validate_email(self, value):
+        view = self.context.get("view")
+        project = Project.objects.get(pk=view.kwargs["project_pk"])
+        if project.collaborators.filter(email=value.email).exists():
+            raise serializers.ValidationError(
+                f"You may not add user {value.email} as a collaborator more than once"
+            )
+        return value
