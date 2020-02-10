@@ -127,3 +127,4 @@ class Collaboration(models.Model):
 
     class Meta:
         ordering = ("id",)
+        unique_together = ("project", "user")

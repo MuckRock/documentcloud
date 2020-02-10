@@ -124,4 +124,5 @@ class CollaborationViewSet(
             raise serializers.ValidationError(
                 "You do not have permission to add collaborators to this project"
             )
-        serializer.save(project=project)
+
+        serializer.save(project=project, creator=self.request.user)

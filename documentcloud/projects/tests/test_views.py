@@ -194,10 +194,10 @@ class TestCollaborationAPI:
 
     def test_create(self, client, project, user):
         """Add a user to a project"""
-        # Add both users to an organization so they have view access to each other
-        OrganizationFactory(members=[project.user, user])
         client.force_authenticate(user=project.user)
-        response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
+        response = client.post(
+            f"/api/projects/{project.pk}/users/", {"email": user.email}
+        )
         assert response.status_code == status.HTTP_201_CREATED
         assert project.collaborators.filter(pk=user.pk).exists()
 
@@ -206,6 +206,27 @@ class TestCollaborationAPI:
         OrganizationFactory(members=[project.user, user])
         client.force_authenticate(user=user)
         response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_email(self, client, project):
+        """Trying adding an email without a user"""
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/users/", {"email": "bad@example.com"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_duplicate(self, client, project, user):
+        """May not add a user more than once"""
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/users/", {"email": user.email}
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.collaborators.filter(pk=user.pk).exists()
+        response = client.post(
+            f"/api/projects/{project.pk}/users/", {"email": user.email}
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_retrieve(self, client, user):
