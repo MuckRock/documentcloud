@@ -4,7 +4,7 @@
 from rules import add_perm, always_deny, is_authenticated, predicate
 
 # DocumentCloud
-from documentcloud.documents.rules import skip_if_not_obj
+from documentcloud.core.rules import skip_if_not_obj
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 
@@ -32,8 +32,9 @@ def is_me(user, user_):
 
 
 can_view = is_authenticated & (is_organization | is_collaborator)
+can_change = is_authenticated & is_me
 
 add_perm("users.view_user", can_view)
 add_perm("users.add_user", always_deny)
-add_perm("users.change_user", is_authenticated & is_me)
+add_perm("users.change_user", can_change)
 add_perm("users.delete_user", always_deny)

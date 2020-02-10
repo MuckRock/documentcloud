@@ -4,7 +4,7 @@
 from rules import add_perm, always_deny, is_authenticated, predicate
 
 # DocumentCloud
-from documentcloud.documents.rules import skip_if_not_obj
+from documentcloud.core.rules import skip_if_not_obj
 
 
 @predicate
@@ -21,7 +21,9 @@ def is_member(user, organization):
 
 is_public = ~is_private
 
-add_perm("organizations.view_organization", is_public | (is_authenticated & is_member))
+can_view = is_public | (is_authenticated & is_member)
+
+add_perm("organizations.view_organization", can_view)
 add_perm("organizations.add_organization", always_deny)
 add_perm("organizations.change_organization", always_deny)
 add_perm("organizations.delete_organization", always_deny)
