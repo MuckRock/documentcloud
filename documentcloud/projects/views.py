@@ -72,9 +72,9 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
         serializer.save(project=project)
         transaction.on_commit(
             lambda: solr_index.delay(
-                serializer.data["document"].pk,
+                serializer.data["document"],
                 solr_document={
-                    "id": serializer.data["document"].pk,
+                    "id": serializer.data["document"],
                     "projects": project.pk,
                 },
                 field_updates={"projects": "add"},
