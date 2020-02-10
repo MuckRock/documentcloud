@@ -107,6 +107,19 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_bad_duplicate(self, client, project, document):
+        """You may not add the same document to a project more than once"""
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/", {"document": document.pk}
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.documents.filter(pk=document.pk).exists()
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/", {"document": document.pk}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_retrieve(self, client, document):
         """Test retrieving a document from project"""
         project = ProjectFactory(documents=[document])

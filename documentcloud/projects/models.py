@@ -96,6 +96,7 @@ class ProjectMembership(models.Model):
 
     class Meta:
         ordering = ("id",)
+        unique_together = ("project", "document")
 
 
 class Collaboration(models.Model):
