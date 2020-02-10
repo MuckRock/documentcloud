@@ -52,6 +52,15 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("You may not update `document`")
         return super().update(instance, validated_data)
 
+    def validate_document(self, value):
+        view = self.context.get("view")
+        project = Project.objects.get(pk=view.kwargs["project_pk"])
+        if project.documents.filter(pk=value.pk).exists():
+            raise serializers.ValidationError(
+                f"You may not add document {value.pk} to this project more than once"
+            )
+        return value
+
     def validate(self, attrs):
         request = self.context.get("request")
         if self.instance:
