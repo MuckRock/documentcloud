@@ -27,7 +27,7 @@ class DocumentQuerySet(models.QuerySet):
                     organization__in=user.organizations.all(),
                 )
             )
-            return self.exclude(access=Access.invisible).filter(query)
+            return self.exclude(access=Access.invisible).filter(query).distinct()
         else:
             return self.filter(
                 access=Access.public, status__in=[Status.success, Status.readable]

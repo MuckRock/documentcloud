@@ -8,6 +8,7 @@ import django_filters
 
 # DocumentCloud
 from documentcloud.core.filters import ModelChoiceFilter
+from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_index
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.projects.serializers import (
@@ -35,11 +36,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     class Filter(django_filters.FilterSet):
         user = ModelChoiceFilter(model=User, field_name="collaborators")
+        document = ModelChoiceFilter(model=Document, field_name="documents")
 
         class Meta:
             model = Project
             fields = {
                 "collaborators": ["exact"],
+                "documents": ["exact"],
                 "private": ["exact"],
                 "slug": ["exact"],
                 "title": ["exact"],
