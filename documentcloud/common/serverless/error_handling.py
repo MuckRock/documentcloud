@@ -5,9 +5,7 @@ handling baked in.
 
 # Standard Library
 import logging
-import signal
-from concurrent.futures import TimeoutError
-from datetime import datetime
+from concurrent import futures
 from functools import wraps
 
 # Third Party
@@ -62,7 +60,7 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
             try:
                 # Run the function as originally intended
                 return func_()
-            except TimeoutError:
+            except futures.TimeoutError:
                 # Retry the function with increased run count
                 logging.warning("Function timed out: retrying (run %d)", run_count + 2)
                 data[RUN_COUNT] = run_count + 1

@@ -36,8 +36,11 @@ else:
     from tess import Tesseract
 
     # only initialize sentry on serverless
+    # pylint: disable=import-error
     import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
+
+    # pylint: enable=import-error
 
     sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
 
@@ -96,6 +99,7 @@ def ocr_page(page_path):
 def run_tesseract(data, _context=None):
     """Runs OCR on the images passed in, storing the extracted text.
     """
+    # pylint: disable=too-many-locals
     overall_start = time.time()
 
     data = get_pubsub_data(data)

@@ -58,7 +58,7 @@ class LocalStorage:
         with self.open(filename, "wb") as local_file:
             local_file.write(contents)
 
-    def presign_url(self, file_name, method_name):
+    def presign_url(self, file_name, _method_name):
         return file_name
 
     def exists(self, file_name):

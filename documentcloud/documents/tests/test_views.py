@@ -2,9 +2,6 @@
 from django.conf import settings
 from rest_framework import status
 
-# Standard Library
-from unittest.mock import patch
-
 # Third Party
 import pytest
 
@@ -27,6 +24,8 @@ from documentcloud.documents.tests.factories import (
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
+
+# pylint: disable=too-many-lines, too-many-public-methods
 
 
 @pytest.mark.django_db()
@@ -414,7 +413,7 @@ class TestDocumentAPI:
 
     def test_bulk_process_no_ids(self, client, user, mocker):
         """Test processing multiple documents without specifying the documents"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
+        mocker.patch("documentcloud.documents.views.process")
         # pretend the files exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -425,7 +424,7 @@ class TestDocumentAPI:
 
     def test_bulk_process_bad(self, client, user, mocker):
         """Test processing multiple documents without permission"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
+        mocker.patch("documentcloud.documents.views.process")
         # pretend the files exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True

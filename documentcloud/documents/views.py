@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models.query import Prefetch, QuerySet
+from django.db.models.query import Prefetch
 from rest_framework import mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -110,7 +110,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         for document, file_url in zip(documents, file_urls):
             if file_url is not None:
                 transaction.on_commit(
-                    lambda: fetch_file_url.delay(file_url, document.pk)
+                    lambda d=document, f=file_url: fetch_file_url.delay(f, d.pk)
                 )
 
     @action(detail=True, methods=["post"])
@@ -183,6 +183,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @process.mapping.delete
     def cancel_process(self, request, pk=None):
         """Cancel processing for a document"""
+        # pylint: disable=unused-argument
         document = self.get_object()
         if document.status not in (Status.pending, Status.readable):
             return Response(
@@ -510,7 +511,6 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # TODO: maybe refactor general processing checks as a mixin
         was_public = document.public
         with transaction.atomic():
             document.status = Status.pending

@@ -76,7 +76,7 @@ class SlowStorageHandler(StorageHandler):
             ctypes.POINTER(ctypes.c_ubyte),
             ctypes.c_ulong,
         )
-        def get_block(_param, position, p_buf, size):
+        def get_block(_param, _position, _p_buf, size):
             # only sleep once so if the timeout fails the test doesn't run on
             if self.sleep:
                 time.sleep(2)
@@ -118,7 +118,7 @@ def timeout_on_second_try(data):
 
 
 @with_timeout([1])
-def timeout_cfunctype(data):
+def timeout_cfunctype(_data):
     pdf = os.path.join(
         settings.ROOT_DIR,
         "documentcloud",

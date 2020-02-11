@@ -130,20 +130,23 @@ def solr_index(document_pk, solr_document=None, field_updates=None, index_text=F
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
-@periodic_task(run_every=crontab(hour=1))
+@periodic_task(run_every=crontab(minute=30, hour="*/3"))
 def solr_index_dirty():
-    """Task to try and index all dirty models once a day"""
+    """Task to try and index all dirty models periodically"""
     # check to make sure the solr server is responsive before trying to index
     try:
         SOLR.search("*:*")
     except pysolr.SolrError:
         return
 
-    # XXX should we bulk these?
-    # XXX check all deleted documents
-    # XXX put a limit on these
-    for document in Document.objects.filter(solr_dirty=True):
-        if document.status == Status.deleted:
-            solr_delete.delay(document.pk)
-        else:
-            solr_index.delay(document.pk)
+    deleted_documents = Document.objects.filter(status=Status.deleted)[
+        : settings.SOLR_DIRTY_LIMIT
+    ]
+    for document in deleted_documents:
+        solr_delete.delay(document.pk)
+
+    dirty_documents = Document.objects.filter(solr_dirty=True).exclude(
+        status=Status.deleted
+    )[: settings.SOLR_DIRTY_LIMIT]
+    for document in dirty_documents:
+        solr_index.delay(document.pk)

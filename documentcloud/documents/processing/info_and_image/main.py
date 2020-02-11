@@ -4,7 +4,6 @@ import gzip
 import io
 import json
 import pickle
-import time
 
 # Third Party
 import environ
@@ -42,8 +41,11 @@ else:
     from pdfium import StorageHandler, Workspace
 
     # only initialize sentry on serverless
+    # pylint: disable=import-error
     import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
+
+    # pylint: enable=import-error
 
     sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
 
@@ -243,6 +245,7 @@ def redact_document_and_overwrite(doc_id, slug, redactions):
 
 def get_redis_pagespec(doc_id):
     """Get the dimensions of all pages in a convenient format using Redis"""
+    # pylint: disable=too-many-nested-blocks
     dimensions_field = redis_fields.dimensions(doc_id)
 
     pipeline = REDIS.pipeline()
@@ -408,6 +411,7 @@ def extract_single_page(doc_id, slug, page, page_number, large_image_path):
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
+    # pylint: disable=too-many-locals
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
