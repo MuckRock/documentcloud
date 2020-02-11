@@ -1,6 +1,6 @@
 # Django
 from django.db import transaction
-from rest_framework import exceptions, mixins, serializers, viewsets
+from rest_framework import exceptions, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
 

@@ -1,4 +1,4 @@
-def processing_auth(func):
+def processing_auth(_func):
     """Authenticate a function by ensuring the processing token matches."""
 
     def authenticate_token(*args, **kwargs):

@@ -1,6 +1,5 @@
 # Third Party
 import environ
-import requests
 import requests_mock
 
 # DocumentCloud

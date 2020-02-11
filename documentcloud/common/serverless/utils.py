@@ -72,13 +72,13 @@ def send_error(redis, doc_id, message, fatal=False):
         headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
     )
 
+    # pylint: disable=bare-except
     try:
         # Try to log additional Redis information if possible
         additional_error = (
-            "\n"
-            f"Page count: {redis.get(redis_fields.page_count(doc_id))}"
-            f"Images remaining: {redis.get(redis_fields.images_remaining(doc_id))}"
-            f"Texts remaining: {redis.get(redis_fields.texts_remaining(doc_id))}"
+            f"\n\nPage count: {redis.get(redis_fields.page_count(doc_id))}"
+            f"\nImages remaining: {redis.get(redis_fields.images_remaining(doc_id))}"
+            f"\nTexts remaining: {redis.get(redis_fields.texts_remaining(doc_id))}"
         )
     except:
         additional_error = ""

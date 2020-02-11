@@ -425,3 +425,5 @@ if SOLR_VERIFY:
 else:
     # otherwise set to true, which uses default certificates to verify
     SOLR_VERIFY = True
+
+SOLR_DIRTY_LIMIT = env.int("SOLR_DIRTY_LIMIT", default=200)

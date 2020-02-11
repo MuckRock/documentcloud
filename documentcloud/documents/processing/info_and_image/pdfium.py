@@ -107,7 +107,7 @@ class Bitmap:
     def fill_rect(self, x1, y1, x2, y2, fill=0xFF000000):
         # Fill a rectangle with percent-specified coordinates
         assert all(
-            coord >= 0 and coord <= 1 for coord in (x1, x2, y1, y2)
+            0 <= coord <= 1 for coord in (x1, x2, y1, y2)
         ), "Coordinates out of bounds"
         min_x = round(min(x1, x2) * self.width)
         max_x = round(max(x1, x2) * self.width)
@@ -691,6 +691,7 @@ class StorageCacher:
 
 
 class StorageHandler:
+    # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         storage,
@@ -701,6 +702,7 @@ class StorageHandler:
         read_all=False,
         block_size=None,
     ):
+        # pylint: disable=too-many-arguments
         self.filename = filename
         self.read_all = read_all
         self.cache = {} if cache is None else cache

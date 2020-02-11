@@ -10,7 +10,6 @@ import pytest
 # DocumentCloud
 from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import DocumentFactory
-from documentcloud.organizations.tests.factories import OrganizationFactory
 from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Project
 from documentcloud.projects.serializers import (
@@ -20,6 +19,8 @@ from documentcloud.projects.serializers import (
 )
 from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.tests.factories import UserFactory
+
+# pylint: disable=too-many-public-methods
 
 
 @pytest.mark.django_db()

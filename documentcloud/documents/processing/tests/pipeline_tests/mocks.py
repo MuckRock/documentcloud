@@ -42,12 +42,13 @@ def patch_env(env):
         patches.append(patch(f"{OCR}.main.{key}", value, create=True))
 
     stack = ExitStack()
-    for patch in patches:
-        stack.enter_context(patch)
+    for patch_ in patches:
+        stack.enter_context(patch_)
     return stack
 
 
 # Mock methods
+# pylint: disable=unused-argument
 def page_loaded(page):
     pass
 
@@ -212,6 +213,7 @@ def send_error(_, doc_id, message, fatal=False):
 
 def patch_pipeline(func):
     """Jumbo patch method to mock entire processing pipeline."""
+    # pylint: disable=too-many-locals, invalid-name
 
     ENVIRONMENT = "documentcloud.common.environment"
     SERVERLESS = "documentcloud.common.serverless"
@@ -278,6 +280,7 @@ def patch_pipeline(func):
         mock_page_extracted,
         mock_page_ocrd,
     ):
+        # pylint: disable=too-many-arguments
         # Patch Celery config
         initial_eager = celery_app.conf.task_always_eager
         celery_app.conf.task_always_eager = True

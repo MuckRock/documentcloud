@@ -32,8 +32,11 @@ else:
     from common.serverless import utils
 
     # only initialize sentry on serverless
+    # pylint: disable=import-error
     import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
+
+    # pylint: enable=import-error
 
     sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
 
