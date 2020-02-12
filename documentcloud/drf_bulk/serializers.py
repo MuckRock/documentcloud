@@ -5,9 +5,11 @@ from rest_framework import serializers
 
 class BulkListSerializer(serializers.ListSerializer):
     def update(self, instance, validated_data):
+        id_attr = getattr(self.child.Meta, "update_lookup_field", "id")
+
         # Maps for id->instance and id->data item.
-        obj_mapping = {obj.id: obj for obj in instance}
-        data_mapping = {item["id"]: item for item in validated_data}
+        obj_mapping = {getattr(obj, id_attr): obj for obj in instance}
+        data_mapping = {item[id_attr]: item for item in validated_data}
 
         # Perform creations and updates.
         ret = []

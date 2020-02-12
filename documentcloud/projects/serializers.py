@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 # DocumentCloud
 from documentcloud.documents.models import Document
+from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.users.models import User
 
@@ -34,6 +35,8 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectMembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectMembership
+        list_serializer_class = BulkListSerializer
+        update_lookup_field = "document"
         fields = ["document", "edit_access"]
         extra_kwargs = {
             "document": {"queryset": Document.objects.none()},
@@ -48,15 +51,18 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
                 request.user
             )
 
-    def update(self, instance, validated_data):
-        if validated_data.get("document", instance.document) != instance.document:
-            raise serializers.ValidationError("You may not update `document`")
-        return super().update(instance, validated_data)
-
     def validate_document(self, value):
+        if (
+            # if bulk update, will be a query set, we do not need to validate
+            # if creation, will be None, do not need to validate
+            isinstance(self.instance, ProjectMembership)
+            and self.instance.document != value
+        ):
+            raise serializers.ValidationError("You may not update `document`")
+
         view = self.context.get("view")
         project = Project.objects.get(pk=view.kwargs["project_pk"])
-        if project.documents.filter(pk=value.pk).exists():
+        if not self.instance and project.documents.filter(pk=value.pk).exists():
             raise serializers.ValidationError(
                 f"You may not add document {value.pk} to this project more than once"
             )
@@ -64,10 +70,11 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        if self.instance:
+        if isinstance(self.instance, ProjectMembership):
             document = self.instance.document
         else:
             document = attrs["document"]
+
         if attrs.get("edit_access") and not request.user.has_perm(
             "documents.change_document", document
         ):

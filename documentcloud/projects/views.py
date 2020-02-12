@@ -10,6 +10,7 @@ import django_filters
 from documentcloud.core.filters import ModelMultipleChoiceFilter
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_index
+from documentcloud.drf_bulk.views import BulkModelMixin
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.projects.serializers import (
     CollaborationSerializer,
@@ -51,7 +52,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
-class ProjectMembershipViewSet(viewsets.ModelViewSet):
+class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
     serializer_class = ProjectMembershipSerializer
     queryset = ProjectMembership.objects.none()
     lookup_field = "document_id"
@@ -73,6 +74,7 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
                 "You do not have permission to add documents to this project"
             )
         serializer.save(project=project)
+        # XXX make this work for bulk
         transaction.on_commit(
             lambda: solr_index.delay(
                 serializer.data["document"],
@@ -97,6 +99,13 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
                 field_updates={"projects": "remove"},
             )
         )
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = ProjectMembership
+            fields = {"document_id": ["in"]}
+
+    filterset_class = Filter
 
 
 class CollaborationViewSet(

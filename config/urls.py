@@ -11,7 +11,7 @@ from rest_framework import permissions
 # Third Party
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
-from rest_framework_nested import routers
+from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
 from documentcloud.core.views import FileServer
@@ -25,7 +25,7 @@ from documentcloud.documents.views import (
     RedactionViewSet,
     SectionViewSet,
 )
-from documentcloud.drf_bulk.routers import BulkRouter
+from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
@@ -46,13 +46,18 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
-router = BulkRouter()
+
+class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
+    pass
+
+
+router = BulkDefaultRouter()
 router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
 router.register("users", UserViewSet)
 
-documents_router = routers.NestedDefaultRouter(router, "documents", lookup="document")
+documents_router = NestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityViewSet)
@@ -61,7 +66,7 @@ documents_router.register("errors", DocumentErrorViewSet)
 documents_router.register("data", DataViewSet, basename="data")
 documents_router.register("redactions", RedactionViewSet, basename="redactions")
 
-projects_router = routers.NestedDefaultRouter(router, "projects", lookup="project")
+projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
