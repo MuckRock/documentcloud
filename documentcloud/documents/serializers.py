@@ -9,7 +9,6 @@ import logging
 import sys
 
 # Third Party
-import requests
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelSerializer
 
@@ -26,6 +25,7 @@ from documentcloud.documents.models import (
     Note,
     Section,
 )
+from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.projects.serializers import ProjectSerializer
 from documentcloud.users.serializers import UserSerializer
@@ -40,30 +40,6 @@ class PageNumberValidationMixin:
         if value >= document.page_count or value < 0:
             raise serializers.ValidationError("Must be a valid page for the document")
         return value
-
-
-class DocumentListSerializer(serializers.ListSerializer):
-    def update(self, instance, validated_data):
-        # Maps for id->instance and id->data item.
-        doc_mapping = {doc.id: doc for doc in instance}
-        data_mapping = {item["id"]: item for item in validated_data}
-
-        # Perform creations and updates.
-        ret = []
-        for doc_id, data in data_mapping.items():
-            doc = doc_mapping.get(doc_id)
-            if doc:
-                ret.append(self.child.update(doc, data))
-
-        return ret
-
-    def validate(self, attrs):
-        if len(attrs) > settings.REST_BULK_LIMIT:
-            raise serializers.ValidationError(
-                f"Bulk API operations are limited to {settings.REST_BULK_LIMIT} "
-                "documents at a time"
-            )
-        return attrs
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):
@@ -104,7 +80,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     class Meta:
         model = Document
-        list_serializer_class = DocumentListSerializer
+        list_serializer_class = BulkListSerializer
         fields = [
             "id",
             "access",
