@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 
 class BulkCreateModelMixin:
-    def create(self, request):
+    def create(self, request, *args, **kwargs):
         """Handle single and bulk creations"""
         if isinstance(request.data, list):
             serializer = self.get_serializer(data=request.data, many=True)
@@ -12,7 +12,7 @@ class BulkCreateModelMixin:
             self.bulk_perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return super().create(request)
+            return super().create(request, *args, **kwargs)
 
     def bulk_perform_create(self, serializer):
         return self.perform_create(serializer)

@@ -120,6 +120,18 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_bulk(self, client, project):
+        """Add multiple documents to a project"""
+        documents = DocumentFactory.create_batch(2)
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/",
+            [{"document": d.pk} for d in documents],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.documents.count() == 2
+
     def test_retrieve(self, client, document):
         """Test retrieving a document from project"""
         project = ProjectFactory(documents=[document])
@@ -133,14 +145,13 @@ class TestProjectMembershipAPI:
     def test_update(self, client, document):
         """Test updating a document in a project"""
         project = ProjectFactory(user=document.user, documents=[document])
-        projectmembership = project.projectmembership_set.get(document=document)
         client.force_authenticate(user=project.user)
         response = client.patch(
             f"/api/projects/{project.pk}/documents/{document.pk}/",
             {"edit_access": True},
         )
         assert response.status_code == status.HTTP_200_OK
-        projectmembership.refresh_from_db()
+        projectmembership = project.projectmembership_set.get(document=document)
         assert projectmembership.edit_access
 
     def test_update_bad_document(self, client):
@@ -164,6 +175,19 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_bulk(self, client, user):
+        """Test updating a document in a project"""
+        documents = DocumentFactory.create_batch(2, user=user)
+        project = ProjectFactory(user=user, documents=documents)
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/documents/",
+            [{"document": d.pk, "edit_access": True} for d in documents],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert project.projectmembership_set.filter(edit_access=True).count() == 2
+
     def test_destroy(self, client, document):
         """Test removing a document from a project"""
         project = ProjectFactory(user=document.user, documents=[document])
@@ -178,6 +202,18 @@ class TestProjectMembershipAPI:
         client.force_authenticate(user=user)
         response = client.delete(f"/api/projects/{project.pk}/documents/{document.pk}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_destroy_bulk(self, client, user):
+        """Test removing a document from a project"""
+        documents = DocumentFactory.create_batch(3, user=user)
+        project = ProjectFactory(user=user, documents=documents)
+        client.force_authenticate(user=user)
+        doc_ids = ",".join(str(d.pk) for d in documents[:2])
+        response = client.delete(
+            f"/api/projects/{project.pk}/documents/?document_id__in={doc_ids}"
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert project.documents.count() == 1
 
 
 @pytest.mark.django_db()
