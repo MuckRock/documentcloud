@@ -50,6 +50,7 @@ from documentcloud.documents.tasks import (
     solr_index,
     update_access,
 )
+from documentcloud.drf_bulk.views import BulkModelMixin
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -57,7 +58,7 @@ from documentcloud.users.models import User
 env = environ.Env()
 
 
-class DocumentViewSet(FlexFieldsModelViewSet):
+class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     permit_list_expands = ["user", "organization", "projects"]
     serializer_class = DocumentSerializer
@@ -86,23 +87,12 @@ class DocumentViewSet(FlexFieldsModelViewSet):
 
         return queryset
 
-    def create(self, request):
-        """Handle single and bulk creations"""
-        if isinstance(request.data, list):
-            serializer = self.get_serializer(data=request.data, many=True)
-            serializer.is_valid(raise_exception=True)
-            self.perform_bulk_create(serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return super().create(request)
-
-    def perform_bulk_create(self, serializer):
-        return self.perform_create(serializer, bulk=True)
-
     @transaction.atomic
-    def perform_create(self, serializer, bulk=False):
+    def perform_create(self, serializer):
 
-        # only support file_url for non-bulk creations
+        bulk = hasattr(serializer, "many") and serializer.many
+
+        # only support file_url for non-bulk creations XXX
         if not bulk:
             file_url = serializer.validated_data.pop("file_url", None)
 
@@ -238,7 +228,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
                     )
                 )
 
-    def bulk_partial_update(self, request):
+    def bulk_partial_update(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         if len(request.data) != len(queryset):
             return Response(
@@ -255,7 +245,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             queryset, data=request.data, many=True, partial=True
         )
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        self.bulk_perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def bulk_destroy(self, request):
@@ -282,8 +272,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
         if errors:
             return Response({"error": errors}, status=status.HTTP_403_FORBIDDEN)
 
-        for document in queryset:
-            self.perform_destroy(document)
+        self.bulk_perform_destroy(queryset)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -14,7 +14,6 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested import routers
 
 # DocumentCloud
-from documentcloud.core.routers import BulkRouter
 from documentcloud.core.views import FileServer
 from documentcloud.documents.views import (
     DataViewSet,
@@ -26,6 +25,7 @@ from documentcloud.documents.views import (
     RedactionViewSet,
     SectionViewSet,
 )
+from documentcloud.drf_bulk.routers import BulkRouter
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
