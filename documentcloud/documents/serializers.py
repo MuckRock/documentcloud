@@ -27,6 +27,7 @@ from documentcloud.documents.models import (
     Section,
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.projects.serializers import ProjectSerializer
 from documentcloud.users.serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "page_count",
             "page_spec",
             "presigned_url",
+            "projects",
             "remaining",
             "slug",
             "source",
@@ -144,8 +146,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "user": {"read_only": True},
         }
         expandable_fields = {
-            "user": (UserSerializer, {"source": "user"}),
-            "organization": (OrganizationSerializer, {"source": "organization"}),
+            "user": (UserSerializer, {}),
+            "organization": (OrganizationSerializer, {}),
+            "projects": (ProjectSerializer, {"many": True}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -271,8 +274,8 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
             "content": {"required": False},
         }
         expandable_fields = {
-            "user": (UserSerializer, {"source": "user"}),
-            "organization": (OrganizationSerializer, {"source": "organization"}),
+            "user": (UserSerializer, {}),
+            "organization": (OrganizationSerializer, {}),
         }
 
     def validate_access(self, value):

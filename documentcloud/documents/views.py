@@ -59,7 +59,7 @@ env = environ.Env()
 
 class DocumentViewSet(FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
-    permit_list_expands = ["user", "organization"]
+    permit_list_expands = ["user", "organization", "projects"]
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
     permission_classes = (
@@ -73,7 +73,7 @@ class DocumentViewSet(FlexFieldsModelViewSet):
             and "processing" in self.request.auth["permissions"]
         )
         # Processing scope can access all documents
-        queryset = Document.objects.all()
+        queryset = Document.objects.prefetch_related("projects")
         if not valid_token:
             queryset = queryset.get_viewable(self.request.user)
 
