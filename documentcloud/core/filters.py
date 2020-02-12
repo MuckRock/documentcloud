@@ -6,7 +6,7 @@ from django.contrib.auth.models import AnonymousUser
 import django_filters
 
 
-class ModelChoiceFilter(django_filters.ModelChoiceFilter):
+class ViewableMixin:
     def __init__(self, *args, **kwargs):
         model = kwargs.pop("model")
 
@@ -18,4 +18,14 @@ class ModelChoiceFilter(django_filters.ModelChoiceFilter):
 
             return model.objects.get_viewable(user)
 
-        super().__init__(queryset=get_viewable, widget=forms.TextInput, *args, **kwargs)
+        super().__init__(queryset=get_viewable, widget=self.widget, *args, **kwargs)
+
+
+class ModelChoiceFilter(ViewableMixin, django_filters.ModelChoiceFilter):
+    widget = forms.TextInput
+
+
+class ModelMultipleChoiceFilter(
+    ViewableMixin, django_filters.ModelMultipleChoiceFilter
+):
+    widget = django_filters.widgets.CSVWidget
