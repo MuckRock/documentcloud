@@ -38,9 +38,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             "organizations": {"read_only": True},
             "username": {"read_only": True},
         }
-        expandable_fields = {
-            "organization": (OrganizationSerializer, {"source": "organization"})
-        }
+        expandable_fields = {"organization": (OrganizationSerializer, {})}
 
     def validate_organization(self, value):
         organization = Organization.objects.filter(pk=value).first()
