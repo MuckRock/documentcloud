@@ -33,6 +33,27 @@ class DocumentQuerySet(models.QuerySet):
                 access=Access.public, status__in=[Status.success, Status.readable]
             )
 
+    def get_editable(self, user):
+        if user.is_authenticated:
+            query = (
+                # you can edit documents you own
+                Q(user=user)
+                # you may edit documents in your projects shared for editing
+                | Q(
+                    projects__collaborators=user,
+                    projects__projectmembership__edit_access=True,
+                )
+                # you can edit organization level documents in your
+                # organization
+                | Q(
+                    access=Access.organization,
+                    organization__in=user.organizations.all(),
+                )
+            )
+            return self.exclude(access=Access.invisible).filter(query).distinct()
+        else:
+            return self.none()
+
 
 class NoteQuerySet(models.QuerySet):
     """Custom queryset for notes"""

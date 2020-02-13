@@ -1,7 +1,8 @@
 # Django
 from django.db import transaction
-from rest_framework import mixins, serializers, viewsets
+from rest_framework import exceptions, mixins, serializers, viewsets
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import SAFE_METHODS
 
 # Third Party
 import django_filters
@@ -65,26 +66,50 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
         )
         return project.projectmembership_set.all()
 
+    def check_edit_project(self):
+        project = Project.objects.get(pk=self.kwargs["project_pk"])
+        if not self.request.user.has_perm("projects.change_project", project):
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit this project"
+            )
+
+    def check_permissions(self, request):
+        """Add an additional check that you can edit to the project before
+        allowing the user to change a document within a project
+        """
+        super().check_permissions(request)
+        if request.method not in SAFE_METHODS:
+            self.check_edit_project()
+
     @transaction.atomic
     def perform_create(self, serializer):
         """Specify the project"""
         project = Project.objects.get(pk=self.kwargs["project_pk"])
-        if not self.request.user.has_perm("projects.change_project", project):
-            raise serializers.ValidationError(
-                "You do not have permission to add documents to this project"
-            )
         serializer.save(project=project)
-        # XXX make this work for bulk
-        transaction.on_commit(
-            lambda: solr_index.delay(
-                serializer.data["document"],
-                solr_document={
-                    "id": serializer.data["document"],
-                    "projects": project.pk,
-                },
-                field_updates={"projects": "add"},
+
+        if hasattr(serializer, "many") and serializer.many:
+            validated_datas = serializer.validated_data
+        else:
+            validated_datas = [serializer.validated_data]
+
+        Document.objects.filter(
+            pk__in=[d["document"].pk for d in validated_datas]
+        ).update(solr_dirty=True)
+        for data in validated_datas:
+            transaction.on_commit(
+                lambda d=data: solr_index.delay(
+                    d["document"].pk,
+                    solr_document={"id": d["document"].pk, "projects": project.pk},
+                    field_updates={"projects": "add"},
+                )
             )
+
+    @transaction.atomic
+    def bulk_perform_destroy(self, objects):
+        Document.objects.filter(pk__in=[o.document.pk for o in objects]).update(
+            solr_dirty=True
         )
+        super().bulk_perform_destroy(objects)
 
     @transaction.atomic
     def perform_destroy(self, instance):
@@ -133,7 +158,7 @@ class CollaborationViewSet(
         """Specify the project"""
         project = Project.objects.get(pk=self.kwargs["project_pk"])
         if not self.request.user.has_perm("projects.change_project", project):
-            raise serializers.ValidationError(
+            raise exceptions.PermissionDenied(
                 "You do not have permission to add collaborators to this project"
             )
 

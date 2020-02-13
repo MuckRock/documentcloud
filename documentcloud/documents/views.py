@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.db import transaction
 from django.db.models.query import Prefetch, QuerySet
-from rest_framework import mixins, parsers, status, viewsets
+from rest_framework import mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -86,6 +86,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             queryset = queryset.select_related("organization")
 
         return queryset
+
+    def filter_update_queryset(self, queryset):
+        return queryset.get_editable(self.request.user)
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -191,10 +194,22 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             process_cancel.delay(instance.pk)
         instance.destroy()
 
+    def check_bulk_destroy_permissions(self, queryset):
+
+        super().check_bulk_destroy_permissions(queryset)
+
+        if "id__in" not in self.request.GET:
+            raise serializers.ValidationError(
+                "May not bulk delete unless you explicitly specify IDs"
+            )
+
+        if len(self.request.GET["id__in"].split(",")) != queryset.count():
+            raise serializers.ValidationError("Could not find all objects to delete")
+
     @transaction.atomic
     def perform_update(self, serializer):
         # work for regular and bulk updates
-        if isinstance(serializer.instance, QuerySet):
+        if hasattr(serializer, "many") and serializer.many:
             instances = serializer.instance
             validated_datas = serializer.validated_data
         else:
@@ -227,54 +242,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                         i.pk, field_updates={f: "set" for f in fields}
                     )
                 )
-
-    def bulk_partial_update(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        if len(request.data) != len(queryset):
-            return Response(
-                {"error": "Bad document ID"}, status=status.HTTP_400_BAD_REQUEST
-            )
-        errors = []
-        for document in queryset:
-            if not request.user.has_perm("documents.change_document", document):
-                errors.append(f"Do not have permission to edit {document.pk}")
-        if errors:
-            return Response({"error": errors}, status=status.HTTP_403_FORBIDDEN)
-
-        serializer = self.get_serializer(
-            queryset, data=request.data, many=True, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        self.bulk_perform_update(serializer)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def bulk_destroy(self, request):
-        if "id__in" not in request.GET:
-            return Response(
-                {"error": "May not bulk delete unless you explicitly specify IDs"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if len(request.GET["id__in"].split(",")) > settings.REST_BULK_LIMIT:
-            return Response(
-                {
-                    "error": "Bulk API operations are limited to "
-                    f"{settings.REST_BULK_LIMIT} documents at a time"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        queryset = self.filter_queryset(self.get_queryset())
-
-        errors = []
-        for document in queryset:
-            if not request.user.has_perm("documents.delete_document", document):
-                errors.append(f"Do not have permission to delete {document.pk}")
-        if errors:
-            return Response({"error": errors}, status=status.HTTP_403_FORBIDDEN)
-
-        self.bulk_perform_destroy(queryset)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get"])
     def search(self, request):

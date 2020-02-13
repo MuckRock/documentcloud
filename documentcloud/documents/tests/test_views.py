@@ -233,19 +233,14 @@ class TestDocumentAPI:
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
-        documents = DocumentFactory.create_batch(2, user=user, access=Access.private)
+        documents = DocumentFactory.create_batch(3, user=user, access=Access.private)
         response = client.patch(
             f"/api/documents/",
-            [
-                {"id": documents[0].pk, "access": "public"},
-                {"id": documents[1].pk, "access": "public"},
-            ],
+            [{"id": d.pk, "access": "public"} for d in documents[:2]],
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
-        for document in documents:
-            document.refresh_from_db()
-            assert document.access == Access.public
+        assert Document.objects.filter(access=Access.public).count() == 2
 
     def test_bulk_update_bad(self, client, user):
         """Test updating multiple documents, without permissions for all"""
@@ -260,7 +255,7 @@ class TestDocumentAPI:
             ],
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         good_document.refresh_from_db()
         assert good_document.access == Access.public
         bad_document.refresh_from_db()
@@ -336,7 +331,7 @@ class TestDocumentAPI:
         response = client.delete(
             f"/api/documents/?id__in={good_document.pk},{bad_document.pk}"
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         good_document.refresh_from_db()
         assert good_document.status != Status.deleted
         bad_document.refresh_from_db()
@@ -543,7 +538,7 @@ class TestNoteAPI:
                 "access": "public",
             },
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_private(self, client, user):
         """Create a private note"""
@@ -649,7 +644,7 @@ class TestNoteAPI:
         response = client.patch(
             f"/api/documents/{note.document.pk}/notes/{note.pk}/", {"access": "public"}
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_destroy(self, client, note):
         """Test destroying a document"""
@@ -690,7 +685,7 @@ class TestSectionAPI:
             f"/api/documents/{document.pk}/sections/",
             {"title": "Test", "page_number": 1},
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_bad_page(self, client):
         """You may not create sections on non existent pages"""

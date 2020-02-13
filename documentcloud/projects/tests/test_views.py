@@ -97,7 +97,7 @@ class TestProjectMembershipAPI:
             f"/api/projects/{project.pk}/documents/",
             {"document": document.pk, "edit_access": True},
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_bad_collaborator(self, client, user, project, document):
         """You may not add a document to a project you are not a collaborator on"""
@@ -105,7 +105,7 @@ class TestProjectMembershipAPI:
         response = client.post(
             f"/api/projects/{project.pk}/documents/", {"document": document.pk}
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_bad_duplicate(self, client, project, document):
         """You may not add the same document to a project more than once"""
@@ -173,7 +173,7 @@ class TestProjectMembershipAPI:
             f"/api/projects/{project.pk}/documents/{document.pk}/",
             {"edit_access": True},
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_bulk(self, client, user):
         """Test updating a document in a project"""
@@ -214,6 +214,17 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert project.documents.count() == 1
+
+    def test_destroy_bulk_bad(self, client, user):
+        """Test removing a document from a project you do not have permission to"""
+        documents = DocumentFactory.create_batch(3, user=user)
+        project = ProjectFactory(documents=documents)
+        client.force_authenticate(user=user)
+        doc_ids = ",".join(str(d.pk) for d in documents)
+        response = client.delete(
+            f"/api/projects/{project.pk}/documents/?document_id__in={doc_ids}"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db()

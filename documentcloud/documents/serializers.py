@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 
 # Standard Library
 import logging
@@ -108,10 +108,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "created_at": {"read_only": True},
             "data": {"read_only": True},
             "description": {"required": False},
-            "id": {
-                "read_only": False,
-                "required": False,
-            },  # XXX make sure doesnt affect non bulk
+            "id": {"read_only": False, "required": False},
             "language": {"default": Language.english},
             "organization": {"read_only": True},
             "page_count": {"read_only": True},
@@ -261,7 +258,7 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
         if value in (Access.public, Access.organization) and not request.user.has_perm(
             "documents.change_document", document
         ):
-            raise serializers.ValidationError(
+            raise exceptions.PermissionDenied(
                 "You may only create public or draft notes on documents you have "
                 "edit access to"
             )
@@ -309,7 +306,7 @@ class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
         view = self.context.get("view")
         document = Document.objects.get(pk=view.kwargs["document_pk"])
         if not request.user.has_perm("documents.change_document", document):
-            raise serializers.ValidationError(
+            raise exceptions.PermissionDenied(
                 "You may only create sections on documents you have edit access to"
             )
         return attrs
