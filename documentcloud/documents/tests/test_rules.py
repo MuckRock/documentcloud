@@ -53,36 +53,37 @@ def test_document_rules():
     ProjectFactory(collaborators=[edit_collaborator], edit_documents=documents)
     ProjectFactory(collaborators=[view_collaborator], documents=documents)
 
-    for user, document, can_view, can_change in [
-        (anonymous, public_document, True, False),
-        (anonymous, public_pending_document, False, False),
-        (anonymous, organization_document, False, False),
-        (anonymous, private_document, False, False),
-        (anonymous, invisible_document, False, False),
-        (owner, public_document, True, True),
-        (owner, public_pending_document, True, True),
-        (owner, organization_document, True, True),
-        (owner, private_document, True, True),
-        (owner, invisible_document, False, False),
-        (edit_collaborator, public_document, True, True),
-        (edit_collaborator, public_pending_document, True, True),
-        (edit_collaborator, organization_document, True, True),
-        (edit_collaborator, private_document, True, True),
-        (edit_collaborator, invisible_document, False, False),
-        (view_collaborator, public_document, True, False),
-        (view_collaborator, public_pending_document, True, False),
-        (view_collaborator, organization_document, True, False),
-        (view_collaborator, private_document, True, False),
-        (view_collaborator, invisible_document, False, False),
-        (organization_member, public_document, True, True),
-        (organization_member, public_pending_document, True, True),
-        (organization_member, organization_document, True, True),
-        (organization_member, private_document, False, False),
-        (organization_member, invisible_document, False, False),
+    for user, document, can_view, can_change, can_share in [
+        (anonymous, public_document, True, False, False),
+        (anonymous, public_pending_document, False, False, False),
+        (anonymous, organization_document, False, False, False),
+        (anonymous, private_document, False, False, False),
+        (anonymous, invisible_document, False, False, False),
+        (owner, public_document, True, True, True),
+        (owner, public_pending_document, True, True, True),
+        (owner, organization_document, True, True, True),
+        (owner, private_document, True, True, True),
+        (owner, invisible_document, False, False, False),
+        (edit_collaborator, public_document, True, True, False),
+        (edit_collaborator, public_pending_document, True, True, False),
+        (edit_collaborator, organization_document, True, True, False),
+        (edit_collaborator, private_document, True, True, False),
+        (edit_collaborator, invisible_document, False, False, False),
+        (view_collaborator, public_document, True, False, False),
+        (view_collaborator, public_pending_document, False, False, False),
+        (view_collaborator, organization_document, False, False, False),
+        (view_collaborator, private_document, False, False, False),
+        (view_collaborator, invisible_document, False, False, False),
+        (organization_member, public_document, True, True, True),
+        (organization_member, public_pending_document, True, True, True),
+        (organization_member, organization_document, True, True, True),
+        (organization_member, private_document, False, False, False),
+        (organization_member, invisible_document, False, False, False),
     ]:
         assert user.has_perm("documents.view_document", document) is can_view
         assert user.has_perm("documents.change_document", document) is can_change
-        assert user.has_perm("documents.delete_document", document) is can_change
+        assert user.has_perm("documents.share_document", document) is can_share
+        assert user.has_perm("documents.delete_document", document) is can_share
 
 
 @pytest.mark.django_db()

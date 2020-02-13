@@ -85,10 +85,56 @@ class TestProjectMembershipAPI:
         """Add a document to a project"""
         client.force_authenticate(user=project.user)
         response = client.post(
-            f"/api/projects/{project.pk}/documents/", {"document": document.pk}
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk},
+            format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert project.documents.filter(pk=document.pk).exists()
+        assert project.projectmembership_set.filter(
+            document=document, edit_access=False
+        ).exists()
+
+    def test_create_implicit_edit(self, client, project):
+        """Add a document to a project with edit access"""
+        document = DocumentFactory(user=project.user)
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.projectmembership_set.filter(
+            document=document, edit_access=True
+        ).exists()
+
+    def test_create_explicit_edit(self, client, project):
+        """Add a document to a project with explicit edit access"""
+        document = DocumentFactory(user=project.user)
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk, "edit_access": True},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.projectmembership_set.filter(
+            document=document, edit_access=True
+        ).exists()
+
+    def test_create_explicit_no_edit(self, client, project):
+        """Add a document to a project with explicit no edit access"""
+        document = DocumentFactory(user=project.user)
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk, "edit_access": False},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.projectmembership_set.filter(
+            document=document, edit_access=False
+        ).exists()
 
     def test_create_bad_edit_access(self, client, project, document):
         """You may not enable edit access in a project if you do not have edit access"""
@@ -96,6 +142,7 @@ class TestProjectMembershipAPI:
         response = client.post(
             f"/api/projects/{project.pk}/documents/",
             {"document": document.pk, "edit_access": True},
+            format="json",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -103,7 +150,9 @@ class TestProjectMembershipAPI:
         """You may not add a document to a project you are not a collaborator on"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/projects/{project.pk}/documents/", {"document": document.pk}
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk},
+            format="json",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -111,7 +160,9 @@ class TestProjectMembershipAPI:
         """You may not add the same document to a project more than once"""
         client.force_authenticate(user=project.user)
         response = client.post(
-            f"/api/projects/{project.pk}/documents/", {"document": document.pk}
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk},
+            format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert project.documents.filter(pk=document.pk).exists()
@@ -122,7 +173,9 @@ class TestProjectMembershipAPI:
 
     def test_create_bulk(self, client, project):
         """Add multiple documents to a project"""
-        documents = DocumentFactory.create_batch(2)
+        # one the document you own should be added with edit access
+        # the other one should not
+        documents = [DocumentFactory(user=project.user), DocumentFactory()]
         client.force_authenticate(user=project.user)
         response = client.post(
             f"/api/projects/{project.pk}/documents/",
@@ -130,7 +183,14 @@ class TestProjectMembershipAPI:
             format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert project.documents.count() == 2
+        assert (
+            project.documents.filter(projectmembership__edit_access=True).first()
+            == documents[0]
+        )
+        assert (
+            project.documents.filter(projectmembership__edit_access=False).first()
+            == documents[1]
+        )
 
     def test_retrieve(self, client, document):
         """Test retrieving a document from project"""

@@ -40,7 +40,7 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         fields = ["document", "edit_access"]
         extra_kwargs = {
             "document": {"queryset": Document.objects.none()},
-            "edit_access": {"default": False},
+            "edit_access": {"default": None},
         }
 
     def __init__(self, *args, **kwargs):
@@ -75,12 +75,16 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         else:
             document = attrs["document"]
 
-        if attrs.get("edit_access") and not request.user.has_perm(
-            "documents.change_document", document
-        ):
+        edit_access = attrs.get("edit_access")
+        can_share = request.user.has_perm("documents.share_document", document)
+        # if edit access is not set, default to sharing if you have permission to
+        if edit_access is None:
+            attrs["edit_access"] = can_share
+        # if explicitly set to true, check permissions
+        elif edit_access is True and not can_share:
             raise exceptions.PermissionDenied(
                 "You may only set `edit_access` to true if you have permission "
-                "to edit `document`"
+                "to share `document`"
             )
         return attrs
 
