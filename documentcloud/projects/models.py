@@ -7,7 +7,7 @@ from autoslug.fields import AutoSlugField
 
 # DocumentCloud
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
-from documentcloud.projects.querysets import ProjectQuerySet
+from documentcloud.projects.querysets import ProjectMembershipQuerySet, ProjectQuerySet
 
 
 class Project(models.Model):
@@ -73,6 +73,8 @@ class Project(models.Model):
 
 class ProjectMembership(models.Model):
     """A document belonging to a project"""
+
+    objects = ProjectMembershipQuerySet.as_manager()
 
     project = models.ForeignKey(
         verbose_name=_("project"),
