@@ -175,6 +175,16 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_update_bad_collaborator(self, client, document, user):
+        """You may not update a document in a project if you are not a collaborator"""
+        project = ProjectFactory(documents=[document])
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/documents/{document.pk}/",
+            {"edit_access": True},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_update_bulk(self, client, user):
         """Test updating a document in a project"""
         documents = DocumentFactory.create_batch(2, user=user)
