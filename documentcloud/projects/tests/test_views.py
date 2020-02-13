@@ -8,6 +8,7 @@ import json
 import pytest
 
 # DocumentCloud
+from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.organizations.tests.factories import OrganizationFactory
 from documentcloud.projects.models import Project
@@ -76,6 +77,17 @@ class TestProjectMembershipAPI:
         """List documents in a project"""
         size = 10
         project = ProjectFactory(documents=DocumentFactory.create_batch(size))
+        response = client.get(f"/api/projects/{project.pk}/documents/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == size
+
+    def test_list_bad(self, client):
+        """List documents in a project including some you cannot view"""
+        size = 10
+        documents = DocumentFactory.create_batch(size, access=Access.public)
+        documents.extend(DocumentFactory.create_batch(size, access=Access.private))
+        project = ProjectFactory(documents=documents)
         response = client.get(f"/api/projects/{project.pk}/documents/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
@@ -202,6 +214,13 @@ class TestProjectMembershipAPI:
         serializer = ProjectMembershipSerializer(projectmembership)
         assert response_json == serializer.data
 
+    def test_retrieve_bad(self, client):
+        """Test retrieving a document from project"""
+        document = DocumentFactory(access=Access.private)
+        project = ProjectFactory(documents=[document])
+        response = client.get(f"/api/projects/{project.pk}/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
     def test_update(self, client, document):
         """Test updating a document in a project"""
         project = ProjectFactory(user=document.user, documents=[document])
@@ -303,6 +322,7 @@ class TestCollaborationAPI:
         """List users in a project"""
         size = 10
         project = ProjectFactory(collaborators=UserFactory.create_batch(size))
+        client.force_authenticate(user=project.user)
         response = client.get(f"/api/projects/{project.pk}/users/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
@@ -349,6 +369,7 @@ class TestCollaborationAPI:
     def test_retrieve(self, client, user):
         """Test retrieving a user from project"""
         project = ProjectFactory(collaborators=[user])
+        client.force_authenticate(user=project.user)
         response = client.get(f"/api/projects/{project.pk}/users/{user.pk}/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
@@ -368,4 +389,4 @@ class TestCollaborationAPI:
         """You cannot remove a user from a project you are not a collaborator on"""
         client.force_authenticate(user=user)
         response = client.delete(f"/api/projects/{project.pk}/users/{project.user.pk}/")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_404_NOT_FOUND

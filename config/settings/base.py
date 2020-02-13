@@ -282,7 +282,7 @@ LOGGING = {
 }
 if DEBUG:
     LOGGING["loggers"] = {
-        "rules": {"handlers": ["console"], "level": "DEBUG", "propagate": True}
+        "rules": {"handlers": ["console"], "level": "DEBUG", "propagate": False}
     }
 
 # Celery

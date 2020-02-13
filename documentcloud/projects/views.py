@@ -64,7 +64,7 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        return project.projectmembership_set.all()
+        return project.projectmembership_set.get_viewable(self.request.user)
 
     def check_edit_project(self):
         project = Project.objects.get(pk=self.kwargs["project_pk"])
@@ -152,7 +152,10 @@ class CollaborationViewSet(
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        return project.collaboration_set.all()
+        if self.request.user.has_perm("projects.change_project", project):
+            return project.collaboration_set.all()
+        else:
+            return project.collaboration_set.none()
 
     def perform_create(self, serializer):
         """Specify the project"""
