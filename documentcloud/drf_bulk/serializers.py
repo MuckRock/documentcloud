@@ -7,21 +7,25 @@ class BulkListSerializer(serializers.ListSerializer):
     def update(self, instance, validated_data):
         id_attr = getattr(self.child.Meta, "update_lookup_field", "id")
 
-        # Maps for id->instance and id->data item.
-        obj_mapping = {getattr(obj, id_attr): obj for obj in instance}
         data_mapping = {item[id_attr]: item for item in validated_data}
 
-        # Perform creations and updates.
-        ret = []
-        for obj_id, data in data_mapping.items():
-            obj = obj_mapping.get(obj_id)
-            if obj:
-                ret.append(self.child.update(obj, data))
+        # instance is a queryset for bulk updates - filter it down
+        # to the relevant instances
+        queryset = instance.filter(**{f"{id_attr}__in": data_mapping.keys()})
 
-        return ret
+        if len(data_mapping) != len(queryset):
+            raise serializers.ValidationError("Could not find all objects to update.")
+
+        updated_objects = []
+        for obj in queryset:
+            obj_id = getattr(obj, id_attr)
+            data = data_mapping.get(obj_id)
+            updated_objects.append(self.child.update(obj, data))
+
+        return updated_objects
 
     def validate(self, attrs):
-        if len(attrs) > settings.REST_BULK_LIMIT:
+        if settings.REST_BULK_LIMIT and len(attrs) > settings.REST_BULK_LIMIT:
             raise serializers.ValidationError(
                 f"Bulk API operations are limited to {settings.REST_BULK_LIMIT} "
                 "at a time"

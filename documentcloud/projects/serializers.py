@@ -1,6 +1,6 @@
 # Django
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import serializers
+from rest_framework import exceptions, serializers
 
 # DocumentCloud
 from documentcloud.documents.models import Document
@@ -78,7 +78,7 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         if attrs.get("edit_access") and not request.user.has_perm(
             "documents.change_document", document
         ):
-            raise serializers.ValidationError(
+            raise exceptions.PermissionDenied(
                 "You may only set `edit_access` to true if you have permission "
                 "to edit `document`"
             )

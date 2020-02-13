@@ -1,5 +1,6 @@
 # Django
-from rest_framework import status
+from django.conf import settings
+from rest_framework import serializers, status
 from rest_framework.response import Response
 
 
@@ -19,11 +20,15 @@ class BulkCreateModelMixin:
 
 
 class BulkUpdateModelMixin:
+    def filter_update_queryset(self, queryset):
+        """This should filter for object you have permission to update"""
+        return queryset
+
     def bulk_update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
 
         serializer = self.get_serializer(
-            self.filter_queryset(self.get_queryset()),
+            self.filter_update_queryset(self.filter_queryset(self.get_queryset())),
             data=request.data,
             many=True,
             partial=partial,
@@ -41,13 +46,22 @@ class BulkUpdateModelMixin:
 
 
 class BulkDestroyModelMixin:
-    def allow_bulk_destroy(self, queryset):
-        return True
+    def filter_delete_queryset(self, queryset):
+        """This should filter for object you have permission to delete"""
+        return queryset
+
+    def check_bulk_destroy_permissions(self, queryset):
+        if settings.REST_BULK_LIMIT and queryset.count() > settings.REST_BULK_LIMIT:
+            raise serializers.ValidationError(
+                f"Bulk API operations are limited to {settings.REST_BULK_LIMIT} "
+                "at a time"
+            )
 
     def bulk_destroy(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        if not self.allow_bulk_destroy(queryset):
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        queryset = self.filter_delete_queryset(
+            self.filter_queryset(self.get_queryset())
+        )
+        self.check_bulk_destroy_permissions(queryset)
 
         self.bulk_perform_destroy(queryset)
 
@@ -59,4 +73,5 @@ class BulkDestroyModelMixin:
 
 
 class BulkModelMixin(BulkCreateModelMixin, BulkUpdateModelMixin, BulkDestroyModelMixin):
-    pass
+    def filter_delete_queryset(self, queryset):
+        return self.filter_update_queryset(queryset)
