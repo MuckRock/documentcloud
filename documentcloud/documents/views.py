@@ -95,16 +95,23 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         bulk = hasattr(serializer, "many") and serializer.many
 
-        # only support file_url for non-bulk creations XXX
-        if not bulk:
-            file_url = serializer.validated_data.pop("file_url", None)
+        if bulk:
+            file_urls = [d.pop("file_url", None) for d in serializer.validated_data]
+        else:
+            file_urls = [serializer.validated_data.pop("file_url", None)]
 
-        document = serializer.save(
+        documents = serializer.save(
             user=self.request.user, organization=self.request.user.organization
         )
 
-        if not bulk and file_url is not None:
-            transaction.on_commit(lambda: fetch_file_url.delay(file_url, document.pk))
+        if not bulk:
+            documents = [documents]
+
+        for document, file_url in zip(documents, file_urls):
+            if file_url is not None:
+                transaction.on_commit(
+                    lambda: fetch_file_url.delay(file_url, document.pk)
+                )
 
     @action(detail=True, methods=["post"])
     def process(self, request, pk=None):

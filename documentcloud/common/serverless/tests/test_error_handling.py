@@ -10,6 +10,7 @@ from functools import wraps
 from unittest.mock import call, patch
 
 # Third Party
+import pytest
 from sharedmock.mock import SharedMock
 
 # DocumentCloud
@@ -133,6 +134,7 @@ def timeout_cfunctype(data):
         return doc.load_page(1)
 
 
+@pytest.mark.slow
 class TestErrorHandling:
     @patch(
         "documentcloud.common.serverless.tests.test_error_handling.communicate_data",

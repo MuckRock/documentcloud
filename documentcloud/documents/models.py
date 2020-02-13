@@ -118,6 +118,10 @@ class Document(models.Model):
         ordering = ("created_at",)
         permissions = (
             (
+                "share_document",
+                "Can share edit access to the document through a project",
+            ),
+            (
                 "process_document",
                 "Document processor - can set `page_count`, `page_spec`, and "
                 "`status` through the API",
