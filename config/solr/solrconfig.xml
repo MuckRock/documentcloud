@@ -704,19 +704,20 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 <str name="hl.fl">title source description page_no_*</str>
                 <str name="fl">
                   id
-                  user
-                  organization
                   access
-                  status
-                  title
-                  slug
-                  source
+                  created_at
+                  data_*
                   description
                   language
-                  created_at
-                  updated_at
+                  organization
                   page_count
-                  data_*
+                  projects
+                  slug
+                  source
+                  status
+                  title
+                  updated_at
+                  user
                 </str>
               </lst>
             </requestHandler>
