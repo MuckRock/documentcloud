@@ -2,6 +2,9 @@
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
 
+# Third Party
+from rest_flex_fields.serializers import FlexFieldsModelSerializer
+
 # DocumentCloud
 from documentcloud.documents.models import Document
 from documentcloud.drf_bulk.serializers import BulkListSerializer
@@ -32,7 +35,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         }
 
 
-class ProjectMembershipSerializer(serializers.ModelSerializer):
+class ProjectMembershipSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = ProjectMembership
         list_serializer_class = BulkListSerializer
@@ -42,6 +45,7 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
             "document": {"queryset": Document.objects.none()},
             "edit_access": {"default": None},
         }
+        expandable_fields = {"document": ("documents.DocumentSerializer", {})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

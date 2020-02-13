@@ -6,6 +6,7 @@ from rest_framework.permissions import SAFE_METHODS
 
 # Third Party
 import django_filters
+from rest_flex_fields.utils import is_expanded
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
@@ -57,6 +58,7 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
     serializer_class = ProjectMembershipSerializer
     queryset = ProjectMembership.objects.none()
     lookup_field = "document_id"
+    permit_list_expands = ["document"]
 
     def get_queryset(self):
         """Only fetch projects viewable to this user"""
@@ -64,7 +66,10 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        return project.projectmembership_set.get_viewable(self.request.user)
+        queryset = project.projectmembership_set.get_viewable(self.request.user)
+        if is_expanded(self.request, "document"):
+            queryset = queryset.select_related("document")
+        return queryset
 
     def check_edit_project(self):
         project = Project.objects.get(pk=self.kwargs["project_pk"])
