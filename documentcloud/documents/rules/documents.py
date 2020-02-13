@@ -55,8 +55,8 @@ def is_collaborator(user, document):
 
 
 # share access is for adding a document to a project with edit access
-# it is stricter then edit access to allow people to revoke edit access
-# through a project without the possibility of you propogating the edit
+# it is stricter than edit access to allow people to revoke edit access
+# through a project without the possibility of you propagating the edit
 # access through your own projects
 # you must be logged in to have share access
 # nobody has any access to invisible documents
