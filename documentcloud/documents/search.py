@@ -116,7 +116,7 @@ def _access_filter(user):
             f" OR (access:organization AND organization:({organizations}))"
         )
         if projects:
-            access_filter += f" OR (projects:{projects})"
+            access_filter += f" OR (projects:({projects}))"
         return ["!access:invisible", access_filter]
     else:
         return ["access:public", "status:(success OR readable)"]
