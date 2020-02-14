@@ -163,11 +163,13 @@ def _format_response(results, query_params, page, per_page):
     else:
         previous_url = None
 
+    count = results.hits
+    results = _add_asset_url(_format_data(_format_highlights(results)))
     response = {
-        "count": results.hits,
+        "count": count,
         "next": next_url,
         "previous": previous_url,
-        "results": _format_data(_format_highlights(results)),
+        "results": results,
     }
     return response
 
@@ -194,3 +196,12 @@ def _format_highlights(results):
     """Put the highlight data with the corresponding document"""
 
     return [{**r, "highlights": results.highlighting.get(r["id"])} for r in results]
+
+
+def _add_asset_url(results):
+    for result in results:
+        if result["access"] == "public" and result["status"] in ("success", "readable"):
+            result["asset_url"] = settings.PUBLIC_ASSET_URL
+        else:
+            result["asset_url"] = settings.PRIVATE_ASSET_URL
+    return results
