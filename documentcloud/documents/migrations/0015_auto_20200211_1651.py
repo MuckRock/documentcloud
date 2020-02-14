@@ -10,6 +10,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            "ALTER SEQUENCE documents_document_id_seq RESTART WITH 10000000"
-        )
+            "ALTER SEQUENCE documents_document_id_seq RESTART WITH 20000000"
+        ),
+        migrations.RunSQL("ALTER SEQUENCE documents_note_id_seq RESTART WITH 2000000"),
     ]
