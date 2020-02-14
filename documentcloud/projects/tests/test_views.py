@@ -11,6 +11,7 @@ import pytest
 from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.organizations.tests.factories import OrganizationFactory
+from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Project
 from documentcloud.projects.serializers import (
     CollaborationSerializer,
@@ -62,6 +63,24 @@ class TestProjectAPI:
         assert response.status_code == status.HTTP_200_OK
         project.refresh_from_db()
         assert project.title == title
+
+    def test_update_non_owner_admin(self, client, user):
+        """Test updating a project by a non owner admin"""
+        project = ProjectFactory(admin_collaborators=[user])
+        client.force_authenticate(user=user)
+        title = "New Title"
+        response = client.patch(f"/api/projects/{project.pk}/", {"title": title})
+        assert response.status_code == status.HTTP_200_OK
+        project.refresh_from_db()
+        assert project.title == title
+
+    def test_update_bad(self, client, user):
+        """Test updating a project by a edit collaborator"""
+        project = ProjectFactory(edit_collaborators=[user])
+        client.force_authenticate(user=user)
+        title = "New Title"
+        response = client.patch(f"/api/projects/{project.pk}/", {"title": title})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_destroy(self, client, project):
         """Test destroying a project"""
@@ -340,10 +359,23 @@ class TestCollaborationAPI:
 
     def test_create_bad_collaborator(self, client, project, user):
         """You may not add a collaborator to a project you are not a collaborator on"""
-        OrganizationFactory(members=[project.user, user])
         client.force_authenticate(user=user)
-        response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        response = client.post(
+            f"/api/projects/{project.pk}/users/", {"email": user.email}
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_bad_edit_collaborator(self, client, user):
+        """You may not add a collaborator to a project you are just an edit
+        collaborator on
+        """
+        project = ProjectFactory(edit_collaborators=[user])
+        other_user = UserFactory()
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/projects/{project.pk}/users/", {"email": other_user.email}
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_bad_email(self, client, project):
         """Trying adding an email without a user"""
@@ -377,9 +409,29 @@ class TestCollaborationAPI:
         serializer = CollaborationSerializer(collaboration)
         assert response_json == serializer.data
 
+    def test_update(self, client, user):
+        """Test updating a collaborator in a project"""
+        project = ProjectFactory(collaborators=[user])
+        client.force_authenticate(user=project.user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/users/{user.pk}/", {"access": "admin"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        collaborator = project.collaboration_set.get(user=user)
+        assert collaborator.access == CollaboratorAccess.admin
+
+    def test_update_bad_user(self, client, user):
+        """You may not change a user on a Collaboration"""
+        project = ProjectFactory(collaborators=[user])
+        client.force_authenticate(user=project.user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/users/{user.pk}/", {"email": "foo@example.com"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_destroy(self, client, user):
         """Test removing a user from a project"""
-        project = ProjectFactory(collaborators=[user])
+        project = ProjectFactory(admin_collaborators=[user])
         client.force_authenticate(user=project.user)
         response = client.delete(f"/api/projects/{project.pk}/users/{user.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT

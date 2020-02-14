@@ -13,6 +13,7 @@ from documentcloud.core.filters import ModelMultipleChoiceFilter
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_index
 from documentcloud.drf_bulk.views import BulkModelMixin
+from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.projects.serializers import (
     CollaborationSerializer,
@@ -34,7 +35,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """Specify the creator and add them as a collaborator by default"""
         project = serializer.save(user=self.request.user)
         Collaboration.objects.create(
-            project=project, user=self.request.user, creator=self.request.user
+            project=project,
+            user=self.request.user,
+            creator=self.request.user,
+            access=CollaboratorAccess.admin,
         )
 
     class Filter(django_filters.FilterSet):
@@ -138,14 +142,7 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
     filterset_class = Filter
 
 
-class CollaborationViewSet(
-    # Cannot update collaborators
-    mixins.CreateModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet,
-):
+class CollaborationViewSet(viewsets.ModelViewSet):
 
     serializer_class = CollaborationSerializer
     queryset = Collaboration.objects.none()

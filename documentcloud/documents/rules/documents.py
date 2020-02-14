@@ -8,6 +8,7 @@ from rules import add_perm, is_authenticated, predicate
 from documentcloud.core.rules import skip_if_not_obj
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Access
+from documentcloud.projects.choices import CollaboratorAccess
 
 
 @predicate
@@ -44,14 +45,20 @@ def has_status(*statuses):
 @skip_if_not_obj
 def is_edit_collaborator(user, document):
     return document.projects.filter(
-        collaborators=user, projectmembership__edit_access=True
+        collaborators=user,
+        projectmembership__edit_access=True,
+        collaboration__access__in=(CollaboratorAccess.admin, CollaboratorAccess.edit),
     ).exists()
 
 
 @predicate
 @skip_if_not_obj
-def is_collaborator(user, document):
-    return document.projects.filter(collaborators=user).exists()
+def is_view_collaborator(user, document):
+    # the document must be in the project with edit access in order for it
+    # to be shared for viewing with view collaborators
+    return document.projects.filter(
+        collaborators=user, projectmembership__edit_access=True
+    ).exists()
 
 
 # share access is for adding a document to a project with edit access
@@ -83,6 +90,8 @@ can_view = (
     # public documents which have succesfully processed or in readable state
     # can be viewed by everyone
     (has_access(Access.public) & has_status(Status.success, Status.readable))
+    # documents shared with you for viewing through a project
+    | is_authenticated & ~has_access(Access.invisible) & is_view_collaborator
     # if you have edit access you also have view access
     | can_change
 )

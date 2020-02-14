@@ -1,11 +1,12 @@
 # pylint: disable=unused-argument, invalid-unary-operand-type
 
 # Third Party
-from rules import add_perm, always_deny, is_authenticated, predicate
+from rules import add_perm, is_authenticated, predicate
 
 # DocumentCloud
 from documentcloud.core.rules import skip_if_not_obj
 from documentcloud.documents.rules import documents
+from documentcloud.projects.choices import CollaboratorAccess
 
 # These predicates are for projects
 
@@ -22,11 +23,28 @@ def is_collaborator(user, project):
     return project.collaborators.filter(pk=user.pk).exists()
 
 
+@predicate
+@skip_if_not_obj
+def is_edit_collaborator(user, project):
+    return project.collaborators.filter(
+        pk=user.pk,
+        collaboration__access__in=(CollaboratorAccess.admin, CollaboratorAccess.edit),
+    ).exists()
+
+
+@predicate
+@skip_if_not_obj
+def is_admin(user, project):
+    return project.collaborators.filter(
+        pk=user.pk, collaboration__access=CollaboratorAccess.admin
+    ).exists()
+
+
 is_public = ~is_private
 
 can_view = is_public | (is_authenticated & is_collaborator)
 
-can_change = is_authenticated & is_collaborator
+can_change = is_authenticated & is_admin
 
 add_perm("projects.view_project", can_view)
 add_perm("projects.add_project", is_authenticated)
@@ -71,5 +89,5 @@ add_perm(
 
 add_perm("projects.view_collaboration", is_authenticated & can_change_project)
 add_perm("projects.add_collaboration", is_authenticated)
-add_perm("projects.change_collaboration", always_deny)
+add_perm("projects.change_collaboration", is_authenticated & can_change_project)
 add_perm("projects.delete_collaboration", is_authenticated & can_change_project)

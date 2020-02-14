@@ -19,6 +19,7 @@ def test_document_rules():
     owner = UserFactory()
     edit_collaborator = UserFactory()
     view_collaborator = UserFactory()
+    no_access_collaborator = UserFactory()
     organization_member = UserFactory()
 
     organization = OrganizationFactory(members=[owner, organization_member])
@@ -50,7 +51,8 @@ def test_document_rules():
         invisible_document,
     ]
 
-    ProjectFactory(collaborators=[edit_collaborator], edit_documents=documents)
+    ProjectFactory(edit_collaborators=[edit_collaborator], edit_documents=documents)
+    ProjectFactory(collaborators=[view_collaborator], edit_documents=documents)
     ProjectFactory(collaborators=[view_collaborator], documents=documents)
 
     for user, document, can_view, can_change, can_share in [
@@ -70,10 +72,15 @@ def test_document_rules():
         (edit_collaborator, private_document, True, True, False),
         (edit_collaborator, invisible_document, False, False, False),
         (view_collaborator, public_document, True, False, False),
-        (view_collaborator, public_pending_document, False, False, False),
-        (view_collaborator, organization_document, False, False, False),
-        (view_collaborator, private_document, False, False, False),
+        (view_collaborator, public_pending_document, True, False, False),
+        (view_collaborator, organization_document, True, False, False),
+        (view_collaborator, private_document, True, False, False),
         (view_collaborator, invisible_document, False, False, False),
+        (no_access_collaborator, public_document, True, False, False),
+        (no_access_collaborator, public_pending_document, False, False, False),
+        (no_access_collaborator, organization_document, False, False, False),
+        (no_access_collaborator, private_document, False, False, False),
+        (no_access_collaborator, invisible_document, False, False, False),
         (organization_member, public_document, True, True, True),
         (organization_member, public_pending_document, True, True, True),
         (organization_member, organization_document, True, True, True),
@@ -120,7 +127,7 @@ def test_note_rules():
         invisible_note.document,
     ]
 
-    ProjectFactory(collaborators=[edit_collaborator], edit_documents=documents)
+    ProjectFactory(edit_collaborators=[edit_collaborator], edit_documents=documents)
     ProjectFactory(collaborators=[view_collaborator], documents=documents)
 
     for user, note, can_view, can_change in [
