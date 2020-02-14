@@ -134,11 +134,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
-        if not isinstance(self.instance, Document) or self.instance.status not in (
-            Status.pending,
-            Status.readable,
-        ):
-            # remaining field or for processing documents only
+        if "remaining" not in request.GET and "remaining" in self.fields:
+            # only show remaining field if it was requested
             del self.fields["remaining"]
 
         is_create = self.instance is None
