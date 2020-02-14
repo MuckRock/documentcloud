@@ -6,8 +6,10 @@ from rest_framework import exceptions, serializers
 from rest_flex_fields.serializers import FlexFieldsModelSerializer
 
 # DocumentCloud
+from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import Document
 from documentcloud.drf_bulk.serializers import BulkListSerializer
+from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.users.models import User
 
@@ -102,16 +104,30 @@ class CollaborationSerializer(serializers.ModelSerializer):
         queryset=User.objects.all(),
         help_text=_("The email address of the user you wish to add as a collaborator"),
     )
+    access = ChoiceField(
+        CollaboratorAccess,
+        default=CollaboratorAccess.view,
+        help_text=Collaboration._meta.get_field("access").help_text,
+    )
 
     class Meta:
         model = Collaboration
-        fields = ["user", "email"]
+        fields = ["user", "email", "access"]
         extra_kwargs = {"user": {"read_only": True}}
 
     def validate_email(self, value):
         view = self.context.get("view")
         project = Project.objects.get(pk=view.kwargs["project_pk"])
-        if project.collaborators.filter(email=value.email).exists():
+
+        # on updates check that email does not change
+        if self.instance and self.instance.user != value:
+            raise serializers.ValidationError("You may not update `email`")
+
+        # check for duplicates on creation (instance is none implies creation)
+        if (
+            not self.instance
+            and project.collaborators.filter(email=value.email).exists()
+        ):
             raise serializers.ValidationError(
                 f"You may not add user {value.email} as a collaborator more than once"
             )

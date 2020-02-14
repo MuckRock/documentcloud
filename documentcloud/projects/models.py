@@ -7,6 +7,7 @@ from autoslug.fields import AutoSlugField
 
 # DocumentCloud
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.querysets import ProjectMembershipQuerySet, ProjectQuerySet
 
 
@@ -115,6 +116,12 @@ class Collaboration(models.Model):
         to="users.User",
         on_delete=models.CASCADE,
         help_text=_("The user collaborating on this project"),
+    )
+    access = models.IntegerField(
+        _("access"),
+        choices=CollaboratorAccess.choices,
+        default=CollaboratorAccess.view,
+        help_text=_("The level of access granted to this collaborator"),
     )
 
     creator = models.ForeignKey(
