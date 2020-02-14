@@ -12,6 +12,10 @@ import pysolr
 
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
+from documentcloud.organizations.models import Organization
+from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.users.models import User
+from documentcloud.users.serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -163,8 +167,15 @@ def _format_response(results, query_params, page, per_page):
     else:
         previous_url = None
 
+    expands = query_params.get("expand", "").split(",")
     count = results.hits
+
     results = _add_asset_url(_format_data(_format_highlights(results)))
+    if "user" in expands:
+        results = _expand_users(results)
+    if "organization" in expands:
+        results = _expand_organizations(results)
+
     response = {
         "count": count,
         "next": next_url,
@@ -204,4 +215,23 @@ def _add_asset_url(results):
             result["asset_url"] = settings.PUBLIC_ASSET_URL
         else:
             result["asset_url"] = settings.PRIVATE_ASSET_URL
+    return results
+
+
+def _expand_users(results):
+    return _expand(results, "user", User.objects.preload_list(), UserSerializer)
+
+
+def _expand_organizations(results):
+    return _expand(
+        results, "organization", Organization.objects.all(), OrganizationSerializer
+    )
+
+
+def _expand(results, key, queryset, serializer):
+    ids = {r[key] for r in results}
+    objs = queryset.filter(pk__in=ids)
+    obj_dict = {obj.pk: serializer(obj).data for obj in objs}
+    for result in results:
+        result[key] = obj_dict[result[key]]
     return results
