@@ -7,6 +7,7 @@ from rest_framework.permissions import SAFE_METHODS
 # Third Party
 import django_filters
 from rest_flex_fields.utils import is_expanded
+from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
@@ -58,7 +59,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
-class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
+class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     serializer_class = ProjectMembershipSerializer
     queryset = ProjectMembership.objects.none()
     lookup_field = "document_id"
@@ -191,11 +192,12 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
     filterset_class = Filter
 
 
-class CollaborationViewSet(viewsets.ModelViewSet):
+class CollaborationViewSet(FlexFieldsModelViewSet):
 
     serializer_class = CollaborationSerializer
     queryset = Collaboration.objects.none()
     lookup_field = "user_id"
+    permit_list_expands = ["user"]
 
     def get_queryset(self):
         """Only fetch projects viewable to this user"""
@@ -204,9 +206,14 @@ class CollaborationViewSet(viewsets.ModelViewSet):
             pk=self.kwargs["project_pk"],
         )
         if self.request.user.has_perm("projects.change_project", project):
-            return project.collaboration_set.all()
+            queryset = project.collaboration_set.all()
         else:
-            return project.collaboration_set.none()
+            queryset = project.collaboration_set.none()
+
+        if is_expanded(self.request, "user"):
+            queryset = queryset.select_related("user")
+
+        return queryset
 
     def perform_create(self, serializer):
         """Specify the project"""
