@@ -143,6 +143,7 @@
     <field name="organization" type="pint" uninvertible="true" indexed="true" stored="true"/>
     <field name="page_count" type="pint" uninvertible="true" indexed="true" stored="true"/>
     <field name="projects" type="pints" uninvertible="true" indexed="true" stored="true"/>
+    <field name="projects_edit_access" type="pints" uninvertible="true" indexed="true" stored="true"/>
     <field name="slug" type="string" uninvertible="false" indexed="false" stored="true"/>
     <field name="source" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
     <field name="status" type="string" uninvertible="true" indexed="true" stored="true"/>

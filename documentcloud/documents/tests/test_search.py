@@ -61,7 +61,7 @@ def setup(django_db_setup, django_db_blocker):
                     id=proj["id"],
                     title=proj["title"],
                     user=users[proj["user"]],
-                    documents=[documents[d] for d in proj["documents"]],
+                    edit_documents=[documents[d] for d in proj["documents"]],
                     collaborators=[users[a] for a in proj["collaborators"]],
                 )
             for doc in documents.values():

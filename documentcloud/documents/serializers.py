@@ -134,7 +134,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
-        if "remaining" not in request.GET and "remaining" in self.fields:
+        if not request or (
+            "remaining" not in request.GET and "remaining" in self.fields
+        ):
             # only show remaining field if it was requested
             del self.fields["remaining"]
 

@@ -441,9 +441,7 @@ class DataViewSet(viewsets.ViewSet):
         document.data[pk] = serializer.data["values"]
         document.save()
         transaction.on_commit(
-            lambda: solr_index.delay(
-                self.document.pk, field_updates={f"data_{pk}": "set"}
-            )
+            lambda: solr_index.delay(document.pk, field_updates={f"data_{pk}": "set"})
         )
         return Response(document.data)
 
@@ -469,9 +467,7 @@ class DataViewSet(viewsets.ViewSet):
 
         document.save()
         transaction.on_commit(
-            lambda: solr_index.delay(
-                self.document.pk, field_updates={f"data_{pk}": "set"}
-            )
+            lambda: solr_index.delay(document.pk, field_updates={f"data_{pk}": "set"})
         )
         return Response(document.data)
 
@@ -484,7 +480,7 @@ class DataViewSet(viewsets.ViewSet):
             document.save()
             transaction.on_commit(
                 lambda: solr_index.delay(
-                    self.document.pk, field_updates={f"data_{pk}": "set"}
+                    document.pk, field_updates={f"data_{pk}": "set"}
                 )
             )
 

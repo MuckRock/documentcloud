@@ -218,3 +218,23 @@ def heroku(c, staging=False):
 def deploy_lambdas(c):
     """Deploy lambda functions on AWS"""
     c.run("cd config/aws/lambda; ./deploy.sh")
+
+
+@task
+def update_solr_config(c):
+    """Update the solr config to the local docker images
+    Be sure to bring the container down and up again after updating
+    """
+    template = (
+        "docker cp config/solr/{file} documentcloud_documentcloud_{container}:"
+        "/var/solr/data/{collection}/"
+    )
+
+    for file_ in ["managed-schema", "solrconfig.xml"]:
+        for container, collection in [
+            ("solr_1", "documentcloud"),
+            ("test_solr_1", "documentcloud_test"),
+        ]:
+            c.run(
+                template.format(file=file_, container=container, collection=collection)
+            )
