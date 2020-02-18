@@ -105,11 +105,56 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
             pk__in=[d["document"].pk for d in validated_datas]
         ).update(solr_dirty=True)
         for data in validated_datas:
+            # if this document has edit access in the project, we store it
+            # to both projects and projects_edit_access in solr
+            # projects is used for displaying and querying which projects a
+            # document belongs to
+            # projects_edit_access is used to filter on for access permissions
+            # to determine if you can view that document
+            # update and destroy have similarly will add or remove from
+            # the necessary fields
+            solr_document = {"id": data["document"].pk, "projects": project.pk}
+            field_updates = {"projects": "add"}
+            if data.get("edit_access"):
+                solr_document["projects_edit_access"] = project.pk
+                field_updates["projects_edit_access"] = "add"
+            transaction.on_commit(
+                lambda d=data, sd=solr_document, fu=field_updates: solr_index.delay(
+                    d["document"].pk, solr_document=sd, field_updates=fu
+                )
+            )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+
+        project_id = self.kwargs["project_pk"]
+        if hasattr(serializer, "many") and serializer.many:
+            validated_datas = serializer.validated_data
+        else:
+            # if we are updating a single instance, the document is specified
+            # in the url instead of in the payload, so add it back in
+            serializer.validated_data["document"] = Document.objects.get(
+                pk=self.kwargs["document_id"]
+            )
+            validated_datas = [serializer.validated_data]
+
+        Document.objects.filter(
+            pk__in=[d["document"].pk for d in validated_datas]
+        ).update(solr_dirty=True)
+        for data in validated_datas:
             transaction.on_commit(
                 lambda d=data: solr_index.delay(
                     d["document"].pk,
-                    solr_document={"id": d["document"].pk, "projects": project.pk},
-                    field_updates={"projects": "add"},
+                    solr_document={
+                        "id": d["document"].pk,
+                        "projects_edit_access": project_id,
+                    },
+                    field_updates={
+                        "projects_edit_access": "add"
+                        if d.get("edit_access")
+                        else "remove"
+                    },
                 )
             )
 
@@ -122,15 +167,19 @@ class ProjectMembershipViewSet(BulkModelMixin, viewsets.ModelViewSet):
 
     @transaction.atomic
     def perform_destroy(self, instance):
+        instance.document.solr_dirty = True
+        instance.document.save()
         super().perform_destroy(instance)
+        solr_document = {"id": instance.document_id, "projects": instance.project_id}
+        field_updates = {"projects": "remove"}
+        if instance.edit_access:
+            solr_document["projects_edit_access"] = instance.project_id
+            field_updates["projects_edit_access"] = "remove"
         transaction.on_commit(
             lambda: solr_index.delay(
                 instance.document_id,
-                solr_document={
-                    "id": instance.document_id,
-                    "projects": instance.project_id,
-                },
-                field_updates={"projects": "remove"},
+                solr_document=solr_document,
+                field_updates=field_updates,
             )
         )
 

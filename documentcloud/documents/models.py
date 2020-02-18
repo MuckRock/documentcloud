@@ -225,6 +225,9 @@ class Document(models.Model):
             # not needed
             pages = {}
         project_ids = [p.pk for p in self.projects.all()]
+        project_edit_access_ids = [
+            p.pk for p in self.projects.filter(projectmembership__edit_access=True)
+        ]
         data = {f"data_{key}": values for key, values in self.data.items()}
         solr_document = {
             "id": self.pk,
@@ -241,6 +244,7 @@ class Document(models.Model):
             "updated_at": self.updated_at.isoformat(),
             "page_count": self.page_count,
             "projects": project_ids,
+            "projects_edit_access": project_edit_access_ids,
             **pages,
             **data,
         }
