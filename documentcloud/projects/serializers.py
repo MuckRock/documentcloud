@@ -95,7 +95,7 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
         return attrs
 
 
-class CollaborationSerializer(serializers.ModelSerializer):
+class CollaborationSerializer(FlexFieldsModelSerializer):
     email = serializers.SlugRelatedField(
         label=_("Email"),
         source="user",
@@ -114,6 +114,7 @@ class CollaborationSerializer(serializers.ModelSerializer):
         model = Collaboration
         fields = ["user", "email", "access"]
         extra_kwargs = {"user": {"read_only": True}}
+        expandable_fields = {"user": ("users.UserSerializer", {})}
 
     def validate_email(self, value):
         view = self.context.get("view")
