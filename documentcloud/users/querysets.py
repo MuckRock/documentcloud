@@ -2,7 +2,7 @@
 
 # Django
 from django.db import models
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 # DocumentCloud
 from documentcloud.organizations.models import Membership
@@ -12,9 +12,12 @@ class UserQuerySet(models.QuerySet):
     """Custom queryset for users"""
 
     def get_viewable(self, user):
-        """You may view other users in your organization"""
+        """You may view other users in your organizations and projects"""
         if user.is_authenticated:
-            return self.filter(organizations__in=user.organizations.all()).distinct()
+            return self.filter(
+                Q(organizations__in=user.organizations.all())
+                | Q(projects__in=user.projects.all())
+            ).distinct()
         else:
             return self.none()
 
