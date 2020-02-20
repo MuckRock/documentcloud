@@ -6,7 +6,7 @@ import django_filters
 from rest_flex_fields.views import FlexFieldsMixin
 
 # DocumentCloud
-from documentcloud.core.filters import ModelChoiceFilter
+from documentcloud.core.filters import ModelMultipleChoiceFilter
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
@@ -35,8 +35,10 @@ class UserViewSet(
             return super().get_object()
 
     class Filter(django_filters.FilterSet):
-        organization = ModelChoiceFilter(model=Organization, field_name="organizations")
-        project = ModelChoiceFilter(model=Project, field_name="projects")
+        organization = ModelMultipleChoiceFilter(
+            model=Organization, field_name="organizations"
+        )
+        project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
 
         class Meta:
             model = User
