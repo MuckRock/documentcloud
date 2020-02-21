@@ -15,7 +15,7 @@ from rest_flex_fields import FlexFieldsModelViewSet, is_expanded
 
 # DocumentCloud
 from documentcloud.common.environment import storage
-from documentcloud.core.filters import ModelChoiceFilter
+from documentcloud.core.filters import ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
     DocumentErrorTokenPermissions,
@@ -266,9 +266,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ordering = django_filters.OrderingFilter(
             fields=("created_at", "page_count", "title", "source")
         )
-        user = ModelChoiceFilter(model=User)
-        organization = ModelChoiceFilter(model=Organization)
-        project = ModelChoiceFilter(model=Project, field_name="projects")
+        user = ModelMultipleChoiceFilter(model=User)
+        organization = ModelMultipleChoiceFilter(model=Organization)
+        project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
         access = django_filters.CharFilter(method="filter_access")
         status = django_filters.CharFilter(method="filter_status")
 
