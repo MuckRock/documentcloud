@@ -210,8 +210,8 @@ def heroku(c, staging=False):
     if staging:
         app = "documentcloud-staging"
     else:
-        app = "documentcloud"
-    c.run(f"heroku run --app {app} python manage.py shell_plus")
+        app = "documentcloud-prod"
+    c.run(f"heroku run --app {app} python manage.py shell_plus", pty=True)
 
 
 @task
