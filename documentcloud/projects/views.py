@@ -1,6 +1,6 @@
 # Django
 from django.db import transaction
-from rest_framework import exceptions, viewsets
+from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
 
@@ -224,3 +224,18 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
             )
 
         serializer.save(project=project, creator=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        project = Project.objects.get(pk=self.kwargs["project_pk"])
+        collaboration = self.get_object()
+        if (
+            collaboration.access == CollaboratorAccess.admin
+            and project.collaboration_set.filter(
+                access=CollaboratorAccess.admin
+            ).count()
+            == 1
+        ):
+            raise serializers.ValidationError(
+                "May not remove the only admin from a project"
+            )
+        return super().destroy(request, *args, **kwargs)
