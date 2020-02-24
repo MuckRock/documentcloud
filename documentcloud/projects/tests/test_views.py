@@ -430,6 +430,15 @@ class TestCollaborationAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_bad_admin(self, client):
+        """You may not remove admin permissions from the last admin"""
+        project = ProjectFactory()
+        client.force_authenticate(user=project.user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/users/{project.user.pk}/", {"access": "edit"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_destroy(self, client, user):
         """Test removing a user from a project"""
         project = ProjectFactory(admin_collaborators=[user])
