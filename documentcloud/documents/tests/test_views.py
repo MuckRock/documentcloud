@@ -61,6 +61,33 @@ class TestDocumentAPI:
         response_json = response.json()
         assert len(response_json["results"]) == size
 
+    def test_list_filter_multi_status(self, client, user):
+        """List a subset of documents from multiple statuses"""
+        size = 5
+        client.force_authenticate(user=user)
+        DocumentFactory.create_batch(size, user=user, status=Status.success)
+        DocumentFactory.create_batch(size, user=user, status=Status.pending)
+        DocumentFactory.create_batch(size, user=user, status=Status.error)
+
+        response = client.get(f"/api/documents/", {"status": ["success", "pending"]})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert len(response_json["results"]) == 2 * size
+
+        response = client.get(f"/api/documents/", {"status": "success,pending"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert len(response_json["results"]) == 2 * size
+
+    def test_list_filter_bad_status(self, client, user):
+        """Error if give bad value for status"""
+        size = 5
+        client.force_authenticate(user=user)
+        DocumentFactory.create_batch(size, user=user, status=Status.success)
+        DocumentFactory.create_batch(size, user=user, status=Status.error)
+        response = client.get(f"/api/documents/", {"status": "good"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_list_order(self, client):
         """List the documents in order"""
         DocumentFactory(page_count=3)
