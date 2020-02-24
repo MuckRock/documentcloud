@@ -427,7 +427,8 @@ class DataViewSet(viewsets.ViewSet):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        document.data[pk] = serializer.data["values"]
+        # remove duplicate values
+        document.data[pk] = list(set(serializer.data["values"]))
         document.save()
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={f"data_{pk}": "set"})
@@ -449,6 +450,9 @@ class DataViewSet(viewsets.ViewSet):
             ]
         else:
             document.data[pk] = serializer.data.get("values", [])
+
+        # remove duplicate values
+        document.data[pk] = list(set(document.data[pk]))
 
         if not document.data[pk]:
             # remove key if all values are removed
