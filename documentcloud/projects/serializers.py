@@ -116,6 +116,25 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {"user": {"read_only": True}}
         expandable_fields = {"user": ("users.UserSerializer", {})}
 
+    def validate_access(self, value):
+        """Disallow demoting the last admin"""
+        view = self.context.get("view")
+        project = Project.objects.get(pk=view.kwargs["project_pk"])
+        admins = project.collaborators.filter(
+            collaboration__access=CollaboratorAccess.admin
+        )
+        if (
+            self.instance
+            and value != CollaboratorAccess.admin
+            and len(admins) == 1
+            and self.instance.user in admins
+        ):
+            raise serializers.ValidationError(
+                "You may not demote the only admin in a project"
+            )
+
+        return value
+
     def validate_email(self, value):
         view = self.context.get("view")
         project = Project.objects.get(pk=view.kwargs["project_pk"])
