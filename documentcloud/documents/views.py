@@ -15,7 +15,7 @@ from rest_flex_fields import FlexFieldsModelViewSet, is_expanded
 
 # DocumentCloud
 from documentcloud.common.environment import storage
-from documentcloud.core.filters import ModelMultipleChoiceFilter
+from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
     DocumentErrorTokenPermissions,
@@ -269,20 +269,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         user = ModelMultipleChoiceFilter(model=User)
         organization = ModelMultipleChoiceFilter(model=Organization)
         project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
-        access = django_filters.CharFilter(method="filter_access")
-        status = django_filters.CharFilter(method="filter_status")
-
-        def filter_access(self, queryset, name, value):
-            return self.filter_choices(Access, queryset, name, value)
-
-        def filter_status(self, queryset, name, value):
-            return self.filter_choices(Status, queryset, name, value)
-
-        def filter_choices(self, choices, queryset, name, value):
-            value_map = {
-                label.lower(): choice.value for label, choice in choices._fields.items()
-            }
-            return queryset.filter(**{name: value_map.get(value.lower())})
+        access = ChoicesFilter(choices=Access)
+        status = ChoicesFilter(choices=Status)
 
         class Meta:
             model = Document
