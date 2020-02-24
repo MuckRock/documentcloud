@@ -438,6 +438,13 @@ class TestCollaborationAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not project.collaborators.filter(pk=user.pk).exists()
 
+    def test_destroy_bad_admin(self, client):
+        """You may not remove the last admin from a project"""
+        project = ProjectFactory()
+        client.force_authenticate(user=project.user)
+        response = client.delete(f"/api/projects/{project.pk}/users/{project.user.pk}/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_destroy_bad_collaborator(self, client, user, project):
         """You cannot remove a user from a project you are not a collaborator on"""
         client.force_authenticate(user=user)
