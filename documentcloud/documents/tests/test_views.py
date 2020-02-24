@@ -831,12 +831,17 @@ class TestEntityDateAPI:
 
 @pytest.mark.django_db()
 class TestDataAPI:
+    def _compare_json(self, this, other):
+        """Compare without regards to ordering"""
+        for key, value in this.items():
+            assert sorted(value) == sorted(other[key])
+
     def test_list(self, client):
         """List the data for a document"""
         document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
         response = client.get(f"/api/documents/{document.pk}/data/")
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == document.data
+        self._compare_json(response.json(), document.data)
 
     def test_list_bad(self, client):
         """List the data for a document you cannot view"""
@@ -851,7 +856,7 @@ class TestDataAPI:
         document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
         response = client.get(f"/api/documents/{document.pk}/data/color/")
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == document.data["color"]
+        assert sorted(response.json()) == sorted(document.data["color"])
 
     def test_update(self, client, document):
         """Add a new key value pair to a document"""
@@ -863,7 +868,7 @@ class TestDataAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.data == {"color": ["red"]}
+        self._compare_json(document.data, {"color": ["red"]})
 
     def test_update_existing(self, client):
         """Overwrite a key value pair to a document"""
@@ -876,7 +881,9 @@ class TestDataAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.data == {"color": ["green", "yellow"], "state": ["ma"]}
+        self._compare_json(
+            document.data, {"color": ["green", "yellow"], "state": ["ma"]}
+        )
 
     def test_update_bad(self, client, document, user):
         """Add a new key value pair to a document for a document you cannot edit"""
@@ -887,6 +894,18 @@ class TestDataAPI:
             format="json",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_update_duplicate(self, client, document):
+        """Add a new key value pair to a document with duplicates"""
+        client.force_authenticate(user=document.user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["red", "blue", "red"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        self._compare_json(document.data, {"color": ["red", "blue"]})
 
     def test_partial_update(self, client):
         """Add a new value to an existing key"""
@@ -899,7 +918,7 @@ class TestDataAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.data["state"] == ["ma", "nj"]
+        assert sorted(document.data["state"]) == sorted(["ma", "nj"])
 
     def test_partial_update_new(self, client, document):
         """Add a new value to non existing key"""
@@ -911,7 +930,7 @@ class TestDataAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.data["state"] == ["nj", "ca"]
+        assert sorted(document.data["state"]) == sorted(["nj", "ca"])
 
     def test_partial_update_remove(self, client):
         """Remove a value from an existing key"""
@@ -937,7 +956,7 @@ class TestDataAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.data["color"] == ["blue", "green"]
+        assert sorted(document.data["color"]) == sorted(["blue", "green"])
 
     def test_partial_update_remove_all(self, client):
         """Removing all values removes the key"""
@@ -952,6 +971,19 @@ class TestDataAPI:
         document.refresh_from_db()
         assert "color" not in document.data
 
+    def test_partial_update_duplicate(self, client):
+        """Add an existing value to an existing key"""
+        document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/data/state/",
+            {"values": ["nj", "ma"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert sorted(document.data["state"]) == sorted(["ma", "nj"])
+
     def test_destroy(self, client):
         """Remove a key"""
         document = DocumentFactory(data={"color": ["red", "blue"], "state": ["ma"]})
@@ -959,7 +991,7 @@ class TestDataAPI:
         response = client.delete(f"/api/documents/{document.pk}/data/state/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         document.refresh_from_db()
-        assert document.data == {"color": ["red", "blue"]}
+        self._compare_json(document.data, {"color": ["red", "blue"]})
 
 
 @pytest.mark.django_db()
