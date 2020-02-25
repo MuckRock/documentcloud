@@ -61,28 +61,27 @@ def is_view_collaborator(user, document):
     ).exists()
 
 
+# nobody can see invisible or deleted documents
+default_limit = (
+    is_authenticated & ~has_access(Access.invisible) & ~has_status(Status.deleted)
+)
+
 # share access is for adding a document to a project with edit access
 # it is stricter than edit access to allow people to revoke edit access
 # through a project without the possibility of you propagating the edit
 # access through your own projects
 # you must be logged in to have share access
 # nobody has any access to invisible documents
-can_share = (
-    is_authenticated
-    & ~has_access(Access.invisible)
-    & (
-        # you do have share access if you are the owner
-        is_owner
-        # you also can have access if you are in the same organization
-        # and the access is organization or public
-        | (has_access(Access.organization, Access.public) & is_organization)
-    )
+can_share = default_limit & (
+    # you do have share access if you are the owner
+    is_owner
+    # you also can have access if you are in the same organization
+    # and the access is organization or public
+    | (has_access(Access.organization, Access.public) & is_organization)
 )
 # you can edit the document if you can share it, or additionally
 # if it was shared with you for editing
-can_change = can_share | (
-    is_authenticated & ~has_access(Access.invisible) & is_edit_collaborator
-)
+can_change = can_share | (default_limit & is_edit_collaborator)
 # you can view a document if you can change it or if it is public
 # being a non-edit collaborator does not give you view permissions
 # so that an owner may revoke share permissions through projects
@@ -91,7 +90,7 @@ can_view = (
     # can be viewed by everyone
     (has_access(Access.public) & has_status(Status.success, Status.readable))
     # documents shared with you for viewing through a project
-    | is_authenticated & ~has_access(Access.invisible) & is_view_collaborator
+    | default_limit & is_view_collaborator
     # if you have edit access you also have view access
     | can_change
 )

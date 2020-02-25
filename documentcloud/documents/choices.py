@@ -32,4 +32,4 @@ class Status(DjangoChoices):
     # There is no file yet
     nofile = ChoiceItem(4, _("No file"), api=True)
     # The file is deleted
-    deleted = ChoiceItem(5, _("Deleted"), api=True)
+    deleted = ChoiceItem(5, _("Deleted"), api=False)
