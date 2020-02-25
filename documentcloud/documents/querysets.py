@@ -30,7 +30,12 @@ class DocumentQuerySet(models.QuerySet):
                     organization__in=user.organizations.all(),
                 )
             )
-            return self.exclude(access=Access.invisible).filter(query).distinct()
+            return (
+                self.exclude(access=Access.invisible)
+                .exclude(status=Status.deleted)
+                .filter(query)
+                .distinct()
+            )
         else:
             return self.filter(
                 access=Access.public, status__in=[Status.success, Status.readable]
@@ -53,7 +58,12 @@ class DocumentQuerySet(models.QuerySet):
                     organization__in=user.organizations.all(),
                 )
             )
-            return self.exclude(access=Access.invisible).filter(query).distinct()
+            return (
+                self.exclude(access=Access.invisible)
+                .exclude(status=Status.deleted)
+                .filter(query)
+                .distinct()
+            )
         else:
             return self.none()
 
