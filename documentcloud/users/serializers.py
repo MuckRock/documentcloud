@@ -7,7 +7,6 @@ from rest_flex_fields.serializers import FlexFieldsModelSerializer
 
 # DocumentCloud
 from documentcloud.organizations.models import Organization
-from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
 
 
@@ -38,7 +37,9 @@ class UserSerializer(FlexFieldsModelSerializer):
             "organizations": {"read_only": True},
             "username": {"read_only": True},
         }
-        expandable_fields = {"organization": (OrganizationSerializer, {})}
+        expandable_fields = {
+            "organization": ("organizations.OrganizationSerializer", {})
+        }
 
     def validate_organization(self, value):
         organization = Organization.objects.filter(pk=value).first()
