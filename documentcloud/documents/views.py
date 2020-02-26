@@ -258,9 +258,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
         query = request.query_params.get("q", "*:*")
-        results = SOLR.search(query, fq=f"id:{pk}")
-        pages = [int(p.rsplit("_", 1)[1]) for p in results.highlighting.get(pk, {})]
-        return Response({"results": pages})
+        results = SOLR.search(
+            query, fq=f"id:{pk}", **{"hl.snippets": settings.SOLR_HL_SNIPPETS}
+        )
+        return Response(results.highlighting.get(pk, {}))
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(
