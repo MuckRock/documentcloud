@@ -26,9 +26,6 @@ from documentcloud.documents.models import (
     Section,
 )
 from documentcloud.drf_bulk.serializers import BulkListSerializer
-from documentcloud.organizations.serializers import OrganizationSerializer
-from documentcloud.projects.serializers import ProjectSerializer
-from documentcloud.users.serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +120,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "user": {"read_only": True},
         }
         expandable_fields = {
-            "user": (UserSerializer, {}),
-            "organization": (OrganizationSerializer, {}),
-            "projects": (ProjectSerializer, {"many": True}),
+            "user": ("users.UserSerializer", {}),
+            "organization": ("organizations.OrganizationSerializer", {}),
+            "projects": ("projects.ProjectSerializer", {"many": True}),
+            "sections": ("documents.SectionSerializer", {"many": True}),
+            "notes": ("documents.NoteSerializer", {"many": True}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -250,8 +249,8 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
             "content": {"required": False},
         }
         expandable_fields = {
-            "user": (UserSerializer, {}),
-            "organization": (OrganizationSerializer, {}),
+            "user": ("users.UserSerializer", {}),
+            "organization": ("organizations.OrganizationSerializer", {}),
         }
 
     def validate_access(self, value):
