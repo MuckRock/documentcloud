@@ -87,7 +87,7 @@ jinja2==2.10.1
 jmespath==0.9.4
 kombu==4.6.4
 lazy-object-proxy==1.4.2  # via astroid
-listcrunch==0.1.0
+listcrunch==1.0.0
 markupsafe==1.1.1
 mccabe==0.6.1             # via flake8, pylint
 more-itertools==7.2.0

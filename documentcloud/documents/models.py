@@ -12,6 +12,7 @@ import sys
 
 # Third Party
 from autoslug.fields import AutoSlugField
+from listcrunch import uncrunch
 
 # DocumentCloud
 from documentcloud.common import path
@@ -241,6 +242,22 @@ class Document(models.Model):
             return settings.PUBLIC_ASSET_URL
         else:
             return settings.PRIVATE_ASSET_URL
+
+    @property
+    def aspect_ratio(self):
+        """Return the aspect ratio of the first page"""
+        default = 0.77
+        if not self.page_spec:
+            return default
+
+        try:
+            dimensions = uncrunch(self.page_spec)[0]
+        except (ValueError, KeyError):
+            return default
+
+        width, height = [float(d) for d in dimensions.split("x")]
+
+        return width / height
 
     def get_page_text(self, page_number):
         try:

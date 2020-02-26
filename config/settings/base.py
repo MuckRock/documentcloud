@@ -82,6 +82,7 @@ LOCAL_APPS = [
     "documentcloud.organizations",
     "documentcloud.projects",
     "documentcloud.users.apps.UsersConfig",
+    "documentcloud.oembed.apps.OembedConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -354,6 +355,9 @@ MUCKROCK_URL = env("MUCKROCK_URL", default="http://dev.muckrock.com")
 FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="http://dev.foiamachine.org")
 DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://www.dev.documentcloud.org")
 DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://api.dev.documentcloud.org")
+DOCCLOUD_EMBED_URL = env(
+    "DOCCLOUD_EMBED_URL", default="http://www.dev.documentcloud.org"
+)
 
 PUBLIC_ASSET_URL = env(
     "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
@@ -430,3 +434,9 @@ else:
 
 SOLR_DIRTY_LIMIT = env.int("SOLR_DIRTY_LIMIT", default=200)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
+
+# OEmbed
+# ------------------------------------------------------------------------------
+OEMBED_PROVIDER_NAME = env("OEMBED_PROVIDER_NAME", default="DocumentCloud")
+OEMBED_PROVIDER_URL = env("OEMBED_PROVIDER_URL", default=DOCCLOUD_URL)
+OEMBED_CACHE_AGE = env.int("OEMBED_CACHE_AGE", default=300)
