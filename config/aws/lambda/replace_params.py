@@ -11,7 +11,9 @@ This is a hack until this issue is resolved:
 https://github.com/aws-cloudformation/aws-cloudformation-coverage-roadmap/issues/75
 """
 
-import re, os, json, subprocess
+import re, json, subprocess, sys
+
+SSM_TOPIC_RE = r'"{{resolve:ssm:([a-zA-Z0-9_./-]+):latest}}"'
 
 # from https://stackoverflow.com/a/8290508
 def batch(iterable, n=1):
@@ -29,8 +31,12 @@ def run_command(cmd):
 with open("template_params.yaml", "r") as f:
     contents = f.read()
 
+# Swap in correct env
+env = sys.argv[1]
+contents = contents.replace("{$ENV$}", env)
+
 # Grab all the topics mentioned
-topics = list(set(re.findall(r'"{{resolve:ssm:([a-zA-Z0-9_.-]+):latest}}"', contents)))
+topics = list(set(re.findall(SSM_TOPIC_RE, contents)))
 
 # Build up a topic map
 topic_map = {}
@@ -58,9 +64,7 @@ def aws_replace(match):
 
 
 # Resolve the contents and write to template.yaml
-resolved_contents = re.sub(
-    r'"{{resolve:ssm:([a-zA-Z0-9_.-]+):latest}}"', aws_replace, contents
-)
+resolved_contents = re.sub(SSM_TOPIC_RE, aws_replace, contents)
 
 with open("template.yaml", "w") as f:
     f.write(resolved_contents)
