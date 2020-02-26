@@ -215,9 +215,15 @@ def heroku(c, staging=False):
 
 
 @task
-def deploy_lambdas(c):
+def deploy_lambdas(c, staging=False):
     """Deploy lambda functions on AWS"""
-    c.run("cd config/aws/lambda; ./deploy.sh")
+    if staging:
+        stack = "info-and-image-staging"
+        env = "staging"
+    else:
+        stack = "processing-production"
+        env = "prod"
+    c.run(f"cd config/aws/lambda; ./deploy.sh {stack} {env}")
 
 
 @task

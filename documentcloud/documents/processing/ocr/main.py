@@ -56,6 +56,7 @@ ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
 OCR_VERSION = env.str("OCR_VERSION", default="tess4")
 
 # Ensures running on roughly 2Ghz+ machine
+PROFILE_CPU = env.bool("PROFILE_CPU", default=False)
 SPEED_THRESHOLD = env.float("SPEED_THRESHOLD", default=0.0039)
 CPU_DIFFICULTY = env.int("CPU_DIFFICULTY", default=20)
 
@@ -109,7 +110,7 @@ def run_tesseract(data, _context=None):
 
     result = {}
 
-    if env.bool("CLOUD", default=False):
+    if PROFILE_CPU and env.bool("CLOUD", default=False):
         # Perform speed thresholding to prevent running OCR on a slow CPU
         speed = profile_cpu(CPU_DIFFICULTY)
         if speed > SPEED_THRESHOLD:
@@ -117,7 +118,11 @@ def run_tesseract(data, _context=None):
             publisher.publish(
                 OCR_TOPIC,
                 data=encode_pubsub_data(
-                    {"paths_and_numbers": paths_and_numbers, "doc_id": doc_id}
+                    {
+                        "paths_and_numbers": paths_and_numbers,
+                        "doc_id": doc_id,
+                        "partial": partial,
+                    }
                 ),
             )
             logging.warning("Too slow (speed: %f)", speed)
@@ -132,47 +137,39 @@ def run_tesseract(data, _context=None):
         logging.warning("No paths/numbers")
         return "Ok"
 
-    doc_id, slug, page_number, image_path = paths_and_numbers[0]
+    # Loop through all paths and numbers
+    for doc_id, slug, page_number, image_path in paths_and_numbers:
 
-    # Only OCR if the page has yet to be OCRd
-    if not utils.page_ocrd(REDIS, doc_id, page_number):
-        text_path = path.page_text_path(doc_id, slug, page_number)
+        # Only OCR if the page has yet to be OCRd
+        if not utils.page_ocrd(REDIS, doc_id, page_number):
+            text_path = path.page_text_path(doc_id, slug, page_number)
 
-        # Benchmark OCR speed
-        start_time = time.time()
-        text = ocr_page(image_path)
+            # Benchmark OCR speed
+            start_time = time.time()
+            text = ocr_page(image_path)
 
-        elapsed_time = time.time() - start_time
-        elapsed_times.append(elapsed_time)
+            elapsed_time = time.time() - start_time
+            elapsed_times.append(elapsed_time)
 
-        # Write the output text
-        write_text_file(text_path, text)
-        utils.write_page_text(REDIS, doc_id, page_number, text, OCR_VERSION)
+            # Write the output text
+            write_text_file(text_path, text)
+            utils.write_page_text(REDIS, doc_id, page_number, text, OCR_VERSION)
 
-        # Decrement the texts remaining, sending complete if done.
-        texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
-        if texts_finished:
-            publisher.publish(
-                ASSEMBLE_TEXT_TOPIC,
-                encode_pubsub_data(
-                    {"doc_id": doc_id, "slug": slug, "partial": partial}
-                ),
-            )
-            return "Ok"
-
-    next_paths_and_numbers = paths_and_numbers[1:]
-    if next_paths_and_numbers:
-        # Launch next iteration
-        publisher.publish(
-            OCR_TOPIC,
-            data=encode_pubsub_data(
-                {"paths_and_numbers": next_paths_and_numbers, "doc_id": doc_id}
-            ),
-        )
+            # Decrement the texts remaining, sending complete if done.
+            texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
+            if texts_finished:
+                publisher.publish(
+                    ASSEMBLE_TEXT_TOPIC,
+                    encode_pubsub_data(
+                        {"doc_id": doc_id, "slug": slug, "partial": partial}
+                    ),
+                )
+                return "Ok"
 
     result["doc_id"] = doc_id
     result["elapsed"] = elapsed_times
     result["status"] = "Ok"
     result["overall_elapsed"] = time.time() - overall_start
-    result["speed_after"] = profile_cpu()
+    if PROFILE_CPU:
+        result["speed_after"] = profile_cpu()
     return json.dumps(result)
