@@ -114,6 +114,78 @@ class Document(models.Model):
 
     data = JSONField(default=dict)
 
+    related_article = models.URLField(
+        _("related article"),
+        blank=True,
+        max_length=1024,
+        help_text=_("Article this document pertains to"),
+    )
+    remote_url = models.URLField(
+        _("remote url"),
+        blank=True,
+        max_length=1024,
+        help_text=_("URL where this article is embedded"),
+    )
+    detected_remote_url = models.URLField(
+        _("detected remote url"),
+        blank=True,
+        max_length=1024,
+        help_text=_("Automatically detected URL where this article is embedded"),
+    )
+
+    file_hash = models.CharField(
+        _("file hash"),
+        blank=True,
+        max_length=40,
+        help_text=_("SHA1 digest of the file contents"),
+    )
+
+    # legacy fields
+
+    calais_id = models.CharField(
+        _("calais id"), max_length=40, blank=True, help_text=_("Open Calais identifier")
+    )
+
+    publication_date = models.DateField(
+        _("publication date"),
+        blank=True,
+        null=True,
+        help_text=_("Date the document was first made public"),
+    )
+    publish_at = models.DateTimeField(
+        _("publish at"),
+        blank=True,
+        null=True,
+        help_text=_("Scheduled time to make document public"),
+    )
+    text_changed = models.BooleanField(
+        _("text changed"), default=False, help_text=_("User manually changed the text")
+    )
+    hit_count = models.PositiveIntegerField(
+        _("hit count"),
+        default=0,
+        help_text=_("Number of times this document has been viewed"),
+    )
+    public_note_count = models.PositiveIntegerField(
+        _("public note count"),
+        default=0,
+        help_text=_("Number of public notes on this document"),
+    )
+    file_size = models.PositiveIntegerField(
+        _("file size"), default=0, help_text=_("The size of the underlying file")
+    )
+    char_count = models.PositiveIntegerField(
+        _("character count"),
+        default=0,
+        help_text=_("The number of characters in the document"),
+    )
+    original_extension = models.CharField(
+        _("original extension"),
+        default="pdf",
+        max_length=255,
+        help_text=_("The original extension of the underlying file"),
+    )
+
     class Meta:
         ordering = ("created_at",)
         permissions = (
