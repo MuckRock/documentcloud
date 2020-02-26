@@ -110,7 +110,7 @@ def run_tesseract(data, _context=None):
 
     result = {}
 
-    if PROFILE_CPU and env.bool("CLOUD", default=False):
+    if PROFILE_CPU:
         # Perform speed thresholding to prevent running OCR on a slow CPU
         speed = profile_cpu(CPU_DIFFICULTY)
         if speed > SPEED_THRESHOLD:
