@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "info-and-image-staging
+Description: "processing-stack
 
   SAM template for cloud functions related to DocumentCloud
 
@@ -10,32 +10,30 @@ Globals:
       Variables:
         ENVIRONMENT: aws
         SERVERLESS: True
-        EXTRACT_IMAGE_BATCH: "{{resolve:ssm:staging-EXTRACT_IMAGE_BATCH:latest}}"
-        OCR_BATCH: "{{resolve:ssm:staging-OCR_BATCH:latest}}"
-        OCR_VERSION: "{{resolve:ssm:staging-OCR_VERSION:latest}}"
-        REDIS_PROCESSING_URL: "{{resolve:ssm:staging-REDIS_PROCESSING_URL:latest}}"
-        REDIS_PROCESSING_PASSWORD: "{{resolve:ssm:staging-REDIS_PROCESSING_PASSWORD:latest}}"
-        API_CALLBACK: "{{resolve:ssm:staging-API_CALLBACK:latest}}"
-        PROCESSING_TOKEN: "{{resolve:ssm:staging-PROCESSING_TOKEN:latest}}"
-        DOCUMENT_BUCKET: "{{resolve:ssm:staging-DOCUMENT_BUCKET:latest}}"
-        PDF_PROCESS_TOPIC: "{{resolve:ssm:staging-PDF_PROCESS_TOPIC:latest}}"
-        PAGE_CACHE_TOPIC: "{{resolve:ssm:staging-PAGE_CACHE_TOPIC:latest}}"
-        IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:staging-IMAGE_EXTRACT_TOPIC:latest}}"
-        OCR_TOPIC: "{{resolve:ssm:staging-OCR_TOPIC:latest}}"
-        ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TOPIC:latest}}"
-        REDACT_TOPIC: "{{resolve:ssm:staging-REDACT_TOPIC:latest}}"
-        PDF_SIZE_LIMIT: "{{resolve:ssm:staging-PDF_SIZE_LIMIT:latest}}"
-        BLOCK_SIZE: "{{resolve:ssm:staging-BLOCK_SIZE:latest}}"
-        SENTRY_DSN: "{{resolve:ssm:staging-SENTRY_DSN:latest}}"
-        AWS_ARN_PREFIX: "{{resolve:ssm:staging-AWS_ARN_PREFIX:latest}}"
-    Timeout: "{{resolve:ssm:staging-TIMEOUT:latest}}"
-    MemorySize: "{{resolve:ssm:staging-MEMORY_SIZE:latest}}"
+        EXTRACT_IMAGE_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/batch:latest}}"
+        OCR_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/batch:latest}}"
+        OCR_VERSION: "{{resolve:ssm:/dc/{$ENV$}/params/ocr_version:latest}}"
+        REDIS_PROCESSING_URL: "{{resolve:ssm:/dc/{$ENV$}/params/redis_processing_url:latest}}"
+        REDIS_PROCESSING_PASSWORD: "{{resolve:ssm:/dc/{$ENV$}/params/redis_processing_password:latest}}"
+        API_CALLBACK: "{{resolve:ssm:/dc/{$ENV$}/params/api_callback:latest}}"
+        PROCESSING_TOKEN: "{{resolve:ssm:/dc/{$ENV$}/params/processing_token:latest}}"
+        DOCUMENT_BUCKET: "{{resolve:ssm:/dc/{$ENV$}/params/document_bucket:latest}}"
+        PDF_PROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/pdf_process/topic:latest}}"
+        PAGE_CACHE_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/topic:latest}}"
+        IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/topic:latest}}"
+        OCR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/topic:latest}}"
+        ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
+        REDACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
+        PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
+        BLOCK_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/block_size:latest}}"
+        SENTRY_DSN: "{{resolve:ssm:/dc/{$ENV$}/params/sentry_dsn:latest}}"
+        AWS_ARN_PREFIX: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}"
+    Timeout: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/timeout:latest}}"
+    MemorySize: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/memory_size:latest}}"
     VpcConfig:
       SecurityGroupIds:
-        - "{{resolve:ssm:staging-SECURITY_GROUP_IDS:latest}}"
-      SubnetIds:
-        - "{{resolve:ssm:staging-SUBNET_ID_1:latest}}"
-        - "{{resolve:ssm:staging-SUBNET_ID_2:latest}}"
+        - "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/security_group_ids:latest}}"
+      SubnetIds: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/subnet_ids:latest}}"
 Transform: AWS::Serverless-2016-10-31
 Resources:
   ProcessDocFunction:
@@ -47,14 +45,14 @@ Resources:
       # Trigger function via HTTP
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-PROCESS_DOC_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/process_doc/timeout:latest}}"
       Events:
         ProcessPdfApi:
           Type: Api
           Properties:
             Path: /process_doc
             Method: POST
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   GetProgressFunction:
     Type: AWS::Serverless::Function
@@ -65,14 +63,14 @@ Resources:
       # Trigger function via HTTP
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-GET_PROGRESS_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/get_progress/timeout:latest}}"
       Events:
         ProcessPdfApi:
           Type: Api
           Properties:
             Path: /get_progress
             Method: POST
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   ProcessPdfFunction:
     Type: AWS::Serverless::Function
@@ -83,13 +81,13 @@ Resources:
       # Trigger function via SNS
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-PROCESS_PDF_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/process_pdf/timeout:latest}}"
       Events:
         ProcessPdfApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:staging-PDF_PROCESS_TOPIC_INTERNAL:latest}}"
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/pdf_process/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   ProcessPageCacheFunction:
     Type: AWS::Serverless::Function
@@ -100,13 +98,13 @@ Resources:
       # Trigger function via SNS
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-PAGE_CACHE_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/timeout:latest}}"
       Events:
         ProcessPdfApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:staging-PAGE_CACHE_TOPIC_INTERNAL:latest}}"
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   ExtractImageFunction:
     Type: AWS::Serverless::Function
@@ -117,13 +115,13 @@ Resources:
       # Trigger function via SNS
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-EXTRACT_IMAGE_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/timeout:latest}}"
       Events:
         ExtractImageApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:staging-IMAGE_EXTRACT_TOPIC_INTERNAL:latest}}"
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   RedactDocFunction:
     Type: AWS::Serverless::Function
@@ -134,13 +132,13 @@ Resources:
       # Trigger function via SNS
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-REDACT_DOC_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/timeout:latest}}"
       Events:
         ExtractImageApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:staging-REDACT_TOPIC_INTERNAL:latest}}"
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   RunTesseractFunction:
     Type: AWS::Serverless::Function
@@ -151,14 +149,14 @@ Resources:
       Environment:
         Variables:
           LD_LIBRARY_PATH: /var/task/tesseract
-          TIMEOUTS: "{{resolve:ssm:staging-OCR_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/timeout:latest}}"
       # Trigger function via SNS
       Events:
         OcrApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:staging-OCR_TOPIC_INTERNAL:latest}}"
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   AssembleTextFunction:
     Type: AWS::Serverless::Function
@@ -169,10 +167,10 @@ Resources:
       # Trigger function via SNS
       Environment:
         Variables:
-          TIMEOUTS: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TIMEOUT:latest}}"
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/timeout:latest}}"
       Events:
         ExtractImageApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:staging-ASSEMBLE_TEXT_TOPIC_INTERNAL:latest}}"
-      Role: "{{resolve:ssm:staging-LAMBDA_ROLE:latest}}"
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
