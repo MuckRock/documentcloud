@@ -70,7 +70,7 @@ jedi==0.16.0
 jinja2==2.10.1
 jmespath==0.9.4
 kombu==4.6.4
-listcrunch==0.1.0
+listcrunch==1.0.0
 markupsafe==1.1.1
 more-itertools==7.2.0
 numpy==1.17.3

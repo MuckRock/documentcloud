@@ -77,6 +77,7 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
+    path("api/", include("documentcloud.oembed.urls")),
     # Swagger
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
