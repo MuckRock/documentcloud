@@ -103,7 +103,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if has_auth_token or request.user.is_authenticated:
             patch_cache_control(response, no_cache=True)
         else:
-            patch_cache_control(response, public=True, max_age=300)
+            patch_cache_control(
+                response, public=True, max_age=settings.CACHE_CONTROL_MAX_AGE
+            )
         return response
 
     @transaction.atomic
