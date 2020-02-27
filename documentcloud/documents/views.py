@@ -3,6 +3,8 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models.query import Prefetch
 from django.http.response import Http404
+from django.utils.cache import patch_cache_control
+from django.views.decorators.vary import vary_on_cookie
 from rest_framework import mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -93,6 +95,16 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def filter_update_queryset(self, queryset):
         return queryset.get_editable(self.request.user)
+
+    @vary_on_cookie
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        has_auth_token = hasattr(request, "auth") and request.auth is not None
+        if has_auth_token or request.user.is_authenticated:
+            patch_cache_control(response, no_cache=True)
+        else:
+            patch_cache_control(response, public=True, max_age=300)
+        return response
 
     @transaction.atomic
     def perform_create(self, serializer):
