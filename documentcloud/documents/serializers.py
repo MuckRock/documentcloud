@@ -120,11 +120,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "user": {"read_only": True},
         }
         expandable_fields = {
-            "user": ("users.UserSerializer", {}),
-            "organization": ("organizations.OrganizationSerializer", {}),
-            "projects": ("projects.ProjectSerializer", {"many": True}),
-            "sections": ("documents.SectionSerializer", {"many": True}),
-            "notes": ("documents.NoteSerializer", {"many": True}),
+            "user": ("documentcloud.users.UserSerializer", {}),
+            "organization": ("documentcloud.organizations.OrganizationSerializer", {}),
+            "projects": ("documentcloud.projects.ProjectSerializer", {"many": True}),
+            "sections": ("documentcloud.documents.SectionSerializer", {"many": True}),
+            "notes": ("documentcloud.documents.NoteSerializer", {"many": True}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -249,8 +249,8 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
             "content": {"required": False},
         }
         expandable_fields = {
-            "user": ("users.UserSerializer", {}),
-            "organization": ("organizations.OrganizationSerializer", {}),
+            "user": ("documentcloud.users.UserSerializer", {}),
+            "organization": ("documentcloud.organizations.OrganizationSerializer", {}),
         }
 
     def validate_access(self, value):

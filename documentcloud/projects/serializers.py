@@ -47,7 +47,9 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
             "document": {"queryset": Document.objects.none()},
             "edit_access": {"default": None},
         }
-        expandable_fields = {"document": ("documents.DocumentSerializer", {})}
+        expandable_fields = {
+            "document": ("documentcloud.documents.DocumentSerializer", {})
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -114,7 +116,7 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
         model = Collaboration
         fields = ["user", "email", "access"]
         extra_kwargs = {"user": {"read_only": True}}
-        expandable_fields = {"user": ("users.UserSerializer", {})}
+        expandable_fields = {"user": ("documentcloud.users.UserSerializer", {})}
 
     def validate_access(self, value):
         """Disallow demoting the last admin"""
