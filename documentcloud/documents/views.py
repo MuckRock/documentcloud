@@ -2,7 +2,6 @@
 from django.conf import settings
 from django.db import transaction
 from django.db.models.query import Prefetch
-from django.http.response import Http404
 from django.utils.cache import patch_cache_control
 from django.views.decorators.vary import vary_on_cookie
 from rest_framework import mixins, parsers, serializers, status, viewsets
@@ -10,9 +9,6 @@ from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-
-# Standard Library
-import re
 
 # Third Party
 import django_filters
