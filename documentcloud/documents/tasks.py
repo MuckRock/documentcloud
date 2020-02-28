@@ -6,7 +6,7 @@ from django.db import transaction
 
 # Third Party
 import pysolr
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
@@ -32,36 +32,35 @@ def fetch_file_url(file_url, document_pk):
     document = Document.objects.get(pk=document_pk)
     try:
         storage.fetch_url(file_url, document.doc_path)
-    except HTTPError as exc:
+    except RequestException as exc:
         if (
-            exc.response.status_code >= 500
+            exc.response
+            and exc.response.status_code >= 500
             and fetch_file_url.request.retries < fetch_file_url.max_retries
         ):
             # a 5xx error can be retried - using celery autoretry
             raise
 
-        # log 4xx errors and 5xx errors past the maximum retry
+        # log all other request errors and 5xx errors past the max retries
         with transaction.atomic():
-            document.errors.create(
-                message=f'Fetching file "{file_url}" failed with status code: '
-                f"{exc.response.status_code}"
-            )
+            document.errors.create(message=exc.args[0])
             document.status = Status.error
             document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+            )
     else:
         document.status = Status.pending
         document.save()
-        httpsub.post(
-            settings.DOC_PROCESSING_URL,
-            json={
-                "doc_id": document_pk,
-                "slug": document.slug,
-                "method": "process_pdf",
-            },
+        transaction.on_commit(
+            lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
+        process.delay(document_pk, document.slug)
 
 
-@task
+@task(
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+)
 def process(document_pk, slug):
     """Start the processing"""
     httpsub.post(
@@ -70,7 +69,9 @@ def process(document_pk, slug):
     )
 
 
-@task
+@task(
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+)
 def redact(document_pk, slug, redactions):
     """Start the redacting"""
     httpsub.post(
@@ -84,7 +85,9 @@ def redact(document_pk, slug, redactions):
     )
 
 
-@task
+@task(
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+)
 def process_cancel(document_pk):
     """Stop the processing"""
     httpsub.post(

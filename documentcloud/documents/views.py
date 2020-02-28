@@ -188,6 +188,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         with transaction.atomic():
             document.status = Status.pending
             document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    self.document.pk, field_updates={"status": "set"}
+                )
+            )
             if was_public:
                 # if document is public, mark the files as private while it is being
                 # processed
@@ -206,6 +211,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         with transaction.atomic():
             document.status = Status.error
             document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    self.document.pk, field_updates={"status": "set"}
+                )
+            )
             document.errors.create(message="Processing was cancelled")
             transaction.on_commit(lambda: process_cancel.delay(document.pk))
             return Response("OK", status=status.HTTP_200_OK)
@@ -522,6 +532,11 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         with transaction.atomic():
             document.status = Status.pending
             document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    self.document.pk, field_updates={"status": "set"}
+                )
+            )
             if was_public:
                 # if document is public, mark the files as private while it is being
                 # processed
