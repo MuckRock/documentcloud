@@ -38,7 +38,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             "username": {"read_only": True},
         }
         expandable_fields = {
-            "organization": ("organizations.OrganizationSerializer", {})
+            "organization": ("documentcloud.organizations.OrganizationSerializer", {})
         }
 
     def validate_organization(self, value):
