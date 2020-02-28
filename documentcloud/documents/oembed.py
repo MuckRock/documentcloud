@@ -6,9 +6,6 @@ from rest_framework.generics import get_object_or_404
 # Standard Library
 import re
 
-# Third Party
-from listcrunch import uncrunch
-
 # DocumentCloud
 from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
