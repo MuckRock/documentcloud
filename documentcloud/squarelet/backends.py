@@ -15,3 +15,9 @@ class SquareletBackend(OpenIdConnectAuth):
     # pylint: disable=abstract-method
     name = "squarelet"
     OIDC_ENDPOINT = settings.SQUARELET_URL + "/openid"
+
+    def auth_allowed(self, response, details):
+        if settings.WHITELIST_VERIFIED_JOURNALISTS:
+            return any(o["verified_journalist"] for o in response["organizations"])
+        else:
+            return True
