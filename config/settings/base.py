@@ -118,7 +118,6 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.load_extra_data",
     "social_core.pipeline.user.user_details",
 )
-SOCIAL_AUTH_LOGIN_ERROR_URL = "/"
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
@@ -361,6 +360,7 @@ PUBLIC_ASSET_URL = env(
 )
 PRIVATE_ASSET_URL = env("PRIVATE_ASSET_URL", default=f"{DOCCLOUD_API_URL}/files/")
 
+SOCIAL_AUTH_LOGIN_ERROR_URL = f"{DOCCLOUD_URL}?error=login"
 
 # SESSION/COOKIES
 # ----
