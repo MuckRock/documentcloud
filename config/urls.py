@@ -2,7 +2,6 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.contrib.auth.views import LogoutView
 from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic.base import RedirectView
@@ -14,7 +13,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
-from documentcloud.core.views import FileServer
+from documentcloud.core.views import FileServer, account_logout
 from documentcloud.documents.views import (
     DataViewSet,
     DocumentErrorViewSet,
@@ -88,7 +87,7 @@ urlpatterns = [
         name="schema-swagger-ui",
     ),
     # Social Django
-    path("accounts/logout/", LogoutView.as_view(), name="logout"),
+    path("accounts/logout/", account_logout, name="logout"),
     path("accounts/", include("social_django.urls", namespace="social")),
     path("squarelet/", include("documentcloud.squarelet.urls", namespace="squarelet")),
     path(

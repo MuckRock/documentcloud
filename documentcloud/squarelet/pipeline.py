@@ -31,3 +31,16 @@ def save_info(backend, user, response, *args, **kwargs):
     """Update the user's info based on information from squarelet"""
     # pylint: disable=unused-argument
     User.objects.squarelet_update_or_create(response["uuid"], response)
+
+
+def save_session_data(strategy, request, response, *args, **kwargs):
+    """Save some data in the session"""
+    # pylint: disable=unused-argument
+    # session_state and id_token are used for universal logout functionality
+    session_state = strategy.request_data().get("session_state")
+    if session_state:
+        request.session["session_state"] = session_state
+
+    id_token = response.get("id_token")
+    if id_token:
+        request.session["id_token"] = id_token
