@@ -1,7 +1,12 @@
 # Django
+from django.conf import settings
+from django.contrib.auth import logout
 from django.http.response import HttpResponseRedirect, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import View
+
+# Standard Library
+from urllib.parse import urlencode
 
 # DocumentCloud
 from documentcloud.common.environment import storage
@@ -22,3 +27,20 @@ class FileServer(View):
         else:
             return HttpResponseRedirect(url)
         return HttpResponseRedirect(url)
+
+
+def account_logout(request):
+    """Logs a user out of their account and redirects to squarelet's logout page"""
+    url = settings.DOCCLOUD_URL + "/"
+    if "id_token" in request.session:
+        params = {
+            "id_token_hint": request.session["id_token"],
+            "post_logout_redirect_uri": url,
+        }
+        redirect_url = "{}/openid/end-session?{}".format(
+            settings.SQUARELET_URL, urlencode(params)
+        )
+    else:
+        redirect_url = url
+    logout(request)
+    return redirect(redirect_url)

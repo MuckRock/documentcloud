@@ -115,6 +115,7 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.user.get_username",
     "documentcloud.squarelet.pipeline.associate_by_uuid",
     "documentcloud.squarelet.pipeline.save_info",
+    "documentcloud.squarelet.pipeline.save_session_data",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
     "social_core.pipeline.user.user_details",
