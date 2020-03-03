@@ -548,9 +548,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             document.status = Status.pending
             document.save()
             transaction.on_commit(
-                lambda: solr_index.delay(
-                    self.document.pk, field_updates={"status": "set"}
-                )
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
             if was_public:
                 # if document is public, mark the files as private while it is being
