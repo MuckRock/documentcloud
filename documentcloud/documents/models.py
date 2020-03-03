@@ -290,7 +290,7 @@ class Document(models.Model):
                 exc,
                 exc_info=sys.exc_info(),
             )
-            return ""
+            return {"pages": [], "updated": None}
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
@@ -301,13 +301,9 @@ class Document(models.Model):
         """
         if index_text:
             page_text = self.get_all_page_text()
-            # only update the index with pages which have changed
-            # in the latest update
-            updated = page_text["updated"]
             pages = {
-                f"page_no_{i + 1}": page_text["pages"][i]["contents"]
-                for i in range(self.page_count)
-                if page_text["pages"][i]["updated"] == updated
+                f"page_no_{i}": p["contents"]
+                for i, p in enumerate(page_text["pages"], start=1)
             }
         else:
             # do not get page text for a partial update, as it is slow and
