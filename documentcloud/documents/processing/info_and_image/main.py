@@ -578,7 +578,7 @@ def redact_doc(data, _context=None):
     # Get dirty pages
     dirty_pages = set()
     for redaction in redactions:
-        dirty_pages.add(redaction["page"])
+        dirty_pages.add(redaction["page_number"])
 
     # Perform the actual redactions
     redact_document_and_overwrite(doc_id, slug, redactions)
