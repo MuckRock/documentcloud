@@ -46,10 +46,20 @@ class AwsStorage:
             f"s3://{file_name}", mode, transport_params=transport_params
         )
 
-    def simple_upload(self, filename, contents):
-        bucket, key = self.bucket_key(filename)
+    def simple_upload(self, file_name, contents, content_type=None):
+        bucket, key = self.bucket_key(file_name)
+
+        if content_type is None:
+            # attempt to guess content type if not specified
+            content_type = mimetypes.guess_type(file_name)[0]
+        if content_type is not None:
+            # set content type if we have one
+            extra_args = {"ContentType": content_type}
+        else:
+            extra_args = {}
+
         with io.BytesIO(contents) as mem_file:
-            self.s3_client.upload_fileobj(mem_file, bucket, key)
+            self.s3_client.upload_fileobj(mem_file, bucket, key, ExtraArgs=extra_args)
 
     def presign_url(self, file_name, method_name):
         bucket, key = self.bucket_key(file_name)
