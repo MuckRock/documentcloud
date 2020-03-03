@@ -189,9 +189,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             document.status = Status.pending
             document.save()
             transaction.on_commit(
-                lambda: solr_index.delay(
-                    self.document.pk, field_updates={"status": "set"}
-                )
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
             if was_public:
                 # if document is public, mark the files as private while it is being
@@ -212,9 +210,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             document.status = Status.error
             document.save()
             transaction.on_commit(
-                lambda: solr_index.delay(
-                    self.document.pk, field_updates={"status": "set"}
-                )
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
             document.errors.create(message="Processing was cancelled")
             transaction.on_commit(lambda: process_cancel.delay(document.pk))
@@ -269,6 +265,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             else:
                 # only update the fields that were updated
                 fields = validated_data.keys()
+                # never try to update the id
+                fields.pop("id", None)
                 transaction.on_commit(
                     lambda i=instance: solr_index.delay(
                         i.pk, field_updates={f: "set" for f in fields}
