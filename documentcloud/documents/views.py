@@ -237,21 +237,39 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @transaction.atomic
     def perform_update(self, serializer):
         # work for regular and bulk updates
-        if hasattr(serializer, "many") and serializer.many:
-            instances = serializer.instance
-            validated_datas = serializer.validated_data
+
+        bulk = hasattr(serializer, "many") and serializer.many
+
+        if bulk:
+            validated_datas = sorted(serializer.validated_data, key=lambda d: d["id"])
+            # get the relevant instances
+            instances = serializer.instance.filter(
+                id__in=[d["id"] for d in validated_datas]
+            ).order_by("id")
+            if len(validated_datas) != len(instances):
+                raise serializers.ValidationError(
+                    "Could not find all objects to update"
+                )
         else:
-            instances = [serializer.instance]
             validated_datas = [serializer.validated_data]
+            instances = [serializer.instance]
 
         was_publics = [i.public for i in instances]
         old_statuses = [i.status for i in instances]
         super().perform_update(serializer)
+
+        # refresh from database after performing update
+        if bulk:
+            instances = sorted(serializer.instance, key=lambda i: i.id)
+        else:
+            instances = [serializer.instance]
+
         for instance, validated_data, was_public, old_status in zip(
             instances, validated_datas, was_publics, old_statuses
         ):
             if was_public != instance.public:
                 transaction.on_commit(lambda i=instance: update_access.delay(i.pk))
+
             if old_status in (Status.pending, Status.readable):
                 # if we were processing, do a full update
                 if instance.status == Status.success:
