@@ -264,12 +264,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                     transaction.on_commit(lambda i=instance: solr_index.delay(i.pk))
             else:
                 # only update the fields that were updated
-                fields = validated_data.keys()
                 # never try to update the id
-                fields.pop("id", None)
+                validated_data.pop("id", None)
                 transaction.on_commit(
                     lambda i=instance: solr_index.delay(
-                        i.pk, field_updates={f: "set" for f in fields}
+                        i.pk, field_updates={f: "set" for f in validated_data}
                     )
                 )
 
