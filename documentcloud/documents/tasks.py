@@ -122,7 +122,11 @@ def update_access(document_pk):
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     if solr_document is None:
-        document = Document.objects.get(pk=document_pk)
+        try:
+            document = Document.objects.get(pk=document_pk)
+        except Document.DoesNotExist:
+            # if document no longer exists, just skip
+            return
         if field_updates:
             solr_document = document.solr(field_updates.keys(), index_text=index_text)
         else:
