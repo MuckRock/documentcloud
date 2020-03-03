@@ -169,18 +169,18 @@ class Document:
 
         [
             {
-                "page": 0,  # 0-based
-                "x1": 0.25,  # percent of page width
-                "x2": 0.75,  # percent of page width
-                "y1": 0.34,  # percent of page height
-                "y2": 0.80,  # percent of page height
+                "page_number": 0,  # 0-based
+                "x1": 0.25,        # percent of page width
+                "x2": 0.75,        # percent of page width
+                "y1": 0.34,        # percent of page height
+                "y2": 0.80,        # percent of page height
             },
             ...
         ]"""
         # Organize redaction objects by page number
         redactions_by_page = collections.defaultdict(list)
         for redaction in redactions:
-            redactions_by_page[redaction["page"]].append(redaction)
+            redactions_by_page[redaction["page_number"]].append(redaction)
         pages = sorted(redactions_by_page.keys())
 
         # Start creating the new document
