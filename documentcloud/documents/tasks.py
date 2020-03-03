@@ -156,4 +156,4 @@ def solr_index_dirty():
         status=Status.deleted
     )[: settings.SOLR_DIRTY_LIMIT]
     for document in dirty_documents:
-        solr_index.delay(document.pk)
+        solr_index.delay(document.pk, index_text=True)
