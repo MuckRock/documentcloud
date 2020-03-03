@@ -199,7 +199,9 @@ def write_text_file(text_path, text):
 def write_pagespec_file(doc_id, slug, crunched_pagespec):
     """Helper method to write pagespec file."""
     storage.simple_upload(
-        path.pagesize_path(doc_id, slug), crunched_pagespec.encode("utf8")
+        path.pagesize_path(doc_id, slug),
+        crunched_pagespec.encode("utf8"),
+        content_type="text/plain",
     )
 
 
