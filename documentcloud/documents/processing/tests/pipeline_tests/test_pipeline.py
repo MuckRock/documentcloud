@@ -31,7 +31,9 @@ def trigger_redacting(page_numbers):
             {
                 "doc_id": ID,
                 "slug": SLUG,
-                "redactions": [{"page": page_number} for page_number in page_numbers],
+                "redactions": [
+                    {"page_number": page_number} for page_number in page_numbers
+                ],
             }
         ),
     )
