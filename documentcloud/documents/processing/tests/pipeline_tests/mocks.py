@@ -195,7 +195,7 @@ def write_text_file(text_path, text):
 
 def redact_doc(doc_id, slug, redactions):
     """Redact document by ensuring redacted pages need OCR"""
-    pages = [r["page"] for r in redactions]
+    pages = [r["page_number"] for r in redactions]
     docs[path.doc_path(doc_id, slug)].redact(pages)
 
 
