@@ -15,12 +15,19 @@ from documentcloud.users.models import User
 
 
 class ProjectSerializer(serializers.ModelSerializer):
+    edit_access = serializers.SerializerMethodField(
+        label=_("Edit Access"),
+        read_only=True,
+        help_text=_("Does the current user have edit access to this project"),
+    )
+
     class Meta:
         model = Project
         fields = [
             "id",
             "created_at",
             "description",
+            "edit_access",
             "private",
             "slug",
             "title",
@@ -35,6 +42,12 @@ class ProjectSerializer(serializers.ModelSerializer):
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
         }
+
+    def get_edit_access(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        return request.user.has_perm("projects.change_project", obj)
 
 
 class ProjectMembershipSerializer(FlexFieldsModelSerializer):
