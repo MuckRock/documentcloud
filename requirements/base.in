@@ -40,9 +40,12 @@ drf-flex-fields
 # Cloud providers
 gcsfs
 google-cloud-pubsub
-boto3
+boto3==1.10.14 # pinned for aioboto3 to install
 smart-open
+aioboto3
 
+# to resolve version issues
+wrapt==1.11.2
 
 # Processing
 cpuprofile
