@@ -140,6 +140,7 @@ def do_update_access(path, access, marker):
     for file_ in files:
         storage.set_access(file_, access)
     logger.info("DONE: do update access: %s", marker)
+    storage.set_access(document.path, access)
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
