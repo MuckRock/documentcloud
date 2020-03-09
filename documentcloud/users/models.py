@@ -16,6 +16,7 @@ from uuid import uuid4
 import requests
 
 # DocumentCloud
+from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.organizations.models import Organization
 from documentcloud.squarelet.utils import squarelet_get
@@ -84,6 +85,23 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     updated_at = AutoLastModifiedField(
         _("updated at"), help_text=_("Timestamp of when the user was last updated")
+    )
+
+    language = models.CharField(
+        _("language"),
+        max_length=3,
+        choices=Language.choices,
+        default="eng",
+        blank=True,
+        help_text=_("The interface language for this user"),
+    )
+    document_language = models.CharField(
+        _("document language"),
+        max_length=3,
+        choices=Language.choices,
+        default="eng",
+        blank=True,
+        help_text=_("The default language for documents uploaded by this user"),
     )
 
     # preferences
