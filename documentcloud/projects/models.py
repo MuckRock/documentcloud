@@ -137,6 +137,11 @@ class Collaboration(models.Model):
         blank=True,
         null=True,
         related_name="+",
+        # This is set to false so we can import collaborators before there
+        # creators
+        # Once migration from old DocumentCloud is complete, this should
+        # be set back to True
+        db_constraint=False,
         help_text=_("The user who created this collaboration"),
     )
 
