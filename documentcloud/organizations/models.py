@@ -13,6 +13,7 @@ import logging
 from uuid import uuid4
 
 # DocumentCloud
+from documentcloud.core.choices import Language
 from documentcloud.organizations.querysets import OrganizationQuerySet
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,28 @@ class Organization(models.Model):
             "This organizations payment method has failed and should be updated"
         ),
     )
+    verified_journalist = models.BooleanField(
+        _("verified journalist"),
+        default=False,
+        help_text=_("This organization is a verified jorunalistic organization"),
+    )
+
+    language = models.CharField(
+        _("language"),
+        max_length=3,
+        choices=Language.choices,
+        default="eng",
+        blank=True,
+        help_text=_("The default interface language for user's in this organization"),
+    )
+    document_language = models.CharField(
+        _("document language"),
+        max_length=3,
+        choices=Language.choices,
+        default="eng",
+        blank=True,
+        help_text=_("The default document language for user's in this organization"),
+    )
 
     class Meta:
         ordering = ("slug",)
@@ -182,6 +205,7 @@ class Organization(models.Model):
             "card",
             "payment_failed",
             "avatar_url",
+            "verified_journalist",
         ]
         for field in fields:
             if field in data:
