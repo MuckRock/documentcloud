@@ -26,22 +26,26 @@ def test_document_rules():
     organization_member.organization = organization
 
     public_document = DocumentFactory(
-        user=owner, organization=organization, access=Access.public
+        user=owner, organization=organization, access=Access.public, title="public"
     )
     public_pending_document = DocumentFactory(
         user=owner,
         organization=organization,
         access=Access.public,
         status=Status.pending,
+        title="pending",
     )
     organization_document = DocumentFactory(
-        user=owner, organization=organization, access=Access.organization
+        user=owner, organization=organization, access=Access.organization, title="org"
     )
     private_document = DocumentFactory(
-        user=owner, organization=organization, access=Access.private
+        user=owner, organization=organization, access=Access.private, title="private"
     )
     invisible_document = DocumentFactory(
-        user=owner, organization=organization, access=Access.invisible
+        user=owner,
+        organization=organization,
+        access=Access.invisible,
+        title="invisible",
     )
     documents = [
         public_document,
@@ -53,7 +57,7 @@ def test_document_rules():
 
     ProjectFactory(edit_collaborators=[edit_collaborator], edit_documents=documents)
     ProjectFactory(collaborators=[view_collaborator], edit_documents=documents)
-    ProjectFactory(collaborators=[view_collaborator], documents=documents)
+    ProjectFactory(collaborators=[no_access_collaborator], documents=documents)
 
     for user, document, can_view, can_change, can_share in [
         (anonymous, public_document, True, False, False),
@@ -66,8 +70,8 @@ def test_document_rules():
         (owner, organization_document, True, True, True),
         (owner, private_document, True, True, True),
         (owner, invisible_document, False, False, False),
-        (edit_collaborator, public_document, True, True, False),
-        (edit_collaborator, public_pending_document, True, True, False),
+        (edit_collaborator, public_document, True, False, False),
+        (edit_collaborator, public_pending_document, True, False, False),
         (edit_collaborator, organization_document, True, True, False),
         (edit_collaborator, private_document, True, True, False),
         (edit_collaborator, invisible_document, False, False, False),
@@ -87,10 +91,18 @@ def test_document_rules():
         (organization_member, private_document, False, False, False),
         (organization_member, invisible_document, False, False, False),
     ]:
-        assert user.has_perm("documents.view_document", document) is can_view
-        assert user.has_perm("documents.change_document", document) is can_change
-        assert user.has_perm("documents.share_document", document) is can_share
-        assert user.has_perm("documents.delete_document", document) is can_share
+        assert (
+            user.has_perm("documents.view_document", document) is can_view
+        ), f"{user.get_full_name()} - {document.title}"
+        assert (
+            user.has_perm("documents.change_document", document) is can_change
+        ), f"{user.get_full_name()} - {document.title}"
+        assert (
+            user.has_perm("documents.share_document", document) is can_share
+        ), f"{user.get_full_name()} - {document.title}"
+        assert (
+            user.has_perm("documents.delete_document", document) is can_share
+        ), f"{user.get_full_name()} - {document.title}"
 
 
 @pytest.mark.django_db()
@@ -143,8 +155,8 @@ def test_note_rules():
         (organization_member, organization_note, False, False),
         (organization_member, private_note, False, False),
         (organization_member, invisible_note, False, False),
-        (edit_collaborator, public_note, True, True),
-        (edit_collaborator, organization_note, True, True),
+        (edit_collaborator, public_note, True, False),
+        (edit_collaborator, organization_note, False, False),
         (edit_collaborator, private_note, False, False),
         (edit_collaborator, invisible_note, False, False),
         (view_collaborator, public_note, True, False),

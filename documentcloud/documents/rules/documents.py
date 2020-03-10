@@ -73,15 +73,19 @@ default_limit = (
 # you must be logged in to have share access
 # nobody has any access to invisible documents
 can_share = default_limit & (
-    # you do have share access if you are the owner
-    is_owner
+    # you have share access if you are the owner and the document is not public
+    # public documents restrict access to the organization to prevent
+    # abuse to embedded documents
+    (is_owner & ~has_access(Access.public))
     # you also can have access if you are in the same organization
     # and the access is organization or public
     | (has_access(Access.organization, Access.public) & is_organization)
 )
 # you can edit the document if you can share it, or additionally
-# if it was shared with you for editing
-can_change = can_share | (default_limit & is_edit_collaborator)
+# if it was shared with you for editing and it is not public
+can_change = can_share | (
+    default_limit & is_edit_collaborator & ~has_access(Access.public)
+)
 # you can view a document if you can change it or if it is public
 # being a non-edit collaborator does not give you view permissions
 # so that an owner may revoke share permissions through projects
