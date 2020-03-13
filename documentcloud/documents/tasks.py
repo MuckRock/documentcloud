@@ -2,10 +2,12 @@
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 
 # Standard Library
 import logging
+import sys
 
 # Third Party
 import pysolr
@@ -29,6 +31,8 @@ if settings.ENVIRONMENT.startswith("local"):
         assemble_text,
         redact_document,
     )
+
+logger = logging.getLogger(__name__)
 
 
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
@@ -155,25 +159,44 @@ def solr_index(document_pk, solr_document=None, field_updates=None, index_text=F
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
-@periodic_task(run_every=crontab(minute=30, hour="*/3"))
+@periodic_task(run_every=crontab(minute=30))
 def solr_index_dirty():
     """Task to try and index all dirty models periodically"""
-    # check to make sure the solr server is responsive before trying to index
-    try:
-        SOLR.search("*:*")
-    except pysolr.SolrError:
-        return
+    # acquire a lock to ensure we do not try to run this task multiple times
+    # in parallel
+    lock = cache.lock("solr_index_dirty")
+    if lock.acquire(blocking=False):
+        # check to make sure the solr server is responsive before trying to index
+        try:
+            SOLR.search("*:*")
+        except pysolr.SolrError as exc:
+            logger.error("Solr is down: %s", exc, exc_info=sys.exc_info())
+            return
 
-    deleted_documents = Document.objects.filter(status=Status.deleted)[
-        : settings.SOLR_DIRTY_LIMIT
-    ]
-    for document in deleted_documents:
-        solr_delete.delay(document.pk)
+        # get the deleted documents and delete them from Solr
+        deleted = Document.objects.filter(status=Status.deleted)
+        deleted_count = deleted.count()
+        logger.info("Solr index dirty: %d documents to delete", deleted_count)
+        deleted_documents = deleted[: settings.SOLR_DIRTY_LIMIT]
+        for document in deleted_documents:
+            solr_delete.delay(document.pk)
 
-    dirty_documents = Document.objects.filter(solr_dirty=True).exclude(
-        status=Status.deleted
-    )[: settings.SOLR_DIRTY_LIMIT]
-    for document in dirty_documents:
-        logger.info("solr index dirty: reindexing %s", document.pk)
-        # only index the full text if the document is in a successful state
-        solr_index.delay(document.pk, index_text=document.status == Status.success)
+        # get the dirty documents and index them
+        dirty = Document.objects.filter(solr_dirty=True).exclude(status=Status.deleted)
+        dirty_count = dirty.count()
+        logger.info("Solr index dirty: %d documents to index", dirty_count)
+        dirty_documents = dirty[: settings.SOLR_DIRTY_LIMIT]
+        for document in dirty_documents:
+            logger.info("solr index dirty: reindexing %s", document.pk)
+            # only index the full text if the document is in a successful state
+            solr_index.delay(document.pk, index_text=document.status == Status.success)
+
+        # if there were more documents than the limit, continue indexing
+        # after a delay
+        if (
+            deleted_count > settings.SOLR_DIRTY_LIMIT
+            or dirty_count > settings.SOLR_DIRTY_LIMIT
+        ):
+            solr_index_dirty.apply_async(countdown=settings.SOLR_DIRTY_COUNTDOWN)
+    else:
+        logger.info("Solr index dirty failed to acquire the lock")
