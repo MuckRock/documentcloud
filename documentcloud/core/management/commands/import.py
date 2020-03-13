@@ -318,14 +318,21 @@ class Command(BaseCommand):
                     note.y1 /= height
                     note.y2 /= height
                 elif note.x1 is not None and note.document_id not in document_map:
-                    # XXX if we do not have page specs make it a page level note
+                    # XXX if we do not have page specs, guess!
+                    # all pages should have a width of 1000, and we will use
+                    # a standard height of 1294
                     # this will happen if it is a private note on a document
                     # that has not been imported yet
-                    # XXX allow for note moving?
-                    note.x1 = None
-                    note.x2 = None
-                    note.y1 = None
-                    note.y2 = None
+                    assert note.access == Access.private
+                    note.x1 /= 1000
+                    note.x2 /= 1000
+                    note.y1 /= 1294
+                    note.y2 /= 1294
+                    # if we guessed the height wrong just reduce it
+                    if note.y1 > 1:
+                        note.y1 = 0.9
+                    if note.y2 > 1:
+                        note.y2 = 1.0
 
             Note.objects.bulk_create(create_notes, batch_size=1000)
 
