@@ -184,13 +184,18 @@ class Command(BaseCommand):
             9: (Access.public, Status.success),
         }
 
-        with smart_open(f"{self.bucket_path}documents.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}documents.csv", "rb") as infile, smart_open(
+            f"{self.bucket_path}documents_pagespecs.csv", "rb"
+        ) as psfile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
+            ps_reader = csv.reader(psfile)
 
             create_docs = []
 
             for fields in reader:
+            for fields, (doc_id, page_spec) in zip(reader, ps_reader):
+                assert fields[0] == doc_id
                 access, status = access_status_map[fields[3]]
                 create_docs.append(
                     Document(
@@ -202,6 +207,7 @@ class Command(BaseCommand):
                         title=fields[5],
                         slug=fields[6],
                         page_count=fields[4],
+                        page_spec=page_spec,
                         language=fields[8],
                         source=fields[7],
                         description=fields[9],
@@ -287,7 +293,6 @@ class Command(BaseCommand):
 
             # create a dictionary mapping document ids to
             # the uncrunched page specs
-            # XXX when do we run page spec lambda?
             document_map = {
                 pk: uncrunch(page_spec)
                 for pk, page_spec in Document.objects.filter(
@@ -310,6 +315,8 @@ class Command(BaseCommand):
                     note.y2 /= height
                 elif note.x1 is not None and note.document_id not in document_map:
                     # XXX if we do not have page specs make it a page level note
+                    # this will happen if it is a private note on a document
+                    # that has not been imported yet
                     # XXX allow for note moving?
                     note.x1 = None
                     note.x2 = None
