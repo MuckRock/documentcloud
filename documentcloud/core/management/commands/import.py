@@ -16,6 +16,7 @@ from smart_open.smart_open_lib import smart_open
 # DocumentCloud
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
+from documentcloud.documents.tasks import solr_index_dirty
 from documentcloud.organizations.models import Membership, Organization, Plan
 from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
@@ -206,7 +207,7 @@ class Command(BaseCommand):
                         description=fields[9],
                         created_at=parse(fields[12]),
                         updated_at=parse(fields[13]),
-                        solr_dirty=True,  # XXX how do we update solr?
+                        solr_dirty=True,
                         data=json.loads(fields[26]) if fields[26] else {},
                         related_article=fields[14],
                         remote_url=fields[16],
@@ -225,6 +226,9 @@ class Command(BaseCommand):
                 )
 
             Document.objects.bulk_create(create_docs, batch_size=1000)
+
+        # start indexing the documents
+        solr_index_dirty.delay()
 
         self.stdout.write("End Documents Import {}".format(timezone.now()))
 
@@ -283,6 +287,7 @@ class Command(BaseCommand):
 
             # create a dictionary mapping document ids to
             # the uncrunched page specs
+            # XXX when do we run page spec lambda?
             document_map = {
                 pk: uncrunch(page_spec)
                 for pk, page_spec in Document.objects.filter(
