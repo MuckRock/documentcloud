@@ -193,10 +193,14 @@ class Command(BaseCommand):
 
             create_docs = []
 
-            for fields in reader:
             for fields, (doc_id, page_spec) in zip(reader, ps_reader):
                 assert fields[0] == doc_id
                 access, status = access_status_map[fields[3]]
+                if fields[26]:
+                    # wrap the data dictionary so each value is in a list now
+                    data = {k: [v] for k, v in json.loads(fields[26]).items()}
+                else:
+                    data = {}
                 create_docs.append(
                     Document(
                         id=fields[0],
@@ -214,7 +218,7 @@ class Command(BaseCommand):
                         created_at=parse(fields[12]),
                         updated_at=parse(fields[13]),
                         solr_dirty=True,
-                        data=json.loads(fields[26]) if fields[26] else {},
+                        data=data,
                         related_article=fields[14],
                         remote_url=fields[16],
                         detected_remote_url=fields[15],
