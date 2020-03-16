@@ -1,6 +1,7 @@
 """Celery tasks for squarelet app"""
 # Django
 from celery.task import task
+from django.conf import settings
 
 # Standard Library
 import logging
@@ -25,6 +26,16 @@ def pull_data(type_, uuid, **kwargs):
     if type_ not in types_url:
         logger.warning("Pull data received invalid type: %s", type_)
         return
+
+    model = types_model[type_]
+    if (
+        settings.DISABLE_SQUARELET_CREATE
+        and not model.objects.filter(uuid=uuid).exists()
+    ):
+        # if we have disabled creating new instances from squarelet
+        # do not try to pull the data unless the instance already exists locally
+        return
+
     try:
         resp = squarelet_get("/api/{}/{}/".format(types_url[type_], uuid))
         resp.raise_for_status()
@@ -37,7 +48,6 @@ def pull_data(type_, uuid, **kwargs):
             countdown=2 ** pull_data.request.retries,
         )
     else:
-        model = types_model[type_]
         data = resp.json()
         logger.info("Pull data for: %s %s %s", type_, uuid, data)
         model.objects.squarelet_update_or_create(uuid, data)
