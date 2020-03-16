@@ -28,6 +28,10 @@ class BaseUserManager(AuthUserManager):
         if missing:
             raise ValueError("Missing required fields: {}".format(missing))
 
+        if data.get("is_agency"):
+            # do not create agency users on documentcloud
+            return None, False
+
         user, created = self._squarelet_update_or_create_user(uuid, data)
 
         self._update_organizations(user, data)
