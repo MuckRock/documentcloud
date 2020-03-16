@@ -449,3 +449,7 @@ OEMBED_PROVIDER_URL = env("OEMBED_PROVIDER_URL", default=DOCCLOUD_URL)
 OEMBED_CACHE_AGE = env.int("OEMBED_CACHE_AGE", default=300)
 
 CACHE_CONTROL_MAX_AGE = env.int("CACHE_CONTROL_MAX_AGE", default=300)
+
+# Squarelet
+# ------------------------------------------------------------------------------
+DISABLE_SQUARELET_CREATE = env.bool("DISABLE_SQUARELET_CREATE", default=False)
