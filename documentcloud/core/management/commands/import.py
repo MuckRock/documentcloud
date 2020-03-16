@@ -330,8 +330,10 @@ class Command(BaseCommand):
                     note.y2 /= 1294
                     # if we guessed the height wrong just reduce it
                     if note.y1 > 1:
+                        self.stdout.write(f"y1 was outside bounds, setting to 0.9")
                         note.y1 = 0.9
                     if note.y2 > 1:
+                        self.stdout.write(f"y2 was outside bounds, setting to 1.0")
                         note.y2 = 1.0
 
             Note.objects.bulk_create(create_notes, batch_size=1000)
