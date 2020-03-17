@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable=inconsistent-return-statements
 
 
-def associate_by_uuid(backend, response, user=None, *args, **kwargs):
+def associate_by_uuid(response, user=None, *args, **kwargs):
     """Associate current auth with a user with the same uuid in the DB."""
     # pylint: disable=unused-argument
     # pylint: disable=keyword-arg-before-vararg
@@ -27,10 +27,11 @@ def associate_by_uuid(backend, response, user=None, *args, **kwargs):
             return {"user": user, "is_new": False}
 
 
-def save_info(backend, user, response, *args, **kwargs):
+def save_info(response, *args, **kwargs):
     """Update the user's info based on information from squarelet"""
     # pylint: disable=unused-argument
-    User.objects.squarelet_update_or_create(response["uuid"], response)
+    user, created = User.objects.squarelet_update_or_create(response["uuid"], response)
+    return {"user": user, "is_new": created}
 
 
 def save_session_data(strategy, request, response, *args, **kwargs):
