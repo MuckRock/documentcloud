@@ -21,7 +21,7 @@ class DocumentOEmbed(RichOEmbed):
         re.compile(rf"{settings.DOCCLOUD_API_URL}/api/documents/(?P<pk>[0-9]+)/?"),
     ]
 
-    def response(self, request, max_width=None, max_height=None, **kwargs):
+    def response(self, request, query, max_width=None, max_height=None, **kwargs):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
@@ -31,9 +31,10 @@ class DocumentOEmbed(RichOEmbed):
         )
         oembed = {"title": document.title, "width": width, "height": height}
         template = get_template("oembed/document.html")
-        oembed["html"] = template.render(
-            {"src": f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/", **oembed}
-        )
+        src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
+        if query:
+            src = f"{src}?{query}"
+        oembed["html"] = template.render({"src": src, **oembed})
         return self.oembed(**oembed)
 
     def get_dimensions(self, aspect_ratio, max_width, max_height):

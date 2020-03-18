@@ -204,6 +204,9 @@ class Document(models.Model):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return f"/documents/{self.pk}-{self.slug}/"
+
     def save(self, *args, **kwargs):
         """Mark this model's solr index as being out of date on every save"""
         # pylint: disable=arguments-differ
@@ -246,7 +249,7 @@ class Document(models.Model):
     @property
     def aspect_ratio(self):
         """Return the aspect ratio of the first page"""
-        default = 0.77
+        default = 1.29
         if not self.page_spec:
             return default
 
@@ -257,7 +260,7 @@ class Document(models.Model):
 
         width, height = [float(d) for d in dimensions.split("x")]
 
-        return width / height
+        return height / width
 
     def get_page_text(self, page_number):
         try:
