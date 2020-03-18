@@ -7,7 +7,7 @@ class OEmbed:
 
     patterns = []
 
-    def response(self, request, max_width, max_height, **kwargs):
+    def response(self, request, query, max_width, max_height, **kwargs):
         raise NotImplementedError("You must implement `response` for OEmbed")
 
     def oembed(self, **kwargs):
