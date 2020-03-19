@@ -40,15 +40,15 @@ class DocumentOEmbed(RichOEmbed):
     def get_dimensions(self, aspect_ratio, max_width, max_height):
         default_width = 700
         if max_width and max_height:
-            if max_width * aspect_ratio > max_height:
+            if max_width / aspect_ratio > max_height:
                 # cap based on max_height
-                return int(max_height / aspect_ratio), max_height
+                return int(max_height * aspect_ratio), max_height
             else:
                 # cap based on max width
-                return max_width, int(max_width * aspect_ratio)
+                return max_width, int(max_width / aspect_ratio)
         elif max_width:
-            return max_width, int(max_width * aspect_ratio)
+            return max_width, int(max_width / aspect_ratio)
         elif max_height:
-            return int(max_height / aspect_ratio), max_height
+            return int(max_height * aspect_ratio), max_height
         else:
-            return default_width, int(default_width * aspect_ratio)
+            return default_width, int(default_width / aspect_ratio)

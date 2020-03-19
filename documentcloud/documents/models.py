@@ -249,7 +249,7 @@ class Document(models.Model):
     @property
     def aspect_ratio(self):
         """Return the aspect ratio of the first page"""
-        default = 1.29
+        default = 0.77
         if not self.page_spec:
             return default
 
@@ -260,7 +260,7 @@ class Document(models.Model):
 
         width, height = [float(d) for d in dimensions.split("x")]
 
-        return height / width
+        return width / height
 
     def get_page_text(self, page_number):
         try:
