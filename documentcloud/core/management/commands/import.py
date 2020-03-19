@@ -5,13 +5,15 @@ from django.utils import timezone
 
 # Standard Library
 import csv
+import ctypes
 import json
 import os
 
 # Third Party
+import pytz
 from dateutil.parser import parse
 from listcrunch.listcrunch import uncrunch
-from smart_open.smart_open_lib import smart_open
+from smart_open import open as smart_open
 
 # DocumentCloud
 from documentcloud.documents.choices import Access, Status
@@ -23,6 +25,15 @@ from documentcloud.projects.models import Collaboration, Project, ProjectMembers
 from documentcloud.users.models import User
 
 BUCKET = os.environ["IMPORT_BUCKET"]
+ACCESS_KEY = os.environ["IMPORT_AWS_ACCESS_KEY_ID"]
+SECRET_KEY = os.environ["IMPORT_AWS_SECRET_ACCESS_KEY"]
+
+
+def parse_date(date_str):
+    if not date_str:
+        return None
+    else:
+        return parse(date_str).replace(tzinfo=pytz.UTC)
 
 
 class Command(BaseCommand):
@@ -34,7 +45,12 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         # pylint: disable=unused-argument
         org_id = kwargs["organization"]
-        self.bucket_path = f"s3://{BUCKET}/documentcloud-export/organization-{org_id}/"
+        self.bucket_path = (
+            f"s3://{ACCESS_KEY}:{SECRET_KEY}@{BUCKET}/"
+            f"documentcloud-export-test/organization-{org_id}/"
+        )
+        # https://stackoverflow.com/a/54517228/2204914
+        csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
         with transaction.atomic():
             self.import_org()
             self.import_users()
@@ -47,15 +63,17 @@ class Command(BaseCommand):
             self.import_collaborations()
             self.import_project_memberships()
 
+            raise ValueError("Do not commit")
+
     def import_org(self):
         self.stdout.write("Begin Organization Import {}".format(timezone.now()))
         plan = Plan.objects.get(slug="free")
 
         # get the UUID from the map file
-        with smart_open(f"{self.bucket_path}organizations_map.csv", "rb") as mapfile:
+        with smart_open(f"{self.bucket_path}organizations_map.csv", "r") as mapfile:
             org_id, org_uuid = mapfile.read().strip().split(",")
 
-        with smart_open(f"{self.bucket_path}organizations.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}organizations.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
             fields = next(reader)
@@ -105,8 +123,8 @@ class Command(BaseCommand):
     def import_users(self):
         self.stdout.write("Begin Users Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}users.csv", "rb") as infile, smart_open(
-            f"{self.bucket_path}users_map.csv", "rb"
+        with smart_open(f"{self.bucket_path}users.csv", "r") as infile, smart_open(
+            f"{self.bucket_path}users_map.csv", "r"
         ) as mapfile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
@@ -115,7 +133,9 @@ class Command(BaseCommand):
             create_users = []
 
             for fields, (user_id, uuid, username) in zip(reader, map_reader):
-                assert fields[0] == user_id
+                # 10 is role, 3 is reviewer - we skip reviewers
+                assert fields[0] == user_id, f"{fields[0]} != {user_id}"
+                assert fields[10] != "3", f"Found a rogue reviewer, {user_id}"
                 user = User.objects.filter(uuid=uuid).first()
                 if user:
                     self.stdout.write(f"Updating {fields[3]}")
@@ -147,8 +167,8 @@ class Command(BaseCommand):
                             email=fields[3],
                             username=username,
                             email_verified=True,
-                            created_at=parse(fields[5]),
-                            updated_at=parse(fields[6]),
+                            created_at=parse_date(fields[5]),
+                            updated_at=parse_date(fields[6]),
                             language=fields[7],
                             document_language=fields[8],
                         )
@@ -163,38 +183,43 @@ class Command(BaseCommand):
 
         access_status_map = {
             # DELETED
-            0: (Access.invisible, Status.deleted),
+            "0": (Access.invisible, Status.deleted),
             # PRIVATE
-            1: (Access.private, Status.success),
+            "1": (Access.private, Status.success),
             # ORGANIZATION
-            2: (Access.organization, Status.success),
+            "2": (Access.organization, Status.success),
             # EXCLUSIVE
-            3: (Access.organization, Status.success),
+            "3": (Access.organization, Status.success),
             # PUBLIC
-            4: (Access.public, Status.success),
+            "4": (Access.public, Status.success),
             # PENDING
-            5: (Access.private, Status.pending),
+            "5": (Access.private, Status.pending),
             # INVISIBLE
-            6: (Access.invisible, Status.success),
+            "6": (Access.invisible, Status.success),
             # ERROR
-            7: (Access.private, Status.error),
+            "7": (Access.private, Status.error),
             # PREMODERATED
-            8: (Access.public, Status.success),
+            "8": (Access.public, Status.success),
             # POSTMODERATED
-            9: (Access.public, Status.success),
+            "9": (Access.public, Status.success),
         }
 
-        with smart_open(f"{self.bucket_path}documents.csv", "rb") as infile, smart_open(
-            f"{self.bucket_path}documents_pagespecs.csv", "rb"
-        ) as psfile:
+        # with smart_open(f"{self.bucket_path}documents.csv", "r") as infile, smart_open(
+        #     f"{self.bucket_path}documents_pagespecs.csv", "r"
+        # ) as psfile:
+        with smart_open(f"{self.bucket_path}documents.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
-            ps_reader = csv.reader(psfile)
+            # ps_reader = csv.reader(psfile)
 
             create_docs = []
 
-            for fields, (doc_id, page_spec) in zip(reader, ps_reader):
-                assert fields[0] == doc_id
+            # for i, fields, (doc_id, page_spec) in enumerate(zip(reader, ps_reader)):
+            page_spec = ""
+            for i, fields in enumerate(reader):
+                if i % 10000 == 0:
+                    self.stdout.write(f"Document {i:,}...")
+                # assert fields[0] == doc_id
                 access, status = access_status_map[fields[3]]
                 if fields[26]:
                     # wrap the data dictionary so each value is in a list now
@@ -215,8 +240,8 @@ class Command(BaseCommand):
                         language=fields[8],
                         source=fields[7],
                         description=fields[9],
-                        created_at=parse(fields[12]),
-                        updated_at=parse(fields[13]),
+                        created_at=parse_date(fields[12]),
+                        updated_at=parse_date(fields[13]),
                         solr_dirty=True,
                         data=data,
                         related_article=fields[14],
@@ -224,8 +249,8 @@ class Command(BaseCommand):
                         detected_remote_url=fields[15],
                         file_hash=fields[25],
                         calais_id=fields[10],
-                        publication_date=parse(fields[11]),
-                        publish_at=parse(fields[17]),
+                        publication_date=parse_date(fields[11]),
+                        publish_at=parse_date(fields[17]),
                         text_changed=fields[18] == "t",
                         hit_count=fields[19],
                         public_note_count=fields[20],
@@ -234,11 +259,15 @@ class Command(BaseCommand):
                         original_extension=fields[24],
                     )
                 )
+                if i % 1000 == 999:
+                    Document.objects.bulk_create(create_docs, batch_size=1000)
+                    del create_docs
+                    create_docs = []
 
             Document.objects.bulk_create(create_docs, batch_size=1000)
 
-        # start indexing the documents
-        solr_index_dirty.delay()
+        # start indexing the documents on commit
+        transaction.on_commit(solr_index_dirty.delay)
 
         self.stdout.write("End Documents Import {}".format(timezone.now()))
 
@@ -262,7 +291,7 @@ class Command(BaseCommand):
             9: Access.public,
         }
 
-        with smart_open(f"{self.bucket_path}notes.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}notes.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
@@ -271,8 +300,8 @@ class Command(BaseCommand):
 
             for fields in reader:
                 if fields[8]:  # 8 is location
-                    y1, x2, y2, x1 = fields[8].split(",")
-                    # add document_id to lift of documents to load
+                    y1, x2, y2, x1 = [int(i) for i in fields[8].split(",")]
+                    # add document_id to list of documents to load
                     document_ids.append(fields[3])
                 else:
                     x1 = x2 = y1 = y2 = None
@@ -290,8 +319,8 @@ class Command(BaseCommand):
                         x2=x2,
                         y1=y1,
                         y2=y2,
-                        created_at=fields[9],
-                        updated_at=fields[10],
+                        created_at=parse_date(fields[9]),
+                        updated_at=parse_date(fields[10]),
                     )
                 )
 
@@ -343,7 +372,7 @@ class Command(BaseCommand):
     def import_sections(self):
         self.stdout.write("Begin Sections Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}sections.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}sections.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
@@ -363,13 +392,15 @@ class Command(BaseCommand):
     def import_entities(self):
         self.stdout.write("Begin Entities Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}entities.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}entities.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
             create_entities = []
 
-            for fields in reader:
+            for i, fields in enumerate(reader):
+                if i % 100000 == 0:
+                    self.stdout.write(f"Entity {i:,}...")
                 create_entities.append(
                     Entity(
                         document_id=fields[3],
@@ -380,6 +411,10 @@ class Command(BaseCommand):
                         occurrences=fields[9],
                     )
                 )
+                if i % 1000 == 999:
+                    Entity.objects.bulk_create(create_entities, batch_size=1000)
+                    del create_entities
+                    create_entities = []
 
             Entity.objects.bulk_create(create_entities, batch_size=1000)
 
@@ -388,20 +423,26 @@ class Command(BaseCommand):
     def import_entity_dates(self):
         self.stdout.write("Begin Entity Dates Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}entity_dates.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}entity_dates.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
             create_entities = []
 
-            for fields in reader:
+            for i, fields in enumerate(reader):
+                if i % 100000 == 0:
+                    self.stdout.write(f"Entity date {i:,}...")
                 create_entities.append(
                     EntityDate(
                         document_id=fields[3],
-                        date=parse(fields[5]),
+                        date=parse_date(fields[5]),
                         occurrences=fields[6],
                     )
                 )
+                if i % 1000 == 999:
+                    EntityDate.objects.bulk_create(create_entities, batch_size=1000)
+                    del create_entities
+                    create_entities = []
 
             EntityDate.objects.bulk_create(create_entities, batch_size=1000)
 
@@ -410,7 +451,7 @@ class Command(BaseCommand):
     def import_projects(self):
         self.stdout.write("Begin Projects Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}projects.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}projects.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
@@ -437,7 +478,7 @@ class Command(BaseCommand):
     def import_collaborations(self):
         self.stdout.write("Begin Collaborations Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}collaborations.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}collaborations.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
@@ -453,14 +494,18 @@ class Command(BaseCommand):
                     )
                 )
 
-            Collaboration.objects.bulk_create(create_collabs, batch_size=1000)
+            # old doc cloud did not enforce unique constraints on (project_id, user_id)
+            # we will ignore these conflicts
+            Collaboration.objects.bulk_create(
+                create_collabs, batch_size=1000, ignore_conflicts=True
+            )
 
         self.stdout.write("End Collaborations Import {}".format(timezone.now()))
 
     def import_project_memberships(self):
         self.stdout.write("Begin Project Memberships Import {}".format(timezone.now()))
 
-        with smart_open(f"{self.bucket_path}project_memberships.csv", "rb") as infile:
+        with smart_open(f"{self.bucket_path}project_memberships.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
 
