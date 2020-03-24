@@ -19,10 +19,7 @@ class DocumentQuerySet(models.QuerySet):
                 # you can see documents you own
                 | Q(user=user)
                 # you may see documents in your projects
-                | Q(
-                    projects__collaborators=user,
-                    projects__projectmembership__edit_access=True,
-                )
+                | Q(projects__collaborators=user, projectmembership__edit_access=True)
                 # you can see organization level documents in your
                 # organization
                 | Q(
