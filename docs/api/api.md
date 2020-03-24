@@ -67,7 +67,7 @@ token is valid for one day.
 | data             | JSON      | Read Only          | [Custom metadata](#data)                                                                                               |
 | description      | String    | Not Required       | A brief description of the document                                                                                    |
 | edit\_access     | Bool      | Read Only          | Does the current user have edit access to this document                                                                |
-| file\_url        | URL       | Create Only        | A URL to a publically accessible document for the [URL Upload Flow](#url-upload-flow)                                  |
+| file\_url        | URL       | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                  |
 | language         | String    | Default: `eng`     | The [language](#languages) the document is in                                                                          |
 | organization     | Integer   | Read Only          | The ID for the [Organization](#organizations) this document belongs to                                                 |
 | page\_count      | Integer   | Read Only          | The number of pages in this document                                                                                   |
@@ -89,7 +89,7 @@ token is valid for one day.
 ### Uploading a Document
 
 There are two supported ways to upload documents &mdash; directly uploading the
-file to our storage servers or by providing a URL to a publically availabile
+file to our storage servers or by providing a URL to a publicly available
 PDF.  We currently only support PDF documents.
 
 #### Direct File Upload Flow
@@ -97,14 +97,14 @@ PDF.  We currently only support PDF documents.
 1. `POST /api/documents/`
 
 To initiate an upload, you will first create the document.  You may specify all
-writable document fields (besides `file\_url`).  The response will contain all
+writable document fields (besides `file_url`).  The response will contain all
 the fields for the document, with two being of note for this flow:
-`presigned\_url` and `id`.
+`presigned_url` and `id`.
 
 2. `PUT <presigned_url>`
 
 Next, you will `PUT` the binary data for the file to the given
-`presigned\_url`.  The presigned URL is valid for 5 minutes.  You may obtain a
+`presigned_url`.  The presigned URL is valid for 5 minutes.  You may obtain a
 new URL by issuing a `GET` request to `/api/documents/\<id\>/`
 
 3. `POST /api/documents/<id>/process/`
@@ -116,7 +116,7 @@ accepts no additional parameters.
 
 1. `POST /api/documents/`
 
-If you set `file\_url` to a URL pointing to a publically accessible PDF, our
+If you set `file_url` to a URL pointing to a publicly accessible PDF, our
 servers will fetch the PDF and begin processing it automatically.
 
 ### Endpoints
@@ -200,7 +200,7 @@ an outline of the sections allowing for quick access to those pages.
 ### Errors
 
 Sometimes errors happen &mdash; if you find one of your documents in an error
-state, you may check the error's here to see a log of the latest, as well as
+state, you may check the errors here to see a log of the latest, as well as
 all previous errors.  If the message is cryptic, please contact us &mdash; we
 are happy to help figure out what went wrong.
 
@@ -222,7 +222,7 @@ are happy to help figure out what went wrong.
 Documents may contain user supplied metadata.  You may assign multiple values
 to arbitrary keys.  This is represented as a JSON object, where each key has a
 list of strings as a value.  The special key `_tag` is used by the front end to
-represent tags.  These values may be used to search on.
+represent tags.  These values are useful for searching and organizing documents.
 
 #### Fields
 
@@ -328,13 +328,13 @@ The status informs you to the current status of your document.
 
 ### Page Spec
 
-The page spec is a list of page dimensions in pixels (?) compressed using
-[ListCrunch][2]. For example, `612.0x792.0:0-447`
+The page spec is a compressed string that lists dimensions in pixels for every page in a document. Refer to
+[ListCrunch][2] for the compression format. For example, `612.0x792.0:0-447`
 
 ### Static Assets
 
 The static assets for a document are loaded from different URLs depending on
-its [access level](#access-levels).  Append the following to the `static\_url`
+its [access level](#access-levels).  Append the following to the `static_url`
 returned to load the static asset:
 
 | Asset      | Path                                                          |
