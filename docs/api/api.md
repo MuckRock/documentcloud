@@ -18,8 +18,8 @@ All APIs besides the authentication endpoints are served from
     * [Data](#data)
     * [Redactions](#redactions)
 * [Projects](#projects)
-    * Documents
-    * Collaborators
+    * [Documents](#project-documents)
+    * [Collaborators](#collaborators)
 * [Organizations](#organizations)
 * [Users](#users)
 * [oEmbed](#oembed)
@@ -56,6 +56,10 @@ token is valid for one day.
 
 ## Documents
 
+The documents API allows you to upload, browse and edit documents.  To add or
+remove documents from a project, please see [project
+documents](#project-documents).
+
 ### Fields
 
 | Field            | Type      | Options            | Description                                                                                                            |
@@ -67,7 +71,7 @@ token is valid for one day.
 | data             | JSON      | Read Only          | [Custom metadata](#data)                                                                                               |
 | description      | String    | Not Required       | A brief description of the document                                                                                    |
 | edit\_access     | Bool      | Read Only          | Does the current user have edit access to this document                                                                |
-| file\_url        | URL       | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                  |
+| file\_url        | URL       | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                    |
 | language         | String    | Default: `eng`     | The [language](#languages) the document is in                                                                          |
 | organization     | Integer   | Read Only          | The ID for the [Organization](#organizations) this document belongs to                                                 |
 | page\_count      | Integer   | Read Only          | The number of pages in this document                                                                                   |
@@ -265,9 +269,62 @@ created, not retrieved or edited.
 
 ## Projects
 
+Projects are collections of documents.  They can be used for organizaing groups
+of documents, or for collaborating with other users by sharing access to
+private documents.
+
+### Fields
+
+| Field        | Type      | Options          | Description                                                |
+| ---          | ---       | ---              | ---                                                        |
+| ID           | Integer   | Read Only        | The ID for the project                                     |
+| created\_at  | Date Time | Read Only        | Timestamp when this project was created                    |
+| description  | String    | Not Required     | A brief description of the project                         |
+| edit\_access | Bool      | Read Only        | Does the current user have edit access to this project     |
+| private      | Bool      | Default: `false` | Private projects may only be viewed by their collaborators |
+| slug         | String    | Read Only        | The slug is a URL safe version of the title                |
+| title        | String    | Required         | Title for the project                                      |
+| updated\_at  | Date Time | Read Only        | Timestamp when this project was last updated               |
+| user         | ID        | Read Only        | The ID for the [User](#users) who created this project     |
+
+### Endpoints
+
+* `GET /api/projects/` - List projects
+* `POST /api/projects/` - Create project
+* `GET /api/projects/<id>/` - Get project
+* `PUT /api/projects/<id>/` - Update project
+* `PATCH /api/projects/<id>/` - Partial update project
+* `DELETE /api/projects/<id>/` - Delete project
+
+### Project Documents
+
+These endpoints allow you to browse, add and remove documents from a project
+
+| Field        | Type      | Options          | Description                                                |
+| ---          | ---       | ---              | ---                                                        |
+| document           | Integer   | Required        | The ID for the [document](#document) in the project |
+
+#### Fields
+
+#### Endpoints
+
+### Collaborators
+
+#### Fields
+
+#### Endpoints
+
 ## Organizations
 
+### Fields
+
+### Endpoints
+
 ## Users
+
+### Fields
+
+### Endpoints
 
 ## oEmbed
 
@@ -328,8 +385,9 @@ The status informs you to the current status of your document.
 
 ### Page Spec
 
-The page spec is a compressed string that lists dimensions in pixels for every page in a document. Refer to
-[ListCrunch][2] for the compression format. For example, `612.0x792.0:0-447`
+The page spec is a compressed string that lists dimensions in pixels for every
+page in a document. Refer to [ListCrunch][2] for the compression format. For
+example, `612.0x792.0:0-447`
 
 ### Static Assets
 
