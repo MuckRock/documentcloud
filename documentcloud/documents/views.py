@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models.query import Prefetch
 from django.utils.cache import patch_cache_control
+from django.utils.decorators import method_decorator
 from django.views.decorators.vary import vary_on_cookie
 from rest_framework import mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -24,6 +25,7 @@ from documentcloud.core.permissions import (
     DocumentTokenPermissions,
 )
 from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.decorators import conditional_cache_control
 from documentcloud.documents.models import (
     Document,
     DocumentError,
@@ -59,7 +61,13 @@ from documentcloud.users.models import User
 
 env = environ.Env()
 
+# We use CloudFlare's Page Rules to enable aggressive caching on the document
+# retrieve view.  Since we match on documents/* it also affects all other views
+# served beneath that route.  We set the 'no-cache' Cache-Control header to disable
+# the caching for all views besides the ones we explicitly set
 
+
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     permit_list_expands = ["user", "organization", "projects"]
@@ -97,7 +105,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         response = super().retrieve(request, *args, **kwargs)
         has_auth_token = hasattr(request, "auth") and request.auth is not None
         if has_auth_token or request.user.is_authenticated:
-            patch_cache_control(response, no_cache=True)
+            patch_cache_control(response, private=True, no_cache=True)
         else:
             patch_cache_control(
                 response, public=True, max_age=settings.CACHE_CONTROL_MAX_AGE
@@ -328,6 +336,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     filterset_class = Filter
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DocumentErrorViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
 ):
@@ -365,6 +374,7 @@ class DocumentErrorViewSet(
         )
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class NoteViewSet(FlexFieldsModelViewSet):
     serializer_class = NoteSerializer
     permit_list_expands = ["user", "organization"]
@@ -394,6 +404,7 @@ class NoteViewSet(FlexFieldsModelViewSet):
         )
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class SectionViewSet(viewsets.ModelViewSet):
     serializer_class = SectionSerializer
     queryset = Section.objects.none()
@@ -411,6 +422,7 @@ class SectionViewSet(viewsets.ModelViewSet):
         serializer.save(document_id=self.kwargs["document_pk"])
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = EntitySerializer
     queryset = Entity.objects.none()
@@ -424,6 +436,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return document.entities.all()
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = EntityDateSerializer
     queryset = EntityDate.objects.none()
@@ -437,6 +450,7 @@ class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return document.dates.all()
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DataViewSet(viewsets.ViewSet):
     # pylint: disable=unused-argument
     serializer_class = DataSerializer
@@ -520,6 +534,7 @@ class DataViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = RedactionSerializer
     permission_classes = (IsAuthenticated,)

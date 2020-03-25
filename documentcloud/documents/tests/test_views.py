@@ -38,6 +38,10 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
+        # document list should never be cached
+        assert "no-cache" in response["Cache-Control"]
+        assert "public" not in response["Cache-Control"]
+        assert "max-age" not in response["Cache-Control"]
 
     def test_list_filter_user(self, client, user):
         """List a subset of documents"""
@@ -170,6 +174,22 @@ class TestDocumentAPI:
         assert response_json == serializer.data
         assert response_json["access"] == "public"
         assert "presigned_url" not in response_json
+        # public document retrieves should be cached
+        assert "public" in response["Cache-Control"]
+        assert f"max-age={settings.CACHE_CONTROL_MAX_AGE}" in response["Cache-Control"]
+        assert "private" not in response["Cache-Control"]
+        assert "no-cache" not in response["Cache-Control"]
+
+    def test_retrieve_auth(self, client, document):
+        """Test retrieving a document"""
+        client.force_authenticate(user=document.user)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        # authenticated document retrieves should not be cached
+        assert "private" in response["Cache-Control"]
+        assert "no-cache" in response["Cache-Control"]
+        assert "public" not in response["Cache-Control"]
+        assert "max-age" not in response["Cache-Control"]
 
     def test_retrieve_no_file(self, client):
         """Test retrieving a document with a presigned url"""
