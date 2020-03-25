@@ -73,7 +73,7 @@ documents](#project-documents).
 | edit\_access     | Bool      | Read Only          | Does the current user have edit access to this document                                                                |
 | file\_url        | URL       | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                    |
 | language         | String    | Default: `eng`     | The [language](#languages) the document is in                                                                          |
-| organization     | Integer   | Read Only          | The ID for the [Organization](#organizations) this document belongs to                                                 |
+| organization     | Integer   | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                 |
 | page\_count      | Integer   | Read Only          | The number of pages in this document                                                                                   |
 | page\_spec       | Integer   | Read Only          | [The dimensions for all pages in the document](#page-spec)                                                             |
 | presigned\_url   | URL       | Read Only          | The pre-signed URL to [directly](#direct-file-upload-flow) `PUT` the PDF file to                                       |
@@ -86,7 +86,7 @@ documents](#project-documents).
 | status           | String    | Read Only          | The [status](#statuses) for the document                                                                               |
 | title            | String    |                    | The document's title                                                                                                   |
 | updated\_at      | Date Time | Read Only          | Timestamp when the document was last updated                                                                           |
-| user             | ID        | Read Only          | The ID for the [User](#users) this document belongs to                                                                 |
+| user             | ID        | Read Only          | The ID for the [user](#users) this document belongs to                                                                 |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
 
@@ -157,11 +157,11 @@ Notes can be left on documents for yourself, or to be shared with other users.  
 | content      | String    | Not Required       | Content for the note, which may include HTML                       |
 | created\_at  | Date Time | Read Only          | Timestamp when this note was created                               |
 | edit\_access | Bool      | Read Only          | Does the current user have edit access to this note                |
-| organization | Integer   | Read Only          | The ID for the [Organization](#organizations) this note belongs to |
+| organization | Integer   | Read Only          | The ID for the [organization](#organizations) this note belongs to |
 | page\_number | Integer   | Required           | The page of the document this note appears on                      |
 | title        | String    | Required           | Title for the note                                                 |
 | updated\_at  | Date Time | Read Only          | Timestamp when this note was last updated                          |
-| user         | ID        | Read Only          | The ID for the [User](#users) this note belongs to                 |
+| user         | ID        | Read Only          | The ID for the [user](#users) this note belongs to                 |
 | x1           | Float     | Not Required       | Left most coordinate of the note, as a percentage of page size     |
 | x2           | Float     | Not Required       | Right most coordinate of the note, as a percentage of page size    |
 | y1           | Float     | Not Required       | Top most coordinate of the note, as a percentage of page size      |
@@ -285,7 +285,7 @@ private documents.
 | slug         | String    | Read Only        | The slug is a URL safe version of the title                |
 | title        | String    | Required         | Title for the project                                      |
 | updated\_at  | Date Time | Read Only        | Timestamp when this project was last updated               |
-| user         | ID        | Read Only        | The ID for the [User](#users) who created this project     |
+| user         | ID        | Read Only        | The ID for the [user](#users) who created this project     |
 
 ### Endpoints
 
@@ -300,11 +300,13 @@ private documents.
 
 These endpoints allow you to browse, add and remove documents from a project
 
-| Field        | Type      | Options          | Description                                                |
-| ---          | ---       | ---              | ---                                                        |
-| document           | Integer   | Required        | The ID for the [document](#document) in the project |
-
 #### Fields
+
+| Field        | Type    | Options                            | Description                                                                     |
+| ---          | ---     | ---                                | ---                                                                             |
+| document     | Integer | Required                           | The ID for the [document](#document) in the project                             |
+| edit\_access | Bool    | Default: `true` if you have access | If collaborators of this project should be granted edit access to this document |
+
 
 #### Endpoints
 
