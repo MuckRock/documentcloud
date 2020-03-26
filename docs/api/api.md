@@ -6,6 +6,7 @@ All APIs besides the authentication endpoints are served from
 
 ## Contents
 
+* [Overview](#overview)
 * [Authentication](#authentication)
 * [Documents](#documents)
     * [Notes](#notes)
@@ -24,6 +25,16 @@ All APIs besides the authentication endpoints are served from
 * [Users](#users)
 * [oEmbed](#oembed)
 * [Appendix](#appendix)
+    * [Access Levels](#access-levels)
+    * [Statuses](#statuses)
+    * [Languages](#languages)
+    * [Page Spec](#page-spec)
+    * [Static Assets](#statis-assets)
+
+## Overview
+
+Describe an overview of the API layout, things which are common across the whole API
+IE PUT vs PATCH, format of response, etc
 
 ## Authentication
 
@@ -62,31 +73,31 @@ documents](#project-documents).
 
 ### Fields
 
-| Field            | Type      | Options            | Description                                                                                                            |
-| ---              | ---       | ---                | ---                                                                                                                    |
-| ID               | Integer   | Read Only          | The ID for the document                                                                                                |
-| access           | String    | Default: `private` | The [access level](#access-levels) for the document                                                                    |
-| asset\_url       | String    | Read Only          | The base URL to load this document's [static assets](#static-assets) from                                              |
-| created\_at      | Date Time | Read Only          | Timestamp when this document was created                                                                               |
-| data             | JSON      | Read Only          | [Custom metadata](#data)                                                                                               |
-| description      | String    | Not Required       | A brief description of the document                                                                                    |
-| edit\_access     | Bool      | Read Only          | Does the current user have edit access to this document                                                                |
-| file\_url        | URL       | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                    |
-| language         | String    | Default: `eng`     | The [language](#languages) the document is in                                                                          |
-| organization     | Integer   | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                 |
-| page\_count      | Integer   | Read Only          | The number of pages in this document                                                                                   |
-| page\_spec       | Integer   | Read Only          | [The dimensions for all pages in the document](#page-spec)                                                             |
-| presigned\_url   | URL       | Read Only          | The pre-signed URL to [directly](#direct-file-upload-flow) `PUT` the PDF file to                                       |
-| projects         | List:ID   | Read Only          | The IDs of the [projects](#projects) this document belongs to                                                          |
-| related\_article | URL       | Not Required       | The URL for the article about this document                                                                            |
-| remaining        | JSON      | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter |
-| remote\_url      | URL       | Not Required       | The URL where this document is embedded                                                                                |
-| slug             | String    | Read Only          | The slug is a URL safe version of the title                                                                            |
-| source           | String    | Not Required       | The source who produced the document                                                                                   |
-| status           | String    | Read Only          | The [status](#statuses) for the document                                                                               |
-| title            | String    |                    | The document's title                                                                                                   |
-| updated\_at      | Date Time | Read Only          | Timestamp when the document was last updated                                                                           |
-| user             | ID        | Read Only          | The ID for the [user](#users) this document belongs to                                                                 |
+| Field            | Type         | Options            | Description                                                                                                            |
+| ---              | ---          | ---                | ---                                                                                                                    |
+| ID               | Integer      | Read Only          | The ID for the document                                                                                                |
+| access           | String       | Default: `private` | The [access level](#access-levels) for the document                                                                    |
+| asset\_url       | String       | Read Only          | The base URL to load this document's [static assets](#static-assets) from                                              |
+| created\_at      | Date Time    | Read Only          | Timestamp when this document was created                                                                               |
+| data             | JSON         | Read Only          | [Custom metadata](#data)                                                                                               |
+| description      | String       | Not Required       | A brief description of the document                                                                                    |
+| edit\_access     | Bool         | Read Only          | Does the current user have edit access to this document                                                                |
+| file\_url        | URL          | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                    |
+| language         | String       | Default: `eng`     | The [language](#languages) the document is in                                                                          |
+| organization     | Integer      | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                 |
+| page\_count      | Integer      | Read Only          | The number of pages in this document                                                                                   |
+| page\_spec       | Integer      | Read Only          | [The dimensions for all pages in the document](#page-spec)                                                             |
+| presigned\_url   | URL          | Read Only          | The pre-signed URL to [directly](#direct-file-upload-flow) `PUT` the PDF file to                                       |
+| projects         | List:Integer | Read Only          | The IDs of the [projects](#projects) this document belongs to                                                          |
+| related\_article | URL          | Not Required       | The URL for the article about this document                                                                            |
+| remaining        | JSON         | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter |
+| remote\_url      | URL          | Not Required       | The URL where this document is embedded                                                                                |
+| slug             | String       | Read Only          | The slug is a URL safe version of the title                                                                            |
+| source           | String       | Not Required       | The source who produced the document                                                                                   |
+| status           | String       | Read Only          | The [status](#statuses) for the document                                                                               |
+| title            | String       | Required           | The document's title                                                                                                   |
+| updated\_at      | Date Time    | Read Only          | Timestamp when the document was last updated                                                                           |
+| user             | ID           | Read Only          | The ID for the [user](#users) this document belongs to                                                                 |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
 
@@ -167,17 +178,19 @@ Notes can be left on documents for yourself, or to be shared with other users.  
 | y1           | Float     | Not Required       | Top most coordinate of the note, as a percentage of page size      |
 | y2           | Float     | Not Required       | Bottom most coordinate of the note, as a percentage of page size   |
 
+[Expandable fields](#expandable-fields): user, organization
+
 The coordinates must either all be present or absent &mdash; absent represents
 a page level note which is displayed between pages.
 
 #### Endpoints
 
-* `GET /api/documents/<doc_id>/notes/` - List notes
-* `POST /api/documents/<doc_id>/notes/` - Create note
-* `GET /api/documents/<doc_id>/notes/<id>` - Get note
-* `PUT /api/documents/<doc_id>/notes/<id>` - Update note
-* `PATCH /api/documents/<doc_id>/notes/<id>` - Partial update note
-* `DELETE /api/documents/<doc_id>/notes/<id>` - Delete note
+* `GET /api/documents/<document_id>/notes/` - List notes
+* `POST /api/documents/<document_id>/notes/` - Create note
+* `GET /api/documents/<document_id>/notes/<id>` - Get note
+* `PUT /api/documents/<document_id>/notes/<id>` - Update note
+* `PATCH /api/documents/<document_id>/notes/<id>` - Partial update note
+* `DELETE /api/documents/<document_id>/notes/<id>` - Delete note
 
 ### Sections
 
@@ -194,12 +207,12 @@ an outline of the sections allowing for quick access to those pages.
 
 #### Endpoints
 
-* `GET /api/documents/<doc_id>/sections/` - List sections
-* `POST /api/documents/<doc_id>/sections/` - Create section
-* `GET /api/documents/<doc_id>/sections/<id>` - Get section
-* `PUT /api/documents/<doc_id>/sections/<id>` - Update section
-* `PATCH /api/documents/<doc_id>/sections/<id>` - Partial update section
-* `DELETE /api/documents/<doc_id>/sections/<id>` - Delete section
+* `GET /api/documents/<document_id>/sections/` - List sections
+* `POST /api/documents/<document_id>/sections/` - Create section
+* `GET /api/documents/<document_id>/sections/<id>` - Get section
+* `PUT /api/documents/<document_id>/sections/<id>` - Update section
+* `PATCH /api/documents/<document_id>/sections/<id>` - Partial update section
+* `DELETE /api/documents/<document_id>/sections/<id>` - Delete section
 
 ### Errors
 
@@ -218,7 +231,7 @@ are happy to help figure out what went wrong.
 
 #### Endpoints
 
-* `GET /api/documents/<doc_id>/errors/` - List errors
+* `GET /api/documents/<document_id>/errors/` - List errors
 
 
 ### Data
@@ -239,11 +252,11 @@ represent tags.  These values are useful for searching and organizing documents.
 
 #### Endpoints
 
-* `GET /api/documents/<doc_id>/data/` - List values for all keys
-* `GET /api/documents/<doc_id>/data/<key>` - Get values for the given key
-* `PUT /api/documents/<doc_id>/data/<key>` - Set values for the given key
-* `PATCH /api/documents/<doc_id>/data/<key>` - Add and/or remove values for the given key
-* `DELETE /api/documents/<doc_id>/data/<key>` - Delete all values for a given key
+* `GET /api/documents/<document_id>/data/` - List values for all keys
+* `GET /api/documents/<document_id>/data/<key>` - Get values for the given key
+* `PUT /api/documents/<document_id>/data/<key>` - Set values for the given key
+* `PATCH /api/documents/<document_id>/data/<key>` - Add and/or remove values for the given key
+* `DELETE /api/documents/<document_id>/data/<key>` - Delete all values for a given key
 
 ### Redactions
 
@@ -265,13 +278,17 @@ created, not retrieved or edited.
 
 #### Endpoints
 
-* `POST /api/documents/<doc_id>/redactions/` - Create redaction
+* `POST /api/documents/<document_id>/redactions/` - Create redaction
 
 ## Projects
 
 Projects are collections of documents.  They can be used for organizaing groups
 of documents, or for collaborating with other users by sharing access to
 private documents.
+
+### Sharing Documents
+
+TODO: Explanation of how access levels and sharing works
 
 ### Fields
 
@@ -307,28 +324,103 @@ These endpoints allow you to browse, add and remove documents from a project
 | document     | Integer | Required                           | The ID for the [document](#document) in the project                             |
 | edit\_access | Bool    | Default: `true` if you have access | If collaborators of this project should be granted edit access to this document |
 
+[Expandable fields](#expandable-fields): document
 
 #### Endpoints
+
+* `GET /api/projects/<project_id>/documents/` - List documents in the project
+* `POST /api/projects/<project_id>/documents/` - Add a document to the project
+* `PUT /api/projects/<project_id>/documents/` - Bulk update documents in the project
+* `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents in the project
+* `GET /api/projects/<project_id>/documents/<document_id>` - Get a document in the project
+* `PUT /api/projects/<project_id>/documents/<document_id>` - Update document in the project
+* `PATCH /api/projects/<project_id>/documents/<document_id>` - Partial update document in the project
+* `DELETE /api/projects/<project_id>/documents/<document_id>` - Remove document from the project
 
 ### Collaborators
 
 #### Fields
 
+| Field  | Type    | Options         | Description                                                       |
+| ---    | ---     | ---             | ---                                                               |
+| access | String  | Default: `view` | The [access level](#project-access) for this collaborator         |
+| email  | Email   | Create Only     | Email address of user to add as a collaborator to this project    |
+| user   | Integer | Read Only       | The ID for the [user](#user) who is collaborating on this project |
+
+[Expandable fields](#expandable-fields): user
+
 #### Endpoints
+
+* `GET /api/projects/<project_id>/users/` - List collaborators on the project
+* `POST /api/projects/<project_id>/users/` - Add a collaborator to the project
+* `GET /api/projects/<project_id>/users/<user_id>` - Get a collaborator in the project
+* `PUT /api/projects/<project_id>/users/<user_id>` - Update collaborator in the project
+* `PATCH /api/projects/<project_id>/users/<user_id>` - Partial update collaborator in the project
+* `DELETE /api/projects/<project_id>/users/<user_id>` - Remove collaborator from the project
 
 ## Organizations
 
+Organizations represent a group of users.  They may share a paid plan and
+resources with each other.  Organizations can be managed and edited from the
+[MuckRock accounts site][3].  You may only view organizations through the
+DocumentCloud API.
+
 ### Fields
 
+| Field       | Type    | Options   | Description                                                                                             |
+| ---         | ---     | ---       | ---                                                                                                     |
+| ID          | Integer | Read Only | The ID for the organization                                                                             |
+| avatar\_url | URL     | Read Only | A URL poitning to an avatar for the organization &mdash; normally a logo for the company                |
+| individual  | Bool    | Read Only | Is this organization for the sole use of an individual                                                  |
+| name        | String  | Read Only | The name of the organization                                                                            |
+| slug        | String  | Read Only | The slug is a URL safe version of the name                                                              |
+| uuid        | UUID    | Read Only | UUID which links this organization to the corresponding organization on the [MuckRock Accounts Site][3] |
+
 ### Endpoints
+
+* `GET /api/organizations/` - List organizations
+* `GET /api/organizations/<id>/` - Get an organization
 
 ## Users
 
+Users can be managed and edited from the [MuckRock accounts site][3].  You may
+view users and change your own [active organization](#active-organization) from
+the DocumentCloud API.
+
 ### Fields
+
+| Field         | Type         | Options   | Description                                                                             |
+| ---           | ---          | ---       | ---                                                                                     |
+| ID            | Integer      | Read Only | The ID for the user                                                                     |
+| avatar\_url   | URL          | Read Only | A URL poitning to an avatar for the user                                                |
+| name          | String       | Read Only | The user's full name                                                                    |
+| organization  | Integer      | Required  | The user's [active organization](#active-organization)                                  |
+| organizations | List:Integer | Read Only | A list of the IDs of the organizations this user belongs to                             |
+| username      | String       | Read Only | The user's username                                                                     |
+| uuid          | UUID         | Read Only | UUID which links this user to the corresponding user on the [MuckRock Accounts Site][3] |
 
 ### Endpoints
 
+* `GET /api/users/` - List users
+* `GET /api/users/<id>/` - Get a user
+* `PUT /api/users/<id>/` - Update a user
+* `PATCH /api/users/<id>/` - Partial update a user
+
 ## oEmbed
+
+[oEmbed][4]
+
+### Fields
+
+| Field     | Type    | Options  | Description                                |
+| ---       | ---     | ---      | ---                                        |
+| url       | URL     | Required | The URL to get an embed code for           |
+| maxwidth  | Integer |          | The maximum width of the embeded resource  |
+| maxheight | Integer |          | The maximum height of the embeded resource |
+
+### Endpoints
+
+* `GET /api/iembed/` - Get an embed code for a given URL
 
 ## Appendix
 
@@ -409,4 +501,6 @@ returned to load the static asset:
 
 [1]: https://jwt.io/
 [2]: https://pypi.org/project/listcrunch/
+[3]: https://accounts.muckrock.com/
+[4]: https://oembed.com
 
