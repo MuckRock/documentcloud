@@ -4,6 +4,9 @@ from celery.task import periodic_task, task
 from django.conf import settings
 from django.db import transaction
 
+# Standard Library
+import logging
+
 # Third Party
 import pysolr
 from requests.exceptions import HTTPError, RequestException
@@ -13,6 +16,8 @@ from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import SOLR
+
+logger = logging.getLogger(__name__)
 
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
@@ -114,9 +119,25 @@ def solr_delete(document_pk):
 
 @task
 def update_access(document_pk):
+    """Update the access settings for all assets for the given document"""
+    logger.info("update access")
     document = Document.objects.get(pk=document_pk)
     access = "public" if document.public else "private"
-    storage.set_access(document.path, access)
+    files = storage.list(document.path)
+    # start each chunk `UPDATE_ACCESS_PAGE_CHUNK_SIZE` files apart
+    for file_ in files[:: settings.UPDATE_ACCESS_CHUNK_SIZE]:
+        logger.info("update access: launching %s", file_)
+        do_update_access.delay(document.path, access, file_)
+
+
+@task
+def do_update_access(path, access, marker):
+    """Update access settings for a single chunk of assets"""
+    logger.info("START do update access: %s", marker)
+    files = storage.list(path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
+    for file_ in files:
+        storage.set_access(file_, access)
+    logger.info("DONE: do update access: %s", marker)
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
