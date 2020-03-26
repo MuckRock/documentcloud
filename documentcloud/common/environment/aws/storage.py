@@ -112,11 +112,17 @@ class AwsStorage:
         object_acl = self.s3_resource.ObjectAcl(bucket, key)
         object_acl.put(ACL=acls[access])
 
-    def list(self, file_prefix, marker="", limit=None):
+    def list(self, file_prefix, marker=None, limit=None):
         """List files in the given path
         marker if given will start from after that file
         limit will set a max on the number of files returned
         """
+        if marker is None:
+            marker = ""
+        else:
+            # strip the bucket from the marker
+            _, marker = self.bucket_key(marker)
+
         bucket, prefix = self.bucket_key(file_prefix)
         bucket = self.s3_resource.Bucket(bucket)
         objects = bucket.objects.filter(Prefix=prefix, Marker=marker)

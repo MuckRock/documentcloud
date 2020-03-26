@@ -123,7 +123,9 @@ def update_access(document_pk):
     document = Document.objects.get(pk=document_pk)
     logger.info("update access: %d - %s", document_pk, document.title)
     access = "public" if document.public else "private"
-    files = storage.list(document.path)
+    # prepend a None so we don't skip the first file
+    # list will start listing after the marker file
+    files = [None] + storage.list(document.path)
     # start each chunk `UPDATE_ACCESS_PAGE_CHUNK_SIZE` files apart
     for file_ in files[:: settings.UPDATE_ACCESS_CHUNK_SIZE]:
         logger.info("update access: launching %s", file_)
@@ -136,7 +138,6 @@ def do_update_access(path, access, marker):
     logger.info("START do update access: %s", marker)
     files = storage.list(path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
     for file_ in files:
-        logger.info("do update access file: %s", file_)
         storage.set_access(file_, access)
     logger.info("DONE: do update access: %s", marker)
 
