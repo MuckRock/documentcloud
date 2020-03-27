@@ -247,6 +247,17 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
         return attrs
 
+    def validate_access(self, value):
+        if (
+            self.instance
+            and self.instance.status in (Status.pending, Status.readable)
+            and (value != self.instance.access)
+        ):
+            raise serializers.ValidationError(
+                "You may not update `access` while the document is processing"
+            )
+        return value
+
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
         return storage.presign_url(obj.doc_path, "put_object")
