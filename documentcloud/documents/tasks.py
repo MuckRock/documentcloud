@@ -129,7 +129,7 @@ def update_access(document_pk):
     # start each chunk `UPDATE_ACCESS_PAGE_CHUNK_SIZE` files apart
     for file_ in files[:: settings.UPDATE_ACCESS_CHUNK_SIZE]:
         logger.info("update access: launching %s", file_)
-        do_update_access.delay(document.path, access, file_)
+        async_do_update_access.delay(document.path, access, file_)
 
 
 @task
@@ -140,7 +140,17 @@ def do_update_access(path, access, marker):
     for file_ in files:
         storage.set_access(file_, access)
     logger.info("DONE: do update access: %s", marker)
-    storage.set_access(document.path, access)
+
+
+@task
+def async_do_update_access(path, access, marker):
+    """Update access settings for a single chunk of assets"""
+    logger.info("START do update access: %s", marker)
+
+    files = storage.list(path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
+    storage.async_set_access(files, access)
+
+    logger.info("DONE: do update access: %s", marker)
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)

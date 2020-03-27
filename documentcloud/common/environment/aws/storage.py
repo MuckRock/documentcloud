@@ -1,4 +1,5 @@
 # Standard Library
+import asyncio
 import io
 import mimetypes
 import time
@@ -21,7 +22,6 @@ class AwsStorage:
         if "config" not in self.resource_kwargs:
             self.resource_kwargs["config"] = Config(signature_version="s3v4")
         self.s3_resource = boto3.resource("s3", **self.resource_kwargs)
-        self.as3_resource = aioboto3.resource("s3", **self.resource_kwargs)
         self.s3_client = boto3.client("s3", **self.resource_kwargs)
         self.minio = minio
 
@@ -111,8 +111,7 @@ class AwsStorage:
         print("end", end_time)
         print("total", end_time - start_time)
 
-    def async_set_access(self, file_prefix, access, max_=1000):
-        import asyncio
+    def async_set_access_path(self, file_prefix, access, max_=1000):
 
         if self.minio:
             # minio does not support object ACLs
@@ -158,6 +157,25 @@ class AwsStorage:
         bucket, key = self.bucket_key(file_name)
         object_acl = self.s3_resource.ObjectAcl(bucket, key)
         object_acl.put(ACL=acls[access])
+
+    def async_set_access(self, file_names, access):
+        """Set access for given keys asynchronously"""
+        if self.minio:
+            # minio does not support object ACLs
+            return
+        acls = {"public": "public-read", "private": "private"}
+
+        async def main():
+            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+                tasks = []
+                for file_name in file_names:
+                    bucket, key = self.bucket_key(file_name)
+                    object_acl = as3_resource.ObjectAcl(bucket, key)
+                    tasks.append(object_acl.put(ACL=acls[access]))
+                await asyncio.gather(*tasks)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
 
     def list(self, file_prefix, marker=None, limit=None):
         """List files in the given path
