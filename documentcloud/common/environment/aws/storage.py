@@ -104,15 +104,16 @@ class AwsStorage:
         for obj in bucket.objects.filter(Prefix=prefix):
             obj.Acl().put(ACL=acls[access])
 
-    def set_access(self, file_name, access):
-        """Set access for a key"""
+    def set_access(self, file_names, access):
+        """Set access for given keys"""
         if self.minio:
             # minio does not support object ACLs
             return
         acls = {"public": "public-read", "private": "private"}
-        bucket, key = self.bucket_key(file_name)
-        object_acl = self.s3_resource.ObjectAcl(bucket, key)
-        object_acl.put(ACL=acls[access])
+        for file_name in file_names:
+            bucket, key = self.bucket_key(file_name)
+            object_acl = self.s3_resource.ObjectAcl(bucket, key)
+            object_acl.put(ACL=acls[access])
 
     def async_set_access(self, file_names, access):
         """Set access for given keys asynchronously"""
