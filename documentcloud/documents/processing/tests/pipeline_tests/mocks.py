@@ -181,7 +181,7 @@ def extract_single_page(doc_id, slug, page, page_number, large_image_path):
     return (100, 200)  # Arbitrary width / height
 
 
-def write_pagespec_file(doc_id, slug, crunched_pagespec):
+def update_pagespec(doc_id, slug, crunched_pagespec):
     pagespec_written(crunched_pagespec)
 
 
@@ -224,7 +224,7 @@ def patch_pipeline(func):
     WRITE_CACHE_MOCK = f"{INFO_AND_IMAGE}.main.write_cache"
     READ_CACHE_MOCK = f"{INFO_AND_IMAGE}.main.read_cache"
     EXTRACT_SINGLE_PAGE_MOCK = f"{INFO_AND_IMAGE}.main.extract_single_page"
-    WRITE_PAGESPEC_FILE_MOCK = f"{INFO_AND_IMAGE}.main.write_pagespec_file"
+    UPDATE_PAGESPEC_MOCK = f"{INFO_AND_IMAGE}.main.update_pagespec"
     OCR_PAGE_MOCK = f"{OCR}.main.ocr_page"
     WRITE_TEXT_FILE_II_MOCK = f"{INFO_AND_IMAGE}.main.write_text_file"
     WRITE_TEXT_FILE_OCR_MOCK = f"{OCR}.main.write_text_file"
@@ -255,7 +255,7 @@ def patch_pipeline(func):
     @patch(WRITE_CACHE_MOCK, write_cache)
     @patch(READ_CACHE_MOCK, read_cache)
     @patch(EXTRACT_SINGLE_PAGE_MOCK, extract_single_page)
-    @patch(WRITE_PAGESPEC_FILE_MOCK, write_pagespec_file)
+    @patch(UPDATE_PAGESPEC_MOCK, update_pagespec)
     @patch(OCR_PAGE_MOCK, ocr_page)
     @patch(WRITE_TEXT_FILE_II_MOCK, write_text_file)
     @patch(WRITE_TEXT_FILE_OCR_MOCK, write_text_file)
