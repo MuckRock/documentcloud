@@ -240,6 +240,10 @@ class Document(models.Model):
         )
 
     @property
+    def processing(self):
+        return self.status in (Status.pending, Status.readable)
+
+    @property
     def asset_url(self):
         if self.public:
             return settings.PUBLIC_ASSET_URL

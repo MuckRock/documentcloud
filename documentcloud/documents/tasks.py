@@ -132,16 +132,14 @@ def solr_delete(document_pk):
 
 
 @task
-def update_access(document_pk, original_status):
+def update_access(document_pk, status, access):
     """Update the access settings for all assets for the given document"""
     document = Document.objects.get(pk=document_pk)
     logger.info(
         "update access: %d - %s - %d", document_pk, document.title, document.access
     )
 
-    access = "public" if document.access == Access.public else "private"
     files = storage.list(document.path)
-
     tasks = []
     for i in range(0, len(files), settings.UPDATE_ACCESS_CHUNK_SIZE):
         tasks.append(
@@ -150,7 +148,7 @@ def update_access(document_pk, original_status):
 
     # run all do_update_access tasks in parallel, then run finish_update_access
     # after they have all completed
-    chord(tasks, finish_update_access.si(document_pk, original_status)).delay()
+    chord(tasks, finish_update_access.si(document_pk, status, access)).delay()
 
 
 @task
@@ -162,12 +160,19 @@ def do_update_access(files, access):
 
 
 @task
-def finish_update_access(document_pk, status):
+def finish_update_access(document_pk, status, access):
     """Upon finishing an access update, reset the status"""
     with transaction.atomic():
-        Document.objects.filter(pk=document_pk).update(status=status)
+        field_updates = {"status": "set"}
+        kwargs = {}
+        if access == "public":
+            # if we were switching to public, update the access now
+            kwargs["access"] = Access.public
+            field_updates["access"] = "set"
+
+        Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
         transaction.on_commit(
-            lambda: solr_index.delay(document_pk, field_updates={"status": "set"})
+            lambda: solr_index.delay(document_pk, field_updates=field_updates)
         )
 
 

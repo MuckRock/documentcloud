@@ -373,11 +373,11 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(3, user=user, access=Access.private)
         response = client.patch(
             f"/api/documents/",
-            [{"id": d.pk, "access": "public"} for d in documents[:2]],
+            [{"id": d.pk, "source": "Daily Planet"} for d in documents[:2]],
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
-        assert Document.objects.filter(access=Access.public).count() == 2
+        assert Document.objects.filter(source="Daily Planet").count() == 2
 
     def test_bulk_update_bad(self, client, user):
         """Test updating multiple documents, without permissions for all"""
