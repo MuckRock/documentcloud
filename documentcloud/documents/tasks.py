@@ -129,21 +129,11 @@ def update_access(document_pk):
     # start each chunk `UPDATE_ACCESS_PAGE_CHUNK_SIZE` files apart
     for file_ in files[:: settings.UPDATE_ACCESS_CHUNK_SIZE]:
         logger.info("update access: launching %s", file_)
-        async_do_update_access.delay(document.path, access, file_)
+        do_update_access.delay(document.path, access, file_)
 
 
 @task
 def do_update_access(path, access, marker):
-    """Update access settings for a single chunk of assets"""
-    logger.info("START do update access: %s", marker)
-    files = storage.list(path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
-    for file_ in files:
-        storage.set_access(file_, access)
-    logger.info("DONE: do update access: %s", marker)
-
-
-@task
-def async_do_update_access(path, access, marker):
     """Update access settings for a single chunk of assets"""
     logger.info("START do update access: %s", marker)
 

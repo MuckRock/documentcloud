@@ -413,7 +413,7 @@ PROCESSING_TOKEN = env("PROCESSING_TOKEN")
 ENVIRONMENT = env("ENVIRONMENT")
 
 REST_BULK_LIMIT = env.int("REST_BULK_LIMIT", default=25)
-UPDATE_ACCESS_CHUNK_SIZE = env.int("UPDATE_ACCESS_CHUNK_SIZE", default=1000)
+UPDATE_ACCESS_CHUNK_SIZE = env.int("UPDATE_ACCESS_CHUNK_SIZE", default=500)
 
 # Solr
 # ------------------------------------------------------------------------------
