@@ -11,9 +11,14 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
+# Standard Library
+import logging
+import sys
+
 # Third Party
 import django_filters
 import environ
+import pysolr
 from rest_flex_fields import FlexFieldsModelViewSet, is_expanded
 
 # DocumentCloud
@@ -60,6 +65,7 @@ from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 
 env = environ.Env()
+logger = logging.getLogger(__name__)
 
 # We use CloudFlare's Page Rules to enable aggressive caching on the document
 # retrieve view.  Since we match on documents/* it also affects all other views
@@ -300,15 +306,44 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @action(detail=False, methods=["get"])
     def search(self, request):
-        return Response(search(self.request.user, self.request.query_params))
+        try:
+            response = search(request.user, request.query_params)
+        except pysolr.SolrError as exc:
+            logger.error(
+                "Solr Error: User: %s Query Params: %s Exc: %s",
+                request.user,
+                request.query_params,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+            return Response(
+                {"error": "There has been an error with your search query"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        else:
+            return Response(response)
 
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
         query = request.query_params.get("q", "*:*")
-        results = SOLR.search(
-            query, fq=f"id:{pk}", **{"hl.snippets": settings.SOLR_HL_SNIPPETS}
-        )
-        return Response(results.highlighting.get(pk, {}))
+        try:
+            results = SOLR.search(
+                query, fq=f"id:{pk}", **{"hl.snippets": settings.SOLR_HL_SNIPPETS}
+            )
+        except pysolr.SolrError as exc:
+            logger.error(
+                "Solr Error (Page): User: %s Query Params: %s Exc: %s",
+                request.user,
+                request.query_params,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+            return Response(
+                {"error": "There has been an error with your search query"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        else:
+            return Response(results.highlighting.get(pk, {}))
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(
