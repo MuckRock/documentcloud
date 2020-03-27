@@ -136,6 +136,7 @@ def timeout_cfunctype(_data):
 
 @pytest.mark.slow
 class TestErrorHandling:
+    @patch("documentcloud.common.serverless.error_handling.USE_TIMEOUT", True)
     @patch(
         "documentcloud.common.serverless.tests.test_error_handling.communicate_data",
         new_callable=SharedMock,
@@ -153,6 +154,7 @@ class TestErrorHandling:
             call("Done", {"doc_id": 1}),
         ]
 
+    @patch("documentcloud.common.serverless.error_handling.USE_TIMEOUT", True)
     @patch(
         "documentcloud.common.serverless.tests.test_error_handling.communicate_data",
         new_callable=SharedMock,
@@ -172,6 +174,7 @@ class TestErrorHandling:
             call("Done", {"doc_id": 1, "runcount": 2}),
         ]
 
+    @patch("documentcloud.common.serverless.error_handling.USE_TIMEOUT", True)
     @patch(
         "documentcloud.common.serverless.tests.test_error_handling.communicate_data",
         new_callable=SharedMock,
@@ -186,6 +189,7 @@ class TestErrorHandling:
         assert mock_send_update.call_count == 0
         assert mock_communicate_data.mock_calls == [call("Pending", {"doc_id": 1})]
 
+    @patch("documentcloud.common.serverless.error_handling.USE_TIMEOUT", True)
     @patch(
         "documentcloud.common.serverless.tests.test_error_handling.communicate_data",
         new_callable=SharedMock,
@@ -203,6 +207,7 @@ class TestErrorHandling:
             call("Pending", {"doc_id": 1, "runcount": 1}),
         ]
 
+    @patch("documentcloud.common.serverless.error_handling.USE_TIMEOUT", True)
     @patch("documentcloud.common.serverless.utils.send_error")
     def test_timeout_cfunctype(self, mock_send_error):
         timeout_cfunctype(encode({"doc_id": 1}))
