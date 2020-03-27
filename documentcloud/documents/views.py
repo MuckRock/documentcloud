@@ -219,17 +219,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _process(self, document, force_ocr):
         """Process a document after you have uploaded the file"""
-        was_public = document.public
         with transaction.atomic():
             document.status = Status.pending
             document.save()
             transaction.on_commit(
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
-            if was_public:
-                # if document is public, mark the files as private while it is being
-                # processed
-                transaction.on_commit(lambda: update_access.delay(document.pk))
         process.delay(document.pk, document.slug, force_ocr)
 
     @process.mapping.delete
@@ -300,28 +295,33 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         for instance, validated_data, was_public, old_status in zip(
             instances, validated_datas, was_publics, old_statuses
         ):
-            if was_public != instance.public:
-                transaction.on_commit(lambda i=instance: update_access.delay(i.pk))
 
-            if old_status in (Status.pending, Status.readable):
-                # if we were processing, do a full update
-                if instance.status == Status.success:
-                    # if it was processed succesfully, index the text
-                    transaction.on_commit(
-                        lambda i=instance: solr_index.delay(i.pk, index_text=True)
-                    )
-                else:
-                    # if it is not done processing or error, just update other fields
-                    transaction.on_commit(lambda i=instance: solr_index.delay(i.pk))
+            # do update_access
+            if was_public != instance.public:
+                # XXX do this on status changes?
+                status_ = instance.status
+                instance.status = Status.pending  # XXX readable?
+                instance.save()
+                transaction.on_commit(
+                    lambda i=instance: update_access.delay(i.pk, status_)
+                )
+
+            # update solr index
+            was_processing = old_status in (Status.pending, Status.readable)
+            if was_processing and instance.status == Status.success:
+                # if it was processed succesfully, do a full index with text
+                kwargs = {"index_text": True}
+            elif was_processing:
+                # if it is not done processing or error, we may not be indexed yet
+                # do a full index, without text since text has not been processed yet
+                kwargs = {"index_text": False}
             else:
                 # only update the fields that were updated
                 # never try to update the id
                 validated_data.pop("id", None)
-                transaction.on_commit(
-                    lambda i=instance: solr_index.delay(
-                        i.pk, field_updates={f: "set" for f in validated_data}
-                    )
-                )
+                kwargs = {"field_updates": {f: "set" for f in validated_data}}
+
+            transaction.on_commit(lambda i=instance: solr_index.delay(i.pk, **kwargs))
 
     @action(detail=False, methods=["get"])
     def search(self, request):
@@ -610,17 +610,12 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        was_public = document.public
         with transaction.atomic():
             document.status = Status.pending
             document.save()
             transaction.on_commit(
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
-            if was_public:
-                # if document is public, mark the files as private while it is being
-                # processed
-                transaction.on_commit(lambda: update_access.delay(document.pk))
 
         redact.delay(document.pk, document.slug, serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

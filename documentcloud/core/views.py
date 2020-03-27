@@ -19,14 +19,18 @@ class FileServer(View):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
-        url = document.path + kwargs["path"]
         if not document.public:
+            url = document.path + kwargs["path"]
             url = storage.presign_url(url, "get_object")
+        else:
+            url = (
+                f"{settings.PUBLIC_ASSET_URL}documents/{kwargs['pk']}/{kwargs['path']}"
+            )
+
         if request.is_ajax():
             return JsonResponse({"location": url})
         else:
             return HttpResponseRedirect(url)
-        return HttpResponseRedirect(url)
 
 
 def account_logout(request):
