@@ -153,7 +153,7 @@ def update_access(document_pk, original_status):
     chord(tasks, finish_update_access.si(document_pk, original_status)).delay()
 
 
-@task(ignore_result=False)
+@task
 def do_update_access(files, access):
     """Update access settings for a single chunk of assets"""
     logger.info("START do update access: %s - %d", files[0], access)
@@ -161,7 +161,7 @@ def do_update_access(files, access):
     logger.info("DONE: do update access: %s - %d", files[0], access)
 
 
-@task(ignore_result=False)
+@task
 def finish_update_access(document_pk, status):
     """Upon finishing an access update, reset the status"""
     with transaction.atomic():
