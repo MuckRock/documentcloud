@@ -123,23 +123,18 @@ def update_access(document_pk):
     document = Document.objects.get(pk=document_pk)
     logger.info("update access: %d - %s", document_pk, document.title)
     access = "public" if document.public else "private"
-    # prepend a None so we don't skip the first file
-    # list will start listing after the marker file
-    files = [None] + storage.list(document.path)
-    # start each chunk `UPDATE_ACCESS_PAGE_CHUNK_SIZE` files apart
-    for file_ in files[:: settings.UPDATE_ACCESS_CHUNK_SIZE]:
-        logger.info("update access: launching %s", file_)
-        do_update_access.delay(document.path, access, file_)
+    files = storage.list(document.path)
+    for i in range(0, len(files), settings.UPDATE_ACCESS_CHUNK_SIZE):
+        logger.info("update access: launching %s", files[i])
+        do_update_access.delay(files[i : i + settings.UPDATE_ACCESS_CHUNK_SIZE], access)
 
 
 @task
-def do_update_access(path, access, marker):
+def do_update_access(files, access):
     """Update access settings for a single chunk of assets"""
-    logger.info("START do update access: %s", marker)
-    files = storage.list(path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
-    logger.info("GOT FILE LIST do update access: %s", marker)
+    logger.info("START do update access: %s", files[0])
     storage.async_set_access(files, access)
-    logger.info("DONE: do update access: %s", marker)
+    logger.info("DONE: do update access: %s", files[0])
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
