@@ -1,4 +1,5 @@
 # Django
+from celery import chord, group
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
@@ -15,7 +16,7 @@ from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
-from documentcloud.documents.choices import Status
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import SOLR
 
@@ -131,23 +132,43 @@ def solr_delete(document_pk):
 
 
 @task
-def update_access(document_pk):
+def update_access(document_pk, original_status):
     """Update the access settings for all assets for the given document"""
     document = Document.objects.get(pk=document_pk)
-    logger.info("update access: %d - %s", document_pk, document.title)
-    access = "public" if document.public else "private"
+    logger.info(
+        "update access: %d - %s - %d", document_pk, document.title, document.access
+    )
+
+    access = "public" if document.access == Access.public else "private"
     files = storage.list(document.path)
+
+    tasks = []
     for i in range(0, len(files), settings.UPDATE_ACCESS_CHUNK_SIZE):
-        logger.info("update access: launching %s", files[i])
-        do_update_access.delay(files[i : i + settings.UPDATE_ACCESS_CHUNK_SIZE], access)
+        tasks.append(
+            do_update_access.s(files[i : i + settings.UPDATE_ACCESS_CHUNK_SIZE], access)
+        )
+
+    # run all do_update_access tasks in parallel, then run finish_update_access
+    # after they have all completed
+    chord(tasks, finish_update_access.si(document_pk, original_status)).delay()
 
 
-@task
+@task(ignore_result=False)
 def do_update_access(files, access):
     """Update access settings for a single chunk of assets"""
-    logger.info("START do update access: %s", files[0])
+    logger.info("START do update access: %s - %d", files[0], access)
     storage.async_set_access(files, access)
-    logger.info("DONE: do update access: %s", files[0])
+    logger.info("DONE: do update access: %s - %d", files[0], access)
+
+
+@task(ignore_result=False)
+def finish_update_access(document_pk, status):
+    """Upon finishing an access update, reset the status"""
+    with transaction.atomic():
+        Document.objects.filter(pk=document_pk).update(status=status)
+        transaction.on_commit(
+            lambda: solr_index.delay(document_pk, field_updates={"status": "set"})
+        )
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
