@@ -3,9 +3,7 @@ from django.conf import settings
 from django.urls import reverse
 
 # Standard Library
-import logging
 import math
-import sys
 
 # Third Party
 import pysolr
@@ -16,8 +14,6 @@ from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
-
-logger = logging.getLogger(__name__)
 
 FIELD_MAP = {
     "user": "user",
@@ -61,19 +57,8 @@ def search(user, query_params):
 
     kwargs = {"fq": field_queries, "sort": sort, "rows": rows, "start": start}
 
-    try:
-        results = SOLR.search(text_query, **kwargs)
-    except pysolr.SolrError as exc:
-        logger.error(
-            "Solr Error: User: %s Query Params: %s Exc: %s",
-            user,
-            query_params,
-            exc,
-            exc_info=sys.exc_info(),
-        )
-        response = {"error": "There has been an error with your search query"}
-    else:
-        response = _format_response(results, query_params, page, rows)
+    results = SOLR.search(text_query, **kwargs)
+    response = _format_response(results, query_params, page, rows)
 
     if settings.DEBUG:
         response["debug"] = {"text_query": text_query, **kwargs}
