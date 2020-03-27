@@ -49,6 +49,9 @@ PDF_PROCESS_TOPIC = publisher.topic_path(
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
+START_IMPORT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
+)
 
 
 @processing_auth
@@ -93,3 +96,10 @@ def get_progress(request, _context=None):
         images, texts = (None, None)
 
     return encode_response({"images": images, "texts": texts})
+
+
+@processing_auth
+def import_documents(request, _context=None):
+    """Command to start the import process on an organization"""
+    data = get_http_data(request)
+    publisher.publish(START_IMPORT_TOPIC, data=encode_pubsub_data(data))

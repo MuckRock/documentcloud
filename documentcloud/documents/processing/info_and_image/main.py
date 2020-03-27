@@ -59,6 +59,8 @@ PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 BLOCK_SIZE = env.int(
     "BLOCK_SIZE", 8 * 1024 * 1024
 )  # Block size to use for reading chunks of the PDF
+TEXT_READ_BATCH = env.int("TEXT_READ_BATCH", 5)
+IMPORT_OCR_VERSION = env.str("IMPORT_OCR_VERSION", default="dc-import")
 
 
 def parse_extract_width(width_str):
@@ -93,6 +95,19 @@ REDACT_TOPIC = publisher.topic_path(
 )
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
+)
+
+START_IMPORT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
+)
+IMPORT_DOCUMENT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("IMPORT_DOCUMENT_TOPIC", default="import-document")
+)
+READ_PAGE_TEXT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("READ_PAGE_TEXT_TOPIC", default="read-page-text")
+)
+FINISH_IMPORT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")
 )
 
 
@@ -196,20 +211,10 @@ def write_text_file(text_path, text):
     storage.simple_upload(text_path, text.encode("utf8"))
 
 
-def write_pagespec_file(doc_id, slug, crunched_pagespec):
-    """Helper method to write pagespec file."""
-    storage.simple_upload(
-        path.pagesize_path(doc_id, slug),
-        crunched_pagespec.encode("utf8"),
-        content_type="text/plain",
-    )
-
-
-def write_pagespec(doc_id, slug):
-    """Extract and write the dimensions of all pages to a pagespec file"""
+def update_pagespec(doc_id, slug):
+    """Extract and send the dimensions of all pages in pagespec format"""
     pagespec = get_redis_pagespec(doc_id)
     crunched_pagespec = crunch_collection(pagespec)
-    write_pagespec_file(doc_id, slug, crunched_pagespec)
 
     # Send pagespec update
     utils.send_update(REDIS, doc_id, {"page_spec": crunched_pagespec})
@@ -486,7 +491,7 @@ def extract_image(data, _context=None):
                 # Write the pagespec dimensions if all images have finished and
                 # it's not a partial update.
                 if images_finished and not partial:
-                    write_pagespec(doc_id, slug)
+                    update_pagespec(doc_id, slug)
 
             if not utils.page_ocrd(REDIS, doc_id, page_number):
                 # Extract page text if possible
@@ -531,8 +536,11 @@ def assemble_page_text(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
+    is_import = data.get("import", False)
+    if is_import:
+        org_id = data["org_id"]
 
-    results = utils.get_all_page_text(REDIS, doc_id)
+    results = utils.get_all_page_text(REDIS, doc_id, is_import)
 
     if partial:
         # Patch the old results in if it's a partial update
@@ -550,19 +558,36 @@ def assemble_page_text(data, _context=None):
         # Overwrite the original results
         results = old_results
 
-    concatenated_text = b"\n\n".join(
-        [page["contents"].encode("utf-8") for page in results["pages"]]
-    )
+    if not is_import:
+        # Compile concatenated text only outside of import mode
+        # (we don't want to overwrite the previous file)
+        concatenated_text = b"\n\n".join(
+            [page["contents"].encode("utf-8") for page in results["pages"]]
+        )
 
-    # Write the concatenated text file
-    storage.simple_upload(path.text_path(doc_id, slug), concatenated_text)
+        # Write the concatenated text file
+        storage.simple_upload(path.text_path(doc_id, slug), concatenated_text)
 
     # Write the json text file
     storage.simple_upload(
         path.json_text_path(doc_id, slug), json.dumps(results).encode("utf-8")
     )
 
-    utils.send_complete(REDIS, doc_id)
+    if is_import:
+        # Clean up Redis page text
+        REDIS.delete(
+            redis_fields.texts_remaining(doc_id),
+            redis_fields.text_bits(doc_id),
+            redis_fields.page_text(doc_id),
+        )
+
+        publisher.publish(
+            FINISH_IMPORT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+    else:
+        utils.send_complete(REDIS, doc_id)
+
     return "Ok"
 
 
@@ -596,3 +621,174 @@ def redact_doc(data, _context=None):
     )
 
     return "Ok"
+
+
+# TODO: move imports
+import csv
+
+
+@pubsub_function(REDIS, START_IMPORT_TOPIC)
+def start_import(data, _context=None):
+    """Reads in an org's import CSV and starts the import process."""
+    data = get_pubsub_data(data)
+    org_id = data["org_id"]
+
+    with storage.open(path.import_org_csv(org_id), "r") as csvfile:
+        csvreader = csv.reader(csvfile)
+
+        header = True
+
+        doc_ids = []
+        for row in csvreader:
+            if header:
+                # Skip the first row
+                header = False
+                continue
+
+            # Pull the doc id (1st column) and slug (7th column)
+            doc_ids.append({"doc_id": row[0], "slug": row[6]})
+
+    # Initialize Redis
+    REDIS.set(redis_fields.import_docs_remaining(org_id), len(doc_ids))
+
+    for doc_id, slug in doc_ids:
+        publisher.publish(
+            IMPORT_DOCUMENT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+
+    return "Ok"
+
+
+@pubsub_function(REDIS, IMPORT_DOCUMENT_TOPIC)
+def import_document(data, _context=None):
+    """Handles the import process for a single document."""
+    data = get_pubsub_data(data)
+    org_id = data["org_id"]
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+
+    # Get the pagespec from the PDF
+    pagespec = collections.defaultdict(list)
+    doc_path = path.doc_path(doc_id, slug)
+    with Workspace() as workspace, StorageHandler(
+        storage, doc_path, record=False, playback=False, cache=None, read_all=True
+    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+        # Get the page spec by grabbing the dimension from each page
+        page_count = doc.page_count
+        for page_number in range(page_count):
+            page = doc.load_page(page_number)
+            pagespec[f"{page.width}x{page.height}"].append(page_number)
+
+    # Set the pagespec
+    crunched_pagespec = crunch_collection(pagespec)
+
+    # Run a Redis pipeline
+    pipeline = REDIS.pipeline()
+    pipeline.hset(redis_fields.import_pagespecs(org_id), f"{doc_id}", crunched_pagespec)
+
+    # Set Redis texts remaining to page count
+    pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
+
+    # Set Redis text bits field flooded to 0 to track each page
+    text_bits_field = redis_fields.text_bits(doc_id)
+    pipeline.delete(text_bits_field)
+    pipeline.setbit(text_bits_field, page_count - 1, 0)
+    pipeline.execute()
+
+    # Kick off reading text files
+    for i in range(0, page_count, TEXT_READ_BATCH):
+        pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
+        publisher.publish(
+            READ_PAGE_TEXT_TOPIC,
+            encode_pubsub_data(
+                {"org_id": org_id, "doc_id": doc_id, "slug": slug, "pages": pages}
+            ),
+        )
+
+
+@pubsub_function(REDIS, READ_PAGE_TEXT_TOPIC)
+def read_page_text(data, _context=None):
+    """A function to read page text from documents in batch."""
+    data = get_pubsub_data(data)
+    org_id = data["org_id"]
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    pages = data["pages"]
+
+    for page_number in pages:
+        text_path = path.page_text_path(doc_id, slug, page_number)
+        with storage.open(text_path, "r") as text_file:
+            text = text_file.read()
+            utils.write_page_text(REDIS, doc_id, page_number, text, IMPORT_OCR_VERSION)
+
+        # Decrement the texts remaining, assembling text if done.
+        texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
+        if texts_finished:
+            publisher.publish(
+                ASSEMBLE_TEXT_TOPIC,
+                encode_pubsub_data(
+                    {
+                        "doc_id": doc_id,
+                        "slug": slug,
+                        "import": True,
+                        "org_id": org_id,
+                        "partial": False,
+                    }
+                ),
+            )
+
+
+@pubsub_function(REDIS, FINISH_IMPORT_TOPIC)
+def finish_import(data, _context=None):
+    """Finishes off the import process"""
+    data = get_pubsub_data(data)
+    org_id = data["org_id"]
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+
+    import_docs_remaining = REDIS.decr(redis_fields.import_docs_remaining(org_id))
+
+    if import_docs_remaining == 0:
+        # Done importing! Assemble the resulting CSV
+
+        # Extract pagespec information from Redis
+        pagespecs = {}
+        redis_pagespecs = REDIS.hgetall(redis_fields.import_pagespecs(org_id))
+        for i in range(0, len(redis_pagespecs), 2):
+            doc_id = redis_pagespecs[i]
+            pagespec = redis_pagespecs[i + 1]
+            pagespecs[doc_id] = pagespec
+
+        # Assemble new CSV as additional column on old import CSV
+        rows = []
+        with storage.open(path.import_org_csv(org_id), "r") as csvfile:
+            csvreader = csv.reader(csvfile)
+
+            header = True
+
+            for row in csvreader:
+                if header:
+                    header = False
+                    # Add pagespec header
+                    rows.append(row + ["pagespec"])
+                    continue
+
+                doc_id = row[0]
+                pagespec = pagespecs[doc_id]
+                # Add pagespec to each row
+                rows.append(row + [pagespec])
+
+        # Write the new pagespec-enhanced CSV
+        with storage.open(path.import_org_pagespec_csv(org_id), "w") as new_csv_file:
+            csvwriter = csv.writer(new_csv_file)
+            for row in rows:
+                csvwriter.writerow(row)
+
+        # Clean up Redis
+        doc_ids = pagespecs.keys()
+        REDIS.delete(
+            redis_fields.import_docs_remaining(org_id),
+            redis_fields.import_pagespecs(org_id),
+        )
+
