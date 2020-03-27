@@ -37,3 +37,11 @@ def image_bits(doc_id):
 
 def text_bits(doc_id):
     return f"{doc_id}:textBits"
+
+
+def import_pagespecs(org_id):
+    return f"{org_id}:pagespec"
+
+
+def import_docs_remaining(org_id):
+    return f"{org_id}:docsRemaining"

@@ -65,3 +65,13 @@ def page_image_path(doc_id, slug, page_number, page_size):
 def page_text_path(doc_id, slug, page_number):
     """The path to the text file for a single page"""
     return pages_path(doc_id) + f"{slug}-p{page_number + 1}.{TEXT_SUFFIX}"
+
+
+def import_org_csv(org_id):
+    """The path to the documents CSV for a given org pre-import on lambda"""
+    return f"/documentcloud/export/organization-{org_id}/documents.csv"
+
+
+def import_org_pagespec_csv(org_id):
+    """The path to the documents CSV for a given org post-import on lambda"""
+    return f"/documentcloud/export/organization-{org_id}/documents.pagespec.csv"
