@@ -3,7 +3,6 @@
 # Django
 from django.conf import settings
 from django.contrib.auth.models import UserManager as AuthUserManager
-from django.core.cache import cache
 from django.db import transaction
 
 # Standard Library
@@ -110,18 +109,6 @@ class BaseUserManager(AuthUserManager):
             current_organizations.remove(individual_organization)
 
         user.memberships.filter(organization__in=current_organizations).delete()
-
-        # update cache after updating orgs
-        cache.set(
-            u"sb:{}:user_org".format(user.username),
-            user.organization,
-            settings.DEFAULT_CACHE_TIMEOUT,
-        )
-        cache.set(
-            u"sb:{}:user_orgs".format(user.username),
-            user.organizations.order_by("-individual", "name"),
-            settings.DEFAULT_CACHE_TIMEOUT,
-        )
 
 
 class UserManager(BaseUserManager.from_queryset(UserQuerySet)):

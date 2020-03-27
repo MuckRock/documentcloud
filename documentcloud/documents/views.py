@@ -298,12 +298,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
             # do update_access
             if was_public != instance.public:
-                # XXX do this on status changes?
                 status_ = instance.status
-                instance.status = Status.pending  # XXX readable?
+                instance.status = Status.readable
+                # set this so that it will be updated in solr below
+                validated_data["status"] = Status.readable
                 instance.save()
                 transaction.on_commit(
-                    lambda i=instance: update_access.delay(i.pk, status_)
+                    lambda i=instance, s=status_: update_access.delay(i.pk, s)
                 )
 
             # update solr index
@@ -321,7 +322,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 validated_data.pop("id", None)
                 kwargs = {"field_updates": {f: "set" for f in validated_data}}
 
-            transaction.on_commit(lambda i=instance: solr_index.delay(i.pk, **kwargs))
+            transaction.on_commit(
+                lambda i=instance, k=kwargs: solr_index.delay(i.pk, **k)
+            )
 
     @action(detail=False, methods=["get"])
     def search(self, request):

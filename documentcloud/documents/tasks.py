@@ -156,9 +156,9 @@ def update_access(document_pk, original_status):
 @task
 def do_update_access(files, access):
     """Update access settings for a single chunk of assets"""
-    logger.info("START do update access: %s - %d", files[0], access)
+    logger.info("START do update access: %s - %s", files[0], access)
     storage.async_set_access(files, access)
-    logger.info("DONE: do update access: %s - %d", files[0], access)
+    logger.info("DONE: do update access: %s - %s", files[0], access)
 
 
 @task
