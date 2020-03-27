@@ -212,7 +212,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not storage.exists(document.doc_path):
             return f"No File: {document.pk}"
 
-        if document.status in (Status.pending, Status.readable):
+        if document.processing:
             return f"Already processing: {document.pk}"
 
         return None
@@ -232,7 +232,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         """Cancel processing for a document"""
         # pylint: disable=unused-argument
         document = self.get_object()
-        if document.status not in (Status.pending, Status.readable):
+        if not document.processing:
             return Response(
                 {"error": "Not processing"}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -247,7 +247,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             return Response("OK", status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
-        if instance.status in (Status.pending, Status.readable):
+        if instance.processing:
             # if still processing, cancel before deleting
             process_cancel.delay(instance.pk)
         instance.destroy()
@@ -282,8 +282,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             validated_datas = [serializer.validated_data]
             instances = [serializer.instance]
 
-        was_publics = [i.public for i in instances]
-        old_statuses = [i.status for i in instances]
+        old_accesses = [i.access for i in instances]
+        old_processings = [i.processing for i in instances]
         super().perform_update(serializer)
 
         # refresh from database after performing update
@@ -292,27 +292,38 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             instances = [serializer.instance]
 
-        for instance, validated_data, was_public, old_status in zip(
-            instances, validated_datas, was_publics, old_statuses
+        for instance, validated_data, old_access, old_processing in zip(
+            instances, validated_datas, old_accesses, old_processings
         ):
 
-            # do update_access
-            if was_public != instance.public:
+            # do update_access if access changed to or from public
+            if old_access != instance.access and Access.public in (
+                old_access,
+                instance.access,
+            ):
                 status_ = instance.status
                 instance.status = Status.readable
                 # set this so that it will be updated in solr below
                 validated_data["status"] = Status.readable
+                # if we are making public, do not switch until the access
+                # has been updated
+                if instance.access == Access.public:
+                    instance.access = old_access
+                    access = "public"
+                else:
+                    access = "private"
                 instance.save()
                 transaction.on_commit(
-                    lambda i=instance, s=status_: update_access.delay(i.pk, s)
+                    lambda i=instance, s=status_, a=access: update_access.delay(
+                        i.pk, s, a
+                    )
                 )
 
             # update solr index
-            was_processing = old_status in (Status.pending, Status.readable)
-            if was_processing and instance.status == Status.success:
+            if old_processing and instance.status == Status.success:
                 # if it was processed succesfully, do a full index with text
                 kwargs = {"index_text": True}
-            elif was_processing:
+            elif old_processing:
                 # if it is not done processing or error, we may not be indexed yet
                 # do a full index, without text since text has not been processed yet
                 kwargs = {"index_text": False}
@@ -608,7 +619,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
 
-        if document.status in (Status.pending, Status.readable):
+        if document.processing:
             return Response(
                 {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
             )
