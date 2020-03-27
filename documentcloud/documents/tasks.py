@@ -136,10 +136,9 @@ def update_access(document_pk):
 def do_update_access(path, access, marker):
     """Update access settings for a single chunk of assets"""
     logger.info("START do update access: %s", marker)
-
     files = storage.list(path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
+    logger.info("GOT FILE LIST do update access: %s", marker)
     storage.async_set_access(files, access)
-
     logger.info("DONE: do update access: %s", marker)
 
 
