@@ -2,7 +2,6 @@
 import asyncio
 import io
 import mimetypes
-import time
 
 # Third Party
 import aioboto3
@@ -99,54 +98,11 @@ class AwsStorage:
         if self.minio:
             # minio does not support object ACLs
             return
-        start_time = time.time()
-        print("start", start_time)
         acls = {"public": "public-read", "private": "private"}
         bucket, prefix = self.bucket_key(file_prefix)
         bucket = self.s3_resource.Bucket(bucket)
         for obj in bucket.objects.filter(Prefix=prefix):
-            print(time.time())
             obj.Acl().put(ACL=acls[access])
-        end_time = time.time()
-        print("end", end_time)
-        print("total", end_time - start_time)
-
-    def async_set_access_path(self, file_prefix, access, max_=1000):
-
-        if self.minio:
-            # minio does not support object ACLs
-            return
-
-        start_time = time.time()
-        print("start", start_time)
-
-        async def main():
-            start_time = time.time()
-            print("start main", start_time)
-            acls = {"public": "public-read", "private": "private"}
-            bucket, prefix = self.bucket_key(file_prefix)
-            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
-                bucket = as3_resource.Bucket(bucket)
-                tasks = []
-                async for obj in bucket.objects.filter(Prefix=prefix):
-                    tasks.append(obj.Acl().put(ACL=acls[access]))
-                tasks = tasks[:max_]
-                print("tasks", len(tasks))
-                print("total await", time.time() - start_time)
-                await asyncio.gather(*tasks)
-                end_time = time.time()
-            print("end main", end_time)
-            print("total main", end_time - start_time)
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-        # loop.close()
-
-        end_time = time.time()
-        print("end", end_time)
-        total = end_time - start_time
-        print("total", end_time - start_time)
-        return total
 
     def set_access(self, file_name, access):
         """Set access for a key"""
@@ -166,6 +122,7 @@ class AwsStorage:
         acls = {"public": "public-read", "private": "private"}
 
         async def main():
+            # pylint: disable=not-async-context-manager
             async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
                 tasks = []
                 for file_name in file_names:
