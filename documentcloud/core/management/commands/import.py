@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -8,6 +9,7 @@ import csv
 import ctypes
 import json
 import os
+import time
 
 # Third Party
 import pytz
@@ -16,6 +18,7 @@ from listcrunch.listcrunch import uncrunch
 from smart_open import open as smart_open
 
 # DocumentCloud
+from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 from documentcloud.documents.tasks import solr_index_dirty
@@ -51,6 +54,8 @@ class Command(BaseCommand):
         )
         # https://stackoverflow.com/a/54517228/2204914
         csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
+
+        self.run_import_lambda(org_id)
         with transaction.atomic():
             self.import_org()
             self.import_users()
@@ -64,6 +69,24 @@ class Command(BaseCommand):
             self.import_project_memberships()
 
             raise ValueError("Do not commit")
+
+    def run_import_lambda(self, org_id):
+        """Run the pre-process lambda script to generate the .txt.json files
+        and to calculate the page spec for all documents
+        """
+        self.stdout.write("Begin Pre-Process Lambda {}".format(timezone.now()))
+        httpsub.post(settings.IMPORT_URL, json={"org_id": org_id})
+        # now we wait for the import script to finish by polling S3 for the existance
+        # of the pagespec csv
+        exists = False
+        self.stdout.write("Waiting for pagespec CSV...")
+        while not exists:
+            exists = storage.exists(
+                f"/documentcloud-export-test/organization-{org_id}"
+                f"/documents.pagespec.csv"
+            )
+            time.sleep(5)
+        self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
 
     def import_org(self):
         self.stdout.write("Begin Organization Import {}".format(timezone.now()))
@@ -133,8 +156,9 @@ class Command(BaseCommand):
             create_users = []
 
             for fields, (user_id, uuid, username) in zip(reader, map_reader):
-                # 10 is role, 3 is reviewer - we skip reviewers
+                # fields[0] is the user_id, it should match between files
                 assert fields[0] == user_id, f"{fields[0]} != {user_id}"
+                # 10 is role, 3 is reviewer - reveiwers should not be exported
                 assert fields[10] != "3", f"Found a rogue reviewer, {user_id}"
                 user = User.objects.filter(uuid=uuid).first()
                 if user:
@@ -204,18 +228,13 @@ class Command(BaseCommand):
             "9": (Access.public, Status.success),
         }
 
-        # with smart_open(f"{self.bucket_path}documents.csv", "r") as infile, smart_open(
-        #     f"{self.bucket_path}documents_pagespecs.csv", "r"
-        # ) as psfile:
-        with smart_open(f"{self.bucket_path}documents.csv", "r") as infile:
+        # with smart_open(f"{self.bucket_path}documents.csv", "r") as infile:
+        with smart_open(f"{self.bucket_path}documents.pagespec.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
-            # ps_reader = csv.reader(psfile)
 
             create_docs = []
 
-            # for i, fields, (doc_id, page_spec) in enumerate(zip(reader, ps_reader)):
-            page_spec = ""
             for i, fields in enumerate(reader):
                 if i % 10000 == 0:
                     self.stdout.write(f"Document {i:,}...")
@@ -236,7 +255,7 @@ class Command(BaseCommand):
                         title=fields[5],
                         slug=fields[6],
                         page_count=fields[4],
-                        page_spec=page_spec,
+                        page_spec=fields[27],
                         language=fields[8],
                         source=fields[7],
                         description=fields[9],
@@ -275,20 +294,26 @@ class Command(BaseCommand):
         self.stdout.write("Begin Notes Import {}".format(timezone.now()))
 
         access_map = {
+            # DELETED
+            "0": Access.private,
             # PRIVATE
-            1: Access.private,
+            "1": Access.private,
             # ORGANIZATION
-            2: Access.organization,
+            "2": Access.organization,
             # EXCLUSIVE
-            3: Access.organization,
+            "3": Access.organization,
             # PUBLIC
-            4: Access.public,
+            "4": Access.public,
+            # PENDING
+            "5": Access.private,
             # INVISIBLE
-            6: Access.invisible,
+            "6": Access.invisible,
+            # ERROR
+            "7": Access.private,
             # PREMODERATED
-            8: Access.public,
+            "8": Access.public,
             # POSTMODERATED
-            9: Access.public,
+            "9": Access.public,
         }
 
         with smart_open(f"{self.bucket_path}notes.csv", "r") as infile:
@@ -312,7 +337,7 @@ class Command(BaseCommand):
                         user_id=fields[2],
                         organization_id=fields[1],
                         page_number=fields[4],
-                        access=access_map.get(fields[5], Access.private),
+                        access=access_map[fields[5]],
                         title=fields[6],
                         content=fields[7],
                         x1=x1,
