@@ -29,12 +29,88 @@ All APIs besides the authentication endpoints are served from
     * [Statuses](#statuses)
     * [Languages](#languages)
     * [Page Spec](#page-spec)
-    * [Static Assets](#statis-assets)
+    * [Static Assets](#static-assets)
 
 ## Overview
 
-Describe an overview of the API layout, things which are common across the whole API
-IE PUT vs PATCH, format of response, etc
+The API end points are generally organized as `/api/<resource>/` representing
+the entirety of the resource, and `/api/<resource>/<id>/` representing a single
+resource identified by its ID.  All REST actions are not available on every
+endpoint, and some resources may have additional endpoints, but the following
+are how HTTP verbs generally map to REST operations:
+
+TODO: switch from tables to lists?
+
+`/api/<resource>/`
+
+| HTTP Verb | REST Operation        | Parameters                                                                   |
+| ---       | ---                   | ---                                                                          |
+| GET       | List the resources    | May support parameters for filtering                                         |
+| POST      | Create a new resource | Must supply all `required` fields, and may supply all non-`read only` fields |
+
+`/api/<resource>/<id>/`
+
+| HTTP Verb | REST Operation                | Parameters                                                                                                                                                                                                       |
+| ---       | ---                           | ---                                                                                                                                                                                                              |
+| GET       | Display the resource          |                                                                                                                                                                                                                  |
+| PUT       | Update the resource           | Same as for creating - all required fields must be present.  For updating resources `PATCH` is usually preferred, as it allows you to only update the fields needed.  `PUT` support is included for completeness |
+| PATCH     | Partially update the resource | Same as for creating, but all fields are optional                                                                                                                                                                |
+| DELETE    | Destroy the resources         |                                                                                                                                                                                                                  |
+
+A select few of the resources support some bulk operations on the `/api/<resource>/` route:
+
+| HTTP Verb | REST Operation      | Parameters                                                                                                                    |
+| ---       | ---                 | ---                                                                                                                           |
+| PUT       | Bulk update         | A list of objects, where each object is what you would `PUT` for a single object &mdash; except it must also include the ID   |
+| PATCH     | Bulk partial update | A list of objects, where each object is what you would `PATCH` for a single object &mdash; except it must also include the ID |
+| DELETE    | Bulk destroy        | Bulk destroys will have a filtering parameter, often required, to specify which resources to delete                           |
+
+### Responses
+
+Lists response will be of the form
+```
+{
+    "count": <count>,
+    "next": <next url if applicable>,
+    "previous": <previous url if applicable>,
+    "results": <list of results>
+}
+```
+with a 200 status code.
+
+Getting a single resource, creating and updating will return just the object.
+Create uses a 201 status code and get and update will return 200.
+
+Delete will have an empty response with a 204 status code.
+
+Batch updates will contain a list of objects updated with a 200 status code.
+
+Specifying invalid parameters will generally return a 400 error code with a
+JSON object with a single `"error"` key, whose value will be an error message.
+Specifying an ID that does not exist or that you do not have access to view
+will return status 404.  Trying to create or update a resource you do not have
+permission to will return status 403.
+
+### Pagination
+
+All list views accept a `per_page` parameter, which specifies how many
+resources to list per page.  It is `25` by default and may be set up to `1000`.
+You may view subsequent pages by using the `next` URL, or by specifying a
+`page` parameter directly.  
+
+### Sub Resources
+
+Some resources also support sub resources, which is a resource that belongs to another.  The general format is:
+
+`/api/<resource>/<id>/<subresource>/`
+
+or
+
+`/api/<resource>/<id>/<subresource>/<subresource_id>`
+
+It generally works the same as a resource, except scoped to the parent resource.  TODO: expand on how this works, or examples
+
+TODO: Examples
 
 ## Authentication
 
@@ -70,6 +146,8 @@ token is valid for one day.
 The documents API allows you to upload, browse and edit documents.  To add or
 remove documents from a project, please see [project
 documents](#project-documents).
+
+`/api/documents/`
 
 ### Fields
 
@@ -155,9 +233,13 @@ TODO: Bulk operations
 * `DELETE /api/documents/<id>/process/` - Cancel processing document
 * `GET /api/documents/<id>/search/` - Search within a document
 
+### Filters
+
 ### Notes
 
 Notes can be left on documents for yourself, or to be shared with other users.  They may contain HTML for formatting.
+
+`/api/documents/<document_id>/note/`
 
 #### Fields
 
@@ -197,6 +279,8 @@ a page level note which is displayed between pages.
 Sections can mark certain pages of your document &mdash; the viewer will show
 an outline of the sections allowing for quick access to those pages.
 
+`/api/documents/<document_id>/sections/`
+
 #### Fields
 
 | Field        | Type    | Options   | Description                                      |
@@ -221,6 +305,8 @@ state, you may check the errors here to see a log of the latest, as well as
 all previous errors.  If the message is cryptic, please contact us &mdash; we
 are happy to help figure out what went wrong.
 
+`/api/documents/<document_id>/errors/`
+
 #### Fields
 
 | Field       | Type      | Options   | Description                           |
@@ -240,6 +326,8 @@ Documents may contain user supplied metadata.  You may assign multiple values
 to arbitrary keys.  This is represented as a JSON object, where each key has a
 list of strings as a value.  The special key `_tag` is used by the front end to
 represent tags.  These values are useful for searching and organizing documents.
+
+`/api/documents/<document_id>/data/`
 
 #### Fields
 
@@ -266,6 +354,8 @@ and reprocessed, so that the original content is not present in lower levels of
 the image or as text data.  Redactions are not reversible, and may only be
 created, not retrieved or edited.
 
+`/api/documents/<document_id>/redactions/`
+
 #### Fields
 
 | Field        | Type    | Options  | Description                                                           |
@@ -285,6 +375,8 @@ created, not retrieved or edited.
 Projects are collections of documents.  They can be used for organizaing groups
 of documents, or for collaborating with other users by sharing access to
 private documents.
+
+`/api/projects/`
 
 ### Sharing Documents
 
@@ -317,6 +409,8 @@ TODO: Explanation of how access levels and sharing works
 
 These endpoints allow you to browse, add and remove documents from a project
 
+`/api/projects/<project_id>/documents/`
+
 #### Fields
 
 | Field        | Type    | Options                            | Description                                                                     |
@@ -339,6 +433,8 @@ These endpoints allow you to browse, add and remove documents from a project
 
 ### Collaborators
 
+`/api/projects/<project_id>/collaborators/`
+
 #### Fields
 
 | Field  | Type    | Options         | Description                                                       |
@@ -359,6 +455,8 @@ These endpoints allow you to browse, add and remove documents from a project
 * `DELETE /api/projects/<project_id>/users/<user_id>` - Remove collaborator from the project
 
 ## Organizations
+
+`/api/organizations/`
 
 Organizations represent a group of users.  They may share a paid plan and
 resources with each other.  Organizations can be managed and edited from the
@@ -382,6 +480,8 @@ DocumentCloud API.
 * `GET /api/organizations/<id>/` - Get an organization
 
 ## Users
+
+`/api/users/`
 
 Users can be managed and edited from the [MuckRock accounts site][3].  You may
 view users and change your own [active organization](#active-organization) from
@@ -410,6 +510,8 @@ the DocumentCloud API.
 
 [oEmbed][4]
 
+`/api/oembed/`
+
 ### Fields
 
 | Field     | Type    | Options  | Description                                |
@@ -420,7 +522,7 @@ the DocumentCloud API.
 
 ### Endpoints
 
-* `GET /api/iembed/` - Get an embed code for a given URL
+* `GET /api/oembed/` - Get an embed code for a given URL
 
 ## Appendix
 
