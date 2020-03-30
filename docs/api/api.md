@@ -112,6 +112,14 @@ It generally works the same as a resource, except scoped to the parent resource.
 
 TODO: Examples
 
+### Filters
+
+Filters on list views which have choices generally allow you to specify
+multiple values, and will filter on all resources that match at least one
+choices.  To specify multiple parameters you may either supply a comma
+separated list of IDs &mdash; `?parameter=1,2` &mdash; or by specify the
+parameter multiple times &mdash; `?parameter=1&parameter=2`.
+
 ## Authentication
 
 Authentication happens at the MuckRock accounts server located at
@@ -156,7 +164,7 @@ documents](#project-documents).
 | ID               | Integer      | Read Only          | The ID for the document                                                                                                |
 | access           | String       | Default: `private` | The [access level](#access-levels) for the document                                                                    |
 | asset\_url       | String       | Read Only          | The base URL to load this document's [static assets](#static-assets) from                                              |
-| created\_at      | Date Time    | Read Only          | Timestamp when this document was created                                                                               |
+| created\_at      | Date Time    | Read Only          | Time stamp when this document was created                                                                               |
 | data             | JSON         | Read Only          | [Custom metadata](#data)                                                                                               |
 | description      | String       | Not Required       | A brief description of the document                                                                                    |
 | edit\_access     | Bool         | Read Only          | Does the current user have edit access to this document                                                                |
@@ -174,10 +182,12 @@ documents](#project-documents).
 | source           | String       | Not Required       | The source who produced the document                                                                                   |
 | status           | String       | Read Only          | The [status](#statuses) for the document                                                                               |
 | title            | String       | Required           | The document's title                                                                                                   |
-| updated\_at      | Date Time    | Read Only          | Timestamp when the document was last updated                                                                           |
+| updated\_at      | Date Time    | Read Only          | Time stamp when the document was last updated                                                                           |
 | user             | ID           | Read Only          | The ID for the [user](#users) this document belongs to                                                                 |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
+
+TODO: explain how expandable fields work
 
 ### Uploading a Document
 
@@ -218,28 +228,59 @@ TODO: More details
 TODO: Filter parameters
 TODO: Bulk operations
 
-* `GET /api/documents/` - List documents
-* `POST /api/documents/` - Create document
-* `PUT /api/documents/` - Bulk update documents
-* `PATCH /api/documents/` - Bulk partial update documents
-* `DELETE /api/documents/` - Bulk delete documents
-* `POST /api/documents/process/` - Bulk process documents
-* `GET /api/documents/search/` - [Search](#search-help) documents
-* `GET /api/documents/<id>/` - Get document
-* `PUT /api/documents/<id>/` - Update document
-* `PATCH /api/documents/<id>/` - Partial update document
-* `DELETE /api/documents/<id>/` - Delete document
-* `POST /api/documents/<id>/process/` - Process document
-* `DELETE /api/documents/<id>/process/` - Cancel processing document
-* `GET /api/documents/<id>/search/` - Search within a document
+* `GET /api/documents/` &mdash; List documents
+* `POST /api/documents/` &mdash; Create document
+* `PUT /api/documents/` &mdash; Bulk update documents
+* `PATCH /api/documents/` &mdash; Bulk partial update documents
+* `DELETE /api/documents/` &mdash; Bulk delete documents
+    * Bulk delete will not allow you to indiscriminately delete all of your
+      documents.  You must specify which document IDs you want to delete using
+      the `id__in` filter.
+* `POST /api/documents/process/` &mdash; Bulk process documents
+    * This will allow you to process multiple documents with a single API call.
+      It expects to receive a JSON object with a single property `ids`, which
+      should be a list of IDs to re-process.
+* `GET /api/documents/search/` &mdash; [Search](#search-help) documents
+    * TODO: in depth search help
+* `GET /api/documents/<id>/` &mdash; Get document
+* `PUT /api/documents/<id>/` &mdash; Update document
+* `PATCH /api/documents/<id>/` &mdash; Partial update document
+* `DELETE /api/documents/<id>/` &mdash; Delete document
+* `POST /api/documents/<id>/process/` &mdash; Process document
+    * This will process a document.  It is used after uploading the file in the
+      [direct file upload flow](#direct-file-upload-flow) or to reprocess a
+      document, which you may want to do in the case of an error.  It does not
+      accept any parameters.  Note that it is an error to try to process a
+      document that is already processing.
+* `DELETE /api/documents/<id>/process/` &mdash; Cancel processing document
+    * This will cancel the processing of a document.  Note that it is an error
+      to try to cancel the processing if the document is not processing.
+* `GET /api/documents/<id>/search/` &mdash; [Search](#search-help) within a document
 
 ### Filters
+
+* `ordering` &mdash; Sort the results &mdash; valid options include: `created_at`,
+  `page_count`, `title`,  and `source`.  You may prefix any valid option with
+  `-` to sort it in reverse order.
+* `user` &mdash; Filter by the ID of the owner of the document.
+* `organization` &mdash; Filter by the ID of the organization of the document.
+* `project` &mdash; Filter by the ID of a project the document is in.
+* `access` &mdash; Filter by the [access level](#access-levels).
+* `status` &mdash; Filter by [status](#statuses).
+* `created_at__lt`, `created_at__gt` &mdash; Filter by documents created
+  either before or after a given date.  You may specify both to find documents
+  created between two dates. This may be a date or date time, in the following
+  formats: `YYYY-MM-DD` or `YYYY-MM-DD+HH:MM:SS`.
+* `page_count`, `page_count__lt`, `page_count__gt` &mdash; Filter by documents
+  with a specified number of pages, or more or less pages then a given amount.
+* `id__in` &mdash; Filter by specific document IDs, passed in as comma
+  separated values.
 
 ### Notes
 
 Notes can be left on documents for yourself, or to be shared with other users.  They may contain HTML for formatting.
 
-`/api/documents/<document_id>/note/`
+`/api/documents/<document_id>/notes/`
 
 #### Fields
 
@@ -248,12 +289,12 @@ Notes can be left on documents for yourself, or to be shared with other users.  
 | ID           | Integer   | Read Only          | The ID for the note                                                |
 | access       | String    | Default: `private` | The [access level](#access-levels) for the note                    |
 | content      | String    | Not Required       | Content for the note, which may include HTML                       |
-| created\_at  | Date Time | Read Only          | Timestamp when this note was created                               |
+| created\_at  | Date Time | Read Only          | Time stamp when this note was created                               |
 | edit\_access | Bool      | Read Only          | Does the current user have edit access to this note                |
 | organization | Integer   | Read Only          | The ID for the [organization](#organizations) this note belongs to |
 | page\_number | Integer   | Required           | The page of the document this note appears on                      |
 | title        | String    | Required           | Title for the note                                                 |
-| updated\_at  | Date Time | Read Only          | Timestamp when this note was last updated                          |
+| updated\_at  | Date Time | Read Only          | Time stamp when this note was last updated                          |
 | user         | ID        | Read Only          | The ID for the [user](#users) this note belongs to                 |
 | x1           | Float     | Not Required       | Left most coordinate of the note, as a percentage of page size     |
 | x2           | Float     | Not Required       | Right most coordinate of the note, as a percentage of page size    |
@@ -312,7 +353,7 @@ are happy to help figure out what went wrong.
 | Field       | Type      | Options   | Description                           |
 | ---         | ---       | ---       | ---                                   |
 | ID          | Integer   | Read Only | The ID for the error                  |
-| created\_at | Date Time | Read Only | Timestamp when this error was created |
+| created\_at | Date Time | Read Only | Time stamp when this error was created |
 | message     | String    | Required  | The error message                     |
 
 #### Endpoints
@@ -341,7 +382,17 @@ represent tags.  These values are useful for searching and organizing documents.
 #### Endpoints
 
 * `GET /api/documents/<document_id>/data/` - List values for all keys
+    * The response for this is a JSON object with a property for each key,
+      which will always be a list of strings, corresponding to the values
+      associated with that key.  Example:
+      ```
+      {
+        "_tag": ["important"],
+        "location": ["boston", "new york"]
+      }
+      ```
 * `GET /api/documents/<document_id>/data/<key>` - Get values for the given key
+    * The response for this is a JSON list of strings.  Example: `["one", "two"]`
 * `PUT /api/documents/<document_id>/data/<key>` - Set values for the given key
 * `PATCH /api/documents/<document_id>/data/<key>` - Add and/or remove values for the given key
 * `DELETE /api/documents/<document_id>/data/<key>` - Delete all values for a given key
@@ -372,7 +423,7 @@ created, not retrieved or edited.
 
 ## Projects
 
-Projects are collections of documents.  They can be used for organizaing groups
+Projects are collections of documents.  They can be used for organizing groups
 of documents, or for collaborating with other users by sharing access to
 private documents.
 
@@ -387,13 +438,13 @@ TODO: Explanation of how access levels and sharing works
 | Field        | Type      | Options          | Description                                                |
 | ---          | ---       | ---              | ---                                                        |
 | ID           | Integer   | Read Only        | The ID for the project                                     |
-| created\_at  | Date Time | Read Only        | Timestamp when this project was created                    |
+| created\_at  | Date Time | Read Only        | Time stamp when this project was created                   |
 | description  | String    | Not Required     | A brief description of the project                         |
 | edit\_access | Bool      | Read Only        | Does the current user have edit access to this project     |
 | private      | Bool      | Default: `false` | Private projects may only be viewed by their collaborators |
 | slug         | String    | Read Only        | The slug is a URL safe version of the title                |
 | title        | String    | Required         | Title for the project                                      |
-| updated\_at  | Date Time | Read Only        | Timestamp when this project was last updated               |
+| updated\_at  | Date Time | Read Only        | Time stamp when this project was last updated              |
 | user         | ID        | Read Only        | The ID for the [user](#users) who created this project     |
 
 ### Endpoints
@@ -404,6 +455,15 @@ TODO: Explanation of how access levels and sharing works
 * `PUT /api/projects/<id>/` - Update project
 * `PATCH /api/projects/<id>/` - Partial update project
 * `DELETE /api/projects/<id>/` - Delete project
+
+### Filters
+
+* `user` &mdash; Filter by projects where this user is a collaborator
+* `document` &mdash; Filter by projects which contain the given document
+* `private` &mdash; Filter by private or public projects.  Specify either
+  `true` or `false`.
+* `slug` &mdash; Filter by projects with the given slug.
+* `title` &mdash; Filter by projects with the given title.
 
 ### Project Documents
 
