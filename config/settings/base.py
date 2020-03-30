@@ -389,6 +389,7 @@ DOCUMENT_BUCKET = env("DOCUMENT_BUCKET", default="documents")
 # Processing
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
 PROGRESS_URL = env("PROGRESS_URL", default="")
+IMPORT_URL = env("IMPORT_URL", default="")
 PROGRESS_TIMEOUT = env.int("PROGRESS_TIMEOUT", default=1)
 
 # Auth
