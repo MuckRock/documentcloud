@@ -155,8 +155,6 @@ The documents API allows you to upload, browse and edit documents.  To add or
 remove documents from a project, please see [project
 documents](#project-documents).
 
-`/api/documents/`
-
 ### Fields
 
 | Field            | Type         | Options            | Description                                                                                                            |
@@ -276,8 +274,6 @@ servers will fetch the PDF and begin processing it automatically.
 
 Notes can be left on documents for yourself, or to be shared with other users.  They may contain HTML for formatting.
 
-`/api/documents/<document_id>/notes/`
-
 #### Fields
 
 | Field        | Type      | Options            | Description                                                        |
@@ -316,8 +312,6 @@ a page level note which is displayed between pages.
 Sections can mark certain pages of your document &mdash; the viewer will show
 an outline of the sections allowing for quick access to those pages.
 
-`/api/documents/<document_id>/sections/`
-
 #### Fields
 
 | Field        | Type    | Options   | Description                                      |
@@ -342,15 +336,13 @@ state, you may check the errors here to see a log of the latest, as well as
 all previous errors.  If the message is cryptic, please contact us &mdash; we
 are happy to help figure out what went wrong.
 
-`/api/documents/<document_id>/errors/`
-
 #### Fields
 
-| Field       | Type      | Options   | Description                           |
-| ---         | ---       | ---       | ---                                   |
-| ID          | Integer   | Read Only | The ID for the error                  |
+| Field       | Type      | Options   | Description                            |
+| ---         | ---       | ---       | ---                                    |
+| ID          | Integer   | Read Only | The ID for the error                   |
 | created\_at | Date Time | Read Only | Time stamp when this error was created |
-| message     | String    | Required  | The error message                     |
+| message     | String    | Required  | The error message                      |
 
 #### Endpoints
 
@@ -363,8 +355,6 @@ Documents may contain user supplied metadata.  You may assign multiple values
 to arbitrary keys.  This is represented as a JSON object, where each key has a
 list of strings as a value.  The special key `_tag` is used by the front end to
 represent tags.  These values are useful for searching and organizing documents.
-
-`/api/documents/<document_id>/data/`
 
 #### Fields
 
@@ -390,6 +380,7 @@ represent tags.  These values are useful for searching and organizing documents.
 * `GET /api/documents/<document_id>/data/<key>/` - Get values for the given key
     * The response for this is a JSON list of strings.  Example: `["one", "two"]`
 * `PUT /api/documents/<document_id>/data/<key>/` - Set values for the given key
+    * This will override all values currently under key
 * `PATCH /api/documents/<document_id>/data/<key>/` - Add and/or remove values for the given key
 * `DELETE /api/documents/<document_id>/data/<key>/` - Delete all values for a given key
 
@@ -400,8 +391,6 @@ before publishing them.  The pages which are redacted will be fully flattened
 and reprocessed, so that the original content is not present in lower levels of
 the image or as text data.  Redactions are not reversible, and may only be
 created, not retrieved or edited.
-
-`/api/documents/<document_id>/redactions/`
 
 #### Fields
 
@@ -422,8 +411,6 @@ created, not retrieved or edited.
 Projects are collections of documents.  They can be used for organizing groups
 of documents, or for collaborating with other users by sharing access to
 private documents.
-
-`/api/projects/`
 
 ### Sharing Documents
 
@@ -465,8 +452,6 @@ TODO: Explanation of how access levels and sharing works
 
 These endpoints allow you to browse, add and remove documents from a project
 
-`/api/projects/<project_id>/documents/`
-
 #### Fields
 
 | Field        | Type    | Options                            | Description                                                                     |
@@ -494,8 +479,6 @@ These endpoints allow you to browse, add and remove documents from a project
 
 ### Collaborators
 
-`/api/projects/<project_id>/collaborators/`
-
 #### Fields
 
 | Field  | Type    | Options         | Description                                                       |
@@ -516,8 +499,6 @@ These endpoints allow you to browse, add and remove documents from a project
 * `DELETE /api/projects/<project_id>/users/<user_id>/` - Remove collaborator from the project
 
 ## Organizations
-
-`/api/organizations/`
 
 Organizations represent a group of users.  They may share a paid plan and
 resources with each other.  Organizations can be managed and edited from the
@@ -541,8 +522,6 @@ DocumentCloud API.
 * `GET /api/organizations/<id>/` - Get an organization
 
 ## Users
-
-`/api/users/`
 
 Users can be managed and edited from the [MuckRock accounts site][3].  You may
 view users and change your own [active organization](#active-organization) from
@@ -570,8 +549,6 @@ the DocumentCloud API.
 ## oEmbed
 
 [oEmbed][4]
-
-`/api/oembed/`
 
 ### Fields
 
