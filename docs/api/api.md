@@ -39,8 +39,6 @@ resource identified by its ID.  All REST actions are not available on every
 endpoint, and some resources may have additional endpoints, but the following
 are how HTTP verbs generally map to REST operations:
 
-TODO: switch from tables to lists?
-
 `/api/<resource>/`
 
 | HTTP Verb | REST Operation        | Parameters                                                                   |
@@ -108,7 +106,7 @@ or
 
 `/api/<resource>/<id>/<subresource>/<subresource_id>/`
 
-It generally works the same as a resource, except scoped to the parent resource.  TODO: expand on how this works, or examples
+It generally works the same as a resource, except scoped to the parent resource.
 
 TODO: Examples
 
@@ -467,6 +465,10 @@ These endpoints allow you to browse, add and remove documents from a project
 * `POST /api/projects/<project_id>/documents/` - Add a document to the project
 * `PUT /api/projects/<project_id>/documents/` - Bulk update documents in the project
 * `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents in the project
+* `DELETE /api/projects/<project_id>/documents/` - Bulk remove documents from the project
+    * You should specify which document IDs you want to delete using the
+      `document_id__in` filter.  This endpoint *will* allow you to remove all
+      documents in the project if you call it with no filter specified.
 * `GET /api/projects/<project_id>/documents/<document_id>/` - Get a document in the project
 * `PUT /api/projects/<project_id>/documents/<document_id>/` - Update document in the project
 * `PATCH /api/projects/<project_id>/documents/<document_id>/` - Partial update document in the project
@@ -478,6 +480,8 @@ These endpoints allow you to browse, add and remove documents from a project
   separated values.
 
 ### Collaborators
+
+See [Sharing Documents](#sharing-documents)
 
 #### Fields
 
@@ -493,6 +497,8 @@ These endpoints allow you to browse, add and remove documents from a project
 
 * `GET /api/projects/<project_id>/users/` - List collaborators on the project
 * `POST /api/projects/<project_id>/users/` - Add a collaborator to the project
+  &mdash; you must know the email address of a user with a DocumentCloud
+  account in order to add them as a collaborator on your project
 * `GET /api/projects/<project_id>/users/<user_id>/` - Get a collaborator in the project
 * `PUT /api/projects/<project_id>/users/<user_id>/` - Update collaborator in the project
 * `PATCH /api/projects/<project_id>/users/<user_id>/` - Partial update collaborator in the project
@@ -510,7 +516,7 @@ DocumentCloud API.
 | Field       | Type    | Options   | Description                                                                                             |
 | ---         | ---     | ---       | ---                                                                                                     |
 | ID          | Integer | Read Only | The ID for the organization                                                                             |
-| avatar\_url | URL     | Read Only | A URL poitning to an avatar for the organization &mdash; normally a logo for the company                |
+| avatar\_url | URL     | Read Only | A URL pointing to an avatar for the organization &mdash; normally a logo for the company                |
 | individual  | Bool    | Read Only | Is this organization for the sole use of an individual                                                  |
 | name        | String  | Read Only | The name of the organization                                                                            |
 | slug        | String  | Read Only | The slug is a URL safe version of the name                                                              |
@@ -532,7 +538,7 @@ the DocumentCloud API.
 | Field         | Type         | Options   | Description                                                                             |
 | ---           | ---          | ---       | ---                                                                                     |
 | ID            | Integer      | Read Only | The ID for the user                                                                     |
-| avatar\_url   | URL          | Read Only | A URL poitning to an avatar for the user                                                |
+| avatar\_url   | URL          | Read Only | A URL pointing to an avatar for the user                                                |
 | name          | String       | Read Only | The user's full name                                                                    |
 | organization  | Integer      | Required  | The user's [active organization](#active-organization)                                  |
 | organizations | List:Integer | Read Only | A list of the IDs of the organizations this user belongs to                             |
