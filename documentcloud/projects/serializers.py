@@ -47,7 +47,11 @@ class ProjectSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request:
             return False
-        return request.user.has_perm("projects.change_project", obj)
+        # check if we have precomputed is_admin for performance reasons
+        if hasattr(obj, "is_admin"):
+            return obj.is_admin
+        else:
+            return request.user.has_perm("projects.change_project", obj)
 
 
 class ProjectMembershipSerializer(FlexFieldsModelSerializer):

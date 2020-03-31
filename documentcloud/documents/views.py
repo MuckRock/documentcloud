@@ -14,6 +14,7 @@ from rest_framework.response import Response
 # Standard Library
 import logging
 import sys
+from functools import lru_cache
 
 # Third Party
 import django_filters
@@ -90,16 +91,34 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             and "processing" in self.request.auth["permissions"]
         )
         # Processing scope can access all documents
-        queryset = Document.objects.prefetch_related("projects")
-        if not valid_token:
-            queryset = queryset.get_viewable(self.request.user)
+        if valid_token:
+            queryset = Document.objects.all()
+        else:
+            queryset = Document.objects.get_viewable(self.request.user)
 
         if is_expanded(self.request, "user"):
             queryset = queryset.prefetch_related(
                 Prefetch("user", queryset=User.objects.preload_list())
             )
+        else:
+            queryset = queryset.select_related("user")
+
         if is_expanded(self.request, "organization"):
             queryset = queryset.select_related("organization")
+
+        if is_expanded(self.request, "projects"):
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "projects", Project.objects.annotate_is_admin(self.request.user)
+                )
+            )
+        else:
+            queryset = queryset.prefetch_related("projects")
+
+        if is_expanded(self.request, "notes"):
+            queryset = queryset.prefetch_related(
+                Prefetch("notes", Note.objects.select_related("user"))
+            )
 
         return queryset
 
@@ -381,6 +400,7 @@ class DocumentErrorViewSet(
         DjangoObjectPermissionsOrAnonReadOnly | DocumentErrorTokenPermissions,
     )
 
+    @lru_cache()
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
         valid_token = (
@@ -415,6 +435,7 @@ class NoteViewSet(FlexFieldsModelViewSet):
     permit_list_expands = ["user", "organization"]
     queryset = Note.objects.none()
 
+    @lru_cache()
     def get_queryset(self):
         """Only fetch both documents and notes viewable to this user"""
         document = get_object_or_404(
@@ -426,6 +447,8 @@ class NoteViewSet(FlexFieldsModelViewSet):
             queryset = queryset.prefetch_related(
                 Prefetch("user", queryset=User.objects.preload_list())
             )
+        else:
+            queryset = queryset.select_related("user")
         if is_expanded(self.request, "organization"):
             queryset = queryset.select_related("organization")
         return queryset
@@ -444,6 +467,7 @@ class SectionViewSet(viewsets.ModelViewSet):
     serializer_class = SectionSerializer
     queryset = Section.objects.none()
 
+    @lru_cache()
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
         document = get_object_or_404(
