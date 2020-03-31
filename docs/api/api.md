@@ -106,7 +106,7 @@ Some resources also support sub resources, which is a resource that belongs to a
 
 or
 
-`/api/<resource>/<id>/<subresource>/<subresource_id>`
+`/api/<resource>/<id>/<subresource>/<subresource_id>/`
 
 It generally works the same as a resource, except scoped to the parent resource.  TODO: expand on how this works, or examples
 
@@ -224,10 +224,6 @@ servers will fetch the PDF and begin processing it automatically.
 
 ### Endpoints
 
-TODO: More details
-TODO: Filter parameters
-TODO: Bulk operations
-
 * `GET /api/documents/` &mdash; List documents
 * `POST /api/documents/` &mdash; Create document
 * `PUT /api/documents/` &mdash; Bulk update documents
@@ -310,10 +306,10 @@ a page level note which is displayed between pages.
 
 * `GET /api/documents/<document_id>/notes/` - List notes
 * `POST /api/documents/<document_id>/notes/` - Create note
-* `GET /api/documents/<document_id>/notes/<id>` - Get note
-* `PUT /api/documents/<document_id>/notes/<id>` - Update note
-* `PATCH /api/documents/<document_id>/notes/<id>` - Partial update note
-* `DELETE /api/documents/<document_id>/notes/<id>` - Delete note
+* `GET /api/documents/<document_id>/notes/<id>/` - Get note
+* `PUT /api/documents/<document_id>/notes/<id>/` - Update note
+* `PATCH /api/documents/<document_id>/notes/<id>/` - Partial update note
+* `DELETE /api/documents/<document_id>/notes/<id>/` - Delete note
 
 ### Sections
 
@@ -334,10 +330,10 @@ an outline of the sections allowing for quick access to those pages.
 
 * `GET /api/documents/<document_id>/sections/` - List sections
 * `POST /api/documents/<document_id>/sections/` - Create section
-* `GET /api/documents/<document_id>/sections/<id>` - Get section
-* `PUT /api/documents/<document_id>/sections/<id>` - Update section
-* `PATCH /api/documents/<document_id>/sections/<id>` - Partial update section
-* `DELETE /api/documents/<document_id>/sections/<id>` - Delete section
+* `GET /api/documents/<document_id>/sections/<id>/` - Get section
+* `PUT /api/documents/<document_id>/sections/<id>/` - Update section
+* `PATCH /api/documents/<document_id>/sections/<id>/` - Partial update section
+* `DELETE /api/documents/<document_id>/sections/<id>/` - Delete section
 
 ### Errors
 
@@ -391,11 +387,11 @@ represent tags.  These values are useful for searching and organizing documents.
         "location": ["boston", "new york"]
       }
       ```
-* `GET /api/documents/<document_id>/data/<key>` - Get values for the given key
+* `GET /api/documents/<document_id>/data/<key>/` - Get values for the given key
     * The response for this is a JSON list of strings.  Example: `["one", "two"]`
-* `PUT /api/documents/<document_id>/data/<key>` - Set values for the given key
-* `PATCH /api/documents/<document_id>/data/<key>` - Add and/or remove values for the given key
-* `DELETE /api/documents/<document_id>/data/<key>` - Delete all values for a given key
+* `PUT /api/documents/<document_id>/data/<key>/` - Set values for the given key
+* `PATCH /api/documents/<document_id>/data/<key>/` - Add and/or remove values for the given key
+* `DELETE /api/documents/<document_id>/data/<key>/` - Delete all values for a given key
 
 ### Redactions
 
@@ -486,10 +482,15 @@ These endpoints allow you to browse, add and remove documents from a project
 * `POST /api/projects/<project_id>/documents/` - Add a document to the project
 * `PUT /api/projects/<project_id>/documents/` - Bulk update documents in the project
 * `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents in the project
-* `GET /api/projects/<project_id>/documents/<document_id>` - Get a document in the project
-* `PUT /api/projects/<project_id>/documents/<document_id>` - Update document in the project
-* `PATCH /api/projects/<project_id>/documents/<document_id>` - Partial update document in the project
-* `DELETE /api/projects/<project_id>/documents/<document_id>` - Remove document from the project
+* `GET /api/projects/<project_id>/documents/<document_id>/` - Get a document in the project
+* `PUT /api/projects/<project_id>/documents/<document_id>/` - Update document in the project
+* `PATCH /api/projects/<project_id>/documents/<document_id>/` - Partial update document in the project
+* `DELETE /api/projects/<project_id>/documents/<document_id>/` - Remove document from the project
+
+#### Filters
+
+* `document_id__in` &mdash; Filter by specific document IDs, passed in as comma
+  separated values.
 
 ### Collaborators
 
@@ -509,10 +510,10 @@ These endpoints allow you to browse, add and remove documents from a project
 
 * `GET /api/projects/<project_id>/users/` - List collaborators on the project
 * `POST /api/projects/<project_id>/users/` - Add a collaborator to the project
-* `GET /api/projects/<project_id>/users/<user_id>` - Get a collaborator in the project
-* `PUT /api/projects/<project_id>/users/<user_id>` - Update collaborator in the project
-* `PATCH /api/projects/<project_id>/users/<user_id>` - Partial update collaborator in the project
-* `DELETE /api/projects/<project_id>/users/<user_id>` - Remove collaborator from the project
+* `GET /api/projects/<project_id>/users/<user_id>/` - Get a collaborator in the project
+* `PUT /api/projects/<project_id>/users/<user_id>/` - Update collaborator in the project
+* `PATCH /api/projects/<project_id>/users/<user_id>/` - Partial update collaborator in the project
+* `DELETE /api/projects/<project_id>/users/<user_id>/` - Remove collaborator from the project
 
 ## Organizations
 
