@@ -75,9 +75,11 @@ class Command(BaseCommand):
         # now we wait for the import script to finish by polling S3 for the existance
         # of the pagespec csv
         exists = False
+        # strip off the s3://
+        pagespec_path = f"{self.bucket_path}documents.pagespec.csv"[len("s3://") :]
         while not exists:
             self.stdout.write("Waiting for pagespec CSV... {}".format(timezone.now()))
-            exists = storage.exists(f"{self.bucket_path}documents.pagespec.csv")
+            exists = storage.exists(pagespec_path)
             time.sleep(5)
         self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
 
