@@ -68,10 +68,11 @@ def page_text_path(doc_id, slug, page_number):
 
 
 def import_org_csv(org_id):
-    """The path to the documents CSV for a given org pre-import on lambda"""
-    return f"/documentcloud/export/organization-{org_id}/documents.csv"
+    import_dir = env.str("IMPORT_DIR")
+    return f"/documentcloud-migration/{import_dir}/organization-{org_id}/documents.csv"
 
 
 def import_org_pagespec_csv(org_id):
     """The path to the documents CSV for a given org post-import on lambda"""
-    return f"/documentcloud/export/organization-{org_id}/documents.pagespec.csv"
+    import_dir = env.str("IMPORT_DIR")
+    return f"/documentcloud-migration/{import_dir}/organization-{org_id}/documents.pagespec.csv"
