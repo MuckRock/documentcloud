@@ -1,5 +1,6 @@
 # Standard Library
 import collections
+import csv
 import gzip
 import io
 import json
@@ -626,10 +627,6 @@ def redact_doc(data, _context=None):
     return "Ok"
 
 
-# TODO: move imports
-import csv
-
-
 @pubsub_function(REDIS, START_IMPORT_TOPIC)
 def start_import(data, _context=None):
     """Reads in an org's import CSV and starts the import process."""
@@ -638,16 +635,10 @@ def start_import(data, _context=None):
 
     with storage.open(path.import_org_csv(org_id), "r") as csvfile:
         csvreader = csv.reader(csvfile)
-
-        header = True
+        next(csvreader)  # discard headers
 
         doc_ids = []
         for row in csvreader:
-            if header:
-                # Skip the first row
-                header = False
-                continue
-
             # Pull the doc id (1st column) and slug (7th column)
             doc_ids.append({"doc_id": row[0], "slug": row[6]})
 
@@ -767,16 +758,10 @@ def finish_import(data, _context=None):
         rows = []
         with storage.open(path.import_org_csv(org_id), "r") as csvfile:
             csvreader = csv.reader(csvfile)
-
-            header = True
+            headers = next(csvreader)
+            rows.append(headers + ["pagespec"])
 
             for row in csvreader:
-                if header:
-                    header = False
-                    # Add pagespec header
-                    rows.append(row + ["pagespec"])
-                    continue
-
                 doc_id = row[0]
                 pagespec = pagespecs[doc_id]
                 # Add pagespec to each row
@@ -794,4 +779,3 @@ def finish_import(data, _context=None):
             redis_fields.import_docs_remaining(org_id),
             redis_fields.import_pagespecs(org_id),
         )
-
