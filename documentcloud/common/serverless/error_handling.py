@@ -30,10 +30,10 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
 
             # Get data
             data = get_pubsub_data(args[0])
-            doc_id = data["doc_id"]
+            doc_id = data.get("doc_id")
 
             # Return prematurely if there is an error or all processing is complete
-            if not utils.still_processing(redis, doc_id):
+            if doc_id and not utils.still_processing(redis, doc_id):
                 logging.warning(
                     "Skipping function execution since processing has stopped"
                 )
