@@ -5,9 +5,13 @@ from celery.task import task
 from documentcloud.documents.processing.info_and_image.main import (
     assemble_page_text,
     extract_image,
+    finish_import,
+    import_document,
     process_page_cache,
     process_pdf,
+    read_page_text,
     redact_doc,
+    start_import,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
 
@@ -44,3 +48,23 @@ def assemble_text(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def redact_document(data):
     redact_doc(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def start_import_process(data):
+    start_import(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def import_doc(data):
+    import_document(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def read_page(data):
+    read_page_text(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def finish_import_process(data):
+    finish_import(data, None)
