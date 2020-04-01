@@ -30,6 +30,10 @@ if settings.ENVIRONMENT.startswith("local"):
         ocr_pages,
         assemble_text,
         redact_document,
+        start_import_process,
+        import_doc,
+        read_page,
+        finish_import_process,
     )
 
 logger = logging.getLogger(__name__)

@@ -81,6 +81,30 @@ def redact_doc_task(data):
     return redact_document.delay(data)
 
 
+def start_import_task(data):
+    from documentcloud.documents.tasks import start_import_process
+
+    return start_import_process.delay(data)
+
+
+def import_document_task(data):
+    from documentcloud.documents.tasks import import_doc
+
+    return import_doc.delay(data)
+
+
+def read_page_text_task(data):
+    from documentcloud.documents.tasks import read_page
+
+    return read_page.delay(data)
+
+
+def finish_import_task(data):
+    from documentcloud.documents.tasks import finish_import_process
+
+    return finish_import_process.delay(data)
+
+
 publisher.register_internal_callback(
     ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
     process_pdf_task,
@@ -102,4 +126,20 @@ publisher.register_internal_callback(
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("REDACT_TOPIC", default="redact-doc")), redact_doc_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")),
+    start_import_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("IMPORT_DOCUMENT_TOPIC", default="import-document")),
+    import_document_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("READ_PAGE_TEXT_TOPIC", default="read-page-text")),
+    read_page_text_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")),
+    finish_import_task,
 )
