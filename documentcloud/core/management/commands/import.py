@@ -343,7 +343,6 @@ class Command(BaseCommand):
 
             # create a dictionary mapping document ids to
             # the uncrunched page specs
-            # XXX when do we run page spec lambda?
             document_map = {
                 pk: uncrunch(page_spec)
                 for pk, page_spec in Document.objects.filter(
