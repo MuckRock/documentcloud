@@ -4,7 +4,6 @@ import io
 import mimetypes
 
 # Third Party
-import aioboto3
 import boto3
 import environ
 import requests
@@ -117,6 +116,9 @@ class AwsStorage:
 
     def async_set_access(self, file_names, access):
         """Set access for given keys asynchronously"""
+        # import aioboto3 locally to avoid needing it installed on lambda
+        import aioboto3
+
         if self.minio:
             # minio does not support object ACLs
             return
