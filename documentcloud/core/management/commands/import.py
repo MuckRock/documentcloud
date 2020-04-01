@@ -28,8 +28,7 @@ from documentcloud.projects.models import Collaboration, Project, ProjectMembers
 from documentcloud.users.models import User
 
 BUCKET = os.environ["IMPORT_BUCKET"]
-ACCESS_KEY = os.environ["IMPORT_AWS_ACCESS_KEY_ID"]
-SECRET_KEY = os.environ["IMPORT_AWS_SECRET_ACCESS_KEY"]
+IMPORT_DIR = os.environ["IMPORT_DIR"]
 
 
 def parse_date(date_str):
@@ -48,10 +47,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         # pylint: disable=unused-argument
         org_id = kwargs["organization"]
-        self.bucket_path = (
-            f"s3://{ACCESS_KEY}:{SECRET_KEY}@{BUCKET}/"
-            f"documentcloud-export-test/organization-{org_id}/"
-        )
+        self.bucket_path = f"s3://{BUCKET}/{IMPORT_DIR}/organization-{org_id}/"
         # https://stackoverflow.com/a/54517228/2204914
         csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
 
@@ -79,12 +75,9 @@ class Command(BaseCommand):
         # now we wait for the import script to finish by polling S3 for the existance
         # of the pagespec csv
         exists = False
-        self.stdout.write("Waiting for pagespec CSV...")
         while not exists:
-            exists = storage.exists(
-                f"/documentcloud-export-test/organization-{org_id}"
-                f"/documents.pagespec.csv"
-            )
+            self.stdout.write("Waiting for pagespec CSV... {}".format(timezone.now()))
+            exists = storage.exists(f"{self.bucket_path}documents.pagespec.csv")
             time.sleep(5)
         self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
 
@@ -228,7 +221,6 @@ class Command(BaseCommand):
             "9": (Access.public, Status.success),
         }
 
-        # with smart_open(f"{self.bucket_path}documents.csv", "r") as infile:
         with smart_open(f"{self.bucket_path}documents.pagespec.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
