@@ -215,7 +215,7 @@ def write_text_file(text_path, text):
     storage.simple_upload(text_path, text.encode("utf8"))
 
 
-def update_pagespec(doc_id, slug):
+def update_pagespec(doc_id):
     """Extract and send the dimensions of all pages in pagespec format"""
     pagespec = get_redis_pagespec(doc_id)
     crunched_pagespec = crunch_collection(pagespec)
@@ -495,7 +495,7 @@ def extract_image(data, _context=None):
                 # Write the pagespec dimensions if all images have finished and
                 # it's not a partial update.
                 if images_finished and not partial:
-                    update_pagespec(doc_id, slug)
+                    update_pagespec(doc_id)
 
             if not utils.page_ocrd(REDIS, doc_id, page_number):
                 # Extract page text if possible
@@ -640,7 +640,7 @@ def start_import(data, _context=None):
         doc_ids = []
         for row in csvreader:
             # Pull the doc id (1st column) and slug (7th column)
-            doc_ids.append({"doc_id": row[0], "slug": row[6]})
+            doc_ids.append((row[0], row[6]))
 
     # Initialize Redis
     REDIS.set(redis_fields.import_docs_remaining(org_id), len(doc_ids))
@@ -654,9 +654,10 @@ def start_import(data, _context=None):
     return "Ok"
 
 
-@pubsub_function(REDIS, IMPORT_DOCUMENT_TOPIC)
+@pubsub_function(REDIS, IMPORT_DOCUMENT_TOPIC, skip_processing_check=True)
 def import_document(data, _context=None):
     """Handles the import process for a single document."""
+    # pylint: disable=too-many-locals
     data = get_pubsub_data(data)
     org_id = data["org_id"]
     doc_id = data["doc_id"]
@@ -665,14 +666,23 @@ def import_document(data, _context=None):
     # Get the pagespec from the PDF
     pagespec = collections.defaultdict(list)
     doc_path = path.doc_path(doc_id, slug)
-    with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=False, playback=False, cache=None, read_all=True
-    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
-        # Get the page spec by grabbing the dimension from each page
-        page_count = doc.page_count
-        for page_number in range(page_count):
-            page = doc.load_page(page_number)
-            pagespec[f"{page.width}x{page.height}"].append(page_number)
+    try:
+        with Workspace() as workspace, StorageHandler(
+            storage, doc_path, record=False, playback=False, cache=None, read_all=True
+        ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+            # Get the page spec by grabbing the dimension from each page
+            page_count = doc.page_count
+            for page_number in range(page_count):
+                page = doc.load_page(page_number)
+                pagespec[f"{page.width}x{page.height}"].append(page_number)
+    except ValueError:
+        # document was not found
+        REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
+        publisher.publish(
+            FINISH_IMPORT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+        return
 
     # Set the pagespec
     crunched_pagespec = crunch_collection(pagespec)
@@ -701,7 +711,7 @@ def import_document(data, _context=None):
         )
 
 
-@pubsub_function(REDIS, READ_PAGE_TEXT_TOPIC)
+@pubsub_function(REDIS, READ_PAGE_TEXT_TOPIC, skip_processing_check=True)
 def read_page_text(data, _context=None):
     """A function to read page text from documents in batch."""
     data = get_pubsub_data(data)
@@ -733,13 +743,12 @@ def read_page_text(data, _context=None):
             )
 
 
-@pubsub_function(REDIS, FINISH_IMPORT_TOPIC)
+@pubsub_function(REDIS, FINISH_IMPORT_TOPIC, skip_processing_check=True)
 def finish_import(data, _context=None):
     """Finishes off the import process"""
     data = get_pubsub_data(data)
     org_id = data["org_id"]
     doc_id = data["doc_id"]
-    slug = data["slug"]
 
     import_docs_remaining = REDIS.decr(redis_fields.import_docs_remaining(org_id))
 
@@ -749,10 +758,8 @@ def finish_import(data, _context=None):
         # Extract pagespec information from Redis
         pagespecs = {}
         redis_pagespecs = REDIS.hgetall(redis_fields.import_pagespecs(org_id))
-        for i in range(0, len(redis_pagespecs), 2):
-            doc_id = redis_pagespecs[i]
-            pagespec = redis_pagespecs[i + 1]
-            pagespecs[doc_id] = pagespec
+        for doc_id, pagespec in redis_pagespecs.items():
+            pagespecs[doc_id.decode()] = pagespec.decode()
 
         # Assemble new CSV as additional column on old import CSV
         rows = []
@@ -774,7 +781,6 @@ def finish_import(data, _context=None):
                 csvwriter.writerow(row)
 
         # Clean up Redis
-        doc_ids = pagespecs.keys()
         REDIS.delete(
             redis_fields.import_docs_remaining(org_id),
             redis_fields.import_pagespecs(org_id),
