@@ -78,7 +78,11 @@ class Command(BaseCommand):
         # strip off the s3://
         pagespec_path = f"{self.bucket_path}documents.pagespec.csv"[len("s3://") :]
         while not exists:
-            self.stdout.write("Waiting for pagespec CSV... {}".format(timezone.now()))
+            self.stdout.write(
+                "Waiting for pagespec CSV... {} {}".format(
+                    pagespec_path, timezone.now()
+                )
+            )
             exists = storage.exists(pagespec_path)
             time.sleep(5)
         self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
@@ -345,12 +349,11 @@ class Command(BaseCommand):
 
             # create a dictionary mapping document ids to
             # the uncrunched page specs
+            page_specs = Document.objects.filter(pk__in=document_ids).values_list(
+                "pk", "page_spec"
+            )
             document_map = {
-                pk: uncrunch(page_spec)
-                for pk, page_spec in Document.objects.filter(
-                    pk__in=document_ids
-                ).values_list("pk", "page_spec")
-                if page_spec
+                pk: uncrunch(page_spec) for pk, page_spec in page_specs if page_spec
             }
 
             for note in create_notes:
@@ -371,7 +374,6 @@ class Command(BaseCommand):
                     # a standard height of 1294
                     # this will happen if it is a private note on a document
                     # that has not been imported yet
-                    assert note.access == Access.private
                     note.x1 /= 1000
                     note.x2 /= 1000
                     note.y1 /= 1294
