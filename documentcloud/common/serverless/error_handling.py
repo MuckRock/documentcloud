@@ -24,7 +24,9 @@ DEFAULT_TIMEOUTS = TIMEOUTS if USE_TIMEOUT else None
 RUN_COUNT = "runcount"
 
 
-def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
+def pubsub_function(
+    redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS, skip_processing_check=False
+):
     def decorator(func):
         def wrapper(*args, **kwargs):
 
@@ -33,7 +35,14 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
             doc_id = data.get("doc_id")
 
             # Return prematurely if there is an error or all processing is complete
-            if doc_id and not utils.still_processing(redis, doc_id):
+            # extra checks are to skip processing check if this is an import
+            # function
+            if (
+                doc_id
+                and not skip_processing_check
+                and not data.get("import")
+                and not utils.still_processing(redis, doc_id)
+            ):
                 logging.warning(
                     "Skipping function execution since processing has stopped"
                 )
@@ -45,7 +54,9 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
                 if run_count >= len(timeouts):
                     # Error out
                     utils.send_error(
-                        redis, doc_id, "Function has timed out (max retries exceeded)"
+                        redis,
+                        None if skip_processing_check else doc_id,
+                        "Function has timed out (max retries exceeded)",
                     )
                     return "ok"
 
@@ -68,7 +79,12 @@ def pubsub_function(redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS):
             except Exception as exc:  # pylint: disable=broad-except
                 # Handle any error that comes up during function execution
                 error_message = str(exc)
-                utils.send_error(redis, doc_id, error_message, True)
+                utils.send_error(
+                    redis,
+                    None if skip_processing_check else doc_id,
+                    error_message,
+                    True,
+                )
                 return f"An error has occurred: {error_message}"
 
         return wraps(func)(wrapper)
