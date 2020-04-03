@@ -645,8 +645,31 @@ returned to load the static asset:
 
 \<size\> may be one of `large`, `normal`, `small`, or `thumbnail`
 
+### Expandable Fields
+
+The API uses expandable fields in a few places, which are implemented by the
+[Django REST - FlexFields][5] package.  It allows related fields, which would
+normally be returned by ID, be expanded into the fully nested representation.
+This allows you to save additional requests to the server when you need the
+related information, but for the server to not need to serve this information
+when it is not needed.
+
+To expand one of the expandable fields, which are document in the fields
+section for each resource, add the `expand` query parameter to your request:
+
+`?expand=user`
+
+To expand multiple fields, separate them with a comma:
+
+`?expand=user,organization`
+
+To expand all fields:
+
+`?expand=~all`
+
+
 [1]: https://jwt.io/
 [2]: https://pypi.org/project/listcrunch/
 [3]: https://accounts.muckrock.com/
 [4]: https://oembed.com
-
+[5]: https://github.com/rsinger86/drf-flex-fields
