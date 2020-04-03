@@ -183,8 +183,6 @@ documents](#project-documents).
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
 
-TODO: explain how expandable fields work
-
 ### Uploading a Document
 
 There are two supported ways to upload documents &mdash; directly uploading the
@@ -664,6 +662,11 @@ section for each resource, add the `expand` query parameter to your request:
 To expand multiple fields, separate them with a comma:
 
 `?expand=user,organization`
+
+You may also expand nested fields if the expanded field has its own expandable
+fields:
+
+`?expand=user.organization`
 
 To expand all fields:
 
