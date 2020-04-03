@@ -1,4 +1,6 @@
 # Django
+from django.db import connection, reset_queries
+from django.test.utils import override_settings
 from rest_framework import status
 
 # Standard Library
@@ -9,9 +11,13 @@ import pytest
 
 # DocumentCloud
 from documentcloud.documents.choices import Access
-from documentcloud.documents.tests.factories import DocumentFactory
+from documentcloud.documents.tests.factories import (
+    DocumentFactory,
+    NoteFactory,
+    SectionFactory,
+)
 from documentcloud.projects.choices import CollaboratorAccess
-from documentcloud.projects.models import Project
+from documentcloud.projects.models import Collaboration, Project
 from documentcloud.projects.serializers import (
     CollaborationSerializer,
     ProjectMembershipSerializer,
@@ -101,6 +107,44 @@ class TestProjectMembershipAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
+
+    @pytest.mark.parametrize(
+        "expand",
+        [
+            "",
+            "~all",
+            (
+                "document.user.organization,document.organization,document.projects,"
+                "document.sections,document.notes.user.organization,"
+                "document.notes.organization"
+            ),
+        ],
+    )
+    @override_settings(DEBUG=True)
+    def test_list_queries(self, client, expand):
+        """Queries should be constant"""
+        small_size = 1
+        documents = DocumentFactory.create_batch(small_size)
+        projects = ProjectFactory.create_batch(small_size, documents=documents)
+        for document in documents:
+            NoteFactory.create_batch(small_size, document=document)
+            SectionFactory.create_batch(small_size, document=document)
+        reset_queries()
+        client.get(f"/api/projects/{projects[0].pk}/documents/?expand={expand}")
+        num_queries = len(connection.queries)
+
+        size = 10
+        documents = DocumentFactory.create_batch(size)
+        projects = ProjectFactory.create_batch(size, documents=documents)
+        for document in documents:
+            NoteFactory.create_batch(size, document=document)
+            SectionFactory.create_batch(size, document=document)
+        reset_queries()
+        response = client.get(
+            f"/api/projects/{projects[0].pk}/documents/?expand={expand}"
+        )
+        assert num_queries == len(connection.queries)
+        assert len(response.json()["results"]) == size
 
     def test_list_bad(self, client):
         """List documents in a project including some you cannot view"""
@@ -348,6 +392,28 @@ class TestCollaborationAPI:
         response_json = json.loads(response.content)
         # add one for the projects owner
         assert len(response_json["results"]) == size + 1
+
+    @pytest.mark.parametrize("expand", ["", "~all", "user.organization"])
+    @override_settings(DEBUG=True)
+    def test_list_queries(self, client, expand):
+        """Queries should be constant"""
+        small_size = 1
+        users = UserFactory.create_batch(small_size)
+        project = ProjectFactory(collaborators=users)
+        client.force_authenticate(user=project.user)
+        reset_queries()
+        client.get(f"/api/projects/{project.pk}/users/?expand={expand}")
+        num_queries = len(connection.queries)
+
+        size = 10
+        users = UserFactory.create_batch(size)
+        for user_ in users:
+            Collaboration.objects.create(user=user_, project=project)
+        client.force_authenticate(user=project.user)
+        reset_queries()
+        response = client.get(f"/api/projects/{project.pk}/users/?expand={expand}")
+        assert num_queries == len(connection.queries)
+        assert len(response.json()["results"]) == size + small_size + 1
 
     def test_create(self, client, project, user):
         """Add a user to a project"""

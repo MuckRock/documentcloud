@@ -4,6 +4,9 @@
 from django.db import models
 from django.db.models import Prefetch, Q
 
+# Third Party
+from rest_flex_fields.utils import split_levels
+
 # DocumentCloud
 from documentcloud.organizations.models import Membership
 
@@ -21,9 +24,9 @@ class UserQuerySet(models.QuerySet):
         else:
             return self.none()
 
-    def preload_list(self):
-        """Preload relations for displaying in a list"""
-        return self.prefetch_related(
+    def preload(self, _user, _expand):
+        """Preload relations"""
+        queryset = self.prefetch_related(
             "organizations",
             Prefetch(
                 "memberships",
@@ -33,3 +36,5 @@ class UserQuerySet(models.QuerySet):
                 to_attr="active_memberships",
             ),
         )
+
+        return queryset

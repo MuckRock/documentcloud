@@ -8,7 +8,11 @@ from autoslug.fields import AutoSlugField
 # DocumentCloud
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.projects.choices import CollaboratorAccess
-from documentcloud.projects.querysets import ProjectMembershipQuerySet, ProjectQuerySet
+from documentcloud.projects.querysets import (
+    CollaborationQuerySet,
+    ProjectMembershipQuerySet,
+    ProjectQuerySet,
+)
 
 
 class Project(models.Model):
@@ -104,6 +108,8 @@ class ProjectMembership(models.Model):
 
 class Collaboration(models.Model):
     """A user collaborating on a project"""
+
+    objects = CollaborationQuerySet.as_manager()
 
     project = models.ForeignKey(
         verbose_name=_("project"),

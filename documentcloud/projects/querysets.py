@@ -6,10 +6,15 @@ from django.db.models import Q
 from django.db.models.expressions import OuterRef, Subquery, Value
 from django.db.models.fields import BooleanField
 from django.db.models.functions import Cast
+from django.db.models.query import Prefetch
+
+# Third Party
+from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
 from documentcloud.documents.models import Document
 from documentcloud.projects.choices import CollaboratorAccess
+from documentcloud.users.models import User
 
 
 class ProjectQuerySet(models.QuerySet):
@@ -47,3 +52,45 @@ class ProjectMembershipQuerySet(models.QuerySet):
 
     def get_viewable(self, user):
         return self.filter(document__in=Document.objects.get_viewable(user))
+
+    def preload(self, user, expand):
+        """Preload relations"""
+        queryset = self
+        top_expands, nested_expands = split_levels(expand)
+        all_expanded = "~all" in top_expands
+        nested_default = "~all" if all_expanded else ""
+
+        if "document" in top_expands or all_expanded:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "document",
+                    queryset=Document.objects.preload(
+                        user, nested_expands.get("document", nested_default)
+                    ),
+                )
+            )
+
+        return queryset
+
+
+class CollaborationQuerySet(models.QuerySet):
+    """Custom queryset for collaborations"""
+
+    def preload(self, user, expand):
+        """Preload relations"""
+        queryset = self
+        top_expands, nested_expands = split_levels(expand)
+        all_expanded = "~all" in top_expands
+        nested_default = "~all" if all_expanded else ""
+
+        if "user" in top_expands or all_expanded:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "user",
+                    queryset=User.objects.preload(
+                        user, nested_expands.get("user", nested_default)
+                    ),
+                )
+            )
+
+        return queryset
