@@ -3,9 +3,14 @@
 # Django
 from django.db import models
 from django.db.models import Q
+from django.db.models.query import Prefetch
+
+# Third Party
+from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
 from documentcloud.documents.choices import Access, Status
+from documentcloud.users.models import User
 
 
 class DocumentQuerySet(models.QuerySet):
@@ -64,6 +69,54 @@ class DocumentQuerySet(models.QuerySet):
         else:
             return self.none()
 
+    def preload(self, user, expand):
+        """Preload relations"""
+        from documentcloud.documents.models import Note
+        from documentcloud.projects.models import Project
+
+        queryset = self
+        top_expands, nested_expands = split_levels(expand)
+        all_expanded = "~all" in top_expands
+        nested_default = "~all" if all_expanded else ""
+
+        if "user" in top_expands or all_expanded:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "user",
+                    queryset=User.objects.preload(
+                        user, nested_expands.get("user", nested_default)
+                    ),
+                )
+            )
+        else:
+            queryset = queryset.select_related("user")
+
+        if "organization" in top_expands or all_expanded:
+            queryset = queryset.select_related("organization")
+
+        if "projects" in top_expands or all_expanded:
+            projects = Project.objects.annotate_is_admin(user)
+        else:
+            projects = Project.objects.all()
+        queryset = queryset.prefetch_related(
+            Prefetch("projects", projects.get_viewable(user))
+        )
+
+        if "notes" in top_expands or all_expanded:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "notes",
+                    Note.objects.get_viewable(user).preload(
+                        user, nested_expands.get("notes", nested_default)
+                    ),
+                )
+            )
+
+        if "sections" in top_expands or all_expanded:
+            queryset = queryset.prefetch_related("sections")
+
+        return queryset
+
 
 class NoteQuerySet(models.QuerySet):
     """Custom queryset for notes"""
@@ -83,3 +136,27 @@ class NoteQuerySet(models.QuerySet):
             )
         else:
             return self.filter(access=Access.public)
+
+    def preload(self, user, expand):
+        """Preload relations"""
+        queryset = self
+        top_expands, nested_expands = split_levels(expand)
+        all_expanded = "~all" in top_expands
+        nested_default = "~all" if all_expanded else ""
+
+        if "user" in top_expands or all_expanded:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "user",
+                    queryset=User.objects.preload(
+                        user, nested_expands.get("user", nested_default)
+                    ),
+                )
+            )
+        else:
+            queryset = queryset.select_related("user")
+
+        if "organization" in top_expands or all_expanded:
+            queryset = queryset.select_related("organization")
+
+        return queryset

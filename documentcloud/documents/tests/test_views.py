@@ -1,5 +1,7 @@
 # Django
 from django.conf import settings
+from django.db import connection, reset_queries
+from django.test.utils import override_settings
 from rest_framework import status
 
 # Third Party
@@ -22,6 +24,7 @@ from documentcloud.documents.tests.factories import (
     SectionFactory,
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
 
@@ -111,6 +114,41 @@ class TestDocumentAPI:
         response_json = response.json()
         for doc_json in response_json["results"]:
             assert "presigned_url" not in doc_json
+
+    @pytest.mark.parametrize(
+        "expand",
+        [
+            "",
+            "~all",
+            (
+                "user.organization,organization,projects,sections,"
+                "notes.user.organization,notes.organization"
+            ),
+        ],
+    )
+    @override_settings(DEBUG=True)
+    def test_list_queries(self, client, expand):
+        """Queries should be constant"""
+        small_size = 1
+        documents = DocumentFactory.create_batch(small_size)
+        ProjectFactory.create_batch(small_size, documents=documents)
+        for document in documents:
+            NoteFactory.create_batch(small_size, document=document)
+            SectionFactory.create_batch(small_size, document=document)
+        reset_queries()
+        client.get(f"/api/documents/?expand={expand}")
+        num_queries = len(connection.queries)
+
+        size = 10
+        documents = DocumentFactory.create_batch(size)
+        ProjectFactory.create_batch(size, documents=documents)
+        for document in documents:
+            NoteFactory.create_batch(size, document=document)
+            SectionFactory.create_batch(size, document=document)
+        reset_queries()
+        response = client.get(f"/api/documents/?expand={expand}")
+        assert num_queries == len(connection.queries)
+        assert len(response.json()["results"]) == size + small_size
 
     def test_create_file_url(self, client, user):
         """Upload a document with a file and a title"""
@@ -211,16 +249,22 @@ class TestDocumentAPI:
         assert "presigned_url" not in response_json
 
     def test_retrieve_expand(self, client, document):
-        """Test retrieving a document with an expanded user and organization"""
+        """Test retrieving a document with an expanded fields"""
+        public_note = NoteFactory.create(document=document, access=Access.public)
+        private_note = NoteFactory.create(document=document, access=Access.private)
         response = client.get(
-            f"/api/documents/{document.pk}/", {"expand": "user,organization"}
+            f"/api/documents/{document.pk}/", {"expand": "user,organization,notes"}
         )
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         user_serializer = UserSerializer(document.user)
         organization_serializer = OrganizationSerializer(document.organization)
+        public_note_serializer = NoteSerializer(public_note)
+        private_note_serializer = NoteSerializer(private_note)
         assert response_json["user"] == user_serializer.data
         assert response_json["organization"] == organization_serializer.data
+        assert public_note_serializer.data in response_json["notes"]
+        assert private_note_serializer.data not in response_json["notes"]
 
     def test_retrieve_bad(self, client):
         """Test retrieving a document you do not have access to"""
@@ -545,6 +589,23 @@ class TestNoteAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
+
+    @pytest.mark.parametrize("expand", ["", "~all", "user.organization,organization"])
+    @override_settings(DEBUG=True)
+    def test_list_queries(self, client, document, expand):
+        """Queries should be constant"""
+        small_size = 1
+        NoteFactory.create_batch(small_size, document=document)
+        reset_queries()
+        client.get(f"/api/documents/{document.pk}/notes/?expand={expand}")
+        num_queries = len(connection.queries)
+
+        size = 10
+        NoteFactory.create_batch(size, document=document)
+        reset_queries()
+        response = client.get(f"/api/documents/{document.pk}/notes/?expand={expand}")
+        assert num_queries == len(connection.queries)
+        assert len(response.json()["results"]) == size + small_size
 
     def test_create_public(self, client):
         """Create a public note"""

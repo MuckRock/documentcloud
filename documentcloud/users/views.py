@@ -23,9 +23,12 @@ class UserViewSet(
 ):
     serializer_class = UserSerializer
     queryset = User.objects.none()
+    permit_list_expands = ["organization"]
 
     def get_queryset(self):
-        return User.objects.get_viewable(self.request.user).preload_list()
+        return User.objects.get_viewable(self.request.user).preload(
+            self.request.user, self.request.query_params.get("expand", "")
+        )
 
     def get_object(self):
         """Allow one to lookup themselves by specifying `me` as the pk"""

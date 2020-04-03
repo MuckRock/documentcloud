@@ -77,7 +77,17 @@ logger = logging.getLogger(__name__)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
-    permit_list_expands = ["user", "organization", "projects"]
+    permit_list_expands = [
+        "user",
+        "user.organization",
+        "organization",
+        "projects",
+        "sections",
+        "notes",
+        "notes.user",
+        "notes.user.organization",
+        "notes.organization",
+    ]
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
     permission_classes = (
@@ -96,29 +106,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             queryset = Document.objects.get_viewable(self.request.user)
 
-        if is_expanded(self.request, "user"):
-            queryset = queryset.prefetch_related(
-                Prefetch("user", queryset=User.objects.preload_list())
-            )
-        else:
-            queryset = queryset.select_related("user")
-
-        if is_expanded(self.request, "organization"):
-            queryset = queryset.select_related("organization")
-
-        if is_expanded(self.request, "projects"):
-            queryset = queryset.prefetch_related(
-                Prefetch(
-                    "projects", Project.objects.annotate_is_admin(self.request.user)
-                )
-            )
-        else:
-            queryset = queryset.prefetch_related("projects")
-
-        if is_expanded(self.request, "notes"):
-            queryset = queryset.prefetch_related(
-                Prefetch("notes", Note.objects.select_related("user"))
-            )
+        queryset = queryset.preload(
+            self.request.user, self.request.query_params.get("expand", "")
+        )
 
         return queryset
 
@@ -442,16 +432,9 @@ class NoteViewSet(FlexFieldsModelViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        queryset = document.notes.get_viewable(self.request.user)
-        if is_expanded(self.request, "user"):
-            queryset = queryset.prefetch_related(
-                Prefetch("user", queryset=User.objects.preload_list())
-            )
-        else:
-            queryset = queryset.select_related("user")
-        if is_expanded(self.request, "organization"):
-            queryset = queryset.select_related("organization")
-        return queryset
+        return document.notes.get_viewable(self.request.user).preload(
+            self.request.user, self.request.query_params.get("expand", "")
+        )
 
     def perform_create(self, serializer):
         """Specify the document, user and organization"""

@@ -1,6 +1,5 @@
 # Django
 from django.db import transaction
-from django.db.models.query import Prefetch
 from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
@@ -10,13 +9,13 @@ from functools import lru_cache
 
 # Third Party
 import django_filters
-from rest_flex_fields.utils import is_expanded
 from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_index
+from documentcloud.documents.views import DocumentViewSet
 from documentcloud.drf_bulk.views import BulkModelMixin
 from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
@@ -69,7 +68,9 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     serializer_class = ProjectMembershipSerializer
     queryset = ProjectMembership.objects.none()
     lookup_field = "document_id"
-    permit_list_expands = ["document"]
+    permit_list_expands = ["document"] + [
+        f"document.{e}" for e in DocumentViewSet.permit_list_expands
+    ]
 
     @lru_cache()
     def get_queryset(self):
@@ -78,12 +79,9 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        queryset = project.projectmembership_set.get_viewable(self.request.user)
-        if is_expanded(self.request, "document"):
-            queryset = queryset.select_related("document__user").prefetch_related(
-                "document__projects"
-            )
-        return queryset
+        return project.projectmembership_set.get_viewable(self.request.user).preload(
+            self.request.user, self.request.query_params.get("expand", "")
+        )
 
     @lru_cache()
     def check_edit_project(self):
@@ -207,7 +205,7 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
     serializer_class = CollaborationSerializer
     queryset = Collaboration.objects.none()
     lookup_field = "user_id"
-    permit_list_expands = ["user"]
+    permit_list_expands = ["user", "user.organization"]
 
     @lru_cache()
     def get_queryset(self):
@@ -221,12 +219,9 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
         else:
             queryset = project.collaboration_set.none()
 
-        if is_expanded(self.request, "user"):
-            queryset = queryset.prefetch_related(
-                Prefetch("user", queryset=User.objects.preload_list())
-            )
-
-        return queryset
+        return queryset.preload(
+            self.request.user, self.request.query_params.get("expand", "")
+        )
 
     def perform_create(self, serializer):
         """Specify the project"""
