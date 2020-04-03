@@ -94,7 +94,7 @@ permission to will return status 403.
 All list views accept a `per_page` parameter, which specifies how many
 resources to list per page.  It is `25` by default and may be set up to `1000`.
 You may view subsequent pages by using the `next` URL, or by specifying a
-`page` parameter directly.  
+`page` parameter directly.
 
 ### Sub Resources
 
@@ -545,6 +545,8 @@ the DocumentCloud API.
 | username      | String       | Read Only | The user's username                                                                     |
 | uuid          | UUID         | Read Only | UUID which links this user to the corresponding user on the [MuckRock Accounts Site][3] |
 
+[Expandable fields](#expandable-fields): organization
+
 ### Endpoints
 
 * `GET /api/users/` - List users
@@ -558,11 +560,11 @@ the DocumentCloud API.
 
 ### Fields
 
-| Field     | Type    | Options  | Description                                |
-| ---       | ---     | ---      | ---                                        |
-| url       | URL     | Required | The URL to get an embed code for           |
-| maxwidth  | Integer |          | The maximum width of the embeded resource  |
-| maxheight | Integer |          | The maximum height of the embeded resource |
+| Field     | Type    | Options  | Description                                 |
+| ---       | ---     | ---      | ---                                         |
+| url       | URL     | Required | The URL to get an embed code for            |
+| maxwidth  | Integer |          | The maximum width of the embedded resource  |
+| maxheight | Integer |          | The maximum height of the embedded resource |
 
 ### Endpoints
 
