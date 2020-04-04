@@ -635,15 +635,29 @@ The static assets for a document are loaded from different URLs depending on
 its [access level](#access-levels).  Append the following to the `static_url`
 returned to load the static asset:
 
-| Asset      | Path                                                          |
-| ---        | ---                                                           |
-| Document   | documents/\<id\>/\<slug\>.pdf                                 |
-| Full Text  | documents/\<id\>/\<slug\>.txt                                 |
-| JSON Text  | documents/\<id\>/\<slug\>.txt.json (TODO: describe)           |
-| Page Image | documents/\<id\>/pages/\<slug\>-p\<page number\>-\<size\>.gif |
-| Page Text  | documents/\<id\>/pages/\<slug\>-p\<page number\>.txt          |
+| Asset      | Path                                                          | Description                                                     |
+| ---        | ---                                                           | ---                                                             |
+| Document   | documents/\<id\>/\<slug\>.pdf                                 | The original document                                           |
+| Full Text  | documents/\<id\>/\<slug\>.txt                                 | The full text of the document, obtained from the PDF or via OCR |
+| JSON Text  | documents/\<id\>/\<slug\>.txt.json                            | The text of the document, in a custom JSON format (see below)   |
+| Page Text  | documents/\<id\>/pages/\<slug\>-p\<page number\>.txt          | The text for each page in the document                          |
+| Page Image | documents/\<id\>/pages/\<slug\>-p\<page number\>-\<size\>.gif | An image of each page in the document, in various sizes         |
 
 \<size\> may be one of `large`, `normal`, `small`, or `thumbnail`
+
+#### TXT JSON Format
+
+The TXT JSON file is a single file containing all of the text, but broken out
+per page.  This is useful if you need the text per page for every page, as you
+can download just a single file.  There is a top level object with an `updated`
+key, which is a Unix time stamp of when the file was last updated.  There may
+be an `is_import` key, which will be set to `true` if this document was
+imported from legacy DocumentCloud.  The last key is `pages` which contains the
+per page info.  It is a list of objects, one per page.  Each page object will
+have a `page` key, which is a 0-indexed page number.  There is a `contents` key
+which contains the text for the page.  There is an `ocr` key, which is the
+version of OCR software used to obtain the text.  Finally there is an `updated`
+key, which is a Unix time stamp of when this page was last updated.
 
 ### Expandable Fields
 
