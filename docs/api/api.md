@@ -556,6 +556,8 @@ the DocumentCloud API.
 
 [oEmbed][4]
 
+TODO: explain how oEmbed works
+
 ### Fields
 
 | Field     | Type    | Options  | Description                                 |
