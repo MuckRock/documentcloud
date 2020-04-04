@@ -206,7 +206,7 @@ new URL by issuing a `GET` request to `/api/documents/\<id\>/`
 
 3. `POST /api/documents/<id>/process/`
 
-Finally, you will begin procssing of the document.  Note that this endpoint
+Finally, you will begin processing of the document.  Note that this endpoint
 accepts no additional parameters.
 
 #### URL Upload Flow
