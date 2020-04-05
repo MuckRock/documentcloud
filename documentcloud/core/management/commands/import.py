@@ -262,7 +262,7 @@ class Command(BaseCommand):
                         solr_dirty=True,
                         data=data,
                         related_article=fields[14],
-                        remote_url=fields[16],
+                        published_url=fields[16],
                         detected_remote_url=fields[15],
                         file_hash=fields[25],
                         calais_id=fields[10],
