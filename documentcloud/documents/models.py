@@ -121,8 +121,8 @@ class Document(models.Model):
         max_length=1024,
         help_text=_("Article this document pertains to"),
     )
-    remote_url = models.URLField(
-        _("remote url"),
+    published_url = models.URLField(
+        _("published url"),
         blank=True,
         max_length=1024,
         help_text=_("URL where this article is embedded"),
