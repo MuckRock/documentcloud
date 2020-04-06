@@ -410,7 +410,28 @@ private documents.
 
 ### Sharing Documents
 
-TODO: Explanation of how access levels and sharing works
+Projects may be used for sharing documents.  When you add a collaborator to a
+project, you may select one of three access levels:
+
+* `view` - This gives the collaborator permission to view your documents that
+  you have added to the project
+* `edit` - This gives the collaborator permission to view or edit your
+  documents you have added to the project
+* `admin` - This gives the collaborator both view and edit permissions, as well
+  as the ability to add their own documents and invite other collaborators to
+  the project
+
+Additionally, you may add public documents to a project, for organizational
+purposes.  Obviously, no permissions are granted to your or your collaborators
+when you add documents you do not own to your project &mdash; this is tracked
+by the `edit_access` field on the [project membership](#project-documents).
+When you add documents you or your organization do own, it will be added with
+`edit_access` enabled by default.  You may override this using the API if you
+would like to add your documents to a project, but not extend permissions to
+any of your collaborators.  Also note that documents shared with you for
+editing via another project may not be added to your own project with
+`edit_access` enabled.  This means the original owner of a document may revoke
+any access they have granted to others via projects at any time.
 
 ### Fields
 
@@ -479,13 +500,14 @@ These endpoints allow you to browse, add and remove documents from a project
 
 ### Collaborators
 
-See [Sharing Documents](#sharing-documents)
+Other users who you would like share this project with.  See [Sharing
+Documents](#sharing-documents)
 
 #### Fields
 
 | Field  | Type    | Options         | Description                                                       |
 | ---    | ---     | ---             | ---                                                               |
-| access | String  | Default: `view` | The [access level](#project-access) for this collaborator         |
+| access | String  | Default: `view` | The [access level](#sharing-documents) for this collaborator      |
 | email  | Email   | Create Only     | Email address of user to add as a collaborator to this project    |
 | user   | Integer | Read Only       | The ID for the [user](#user) who is collaborating on this project |
 
