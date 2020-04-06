@@ -4,9 +4,6 @@
 from django.db import models
 from django.db.models import Prefetch, Q
 
-# Third Party
-from rest_flex_fields.utils import split_levels
-
 # DocumentCloud
 from documentcloud.organizations.models import Membership
 

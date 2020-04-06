@@ -1,7 +1,6 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models.query import Prefetch
 from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
 from django.views.decorators.vary import vary_on_cookie
@@ -20,7 +19,7 @@ from functools import lru_cache
 import django_filters
 import environ
 import pysolr
-from rest_flex_fields import FlexFieldsModelViewSet, is_expanded
+from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.common.environment import storage
