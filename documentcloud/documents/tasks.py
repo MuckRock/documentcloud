@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
-def fetch_file_url(file_url, document_pk):
+def fetch_file_url(file_url, document_pk, force_ocr):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
     try:
@@ -68,17 +68,22 @@ def fetch_file_url(file_url, document_pk):
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
-        process.delay(document_pk, document.slug)
+        process.delay(document_pk, document.slug, force_ocr)
 
 
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def process(document_pk, slug):
+def process(document_pk, slug, force_ocr):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
-        json={"doc_id": document_pk, "slug": slug, "method": "process_pdf"},
+        json={
+            "doc_id": document_pk,
+            "slug": slug,
+            "method": "process_pdf",
+            "force_ocr": force_ocr,
+        },
     )
 
 

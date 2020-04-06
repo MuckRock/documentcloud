@@ -166,7 +166,11 @@ class TestDocumentAPI:
     def test_create_direct(self, client, user):
         """Create a document and upload the file directly"""
         client.force_authenticate(user=user)
-        response = client.post(f"/api/documents/", {"title": "Test"})
+        response = client.post(
+            f"/api/documents/",
+            {"title": "Test", "data": {"tag": ["good"]}},
+            format="json",
+        )
         assert response.status_code == status.HTTP_201_CREATED
         response_json = response.json()
         assert Document.objects.filter(pk=response_json["id"]).exists()
@@ -473,7 +477,7 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.status == Status.pending
-        mock_process.delay.assert_called_with(document.pk, document.slug)
+        mock_process.delay.assert_called_with(document.pk, document.slug, False)
 
     def test_process_bad(self, client, user, document, mocker):
         """Test processing a document you do not have edit permissions to"""
@@ -517,14 +521,14 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/process/",
-            {"ids": [d.pk for d in documents]},
+            {"documents": [{"id": d.pk} for d in documents]},
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
         for document in documents:
             document.refresh_from_db()
             assert document.status == Status.pending
-            mock_process.delay.assert_any_call(document.pk, document.slug)
+            mock_process.delay.assert_any_call(document.pk, document.slug, False)
 
     def test_bulk_process_no_ids(self, client, user, mocker):
         """Test processing multiple documents without specifying the documents"""
@@ -549,7 +553,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/process/",
-            {"ids": [good_document.pk, bad_document.pk]},
+            {"documents": [{"id": good_document.pk}, {"id": bad_document.pk}]},
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -565,7 +569,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/process/",
-            {"ids": [d.pk for d in documents]},
+            {"ids": [{"id": d.pk} for d in documents]},
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST

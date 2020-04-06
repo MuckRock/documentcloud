@@ -133,8 +133,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         if bulk:
             file_urls = [d.pop("file_url", None) for d in serializer.validated_data]
+            force_ocrs = [d.pop("force_ocr", False) for d in serializer.validated_data]
         else:
             file_urls = [serializer.validated_data.pop("file_url", None)]
+            force_ocrs = [serializer.validated_data.pop("force_ocr", False)]
 
         documents = serializer.save(
             user=self.request.user, organization=self.request.user.organization
@@ -143,10 +145,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not bulk:
             documents = [documents]
 
-        for document, file_url in zip(documents, file_urls):
+        for document, file_url, force_ocr in zip(documents, file_urls, force_ocrs):
             if file_url is not None:
                 transaction.on_commit(
-                    lambda d=document, f=file_url: fetch_file_url.delay(f, d.pk)
+                    lambda d=document, f=file_url: fetch_file_url.delay(
+                        f, d.pk, force_ocr
+                    )
                 )
 
     @action(detail=True, methods=["post"])
@@ -158,17 +162,19 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if error:
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            self._process(document)
+            force_ocr = request.data.get("force_ocr", False)
+            self._process(document, force_ocr)
             return Response("OK", status=status.HTTP_200_OK)
 
     @action(detail=False, url_path="process", methods=["post"])
     def bulk_process(self, request):
         """Bulk process documents"""
-        if "ids" not in request.data:
+        if "documents" not in request.data:
             return Response(
-                {"error": "`ids` not specified"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "`documents` not specified"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        if len(request.data["ids"]) > settings.REST_BULK_LIMIT:
+        if len(request.data["documents"]) > settings.REST_BULK_LIMIT:
             return Response(
                 {
                     "error": "Bulk API operations are limited to "
@@ -176,7 +182,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        documents = Document.objects.filter(pk__in=request.data["ids"])
+        documents = Document.objects.filter(
+            pk__in=[d["id"] for d in request.data["documents"]]
+        )
+        force_ocr = {
+            d["id"]: d.get("force_ocr", False) for d in request.data["documents"]
+        }
 
         errors = []
         for document in documents:
@@ -187,7 +198,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             return Response({"error": errors}, status=status.HTTP_400_BAD_REQUEST)
 
         for document in documents:
-            self._process(document)
+            self._process(document, force_ocr[document.pk])
         return Response("OK", status=status.HTTP_200_OK)
 
     def _check_process(self, document):
@@ -204,7 +215,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         return None
 
-    def _process(self, document):
+    def _process(self, document, force_ocr):
         """Process a document after you have uploaded the file"""
         was_public = document.public
         with transaction.atomic():
@@ -217,7 +228,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 # if document is public, mark the files as private while it is being
                 # processed
                 transaction.on_commit(lambda: update_access.delay(document.pk))
-        process.delay(document.pk, document.slug)
+        process.delay(document.pk, document.slug, force_ocr)
 
     @process.mapping.delete
     def cancel_process(self, request, pk=None):

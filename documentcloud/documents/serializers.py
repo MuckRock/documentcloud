@@ -54,6 +54,15 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         required=False,
         help_text=_("A publically accessible URL to the file to upload"),
     )
+    force_ocr = serializers.BooleanField(
+        label=_("Force OCR"),
+        write_only=True,
+        required=False,
+        help_text=_(
+            "Force OCR on this document.  Only use if `file_url` is set, "
+            "otherwise should set `force_url` on call to processing endpoint."
+        ),
+    )
     access = ChoiceField(
         Access,
         default=Access.private,
@@ -96,6 +105,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "description",
             "edit_access",
             "file_url",
+            "force_ocr",
             "language",
             "organization",
             "page_count",
@@ -199,6 +209,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
         return value
 
+    def validate_force_ocr(self, value):
+        if self.instance and value:
+            raise serializers.ValidationError("You may not update `force_ocr`")
+        return value
+
     def validate_data(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("`data` must be a JSON object")
@@ -219,6 +234,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
 
         return value
+
+    def validate(self, attrs):
+        if attrs.get("force_ocr") and "file_url" not in attrs:
+            raise serializers.ValidationError(
+                "`force_ocr` may only be used if `file_url` is set"
+            )
+        return attrs
 
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
