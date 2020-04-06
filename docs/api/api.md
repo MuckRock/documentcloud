@@ -160,7 +160,7 @@ documents](#project-documents).
 | ID               | Integer      | Read Only          | The ID for the document                                                                                                |
 | access           | String       | Default: `private` | The [access level](#access-levels) for the document                                                                    |
 | asset\_url       | String       | Read Only          | The base URL to load this document's [static assets](#static-assets) from                                              |
-| created\_at      | Date Time    | Read Only          | Time stamp when this document was created                                                                               |
+| created\_at      | Date Time    | Read Only          | Time stamp when this document was created                                                                              |
 | data             | JSON         | Read Only          | [Custom metadata](#data)                                                                                               |
 | description      | String       | Not Required       | A brief description of the document                                                                                    |
 | edit\_access     | Bool         | Read Only          | Does the current user have edit access to this document                                                                |
@@ -173,12 +173,12 @@ documents](#project-documents).
 | projects         | List:Integer | Read Only          | The IDs of the [projects](#projects) this document belongs to                                                          |
 | related\_article | URL          | Not Required       | The URL for the article about this document                                                                            |
 | remaining        | JSON         | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter |
-| remote\_url      | URL          | Not Required       | The URL where this document is embedded                                                                                |
+| published\_url   | URL          | Not Required       | The URL where this document is embedded                                                                                |
 | slug             | String       | Read Only          | The slug is a URL safe version of the title                                                                            |
 | source           | String       | Not Required       | The source who produced the document                                                                                   |
 | status           | String       | Read Only          | The [status](#statuses) for the document                                                                               |
 | title            | String       | Required           | The document's title                                                                                                   |
-| updated\_at      | Date Time    | Read Only          | Time stamp when the document was last updated                                                                           |
+| updated\_at      | Date Time    | Read Only          | Time stamp when the document was last updated                                                                          |
 | user             | ID           | Read Only          | The ID for the [user](#users) this document belongs to                                                                 |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
