@@ -174,4 +174,6 @@ def solr_index_dirty():
         status=Status.deleted
     )[: settings.SOLR_DIRTY_LIMIT]
     for document in dirty_documents:
-        solr_index.delay(document.pk, index_text=True)
+        logger.info("solr index dirty: reindexing %s", document.pk)
+        # only index the full text if the document is in a successful state
+        solr_index.delay(document.pk, index_text=document.status == Status.success)
