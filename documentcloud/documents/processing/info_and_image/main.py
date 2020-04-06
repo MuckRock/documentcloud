@@ -309,7 +309,8 @@ def process_page_cache(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
-    dirty = data["dirty"] if "dirty" in data else None
+    dirty = data.get("dirty")
+    force_ocr = data["force_ocr"]
 
     doc_path = path.doc_path(doc_id, slug)
 
@@ -337,6 +338,7 @@ def process_page_cache(data, _context=None):
                             "slug": slug,
                             "pages": pages,
                             "partial": dirty,
+                            "force_ocr": force_ocr,
                         }
                     ),
                 )
@@ -362,6 +364,7 @@ def process_pdf(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    force_ocr = data.get("force_ocr", False)
 
     # Ensure PDF size is within the limit
     doc_path = path.doc_path(doc_id, slug)
@@ -379,7 +382,10 @@ def process_pdf(data, _context=None):
 
     # Kick off page cache processing
     publisher.publish(
-        PAGE_CACHE_TOPIC, data=encode_pubsub_data({"doc_id": doc_id, "slug": slug})
+        PAGE_CACHE_TOPIC,
+        data=encode_pubsub_data(
+            {"doc_id": doc_id, "slug": slug, "force_ocr": force_ocr}
+        ),
     )
 
     return "Ok"
@@ -430,6 +436,7 @@ def extract_image(data, _context=None):
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
+    force_ocr = data["force_ocr"]
 
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
@@ -503,7 +510,7 @@ def extract_image(data, _context=None):
                     page = doc.load_page(page_number)
 
                 text = page.text
-                if text is not None and len(text.strip()) > 0:
+                if text is not None and len(text.strip()) > 0 and not force_ocr:
                     text_path = path.page_text_path(doc_id, slug, page_number)
 
                     # Page already has text inside
