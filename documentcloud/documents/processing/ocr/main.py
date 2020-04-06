@@ -110,6 +110,11 @@ def run_tesseract(data, _context=None):
     doc_id = data["doc_id"]
     paths_and_numbers = data["paths_and_numbers"]
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
+    force_ocr = data["force_ocr"]
+    if force_ocr:
+        ocr_version = f"{OCR_VERSION}_force"
+    else:
+        ocr_version = OCR_VERSION
 
     result = {}
 
@@ -125,6 +130,7 @@ def run_tesseract(data, _context=None):
                         "paths_and_numbers": paths_and_numbers,
                         "doc_id": doc_id,
                         "partial": partial,
+                        "force_ocr": force_ocr,
                     }
                 ),
             )
@@ -156,7 +162,7 @@ def run_tesseract(data, _context=None):
 
             # Write the output text
             write_text_file(text_path, text)
-            utils.write_page_text(REDIS, doc_id, page_number, text, OCR_VERSION)
+            utils.write_page_text(REDIS, doc_id, page_number, text, ocr_version)
 
             # Decrement the texts remaining, sending complete if done.
             texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)

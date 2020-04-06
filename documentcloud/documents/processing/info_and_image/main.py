@@ -449,7 +449,12 @@ def extract_image(data, _context=None):
         publisher.publish(
             OCR_TOPIC,
             data=encode_pubsub_data(
-                {"paths_and_numbers": ocr_queue, "doc_id": doc_id, "partial": partial}
+                {
+                    "paths_and_numbers": ocr_queue,
+                    "doc_id": doc_id,
+                    "partial": partial,
+                    "force_ocr": force_ocr,
+                }
             ),
         )
 
