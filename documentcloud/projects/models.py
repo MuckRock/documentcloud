@@ -95,7 +95,7 @@ class ProjectMembership(models.Model):
     )
     edit_access = models.BooleanField(
         verbose_name=_("edit access"),
-        default=False,
+        default=True,
         help_text=_(
             "Whether collaborators on this project have edit access to this document"
         ),

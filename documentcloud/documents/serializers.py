@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
+from rest_framework.relations import ManyRelatedField
 
 # Standard Library
 import logging
@@ -26,6 +27,7 @@ from documentcloud.documents.models import (
     Section,
 )
 from documentcloud.drf_bulk.serializers import BulkListSerializer
+from documentcloud.projects.models import Project
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +75,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         label=_("Edit Access"),
         read_only=True,
         help_text=_("Does the current user have edit access to this document"),
+    )
+
+    projects = serializers.PrimaryKeyRelatedField(
+        many=True,
+        required=False,
+        queryset=Project.objects.none(),
+        help_text=_("Projects this document belongs to"),
     )
 
     class Meta:
@@ -143,6 +152,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             # only show remaining field if it was requested
             del self.fields["remaining"]
 
+        if (
+            request
+            and request.user
+            # check that projects is a field and not expanded into a serializer
+            and isinstance(self.fields["projects"], ManyRelatedField)
+        ):
+            self.fields[
+                "projects"
+            ].child_relation.queryset = Project.objects.get_editable(request.user)
+
         is_create = self.instance is None
         is_list = isinstance(self.instance, (list, QuerySet))
         is_document = isinstance(self.instance, Document)
@@ -172,6 +191,34 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     def validate_file_url(self, value):
         if self.instance and value:
             raise serializers.ValidationError("You may not update `file_url`")
+        return value
+
+    def validate_projects(self, value):
+        if self.instance and value:
+            raise serializers.ValidationError(
+                "You may not update `projects` directly, please use the projects API"
+            )
+        return value
+
+    def validate_data(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("`data` must be a JSON object")
+
+        # wrap any lone strings in lists
+        value = {k: [v] if isinstance(v, str) else v for k, v in value.items()}
+
+        if not all(isinstance(v, list) for v in value.values()):
+            raise serializers.ValidationError(
+                "`data` JSON object must have arrays for values of all top level "
+                "object properties"
+            )
+
+        if not all(isinstance(v, str) for v_ in value.values() for v in v_):
+            raise serializers.ValidationError(
+                "`data` JSON object must have strings for all values within the lists"
+                "f top level object properties"
+            )
+
         return value
 
     def get_presigned_url(self, obj):
