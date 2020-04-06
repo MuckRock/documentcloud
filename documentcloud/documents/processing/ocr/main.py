@@ -39,10 +39,13 @@ else:
     # pylint: disable=import-error
     import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
+    from sentry_sdk.integrations.redis import RedisIntegration
 
     # pylint: enable=import-error
 
-    sentry_sdk.init(dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration()])
+    sentry_sdk.init(
+        dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration(), RedisIntegration()]
+    )
 
 
 REDIS = utils.get_redis()
