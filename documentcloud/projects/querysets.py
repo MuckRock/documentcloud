@@ -26,6 +26,14 @@ class ProjectQuerySet(models.QuerySet):
         else:
             return self.filter(private=False)
 
+    def get_editable(self, user):
+        if user.is_authenticated:
+            return self.filter(
+                collaborators=user, collaboration__access=CollaboratorAccess.admin
+            )
+        else:
+            return self.none()
+
     def annotate_is_admin(self, user):
         """Annotate each project with whether or not the given user is
         an admin for it

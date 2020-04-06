@@ -24,6 +24,7 @@ from documentcloud.documents.tests.factories import (
     SectionFactory,
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.projects.models import ProjectMembership
 from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
@@ -170,6 +171,20 @@ class TestDocumentAPI:
         response_json = response.json()
         assert Document.objects.filter(pk=response_json["id"]).exists()
         assert "presigned_url" in response_json
+
+    def test_create_project(self, client, project):
+        """Create a document in a project"""
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/documents/",
+            {"title": "Test", "projects": [project.pk]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = response.json()
+        assert ProjectMembership.objects.filter(
+            document_id=response_json["id"], project=project, edit_access=True
+        ).exists()
 
     def test_create_bad_no_user(self, client):
         """Must be logged in to create a document"""
@@ -319,6 +334,15 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.page_count == 42
+
+    def test_update_bad_project(self, client, document):
+        """Update a documents project using the project membership API only"""
+        project = ProjectFactory(user=document.user)
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"projects": [project.pk]}, format="json"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
