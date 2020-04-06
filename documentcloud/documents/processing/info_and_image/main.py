@@ -310,7 +310,7 @@ def process_page_cache(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     dirty = data.get("dirty")
-    force_ocr = data["force_ocr"]
+    force_ocr = data.get("force_ocr", False)
 
     doc_path = path.doc_path(doc_id, slug)
 
