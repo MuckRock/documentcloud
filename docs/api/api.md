@@ -576,17 +576,15 @@ the DocumentCloud API.
 
 ## oEmbed
 
-[oEmbed][4]
-
-TODO: explain how oEmbed works
+Generate an embed code for a document using our [oEmbed][4] service.
 
 ### Fields
 
-| Field     | Type    | Options  | Description                                 |
-| ---       | ---     | ---      | ---                                         |
-| url       | URL     | Required | The URL to get an embed code for            |
-| maxwidth  | Integer |          | The maximum width of the embedded resource  |
-| maxheight | Integer |          | The maximum height of the embedded resource |
+| Field     | Type    | Options  | Description                                       |
+| ---       | ---     | ---      | ---                                               |
+| url       | URL     | Required | The URL for the document to get an embed code for |
+| maxwidth  | Integer |          | The maximum width of the embedded resource        |
+| maxheight | Integer |          | The maximum height of the embedded resource       |
 
 ### Endpoints
 
