@@ -506,11 +506,15 @@ def extract_image(data, _context=None):
 
             if not utils.page_ocrd(REDIS, doc_id, page_number):
                 # Extract page text if possible
-                if page is None:
-                    page = doc.load_page(page_number)
+                if force_ocr:
+                    text = None
+                else:
+                    if page is None:
+                        page = doc.load_page(page_number)
 
-                text = page.text
-                if text is not None and len(text.strip()) > 0 and not force_ocr:
+                    text = page.text
+
+                if text is not None and len(text.strip()) > 0:
                     text_path = path.page_text_path(doc_id, slug, page_number)
 
                     # Page already has text inside
