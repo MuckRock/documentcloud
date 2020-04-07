@@ -169,12 +169,16 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @action(detail=False, url_path="process", methods=["post"])
     def bulk_process(self, request):
         """Bulk process documents"""
-        if "documents" not in request.data:
+        if "documents" in request.data:
+            document_data = request.data["documents"]
+        elif "ids" in request.data:
+            document_data = [{"id": i} for i in request.data["ids"]]
+        else:
             return Response(
                 {"error": "`documents` not specified"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if len(request.data["documents"]) > settings.REST_BULK_LIMIT:
+        if len(document_data) > settings.REST_BULK_LIMIT:
             return Response(
                 {
                     "error": "Bulk API operations are limited to "
@@ -182,12 +186,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        documents = Document.objects.filter(
-            pk__in=[d["id"] for d in request.data["documents"]]
-        )
-        force_ocr = {
-            d["id"]: d.get("force_ocr", False) for d in request.data["documents"]
-        }
+        documents = Document.objects.filter(pk__in=[d["id"] for d in document_data])
+        force_ocr = {d["id"]: d.get("force_ocr", False) for d in document_data}
 
         errors = []
         for document in documents:
@@ -271,18 +271,16 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def perform_update(self, serializer):
         # work for regular and bulk updates
 
-        bulk = hasattr(serializer, "many") and serializer.many
+        bulk = getattr(serializer, "many", False)
 
         if bulk:
-            validated_datas = sorted(serializer.validated_data, key=lambda d: d["id"])
+            validated_datas = sorted(
+                serializer.validated_data, key=lambda d: d.get("id", 0)
+            )
             # get the relevant instances
             instances = serializer.instance.filter(
-                id__in=[d["id"] for d in validated_datas]
+                id__in=[d.get("id", 0) for d in validated_datas]
             ).order_by("id")
-            if len(validated_datas) != len(instances):
-                raise serializers.ValidationError(
-                    "Could not find all objects to update"
-                )
         else:
             validated_datas = [serializer.validated_data]
             instances = [serializer.instance]
