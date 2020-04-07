@@ -30,6 +30,8 @@ from documentcloud.users.models import User
 BUCKET = os.environ["IMPORT_BUCKET"]
 IMPORT_DIR = os.environ["IMPORT_DIR"]
 
+# pylint: disable=too-many-locals
+
 
 def parse_date(date_str):
     if not date_str:
@@ -58,8 +60,8 @@ class Command(BaseCommand):
         self.run_import_lambda(org_id)
         with transaction.atomic():
             sid = transaction.savepoint()
-            self.import_org()
-            self.import_users()
+            org = self.import_org()
+            self.import_users(org)
             self.import_documents()
             self.import_notes()
             self.import_sections()
@@ -111,7 +113,6 @@ class Command(BaseCommand):
 
             org = Organization.objects.filter(uuid=org_uuid).first()
             if org:
-                # XXX test this
                 self.stdout.write(f"Updating {fields[1]}")
                 assert not Organization.objects.filter(id=org_id).exists()
                 old_id = org.pk
@@ -149,8 +150,9 @@ class Command(BaseCommand):
         self.stdout.write("End Organization Import {}".format(timezone.now()))
         return org
 
-    def import_users(self):
+    def import_users(self, org):
         self.stdout.write("Begin Users Import {}".format(timezone.now()))
+        plan = Plan.objects.get(slug="free")
 
         with smart_open(f"{self.bucket_path}users.csv", "r") as infile, smart_open(
             f"{self.bucket_path}users_map.csv", "r"
@@ -160,8 +162,11 @@ class Command(BaseCommand):
             map_reader = csv.reader(mapfile)
 
             create_users = []
+            create_memberships = []
 
-            for fields, (user_id, uuid, username) in zip(reader, map_reader):
+            for fields, (user_id, uuid, username, ind_org_slug) in zip(
+                reader, map_reader
+            ):
                 # fields[0] is the user_id, it should match between files
                 assert fields[0] == user_id, f"{fields[0]} != {user_id}"
                 # 10 is role, 3 is reviewer - reveiwers should not be exported
@@ -187,6 +192,15 @@ class Command(BaseCommand):
                         creator_id=new_id
                     )
                     user = User.objects.get(pk=new_id)
+                    if fields[10] not in ("0", "4") and not org.has_member(user):
+                        create_memberships.append(
+                            Membership(
+                                user=user,
+                                organization=org,
+                                active=False,
+                                admin=fields[10] == "1",
+                            )
+                        )
                 else:
                     self.stdout.write(f"Creating {fields[3]}")
                     create_users.append(
@@ -203,8 +217,46 @@ class Command(BaseCommand):
                             document_language=fields[8],
                         )
                     )
+                    individual_organization = Organization.objects.create(
+                        uuid=uuid,
+                        name=username,
+                        slug=ind_org_slug,
+                        private=True,
+                        individual=True,
+                        plan=plan,
+                        verified_journalist=False,
+                        language=fields[7],
+                        document_language=fields[8],
+                    )
+                    if fields[10] not in ("0", "4"):
+                        create_memberships.append(
+                            Membership(
+                                user_id=user_id,
+                                organization=org,
+                                active=True,
+                                admin=fields[10] == "1",
+                            )
+                        )
+                        create_memberships.append(
+                            Membership(
+                                user_id=user_id,
+                                organization=individual_organization,
+                                active=False,
+                                admin=True,
+                            )
+                        )
+                    else:
+                        create_memberships.append(
+                            Membership(
+                                user_id=user_id,
+                                organization=individual_organization,
+                                active=True,
+                                admin=True,
+                            )
+                        )
 
             User.objects.bulk_create(create_users)
+            Membership.objects.bulk_create(create_memberships)
 
         self.stdout.write("End Organization Import {}".format(timezone.now()))
 
@@ -341,7 +393,7 @@ class Command(BaseCommand):
                         document_id=fields[3],
                         user_id=fields[2],
                         organization_id=fields[1],
-                        page_number=fields[4],
+                        page_number=int(fields[4]) - 1,
                         access=access_map[fields[5]],
                         title=fields[6],
                         content=fields[7],
@@ -360,7 +412,9 @@ class Command(BaseCommand):
                 "pk", "page_spec"
             )
             document_map = {
-                pk: uncrunch(page_spec) for pk, page_spec in page_specs if page_spec
+                str(pk): uncrunch(page_spec)
+                for pk, page_spec in page_specs
+                if page_spec
             }
 
             for note in create_notes:
@@ -368,23 +422,27 @@ class Command(BaseCommand):
                 # grab the coordinates of the correct page and convert
                 # all the coordinates to percentages
                 if note.x1 is not None and note.document_id in document_map:
-                    width, height = document_map[note.document_id][
-                        note.page_number
-                    ].split("x")
+                    width, height = map(
+                        float,
+                        document_map[note.document_id][note.page_number].split("x"),
+                    )
+                    # normalize to a width of 700
+                    height = (700 / width) * height
+                    width = 700
                     note.x1 /= width
                     note.x2 /= width
                     note.y1 /= height
                     note.y2 /= height
                 elif note.x1 is not None and note.document_id not in document_map:
-                    # XXX if we do not have page specs, guess!
-                    # all pages should have a width of 1000, and we will use
-                    # a standard height of 1294
+                    # if we do not have page specs, guess!
+                    # all pages should have a width of 700, and we will use
+                    # a standard height of 906
                     # this will happen if it is a private note on a document
                     # that has not been imported yet
-                    note.x1 /= 1000
-                    note.x2 /= 1000
-                    note.y1 /= 1294
-                    note.y2 /= 1294
+                    note.x1 /= 700.0
+                    note.x2 /= 700.0
+                    note.y1 /= 906.0
+                    note.y2 /= 906.0
                     # if we guessed the height wrong just reduce it
                     if note.y1 > 1:
                         self.stdout.write(f"y1 was outside bounds, setting to 0.9")
