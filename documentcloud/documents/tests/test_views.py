@@ -198,6 +198,15 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_create_bad_id(self, client, user):
+        """Create a document and set an ID"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/", {"title": "Test", "id": 999}, format="json"
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["id"] != 999
+
     def test_bulk_create(self, client, user):
         """Create multiple documents"""
         client.force_authenticate(user=user)
@@ -348,6 +357,16 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_bad_id(self, client, document):
+        """You may not update the id"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"id": document.pk + 1}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["id"] == document.pk
+        assert Document.objects.count() == 1
+
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
@@ -402,6 +421,22 @@ class TestDocumentAPI:
             f"/api/documents/",
             [{"id": document.pk, "access": "public"} for document in documents],
             format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_update_bad_id(self, client, user):
+        """Test updating multiple documents, with bad ID"""
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/documents/", [{"id": "a", "access": "private"}], format="json"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_update_missing_id(self, client, user):
+        """Test updating multiple documents, with missing IDs"""
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/documents/", [{"access": "private"}], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 

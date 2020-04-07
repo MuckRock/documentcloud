@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
+from rest_framework.fields import empty
 from rest_framework.relations import ManyRelatedField
 
 # Standard Library
@@ -125,7 +126,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "created_at": {"read_only": True},
             "description": {"required": False},
-            "id": {"read_only": False, "required": False},
             "language": {"default": Language.english},
             "organization": {"read_only": True},
             "page_count": {"read_only": True},
@@ -149,11 +149,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         super().__init__(*args, **kwargs)
         context = kwargs.get("context", {})
         request = context.get("request")
+        view = context.get("view")
         if self._authenticate_processing(request):
             # If this request is from our serverless processing functions,
             # make the following fields writable
             for field in ["page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
+
+        if view and view.action in ("bulk_update", "bulk_partial_update"):
+            # ID is not read only for bulk updates
+            self.fields["id"].read_only = False
 
         if not request or (
             "remaining" not in request.GET and "remaining" in self.fields
