@@ -43,16 +43,21 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("organization", type=int, help="Organization ID to import")
+        parser.add_argument(
+            "--dry_run", action="store_true", help="Do not commit to database"
+        )
 
     def handle(self, *args, **kwargs):
         # pylint: disable=unused-argument
         org_id = kwargs["organization"]
+        dry_run = kwargs["dry_run"]
         self.bucket_path = f"s3://{BUCKET}/{IMPORT_DIR}/organization-{org_id}/"
         # https://stackoverflow.com/a/54517228/2204914
         csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
 
         self.run_import_lambda(org_id)
         with transaction.atomic():
+            sid = transaction.savepoint()
             self.import_org()
             self.import_users()
             self.import_documents()
@@ -64,7 +69,9 @@ class Command(BaseCommand):
             self.import_collaborations()
             self.import_project_memberships()
 
-            raise ValueError("Do not commit")
+            if dry_run:
+                self.stdout.write("Dry run, not commiting changes")
+                transaction.savepoint_rollback(sid)
 
     def run_import_lambda(self, org_id):
         """Run the pre-process lambda script to generate the .txt.json files
