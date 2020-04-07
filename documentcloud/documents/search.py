@@ -204,7 +204,7 @@ def _add_asset_url(results):
 
 
 def _expand_users(results):
-    return _expand(results, "user", User.objects.preload_list(), UserSerializer)
+    return _expand(results, "user", User.objects.preload(), UserSerializer)
 
 
 def _expand_organizations(results):
@@ -218,5 +218,5 @@ def _expand(results, key, queryset, serializer):
     objs = queryset.filter(pk__in=ids)
     obj_dict = {obj.pk: serializer(obj).data for obj in objs}
     for result in results:
-        result[key] = obj_dict[result[key]]
+        result[key] = obj_dict.get(result[key])
     return results
