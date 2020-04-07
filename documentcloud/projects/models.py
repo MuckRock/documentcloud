@@ -25,6 +25,11 @@ class Project(models.Model):
         to="users.User",
         on_delete=models.PROTECT,
         related_name="+",
+        # This is set to false so we can import projects before their
+        # owners
+        # Once migration from old DocumentCloud is complete, this should
+        # be set back to True
+        db_constraint=False,
         help_text=_("The user who created this project"),
     )
     title = models.CharField(
@@ -137,7 +142,7 @@ class Collaboration(models.Model):
         blank=True,
         null=True,
         related_name="+",
-        # This is set to false so we can import collaborators before there
+        # This is set to false so we can import collaborators before their
         # creators
         # Once migration from old DocumentCloud is complete, this should
         # be set back to True
