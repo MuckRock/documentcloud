@@ -174,7 +174,7 @@ class Command(BaseCommand):
                     new_id = user_id
                     # update the user's pk, and
                     # language fields since they are not stored on squarelet
-                    Organization.objects.filter(id=old_id).update(
+                    User.objects.filter(id=old_id).update(
                         id=new_id, language=fields[7], document_language=fields[8]
                     )
                     # update all FKs pointing to the user
