@@ -514,6 +514,22 @@ class TestDocumentAPI:
         assert document.status == Status.pending
         mock_process.delay.assert_called_with(document.pk, document.slug, False)
 
+    def test_process_force_ocr(self, client, document, mocker):
+        """Test processing a document and force ocr"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/process/", {"force_ocr": True}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.status == Status.pending
+        mock_process.delay.assert_called_with(document.pk, document.slug, True)
+
     def test_process_bad(self, client, user, document, mocker):
         """Test processing a document you do not have edit permissions to"""
         # pretend the file exists
@@ -535,7 +551,7 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_process_bad_status(self, client, mocker):
-        """Test processing a document without a file"""
+        """Test processing a document thats already processing"""
         document = DocumentFactory(status=Status.pending)
         # pretend the file exists
         mocker.patch(
@@ -555,8 +571,26 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
         response = client.post(
+            f"/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        for document in documents:
+            document.refresh_from_db()
+            assert document.status == Status.pending
+            mock_process.delay.assert_any_call(document.pk, document.slug, False)
+
+    def test_bulk_process_old_format(self, client, user, mocker):
+        """Test processing multiple documents using old data format"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        documents = DocumentFactory.create_batch(2, user=user)
+        client.force_authenticate(user=user)
+        response = client.post(
             f"/api/documents/process/",
-            {"documents": [{"id": d.pk} for d in documents]},
+            {"ids": [d.pk for d in documents]},
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
@@ -565,7 +599,28 @@ class TestDocumentAPI:
             assert document.status == Status.pending
             mock_process.delay.assert_any_call(document.pk, document.slug, False)
 
-    def test_bulk_process_no_ids(self, client, user, mocker):
+    def test_bulk_process_force_ocr(self, client, user, mocker):
+        """Test processing multiple documents, force some OCR"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        documents = DocumentFactory.create_batch(2, user=user)
+        force_ocrs = [False, True]
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/process/",
+            [{"id": d.pk, "force_ocr": f} for (d, f) in zip(documents, force_ocrs)],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        for document, force_ocr in zip(documents, force_ocrs):
+            document.refresh_from_db()
+            assert document.status == Status.pending
+            mock_process.delay.assert_any_call(document.pk, document.slug, force_ocr)
+
+    def test_bulk_process_no_data(self, client, user, mocker):
         """Test processing multiple documents without specifying the documents"""
         mocker.patch("documentcloud.documents.views.process")
         # pretend the files exists
@@ -574,6 +629,14 @@ class TestDocumentAPI:
         )
         client.force_authenticate(user=user)
         response = client.post(f"/api/documents/process/")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_process_no_id(self, client, user, mocker):
+        """Test processing multiple documents with missing IDs"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/process/", [{"force_ocr": True}], format="json"
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_process_bad(self, client, user, mocker):
@@ -588,13 +651,13 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         response = client.post(
             f"/api/documents/process/",
-            {"documents": [{"id": good_document.pk}, {"id": bad_document.pk}]},
+            [{"id": good_document.pk}, {"id": bad_document.pk}],
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_process_excess(self, client, user, mocker):
-        """Test processing multiple documents"""
+        """Test processing too many multiple documents"""
         # pretend the file exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -603,9 +666,7 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(num, user=user)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/",
-            {"ids": [{"id": d.pk} for d in documents]},
-            format="json",
+            f"/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 

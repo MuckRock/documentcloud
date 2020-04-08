@@ -428,3 +428,24 @@ class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
         if attrs["y1"] >= attrs["y2"]:
             raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
+
+
+class ProcessDocumentSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+
+    force_ocr = serializers.BooleanField(
+        label=_("Force OCR"), default=False, help_text=_("Force OCR on this document")
+    )
+    id = serializers.IntegerField(
+        label=_("ID"), help_text=_("ID of the document to process")
+    )
+
+    def __init__(self, *args, **kwargs):
+        bulk = kwargs.pop("bulk", False)
+        super().__init__(*args, **kwargs)
+        if not bulk:
+            # ID field is only for bulk process
+            del self.fields["id"]
+
+    class Meta:
+        list_serializer_class = BulkListSerializer
