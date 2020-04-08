@@ -204,7 +204,7 @@ def _add_asset_url(results):
 
 
 def _expand_users(results):
-    return _expand(results, "user", User.objects.preload_list(), UserSerializer)
+    return _expand(results, "user", User.objects.preload(), UserSerializer)
 
 
 def _expand_organizations(results):
