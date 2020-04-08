@@ -48,6 +48,7 @@ from documentcloud.documents.serializers import (
     EntityDateSerializer,
     EntitySerializer,
     NoteSerializer,
+    ProcessDocumentSerializer,
     RedactionSerializer,
     SectionSerializer,
 )
@@ -162,32 +163,29 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if error:
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            force_ocr = request.data.get("force_ocr", False)
-            self._process(document, force_ocr)
+            serializer = ProcessDocumentSerializer(document, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self._process(document, serializer.validated_data["force_ocr"])
             return Response("OK", status=status.HTTP_200_OK)
 
     @action(detail=False, url_path="process", methods=["post"])
     def bulk_process(self, request):
         """Bulk process documents"""
-        if "documents" in request.data:
-            document_data = request.data["documents"]
-        elif "ids" in request.data:
-            document_data = [{"id": i} for i in request.data["ids"]]
+        if "ids" in request.data:
+            data = [{"id": i} for i in request.data["ids"]]
         else:
-            return Response(
-                {"error": "`documents` not specified"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if len(document_data) > settings.REST_BULK_LIMIT:
-            return Response(
-                {
-                    "error": "Bulk API operations are limited to "
-                    f"{settings.REST_BULK_LIMIT} documents at a time"
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        documents = Document.objects.filter(pk__in=[d["id"] for d in document_data])
-        force_ocr = {d["id"]: d.get("force_ocr", False) for d in document_data}
+            data = request.data
+        serializer = ProcessDocumentSerializer(
+            self.filter_queryset(self.get_queryset()), data=data, many=True, bulk=True
+        )
+        serializer.is_valid(raise_exception=True)
+
+        documents = Document.objects.filter(
+            pk__in=[d["id"] for d in serializer.validated_data]
+        )
+        force_ocr = {
+            d["id"]: d.get("force_ocr", False) for d in serializer.validated_data
+        }
 
         errors = []
         for document in documents:
