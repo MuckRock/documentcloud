@@ -72,6 +72,24 @@ Resources:
             Method: POST
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
+  ImportDocumentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.import_documents
+      CodeUri: ./awsbin/utils
+      # Trigger function via HTTP
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_documents/timeout:latest}}"
+      Events:
+        ProcessPdfApi:
+          Type: Api
+          Properties:
+            Path: /import_documents
+            Method: POST
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
   ProcessPdfFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -174,3 +192,72 @@ Resources:
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  StartImportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.start_import
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  ImportDocumentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.import_document
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  ReadPageTextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.read_page_text
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/read_page_text/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/read_page_text/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  FinishImportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.finish_import
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_import/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_import/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
