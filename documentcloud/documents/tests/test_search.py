@@ -137,6 +137,15 @@ class TestSearch:
         response = self.search("order=title")
         self.assert_documents(response["results"], sort_key="title", sort_reverse=False)
 
+    def test_search_expands(self):
+        """Search with expanded users and organizations"""
+
+        response = self.search("expand=user,organization")
+        self.assert_documents(response["results"])
+        assert response["count"] == 11
+        assert "id" in response["results"][0]["user"]
+        assert "id" in response["results"][0]["organization"]
+
     def test_search_query(self):
         """Test searching with some text"""
 
