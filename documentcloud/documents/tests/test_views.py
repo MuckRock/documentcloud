@@ -656,6 +656,22 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_bulk_process_bad_ids(self, client, user, mocker):
+        """Test processing multiple non existent documents"""
+        mock_process = mocker.patch("documentcloud.documents.views.process")
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        documents = DocumentFactory.create_batch(2, user=user)
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/process/",
+            [{"id": d.pk} for d in documents] + [{"id": 9999}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_bulk_process_excess(self, client, user, mocker):
         """Test processing too many multiple documents"""
         # pretend the file exists

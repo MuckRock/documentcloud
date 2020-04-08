@@ -183,6 +183,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         documents = Document.objects.filter(
             pk__in=[d["id"] for d in serializer.validated_data]
         )
+        if len(documents) != len(serializer.validated_data):
+            raise serializers.ValidationError(
+                "Could not find all documents to process."
+            )
         force_ocr = {
             d["id"]: d.get("force_ocr", False) for d in serializer.validated_data
         }
