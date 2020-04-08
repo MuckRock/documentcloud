@@ -149,8 +149,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         for document, file_url, force_ocr in zip(documents, file_urls, force_ocrs):
             if file_url is not None:
                 transaction.on_commit(
-                    lambda d=document, f=file_url: fetch_file_url.delay(
-                        f, d.pk, force_ocr
+                    lambda d=document, fu=file_url, fo=force_ocr: fetch_file_url.delay(
+                        fu, d.pk, fo
                     )
                 )
 

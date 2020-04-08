@@ -1,10 +1,6 @@
 # Django
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework.fields import empty
-
-# Standard Library
-import inspect
 
 
 class BulkListSerializer(serializers.ListSerializer):

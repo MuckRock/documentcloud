@@ -3,7 +3,6 @@ from django.conf import settings
 from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
-from rest_framework.fields import empty
 from rest_framework.relations import ManyRelatedField
 
 # Standard Library

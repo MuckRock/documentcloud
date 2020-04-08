@@ -1,7 +1,6 @@
 """Custom querysets for account app"""
 
 # Django
-from django.conf import settings
 from django.contrib.auth.models import UserManager as AuthUserManager
 from django.db import transaction
 

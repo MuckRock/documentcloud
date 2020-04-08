@@ -1,5 +1,5 @@
 # Django
-from celery import chord, group
+from celery import chord
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
