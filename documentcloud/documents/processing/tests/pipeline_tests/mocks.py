@@ -69,7 +69,7 @@ def cache_read(filename, cache):
     pass
 
 
-def pagespec_written(pagespec):
+def pagespec_written():
     pass
 
 
@@ -181,8 +181,8 @@ def extract_single_page(doc_id, slug, page, page_number, large_image_path):
     return (100, 200)  # Arbitrary width / height
 
 
-def update_pagespec(doc_id, slug, crunched_pagespec):
-    pagespec_written(crunched_pagespec)
+def update_pagespec(doc_id):
+    pagespec_written()
 
 
 def ocr_page(page_path):
