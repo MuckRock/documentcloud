@@ -21,7 +21,7 @@ class UserQuerySet(models.QuerySet):
         else:
             return self.none()
 
-    def preload(self, _user, _expand):
+    def preload(self, _user=None, _expand=""):
         """Preload relations"""
         queryset = self.prefetch_related(
             "organizations",
