@@ -28,8 +28,14 @@ class DocumentAdmin(VersionAdmin):
         "language",
         "source",
         "description",
+        "related_article",
+        "published_url",
         "created_at",
         "updated_at",
+        "page_count",
+        "page_spec",
+        "solr_dirty",
+        "data",
     )
     readonly_fields = (
         "slug",
@@ -38,6 +44,10 @@ class DocumentAdmin(VersionAdmin):
         "status",
         "created_at",
         "updated_at",
+        "page_count",
+        "page_spec",
+        "solr_dirty",
+        "data",
     )
 
     @transaction.atomic
