@@ -10,6 +10,7 @@ import pysolr
 
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
+from documentcloud.documents.tasks import solr_index
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
@@ -196,7 +197,14 @@ def _format_highlights(results):
 
 def _add_asset_url(results):
     for result in results:
-        if result["access"] == "public" and result["status"] in ("success", "readable"):
+        # access and status should always be available, re-index if they are not
+        if "access" not in result or "status" not in result:
+            solr_index.delay(result["id"])
+            result["asset_url"] = settings.PRIVATE_ASSET_URL
+        elif result["access"] == "public" and result["status"] in (
+            "success",
+            "readable",
+        ):
             result["asset_url"] = settings.PUBLIC_ASSET_URL
         else:
             result["asset_url"] = settings.PRIVATE_ASSET_URL
@@ -218,5 +226,9 @@ def _expand(results, key, queryset, serializer):
     objs = queryset.filter(pk__in=ids)
     obj_dict = {obj.pk: serializer(obj).data for obj in objs}
     for result in results:
-        result[key] = obj_dict.get(result[key])
+        # user and organization should always be available, re-index if they are not
+        if key not in result:
+            solr_index.delay(result["id"])
+        else:
+            result[key] = obj_dict.get(result[key])
     return results
