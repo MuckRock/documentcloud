@@ -217,15 +217,17 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         return None
 
+    @transaction.atomic
     def _process(self, document, force_ocr):
         """Process a document after you have uploaded the file"""
-        with transaction.atomic():
-            document.status = Status.pending
-            document.save()
-            transaction.on_commit(
-                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-            )
-        process.delay(document.pk, document.slug, force_ocr)
+        document.status = Status.pending
+        document.save()
+        transaction.on_commit(
+            lambda: process.delay(document.pk, document.slug, force_ocr)
+        )
+        transaction.on_commit(
+            lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+        )
 
     @process.mapping.delete
     def cancel_process(self, request, pk=None):
