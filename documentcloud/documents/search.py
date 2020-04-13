@@ -10,7 +10,6 @@ import pysolr
 
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
-from documentcloud.documents.tasks import solr_index
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
@@ -196,6 +195,8 @@ def _format_highlights(results):
 
 
 def _add_asset_url(results):
+    from documentcloud.documents.tasks import solr_index
+
     for result in results:
         # access and status should always be available, re-index if they are not
         if "access" not in result or "status" not in result:
@@ -222,6 +223,8 @@ def _expand_organizations(results):
 
 
 def _expand(results, key, queryset, serializer):
+    from documentcloud.documents.tasks import solr_index
+
     ids = {r[key] for r in results}
     objs = queryset.filter(pk__in=ids)
     obj_dict = {obj.pk: serializer(obj).data for obj in objs}
