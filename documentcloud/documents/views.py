@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
+from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.vary import vary_on_cookie
 from rest_framework import mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -283,6 +284,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             validated_datas = [serializer.validated_data]
             instances = [serializer.instance]
+
+        # we need to validate access changes here, after we have filtered
+        # the instances to those we are updating
+        for instance, validated_data in zip(instances, validated_datas):
+            if "access" in validated_data and instance.processing:
+                raise serializers.ValidationError(
+                    _("You may not update `access` while the document is processing")
+                )
 
         old_accesses = [i.access for i in instances]
         old_processings = [i.processing for i in instances]

@@ -329,6 +329,13 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_bad_access_processing(self, client):
+        """You may not update the access of a processing document"""
+        document = DocumentFactory(status=Status.readable, access=Access.public)
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"access": "private"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_update_bad_processing_token(self, client, document):
         """Only the processing functions with a token may modify certain fields"""
         client.force_authenticate(user=document.user)
@@ -424,6 +431,35 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_bulk_update_access(self, client, user):
+        """Test updating multiple documents access"""
+        client.force_authenticate(user=user)
+        documents = DocumentFactory.create_batch(3, user=user, access=Access.public)
+        # make sure a processing document doesn't block other documents
+        DocumentFactory(user=user, status=Status.readable)
+        response = client.patch(
+            f"/api/documents/",
+            [{"id": d.pk, "access": "private"} for d in documents],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        for document in documents:
+            document.refresh_from_db()
+            assert document.access == Access.private
+
+    def test_bulk_update_access_bad(self, client, user):
+        """Test updating multiple documents access"""
+        client.force_authenticate(user=user)
+        documents = DocumentFactory.create_batch(
+            3, user=user, access=Access.private, status=Status.pending
+        )
+        response = client.patch(
+            f"/api/documents/",
+            [{"id": d.pk, "access": "public"} for d in documents],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_bulk_update_bad_id(self, client, user):
         """Test updating multiple documents, with bad ID"""
         client.force_authenticate(user=user)
@@ -502,7 +538,6 @@ class TestDocumentAPI:
 
     def test_process(self, client, document, mocker):
         """Test processing a document"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
         # pretend the file exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -512,11 +547,9 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.status == Status.pending
-        mock_process.delay.assert_called_with(document.pk, document.slug, False)
 
     def test_process_force_ocr(self, client, document, mocker):
         """Test processing a document and force ocr"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
         # pretend the file exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -528,7 +561,6 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         assert document.status == Status.pending
-        mock_process.delay.assert_called_with(document.pk, document.slug, True)
 
     def test_process_bad(self, client, user, document, mocker):
         """Test processing a document you do not have edit permissions to"""
@@ -563,7 +595,6 @@ class TestDocumentAPI:
 
     def test_bulk_process(self, client, user, mocker):
         """Test processing multiple documents"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
         # pretend the files exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -577,11 +608,9 @@ class TestDocumentAPI:
         for document in documents:
             document.refresh_from_db()
             assert document.status == Status.pending
-            mock_process.delay.assert_any_call(document.pk, document.slug, False)
 
     def test_bulk_process_old_format(self, client, user, mocker):
         """Test processing multiple documents using old data format"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
         # pretend the files exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -597,11 +626,9 @@ class TestDocumentAPI:
         for document in documents:
             document.refresh_from_db()
             assert document.status == Status.pending
-            mock_process.delay.assert_any_call(document.pk, document.slug, False)
 
     def test_bulk_process_force_ocr(self, client, user, mocker):
         """Test processing multiple documents, force some OCR"""
-        mock_process = mocker.patch("documentcloud.documents.views.process")
         # pretend the files exists
         mocker.patch(
             "documentcloud.common.environment.storage.exists", return_value=True
@@ -618,7 +645,6 @@ class TestDocumentAPI:
         for document, force_ocr in zip(documents, force_ocrs):
             document.refresh_from_db()
             assert document.status == Status.pending
-            mock_process.delay.assert_any_call(document.pk, document.slug, force_ocr)
 
     def test_bulk_process_no_data(self, client, user, mocker):
         """Test processing multiple documents without specifying the documents"""
