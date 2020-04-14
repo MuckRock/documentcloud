@@ -642,7 +642,7 @@ class TestDocumentAPI:
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
-        for document, force_ocr in zip(documents, force_ocrs):
+        for document in documents:
             document.refresh_from_db()
             assert document.status == Status.pending
 
