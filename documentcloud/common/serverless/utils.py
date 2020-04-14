@@ -25,16 +25,29 @@ API_CALLBACK = env.str("API_CALLBACK")
 PROCESSING_TOKEN = env.str("PROCESSING_TOKEN")
 REDIS_URL = furl.furl(env.str("REDIS_PROCESSING_URL"))
 REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
+REDIS_SOCKET_TIMEOUT = env.int("REDIS_SOCKET_TIMEOUT", default=10)
+REDIS_SOCKET_CONNECT_TIMEOUT = env.int("REDIS_SOCKET_CONNECT_TIMEOUT", default=10)
+REDIS_HEALTH_CHECK_INTERVAL = env.int("REDIS_HEALTH_CHECK_INTERVAL", default=10)
 
 
 def get_redis():
     """Opens a connection to Redis and returns it"""
-    if not REDIS_PASSWORD or REDIS_PASSWORD.isspace():
-        # Empty string should open a Redis connection without password
-        return _redis.Redis(host=REDIS_URL.host, port=REDIS_URL.port, db=0)
-    return _redis.Redis(
-        host=REDIS_URL.host, port=REDIS_URL.port, password=REDIS_PASSWORD, db=0
-    )
+    kwargs = {
+        "host": REDIS_URL.host,
+        "port": REDIS_URL.port,
+        "db": 0,
+        "socket_timeout": REDIS_SOCKET_TIMEOUT,
+        "socket_keepalive": True,
+        "socket_connect_timeout": REDIS_SOCKET_CONNECT_TIMEOUT,
+        "retry_on_timeout": True,
+        "health_check_interval": REDIS_HEALTH_CHECK_INTERVAL,
+    }
+
+    # Empty string should open a Redis connection without password
+    if REDIS_PASSWORD and not REDIS_PASSWORD.isspace():
+        kwargs["password"] = REDIS_PASSWORD
+
+    return _redis.Redis(**kwargs)
 
 
 def send_update(redis, doc_id, json_):
