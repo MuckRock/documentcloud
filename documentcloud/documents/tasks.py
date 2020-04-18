@@ -12,6 +12,7 @@ import sys
 
 # Third Party
 import pysolr
+import redis
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
@@ -131,7 +132,9 @@ def solr_delete(document_pk):
     Document.objects.filter(pk=document_pk).delete()
 
 
-@task
+# was seeing connection errors - seemed to be an issue with celery or redis
+# putting in retries for now to ensure tasks are run
+@task(autoretry_for=(redis.exceptions.ConnectionError,))
 def update_access(document_pk, status, access):
     """Update the access settings for all assets for the given document"""
     document = Document.objects.get(pk=document_pk)
