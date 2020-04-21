@@ -71,6 +71,16 @@ class TestUserAPI:
         response_json = json.loads(response.content)
         serializer = UserSerializer(user)
         assert response_json == serializer.data
+        assert "is_staff" not in response_json
+
+    def test_retrieve_staff(self, client):
+        """Test retrieving as staff exposes `is_staff`"""
+        user = UserFactory(is_staff=True)
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/users/me/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "is_staff" in response_json
 
     def test_retrieve_me_expanded(self, client, user):
         """Test retrieving the currently logged in user"""

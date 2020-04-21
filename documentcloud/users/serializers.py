@@ -25,6 +25,7 @@ class UserSerializer(FlexFieldsModelSerializer):
         fields = [
             "id",
             "avatar_url",
+            "is_staff",
             "name",
             "organization",
             "organizations",
@@ -40,6 +41,13 @@ class UserSerializer(FlexFieldsModelSerializer):
         expandable_fields = {
             "organization": ("documentcloud.organizations.OrganizationSerializer", {})
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        context = kwargs.get("context", {})
+        request = context.get("request")
+        if not (request and request.user.is_staff):
+            self.fields.pop("is_staff")
 
     def validate_organization(self, value):
         organization = Organization.objects.filter(pk=value).first()
