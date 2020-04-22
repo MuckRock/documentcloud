@@ -165,6 +165,7 @@ documents](#project-documents).
 | description      | String       | Not Required       | A brief description of the document                                                                                                                               |
 | edit\_access     | Bool         | Read Only          | Does the current user have edit access to this document                                                                                                           |
 | file\_url        | URL          | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                                                               |
+| force\_ocr       | Bool         | Create Only        | Force OCR even if the PDF contains embedded text - only include if `file_url` is set, otherwise should set `force_ocr` on the call to the processing endpoint     |
 | language         | String       | Default: `eng`     | The [language](#languages) the document is in                                                                                                                     |
 | organization     | Integer      | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                                                            |
 | page\_count      | Integer      | Read Only          | The number of pages in this document                                                                                                                              |
@@ -228,8 +229,10 @@ servers will fetch the PDF and begin processing it automatically.
       the `id__in` filter.
 * `POST /api/documents/process/` &mdash; Bulk process documents
     * This will allow you to process multiple documents with a single API call.
-      It expects to receive a JSON object with a single property `ids`, which
-      should be a list of IDs to re-process.
+    Expect parameters: `[{"id": 1, "force_ocr": true}, {"id": 2}]`
+    It expects a list of objects, where each object contains the ID of the
+    document to process, and an optional boolean, `force_ocr`, which will OCR
+    the document even if it contains embedded text if set to `true`
 * `GET /api/documents/search/` &mdash; [Search](#search-help) documents
     * TODO: in depth search help
 * `GET /api/documents/<id>/` &mdash; Get document
@@ -239,9 +242,10 @@ servers will fetch the PDF and begin processing it automatically.
 * `POST /api/documents/<id>/process/` &mdash; Process document
     * This will process a document.  It is used after uploading the file in the
       [direct file upload flow](#direct-file-upload-flow) or to reprocess a
-      document, which you may want to do in the case of an error.  It does not
-      accept any parameters.  Note that it is an error to try to process a
-      document that is already processing.
+      document, which you may want to do in the case of an error.  It accepts
+      one optional boolean parameter, `force_ocr`, which will OCR the document
+      even if it contains embedded text if it is set to `true`.  Note that it
+      is an error to try to process a document that is already processing.
 * `DELETE /api/documents/<id>/process/` &mdash; Cancel processing document
     * This will cancel the processing of a document.  Note that it is an error
       to try to cancel the processing if the document is not processing.
@@ -351,6 +355,8 @@ Documents may contain user supplied metadata.  You may assign multiple values
 to arbitrary keys.  This is represented as a JSON object, where each key has a
 list of strings as a value.  The special key `_tag` is used by the front end to
 represent tags.  These values are useful for searching and organizing documents.
+You may directly set or update the data from the document endpoints, but these
+additional endpoints are supplied to add or remove data on a per key basis.
 
 #### Fields
 

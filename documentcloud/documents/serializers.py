@@ -62,7 +62,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         required=False,
         help_text=_(
             "Force OCR on this document.  Only use if `file_url` is set, "
-            "otherwise should set `force_url` on call to processing endpoint."
+            "otherwise should set `force_ocr` on call to processing endpoint."
         ),
     )
     access = ChoiceField(
