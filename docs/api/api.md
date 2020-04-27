@@ -133,8 +133,8 @@ token is valid for one day.
 ### POST /api/token/
 | Param    | Type   | Description   |
 | ---      | ---    | --            |
-| username | string | Your username |
-| password | string | Your password |
+| username | String | Your username |
+| password | String | Your password |
 
 #### Response
     {'access': <access token>, 'refresh': <refresh token>}
@@ -142,7 +142,7 @@ token is valid for one day.
 ### POST /api/refresh/
 | Param   | Type   | Description   |
 | ---     | ---    | --            |
-| refresh | string | Refresh token |
+| refresh | String | Refresh token |
 
 #### Response
     {'access': <access token>, 'refresh': <refresh token>}
