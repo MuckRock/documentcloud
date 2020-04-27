@@ -225,7 +225,7 @@ def _expand_organizations(results):
 def _expand(results, key, queryset, serializer):
     from documentcloud.documents.tasks import solr_index
 
-    ids = {r[key] for r in results}
+    ids = {r[key] for r in results if key in r}
     objs = queryset.filter(pk__in=ids)
     obj_dict = {obj.pk: serializer(obj).data for obj in objs}
     for result in results:
