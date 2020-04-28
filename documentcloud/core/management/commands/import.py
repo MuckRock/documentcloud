@@ -126,7 +126,7 @@ class Command(BaseCommand):
                     id=new_id, language=fields[6], document_language=fields[7]
                 )
                 # update all FKs pointing to the org
-                Document.objects.filter(organization_id=old_id).update(
+                Document.objects.filter(organization_id=old_id, solr_dirty=True).update(
                     organization_id=new_id
                 )
                 Note.objects.filter(organization_id=old_id).update(
@@ -186,7 +186,9 @@ class Command(BaseCommand):
                         id=new_id, language=fields[7], document_language=fields[8]
                     )
                     # update all FKs pointing to the user
-                    Document.objects.filter(user_id=old_id).update(user_id=new_id)
+                    Document.objects.filter(user_id=old_id).update(
+                        user_id=new_id, solr_dirty=True
+                    )
                     Note.objects.filter(user_id=old_id).update(user_id=new_id)
                     Membership.objects.filter(user_id=old_id).update(user_id=new_id)
                     Project.objects.filter(user_id=old_id).update(user_id=new_id)
