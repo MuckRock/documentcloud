@@ -28,6 +28,7 @@ Globals:
         ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
         START_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/topic:latest}}"
+        IMPORT_DOCUMENT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
         PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
         BLOCK_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/block_size:latest}}"
         IMPORT_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_dir:latest}}"
