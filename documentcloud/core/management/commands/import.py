@@ -15,6 +15,7 @@ import time
 import pytz
 from dateutil.parser import parse
 from listcrunch.listcrunch import uncrunch
+from reversion.models import Revision
 from smart_open import open as smart_open
 
 # DocumentCloud
@@ -191,6 +192,7 @@ class Command(BaseCommand):
                     Collaboration.objects.filter(creator_id=old_id).update(
                         creator_id=new_id
                     )
+                    Revision.objects.filter(user_id=old_id).update(user_id=new_id)
                     user = User.objects.get(pk=new_id)
                     if fields[10] not in ("0", "4") and not org.has_member(user):
                         create_memberships.append(
