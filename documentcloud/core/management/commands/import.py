@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.contrib.admin.models import LogEntry
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -17,6 +18,7 @@ from dateutil.parser import parse
 from listcrunch.listcrunch import uncrunch
 from reversion.models import Revision
 from smart_open import open as smart_open
+from social_django.models import UserSocialAuth
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
@@ -193,6 +195,9 @@ class Command(BaseCommand):
                         creator_id=new_id
                     )
                     Revision.objects.filter(user_id=old_id).update(user_id=new_id)
+                    UserSocialAuth.objects.filter(user_id=old_id).update(user_id=new_id)
+                    LogEntry.objects.filter(user_id=old_id).update(user_id=new_id)
+                    # groups, permissions - pain to update, dont use them, punt for now
                     user = User.objects.get(pk=new_id)
                     if fields[10] not in ("0", "4") and not org.has_member(user):
                         create_memberships.append(
