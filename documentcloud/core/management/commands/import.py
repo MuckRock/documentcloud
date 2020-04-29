@@ -476,7 +476,9 @@ class Command(BaseCommand):
             for fields in reader:
                 create_sections.append(
                     Section(
-                        document_id=fields[3], page_number=fields[6], title=fields[5]
+                        document_id=fields[3],
+                        page_number=fields[6] - 1,
+                        title=fields[5],
                     )
                 )
 
