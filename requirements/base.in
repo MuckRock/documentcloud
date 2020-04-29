@@ -23,6 +23,7 @@ django-choices
 django-reversion
 django-filter
 django-extensions
+django-autoslug
 rules
 
 # Django REST Framework
