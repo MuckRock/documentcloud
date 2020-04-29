@@ -20,7 +20,6 @@ django-model-utils
 django-compressor
 django-redis
 django-choices
-django-autoslug
 django-reversion
 django-filter
 django-extensions

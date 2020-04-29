@@ -11,7 +11,7 @@ import logging
 import sys
 
 # Third Party
-from autoslug.fields import AutoSlugField
+from django_extensions.db.fields import AutoSlugField
 from listcrunch import uncrunch
 
 # DocumentCloud
@@ -63,6 +63,7 @@ class Document(models.Model):
         _("slug"),
         max_length=255,
         populate_from="title",
+        allow_duplicates=True,
         help_text=_("A slug for the document which may be used in a URL"),
     )
 
@@ -347,9 +348,6 @@ class Document(models.Model):
             new_solr_document = {"id": self.pk}
             # always include updated_at
             fields.append("updated_at")
-            if "title" in fields:
-                # add slug if title changed
-                fields.append("slug")
             for field in fields:
                 new_solr_document[field] = solr_document.get(field)
             solr_document = new_solr_document

@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 # Third Party
-from autoslug.fields import AutoSlugField
+from django_extensions.db.fields import AutoSlugField
 
 # DocumentCloud
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
@@ -39,6 +39,7 @@ class Project(models.Model):
         _("slug"),
         max_length=255,
         populate_from="title",
+        allow_duplicates=True,
         help_text=_("A slug for the project which may be used in a URL"),
     )
     description = models.TextField(
