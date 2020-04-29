@@ -19,6 +19,7 @@ from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+from documentcloud.core.utils import slugify
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
 
@@ -64,6 +65,7 @@ class Document(models.Model):
         max_length=255,
         populate_from="title",
         allow_duplicates=True,
+        slugify_function=slugify,
         help_text=_("A slug for the document which may be used in a URL"),
     )
 

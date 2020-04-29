@@ -7,6 +7,7 @@ from django_extensions.db.fields import AutoSlugField
 
 # DocumentCloud
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+from documentcloud.core.utils import slugify
 from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.querysets import (
     CollaborationQuerySet,
@@ -40,6 +41,7 @@ class Project(models.Model):
         max_length=255,
         populate_from="title",
         allow_duplicates=True,
+        slugify_function=slugify,
         help_text=_("A slug for the project which may be used in a URL"),
     )
     description = models.TextField(
