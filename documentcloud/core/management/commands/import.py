@@ -495,7 +495,7 @@ class Command(BaseCommand):
                 create_sections.append(
                     Section(
                         document_id=fields[3],
-                        page_number=fields[6] - 1,
+                        page_number=int(fields[6]) - 1,
                         title=fields[5],
                     )
                 )
