@@ -125,7 +125,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"Updating {fields[1]}")
                 if self.allow_duplicate:
                     assert (
-                        org.pk == org_id
+                        int(org.pk) == int(org_id)
                         or not Organization.objects.filter(id=org_id).exists()
                     )
                 else:
