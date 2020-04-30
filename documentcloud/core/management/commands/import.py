@@ -49,6 +49,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("organization", type=int, help="Organization ID to import")
         parser.add_argument(
+            "--allow_duplicate",
+            action="store_true",
+            help="Allow the organization ID to exist in the database",
+        )
+        parser.add_argument(
             "--dry_run", action="store_true", help="Do not commit to database"
         )
 
@@ -56,6 +61,7 @@ class Command(BaseCommand):
         # pylint: disable=unused-argument
         org_id = kwargs["organization"]
         dry_run = kwargs["dry_run"]
+        self.allow_duplicate = kwargs["allow_duplicate"]
         self.bucket_path = f"s3://{BUCKET}/{IMPORT_DIR}/organization-{org_id}/"
         # https://stackoverflow.com/a/54517228/2204914
         csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
@@ -117,7 +123,13 @@ class Command(BaseCommand):
             org = Organization.objects.filter(uuid=org_uuid).first()
             if org:
                 self.stdout.write(f"Updating {fields[1]}")
-                assert not Organization.objects.filter(id=org_id).exists()
+                if self.allow_duplicate:
+                    assert (
+                        org.pk == org_id
+                        or not Organization.objects.filter(id=org_id).exists()
+                    )
+                else:
+                    assert not Organization.objects.filter(id=org_id).exists()
                 old_id = org.pk
                 new_id = org_id
                 # update the org's pk, and
