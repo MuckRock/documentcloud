@@ -189,7 +189,13 @@ class Command(BaseCommand):
                 user = User.objects.filter(uuid=uuid).first()
                 if user:
                     self.stdout.write(f"Updating {fields[3]}")
-                    assert not User.objects.filter(id=user_id).exists()
+                    if self.allow_duplicate:
+                        assert (
+                            int(user.pk) == int(user_id)
+                            or not User.objects.filter(id=user_id).exists()
+                        )
+                    else:
+                        assert not User.objects.filter(id=user_id).exists()
                     old_id = user.pk
                     new_id = user_id
                     # update the user's pk, and
