@@ -11,7 +11,6 @@ import logging
 import sys
 
 # Third Party
-from django_extensions.db.fields import AutoSlugField
 from listcrunch import uncrunch
 
 # DocumentCloud
@@ -60,12 +59,9 @@ class Document(models.Model):
     title = models.CharField(
         _("title"), max_length=1000, db_index=True, help_text=_("The document's title")
     )
-    slug = AutoSlugField(
+    slug = models.SlugField(
         _("slug"),
         max_length=255,
-        populate_from="title",
-        allow_duplicates=True,
-        slugify_function=slugify,
         help_text=_("A slug for the document which may be used in a URL"),
     )
 
@@ -213,6 +209,8 @@ class Document(models.Model):
     def save(self, *args, **kwargs):
         """Mark this model's solr index as being out of date on every save"""
         # pylint: disable=arguments-differ
+        if not self.slug:
+            self.slug = slugify(self.title)
         self.solr_dirty = True
         super().save(*args, **kwargs)
 

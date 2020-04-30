@@ -20,6 +20,7 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "organizations.Organization"
+        django_get_or_create = ("slug",)
 
     @factory.post_generation
     def members(self, create, extracted, **kwargs):
@@ -34,6 +35,7 @@ class MembershipFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "organizations.Membership"
+        django_get_or_create = ("user", "organization")
 
     user = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
     organization = factory.SubFactory(
