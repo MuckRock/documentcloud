@@ -2,6 +2,7 @@
 import collections
 import csv
 import gzip
+import hashlib
 import io
 import json
 import pickle
@@ -225,6 +226,7 @@ def update_pagespec(doc_id):
 
 
 def extract_pagecount(doc_id, slug):
+    # XXX docstring out of date?
     """Parse a PDF and write files to cache PDF information and dimensions.
 
     Returns:
@@ -240,6 +242,16 @@ def extract_pagecount(doc_id, slug):
 
     # Pass the page_count back to the caller.
     return page_count
+
+
+def extract_filehash(doc_id, slug):
+    """Get a hash of the original file"""
+    # XXX should this be combined with page count to only read the file once?
+    doc_path = path.doc_path(doc_id, slug)
+    with StorageHandler(storage, doc_path, record=False, read_all=True) as pdf_file:
+        file_hash = hashlib.sha1(pdf_file.handle.read()).hexdigest()
+
+    return file_hash
 
 
 def redact_document_and_overwrite(doc_id, slug, redactions):
@@ -377,8 +389,10 @@ def process_pdf(data, _context=None):
     page_count = extract_pagecount(doc_id, slug)
     initialize_redis_page_data(doc_id, page_count)
 
-    # Update the model with the page count
-    utils.send_update(REDIS, doc_id, {"page_count": page_count})
+    file_hash = extract_filehash(doc_id, slug)
+
+    # Update the model with the page count and file hash
+    utils.send_update(REDIS, doc_id, {"page_count": page_count, "file_hash": file_hash})
 
     # Kick off page cache processing
     publisher.publish(
