@@ -181,7 +181,7 @@ def finish_update_access(document_pk, status, access):
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
-    if "data" in field_updates:
+    if field_updates is not None and "data" in field_updates:
         # update all fields if data was updated to ensure we remove any data keys
         # from solr which were removed from the document
         field_updates = None
