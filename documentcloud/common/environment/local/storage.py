@@ -51,10 +51,12 @@ class LocalStorage:
     def size(filename):
         return os.path.getsize(os.path.join(settings.MEDIA_ROOT, filename))
 
-    def open(self, filename, mode="w"):
+    def open(self, filename, mode="w", content_type=None, access=None):
+        # pylint: disable=unused-argument
         return LocalStorageFile(self, filename, mode)
 
-    def simple_upload(self, filename, contents):
+    def simple_upload(self, filename, contents, content_type=None, access=None):
+        # pylint: disable=unused-argument
         with self.open(filename, "wb") as local_file:
             local_file.write(contents)
 

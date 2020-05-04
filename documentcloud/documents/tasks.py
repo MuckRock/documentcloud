@@ -70,19 +70,20 @@ def fetch_file_url(file_url, document_pk, force_ocr):
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
-        process.delay(document_pk, document.slug, force_ocr)
+        process.delay(document_pk, document.slug, document.access, force_ocr)
 
 
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def process(document_pk, slug, force_ocr):
+def process(document_pk, slug, access, force_ocr):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
         json={
             "doc_id": document_pk,
             "slug": slug,
+            "access": access,
             "method": "process_pdf",
             "force_ocr": force_ocr,
         },
@@ -92,7 +93,7 @@ def process(document_pk, slug, force_ocr):
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def redact(document_pk, slug, redactions):
+def redact(document_pk, slug, access, redactions):
     """Start the redacting"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
@@ -100,6 +101,7 @@ def redact(document_pk, slug, redactions):
             "method": "redact_doc",
             "doc_id": document_pk,
             "slug": slug,
+            "access": access,
             "redactions": redactions,
         },
     )
@@ -165,10 +167,11 @@ def do_update_access(files, access):
 @task
 def finish_update_access(document_pk, status, access):
     """Upon finishing an access update, reset the status"""
+    logger.info("Finish update access %s %s %s", document_pk, status, access)
     with transaction.atomic():
         field_updates = {"status": "set"}
         kwargs = {}
-        if access == "public":
+        if access == Access.public:
             # if we were switching to public, update the access now
             kwargs["access"] = Access.public
             field_updates["access"] = "set"

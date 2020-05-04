@@ -70,9 +70,9 @@ LARGE_IMAGE_SUFFIX = "-large"
 TXT_EXTENSION = ".txt"
 
 
-def write_text_file(text_path, text):
+def write_text_file(text_path, text, access):
     """Helper method to write a text file."""
-    storage.simple_upload(text_path, text.encode("utf8"))
+    storage.simple_upload(text_path, text.encode("utf8"), access=access)
 
 
 def ocr_page(page_path):
@@ -108,6 +108,8 @@ def run_tesseract(data, _context=None):
 
     data = get_pubsub_data(data)
     doc_id = data["doc_id"]
+    slug = data["slug"]
+    access = data.get("access", utils.PRIVATE)
     paths_and_numbers = data["paths_and_numbers"]
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
@@ -129,6 +131,8 @@ def run_tesseract(data, _context=None):
                     {
                         "paths_and_numbers": paths_and_numbers,
                         "doc_id": doc_id,
+                        "slug": slug,
+                        "access": access,
                         "partial": partial,
                         "force_ocr": force_ocr,
                     }
@@ -147,7 +151,7 @@ def run_tesseract(data, _context=None):
         return "Ok"
 
     # Loop through all paths and numbers
-    for doc_id, slug, page_number, image_path in paths_and_numbers:
+    for page_number, image_path in paths_and_numbers:
 
         # Only OCR if the page has yet to be OCRd
         if not utils.page_ocrd(REDIS, doc_id, page_number):
@@ -161,7 +165,7 @@ def run_tesseract(data, _context=None):
             elapsed_times.append(elapsed_time)
 
             # Write the output text
-            write_text_file(text_path, text)
+            write_text_file(text_path, text, access)
             utils.write_page_text(REDIS, doc_id, page_number, text, ocr_version)
 
             # Decrement the texts remaining, sending complete if done.
@@ -170,7 +174,12 @@ def run_tesseract(data, _context=None):
                 publisher.publish(
                     ASSEMBLE_TEXT_TOPIC,
                     encode_pubsub_data(
-                        {"doc_id": doc_id, "slug": slug, "partial": partial}
+                        {
+                            "doc_id": doc_id,
+                            "slug": slug,
+                            "access": access,
+                            "partial": partial,
+                        }
                     ),
                 )
                 return "Ok"

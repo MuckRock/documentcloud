@@ -192,13 +192,13 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
     pipeline.execute()
 
 
-def write_cache(filename, cache):
+def write_cache(filename, cache, access):
     """Helper method to write a cache file."""
     mem_file = io.BytesIO()
     with gzip.open(mem_file, "wb") as zip_file:
         pickle.dump(cache, zip_file)
 
-    storage.simple_upload(filename, mem_file.getvalue())
+    storage.simple_upload(filename, mem_file.getvalue(), access=access)
     mem_file.close()
 
 
@@ -210,9 +210,9 @@ def read_cache(filename):
         return pickle.load(zip_file)
 
 
-def write_text_file(text_path, text):
+def write_text_file(text_path, text, access):
     """Helper method to write text file."""
-    storage.simple_upload(text_path, text.encode("utf8"))
+    storage.simple_upload(text_path, text.encode("utf8"), access=access)
 
 
 def update_pagespec(doc_id):
@@ -242,7 +242,7 @@ def extract_pagecount(doc_id, slug):
     return page_count
 
 
-def redact_document_and_overwrite(doc_id, slug, redactions):
+def redact_document_and_overwrite(doc_id, slug, access, redactions):
     """Redacts a document and overwrites the original PDF."""
     doc_path = path.doc_path(doc_id, slug)
 
@@ -251,7 +251,7 @@ def redact_document_and_overwrite(doc_id, slug, redactions):
     ) as doc:
         new_doc = doc.redact_pages(redactions)
         # Overwrite the original doc
-        new_doc.save(storage, doc_path)
+        new_doc.save(storage, doc_path, access)
 
 
 def get_redis_pagespec(doc_id):
@@ -309,6 +309,7 @@ def process_page_cache(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    access = data.get("access", utils.PRIVATE)
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
 
@@ -325,7 +326,7 @@ def process_page_cache(data, _context=None):
 
         # Create an index file that stores the memory locations of each page of the
         # PDF file.
-        write_cache(path.index_path(doc_id, slug), cached)
+        write_cache(path.index_path(doc_id, slug), cached, access)
 
         # Method to publish image batches
         def pub(pages):
@@ -336,6 +337,7 @@ def process_page_cache(data, _context=None):
                         {
                             "doc_id": doc_id,
                             "slug": slug,
+                            "access": access,
                             "pages": pages,
                             "partial": dirty,
                             "force_ocr": force_ocr,
@@ -364,6 +366,7 @@ def process_pdf(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    access = data.get("access", utils.PRIVATE)
     force_ocr = data.get("force_ocr", False)
 
     # Ensure PDF size is within the limit
@@ -384,7 +387,7 @@ def process_pdf(data, _context=None):
     publisher.publish(
         PAGE_CACHE_TOPIC,
         data=encode_pubsub_data(
-            {"doc_id": doc_id, "slug": slug, "force_ocr": force_ocr}
+            {"doc_id": doc_id, "slug": slug, "access": access, "force_ocr": force_ocr}
         ),
     )
 
@@ -396,7 +399,7 @@ def get_large_image_path(doc_id, slug, page_number):
     return path.page_image_path(doc_id, slug, page_number, IMAGE_WIDTHS[0][0])
 
 
-def extract_single_page(doc_id, slug, page, page_number, large_image_path):
+def extract_single_page(doc_id, slug, access, page, page_number, large_image_path):
     """Internal method to extract a single page from a PDF file as an image.
 
     Returns:
@@ -405,7 +408,7 @@ def extract_single_page(doc_id, slug, page, page_number, large_image_path):
 
     # Extract the page as an image with a certain width
     bmp = page.get_bitmap(IMAGE_WIDTHS[0][1], None)
-    img_buffer = bmp.render(storage, large_image_path)
+    img_buffer = bmp.render(storage, large_image_path, access)
 
     # Resize to render smaller page sizes
     for [image_suffix, image_width] in IMAGE_WIDTHS[1:]:
@@ -419,6 +422,7 @@ def extract_single_page(doc_id, slug, page, page_number, large_image_path):
         storage.simple_upload(
             path.page_image_path(doc_id, slug, page_number, image_suffix),
             mem_file.getvalue(),
+            access=access,
         )
         mem_file.close()
 
@@ -433,6 +437,7 @@ def extract_image(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    access = data.get("access", utils.PRIVATE)
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
@@ -452,6 +457,8 @@ def extract_image(data, _context=None):
                 {
                     "paths_and_numbers": ocr_queue,
                     "doc_id": doc_id,
+                    "slug": slug,
+                    "access": access,
                     "partial": partial,
                     "force_ocr": force_ocr,
                 }
@@ -487,7 +494,7 @@ def extract_image(data, _context=None):
                 if page is None:
                     page = doc.load_page(page_number)
                 width, height = extract_single_page(
-                    doc_id, slug, page, page_number, large_image_path
+                    doc_id, slug, access, page, page_number, large_image_path
                 )
                 page_dimension = f"{width}x{height}"
 
@@ -523,7 +530,7 @@ def extract_image(data, _context=None):
                     text_path = path.page_text_path(doc_id, slug, page_number)
 
                     # Page already has text inside
-                    write_text_file(text_path, text)
+                    write_text_file(text_path, text, access)
                     utils.write_page_text(REDIS, doc_id, page_number, text, None)
 
                     # Decrement the texts remaining, sending complete if done.
@@ -534,13 +541,18 @@ def extract_image(data, _context=None):
                         publisher.publish(
                             ASSEMBLE_TEXT_TOPIC,
                             encode_pubsub_data(
-                                {"doc_id": doc_id, "slug": slug, "partial": partial}
+                                {
+                                    "doc_id": doc_id,
+                                    "slug": slug,
+                                    "access": access,
+                                    "partial": partial,
+                                }
                             ),
                         )
                         return "Ok"
                 else:
                     # Prepare the image to be OCRd.
-                    ocr_queue.append([doc_id, slug, page_number, large_image_path])
+                    ocr_queue.append([page_number, large_image_path])
                     check_and_flush(ocr_queue)
 
     flush(ocr_queue)
@@ -555,6 +567,7 @@ def assemble_page_text(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    access = data.get("access", utils.PRIVATE)
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     is_import = data.get("import", False)
     if is_import:
@@ -586,11 +599,15 @@ def assemble_page_text(data, _context=None):
         )
 
         # Write the concatenated text file
-        storage.simple_upload(path.text_path(doc_id, slug), concatenated_text)
+        storage.simple_upload(
+            path.text_path(doc_id, slug), concatenated_text, access=access
+        )
 
     # Write the json text file
     storage.simple_upload(
-        path.json_text_path(doc_id, slug), json.dumps(results).encode("utf-8")
+        path.json_text_path(doc_id, slug),
+        json.dumps(results).encode("utf-8"),
+        access=access,
     )
 
     if is_import:
@@ -618,6 +635,7 @@ def redact_doc(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
+    access = data.get("access", utils.PRIVATE)
     redactions = data["redactions"]
 
     # Get dirty pages
@@ -626,7 +644,7 @@ def redact_doc(data, _context=None):
         dirty_pages.add(redaction["page_number"])
 
     # Perform the actual redactions
-    redact_document_and_overwrite(doc_id, slug, redactions)
+    redact_document_and_overwrite(doc_id, slug, access, redactions)
 
     page_count = extract_pagecount(doc_id, slug)
     initialize_partial_redis_page_data(doc_id, page_count, dirty_pages)
@@ -636,7 +654,12 @@ def redact_doc(data, _context=None):
     publisher.publish(
         PAGE_CACHE_TOPIC,
         data=encode_pubsub_data(
-            {"doc_id": doc_id, "slug": slug, "dirty": dirty_pages_list}
+            {
+                "doc_id": doc_id,
+                "slug": slug,
+                "access": access,
+                "dirty": dirty_pages_list,
+            }
         ),
     )
 
@@ -751,6 +774,7 @@ def read_page_text(data, _context=None):
                     {
                         "doc_id": doc_id,
                         "slug": slug,
+                        "access": utils.PRIVATE,  # private
                         "import": True,
                         "org_id": org_id,
                         "partial": False,

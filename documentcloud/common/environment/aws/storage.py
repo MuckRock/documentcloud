@@ -10,7 +10,17 @@ import requests
 import smart_open
 from botocore.client import Config
 
+# Local
+from ...serverless import utils
+
 env = environ.Env()
+
+ACLS = {
+    utils.PUBLIC: "public-read",
+    utils.ORGANIZATION: "private",
+    utils.PRIVATE: "private",
+    utils.INVISIBLE: "private",
+}
 
 
 class AwsStorage:
@@ -31,9 +41,12 @@ class AwsStorage:
         bucket = self.s3_resource.Bucket(bucket)
         return bucket.Object(key).content_length
 
-    def open(self, file_name, mode="rb", content_type=None):
+    def open(self, file_name, mode="rb", content_type=None, access=None):
 
-        transport_params = {"resource_kwargs": self.resource_kwargs}
+        transport_params = {
+            "resource_kwargs": self.resource_kwargs,
+            "multipart_upload_kwargs": {},
+        }
 
         if content_type is None:
             # attempt to guess content type if not specified
@@ -41,23 +54,27 @@ class AwsStorage:
 
         if content_type is not None:
             # set content type if we have one
-            transport_params["multipart_upload_kwargs"] = {"ContentType": content_type}
+            transport_params["multipart_upload_kwargs"]["ContentType"] = content_type
+
+        if access is not None:
+            transport_params["multipart_upload_kwargs"]["ACL"] = ACLS[access]
 
         return smart_open.open(
             f"s3://{file_name}", mode, transport_params=transport_params
         )
 
-    def simple_upload(self, file_name, contents, content_type=None):
+    def simple_upload(
+        self, file_name, contents, content_type=None, access=utils.PRIVATE
+    ):
         bucket, key = self.bucket_key(file_name)
+        extra_args = {"ACL": ACLS[access]}
 
         if content_type is None:
             # attempt to guess content type if not specified
             content_type = mimetypes.guess_type(file_name)[0]
         if content_type is not None:
             # set content type if we have one
-            extra_args = {"ContentType": content_type}
-        else:
-            extra_args = {}
+            extra_args["ContentType"] = content_type
 
         with io.BytesIO(contents) as mem_file:
             self.s3_client.upload_fileobj(mem_file, bucket, key, ExtraArgs=extra_args)
@@ -97,22 +114,20 @@ class AwsStorage:
         if self.minio:
             # minio does not support object ACLs
             return
-        acls = {"public": "public-read", "private": "private"}
         bucket, prefix = self.bucket_key(file_prefix)
         bucket = self.s3_resource.Bucket(bucket)
         for obj in bucket.objects.filter(Prefix=prefix):
-            obj.Acl().put(ACL=acls[access])
+            obj.Acl().put(ACL=ACLS[access])
 
     def set_access(self, file_names, access):
         """Set access for given keys"""
         if self.minio:
             # minio does not support object ACLs
             return
-        acls = {"public": "public-read", "private": "private"}
         for file_name in file_names:
             bucket, key = self.bucket_key(file_name)
             object_acl = self.s3_resource.ObjectAcl(bucket, key)
-            object_acl.put(ACL=acls[access])
+            object_acl.put(ACL=ACLS[access])
 
     def async_set_access(self, file_names, access):
         """Set access for given keys asynchronously"""
@@ -122,7 +137,6 @@ class AwsStorage:
         if self.minio:
             # minio does not support object ACLs
             return
-        acls = {"public": "public-read", "private": "private"}
 
         async def main():
             # pylint: disable=not-async-context-manager
@@ -131,7 +145,7 @@ class AwsStorage:
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)
                     object_acl = as3_resource.ObjectAcl(bucket, key)
-                    tasks.append(object_acl.put(ACL=acls[access]))
+                    tasks.append(object_acl.put(ACL=ACLS[access]))
                 await asyncio.gather(*tasks)
 
         loop = asyncio.get_event_loop()

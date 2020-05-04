@@ -224,7 +224,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document.status = Status.pending
         document.save()
         transaction.on_commit(
-            lambda: process.delay(document.pk, document.slug, force_ocr)
+            lambda: process.delay(
+                document.pk, document.slug, document.access, force_ocr
+            )
         )
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
@@ -328,11 +330,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 validated_data["status"] = Status.readable
                 # if we are making public, do not switch until the access
                 # has been updated
+                access = instance.access
                 if instance.access == Access.public:
                     instance.access = old_access
-                    access = "public"
-                else:
-                    access = "private"
                 instance.save()
                 transaction.on_commit(
                     lambda i=instance, s=status_, a=access: update_access.delay(
@@ -652,5 +652,5 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
-        redact.delay(document.pk, document.slug, serializer.data)
+        redact.delay(document.pk, document.slug, document.access, serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -3,6 +3,7 @@ from django.test import TestCase
 
 # DocumentCloud
 from documentcloud.common.environment import encode_pubsub_data, publisher
+from documentcloud.documents.choices import Access
 from documentcloud.documents.processing.info_and_image.main import (
     PDF_PROCESS_TOPIC,
     REDACT_TOPIC,
@@ -19,7 +20,8 @@ from documentcloud.documents.processing.tests.pipeline_tests.mocks import (
 def trigger_processing():
     """Triggers PDF processing via pubsub."""
     publisher.publish(
-        PDF_PROCESS_TOPIC, encode_pubsub_data({"doc_id": ID, "slug": SLUG})
+        PDF_PROCESS_TOPIC,
+        encode_pubsub_data({"doc_id": ID, "slug": SLUG, "access": Access.private}),
     )
 
 
@@ -31,6 +33,7 @@ def trigger_redacting(page_numbers):
             {
                 "doc_id": ID,
                 "slug": SLUG,
+                "access": Access.private,
                 "redactions": [
                     {"page_number": page_number} for page_number in page_numbers
                 ],

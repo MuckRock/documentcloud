@@ -4,6 +4,7 @@ import tempfile
 
 # DocumentCloud
 from documentcloud.common.environment.local.storage import storage
+from documentcloud.documents.choices import Access
 from documentcloud.documents.processing.info_and_image.pdfium import (
     StorageHandler,
     Workspace,
@@ -42,7 +43,7 @@ class PDFProcessorTest(ReportTestCase):
                     new_fn = "doc_3_pg{}.png".format(i)
                     new_path = os.path.join(directory, new_fn)
                     bmp = page.get_bitmap(1000, None)
-                    bmp.render(storage, new_path, "png")
+                    bmp.render(storage, new_path, Access.private, "png")
                     expected_image = os.path.join(pdfs, new_fn)
                     # Assert correct extracted images.
                     self.assertTrue(

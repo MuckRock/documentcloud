@@ -163,7 +163,7 @@ class StorageOpen:
 files_cached = {}
 
 
-def write_cache(filename, cache):
+def write_cache(filename, cache, access):
     files_cached[filename] = cache
     cache_written(filename, cache)
 
@@ -176,7 +176,7 @@ def read_cache(filename):
         raise KeyError("Cache file not found")
 
 
-def extract_single_page(doc_id, slug, page, page_number, large_image_path):
+def extract_single_page(doc_id, slug, access, page, page_number, large_image_path):
     page_extracted(page_number)
     return (100, 200)  # Arbitrary width / height
 
@@ -189,11 +189,11 @@ def ocr_page(page_path):
     page_ocrd(page_path)
 
 
-def write_text_file(text_path, text):
+def write_text_file(text_path, text, access):
     text_file_written(text_path, text)
 
 
-def redact_doc(doc_id, slug, redactions):
+def redact_doc(doc_id, slug, access, redactions):
     """Redact document by ensuring redacted pages need OCR"""
     pages = [r["page_number"] for r in redactions]
     docs[path.doc_path(doc_id, slug)].redact(pages)

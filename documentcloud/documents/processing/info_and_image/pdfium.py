@@ -133,11 +133,11 @@ class Bitmap:
         img = PIL.Image.merge("RGB", (r, g, b))
         return img
 
-    def render(self, storage, filename, image_format="gif"):
+    def render(self, storage, filename, access, image_format="gif"):
         img = self.get_image()
         mem_file = io.BytesIO()
         img.save(mem_file, format=image_format)
-        storage.simple_upload(filename, mem_file.getvalue())
+        storage.simple_upload(filename, mem_file.getvalue(), access=access)
         return img
 
 
@@ -290,8 +290,8 @@ class Document:
             self._monospace = self.load_font_from_file("courier.ttf")
         return self._monospace
 
-    def save(self, storage, filename):
-        with storage.open(filename, "wb") as doc_file:
+    def save(self, storage, filename, access):
+        with storage.open(filename, "wb", access=access) as doc_file:
 
             @CFUNCTYPE(c_int, c_void_p, c_void_p, c_ulong)
             def write_block(_fpdf_filewrite, p_data, size):
