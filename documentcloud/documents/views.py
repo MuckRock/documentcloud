@@ -270,9 +270,17 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def _update_validate_access(self, instances, validated_datas):
         """Validate access after instances have been filtered"""
         for instance, validated_data in zip(instances, validated_datas):
+            # disallow any access change while processing
             if "access" in validated_data and instance.processing:
                 raise serializers.ValidationError(
                     _("You may not update `access` while the document is processing")
+                )
+            if (
+                validated_data.get("access") == Access.public
+                and not instance.organization.verified_journalist
+            ):
+                raise serializers.ValidationError(
+                    _("Only verified journalists may make documents public")
                 )
 
     @transaction.atomic
