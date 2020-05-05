@@ -10,6 +10,7 @@ import json
 import pytest
 
 # DocumentCloud
+from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import (
     DocumentFactory,
@@ -247,6 +248,14 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_bad_no_document(self, client, project):
+        """Add a document to a project without ID"""
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/", {"edit_access": False}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_create_bulk(self, client, project):
         """Add multiple documents to a project"""
         # one the document you own should be added with edit access
@@ -289,6 +298,18 @@ class TestProjectMembershipAPI:
         """Test updating a document in a project"""
         project = ProjectFactory(user=document.user, documents=[document])
         client.force_authenticate(user=project.user)
+        response = client.put(
+            f"/api/projects/{project.pk}/documents/{document.pk}/",
+            {"edit_access": True},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        projectmembership = project.projectmembership_set.get(document=document)
+        assert projectmembership.edit_access
+
+    def test_partial_update(self, client, document):
+        """Test updating a document in a project"""
+        project = ProjectFactory(user=document.user, documents=[document])
+        client.force_authenticate(user=project.user)
         response = client.patch(
             f"/api/projects/{project.pk}/documents/{document.pk}/",
             {"edit_access": True},
@@ -328,18 +349,83 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_update_bulk(self, client, user):
-        """Test updating a document in a project"""
-        documents = DocumentFactory.create_batch(2, user=user)
+    def test_partial_update_bulk(self, client, user):
+        """Test updating multiple documents in a project"""
+        documents = DocumentFactory.create_batch(5, user=user)
         project = ProjectFactory(user=user, documents=documents)
         client.force_authenticate(user=user)
         response = client.patch(
             f"/api/projects/{project.pk}/documents/",
-            [{"document": d.pk, "edit_access": True} for d in documents],
+            [{"document": d.pk, "edit_access": True} for d in documents[:2]],
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
         assert project.projectmembership_set.filter(edit_access=True).count() == 2
+        assert project.projectmembership_set.count() == 5
+
+    def test_partial_update_bulk_bad_missing(self, client, user):
+        """Test updating multiple documents in a project"""
+        documents = DocumentFactory.create_batch(5, user=user)
+        other_document = DocumentFactory(user=user)
+        project = ProjectFactory(user=user, documents=documents)
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/documents/",
+            [{"document": other_document.pk, "edit_access": True}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_bulk(self, client, user, mocker):
+        """Test replacing the document set in a project"""
+        mock_solr_index = mocker.patch("documentcloud.projects.views.solr_index")
+        old_documents = DocumentFactory.create_batch(5, user=user)
+        new_documents = old_documents[:2] + DocumentFactory.create_batch(3, user=user)
+        project = ProjectFactory(user=user, documents=old_documents)
+        other_project = ProjectFactory(user=user, documents=old_documents)
+        client.force_authenticate(user=user)
+        response = client.put(
+            f"/api/projects/{project.pk}/documents/",
+            [{"document": d.pk} for d in new_documents],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert {d.pk for d in new_documents} == {d.pk for d in project.documents.all()}
+        assert {d.pk for d in old_documents} == {
+            d.pk for d in other_project.documents.all()
+        }
+        # check that the solr index was properly updated for all documents
+        run_commit_hooks()
+        calls = []
+        for update in old_documents[:2]:
+            calls.append(
+                mocker.call(
+                    update.pk,
+                    {"id": update.pk, "projects_edit_access": project.pk},
+                    {"projects_edit_access": "add"},
+                )
+            )
+        for add in new_documents[2:]:
+            calls.append(
+                mocker.call(
+                    add.pk,
+                    {
+                        "id": add.pk,
+                        "projects": project.pk,
+                        "projects_edit_access": project.pk,
+                    },
+                    {"projects": "add", "projects_edit_access": "add"},
+                )
+            )
+        for delete in old_documents[2:]:
+            calls.append(
+                mocker.call(
+                    delete.pk,
+                    {"id": delete.pk, "projects": project.pk},
+                    {"projects": "remove"},
+                )
+            )
+        mock_solr_index.delay.assert_has_calls(calls, any_order=True)
 
     def test_destroy(self, client, document):
         """Test removing a document from a project"""

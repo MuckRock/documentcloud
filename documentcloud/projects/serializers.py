@@ -71,10 +71,13 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         request = self.context.get("request")
+        view = self.context.get("view")
         if request and request.user:
             self.fields["document"].queryset = Document.objects.get_viewable(
                 request.user
             )
+        if view and "document_id" in view.kwargs:
+            self.fields["document"].required = False
 
     def validate_document(self, value):
         if (
@@ -91,6 +94,7 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
             raise serializers.ValidationError(
                 f"You may not add document {value.pk} to this project more than once"
             )
+
         return value
 
     def validate(self, attrs):

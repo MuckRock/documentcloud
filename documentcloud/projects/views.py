@@ -114,30 +114,12 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             pk__in=[d["document"].pk for d in validated_datas]
         ).update(solr_dirty=True)
         for data in validated_datas:
-            # if this document has edit access in the project, we store it
-            # to both projects and projects_edit_access in solr
-            # projects is used for displaying and querying which projects a
-            # document belongs to
-            # projects_edit_access is used to filter on for access permissions
-            # to determine if you can view that document
-            # update and destroy have similarly will add or remove from
-            # the necessary fields
-            solr_document = {"id": data["document"].pk, "projects": project.pk}
-            field_updates = {"projects": "add"}
-            if data.get("edit_access"):
-                solr_document["projects_edit_access"] = project.pk
-                field_updates["projects_edit_access"] = "add"
-            transaction.on_commit(
-                lambda d=data, sd=solr_document, fu=field_updates: solr_index.delay(
-                    d["document"].pk, solr_document=sd, field_updates=fu
-                )
-            )
+            self._solr_add(data)
 
     @transaction.atomic
     def perform_update(self, serializer):
         super().perform_update(serializer)
 
-        project_id = self.kwargs["project_pk"]
         if hasattr(serializer, "many") and serializer.many:
             validated_datas = serializer.validated_data
         else:
@@ -152,44 +134,104 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             pk__in=[d["document"].pk for d in validated_datas]
         ).update(solr_dirty=True)
         for data in validated_datas:
-            transaction.on_commit(
-                lambda d=data: solr_index.delay(
-                    d["document"].pk,
-                    solr_document={
-                        "id": d["document"].pk,
-                        "projects_edit_access": project_id,
-                    },
-                    field_updates={
-                        "projects_edit_access": "add"
-                        if d.get("edit_access")
-                        else "remove"
-                    },
-                )
-            )
+            self._solr_update(data)
+
+    @transaction.atomic
+    def bulk_perform_update(self, serializer, partial):
+        # for partial bulk updates, we simply update the data for each membership
+        # passed in - we expect all memberships passed in to exist
+        if partial:
+            return self.perform_update(serializer)
+
+        # a non-partial bulk update will create and destroy memberships in the project
+        # to fully match the list of documents passed in
+        membership_mapping = {m.document: m for m in serializer.instance}
+        data_mapping = {item["document"]: item for item in serializer.validated_data}
+
+        # mark all documents as solr dirty
+        Document.objects.filter(
+            pk__in=[d.pk for d in membership_mapping.keys() | data_mapping.keys()]
+        ).update(solr_dirty=True)
+        # create new memberships and update existing memberships
+        memberships = []
+        for document, data in data_mapping.items():
+            membership = membership_mapping.get(document)
+            if membership is None:
+                # add the project id into the data before creating
+                data["project_id"] = self.kwargs["project_pk"]
+                memberships.append(serializer.child.create(data))
+                self._solr_add(data)
+            else:
+                memberships.append(serializer.child.update(membership, data))
+                self._solr_update(data)
+
+        # delete existing memberships not present in the data
+        delete = [m for d, m in membership_mapping.items() if d not in data_mapping]
+        ProjectMembership.objects.filter(pk__in=[m.pk for m in delete]).delete()
+        for membership in delete:
+            self._solr_remove(membership)
+
+        return memberships
 
     @transaction.atomic
     def bulk_perform_destroy(self, objects):
         Document.objects.filter(pk__in=[o.document.pk for o in objects]).update(
             solr_dirty=True
         )
-        super().bulk_perform_destroy(objects)
+        ProjectMembership.objects.filter(pk__in=[o.pk for o in objects]).delete()
+        for obj in objects:
+            self._solr_remove(obj)
 
     @transaction.atomic
     def perform_destroy(self, instance):
         instance.document.solr_dirty = True
         instance.document.save()
         super().perform_destroy(instance)
+        self._solr_remove(instance)
+
+    def _solr_add(self, data):
+        """Add the project to the document's solr index"""
+        # if this document has edit access in the project, we store it
+        # to both projects and projects_edit_access in solr
+        # projects is used for displaying and querying which projects a
+        # document belongs to
+        # projects_edit_access is used to filter on for access permissions
+        # to determine if you can view that document
+        # update and destroy have similarly will add or remove from
+        # the necessary fields
+        project_pk = int(self.kwargs["project_pk"])
+        solr_document = {"id": data["document"].pk, "projects": project_pk}
+        field_updates = {"projects": "add"}
+        if data.get("edit_access"):
+            solr_document["projects_edit_access"] = project_pk
+            field_updates["projects_edit_access"] = "add"
+        transaction.on_commit(
+            lambda: solr_index.delay(data["document"].pk, solr_document, field_updates)
+        )
+
+    def _solr_update(self, data):
+        """Update the project on the document's solr index"""
+        solr_document = {
+            "id": data["document"].pk,
+            "projects_edit_access": int(self.kwargs["project_pk"]),
+        }
+        if data.get("edit_access"):
+            field_updates = {"projects_edit_access": "add"}
+        else:
+            field_updates = {"projects_edit_access": "remove"}
+        transaction.on_commit(
+            lambda: solr_index.delay(data["document"].pk, solr_document, field_updates)
+        )
+
+    def _solr_remove(self, instance):
+        """Remove the project from the document's solr index"""
         solr_document = {"id": instance.document_id, "projects": instance.project_id}
         field_updates = {"projects": "remove"}
         if instance.edit_access:
             solr_document["projects_edit_access"] = instance.project_id
             field_updates["projects_edit_access"] = "remove"
         transaction.on_commit(
-            lambda: solr_index.delay(
-                instance.document_id,
-                solr_document=solr_document,
-                field_updates=field_updates,
-            )
+            lambda: solr_index.delay(instance.document_id, solr_document, field_updates)
         )
 
     class Filter(django_filters.FilterSet):
