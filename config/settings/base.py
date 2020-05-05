@@ -80,10 +80,11 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "documentcloud.core",
     "documentcloud.documents",
+    "documentcloud.oembed.apps.OembedConfig",
     "documentcloud.organizations",
     "documentcloud.projects",
+    "documentcloud.statistics",
     "documentcloud.users.apps.UsersConfig",
-    "documentcloud.oembed.apps.OembedConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
