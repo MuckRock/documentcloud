@@ -1,5 +1,6 @@
+# Django
 from django.apps import AppConfig
 
 
-class Statistics2Config(AppConfig):
-    name = 'statistics2'
+class StatisticsConfig(AppConfig):
+    name = "statistics"
