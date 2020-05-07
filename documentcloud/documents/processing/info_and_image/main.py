@@ -16,7 +16,7 @@ env = environ.Env()
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
-    from documentcloud.common import path, redis_fields
+    from documentcloud.common import path, redis_fields, access_choices
     from documentcloud.common.environment import (
         get_pubsub_data,
         encode_pubsub_data,
@@ -30,7 +30,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         Workspace,
     )
 else:
-    from common import path, redis_fields
+    from common import path, redis_fields, access_choices
     from common.environment import (
         get_pubsub_data,
         encode_pubsub_data,
@@ -309,7 +309,7 @@ def process_page_cache(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
-    access = data.get("access", utils.PRIVATE)
+    access = data.get("access", access_choices.PRIVATE)
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
 
@@ -366,7 +366,7 @@ def process_pdf(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
-    access = data.get("access", utils.PRIVATE)
+    access = data.get("access", access_choices.PRIVATE)
     force_ocr = data.get("force_ocr", False)
 
     # Ensure PDF size is within the limit
@@ -437,7 +437,7 @@ def extract_image(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
-    access = data.get("access", utils.PRIVATE)
+    access = data.get("access", access_choices.PRIVATE)
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
@@ -567,7 +567,7 @@ def assemble_page_text(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
-    access = data.get("access", utils.PRIVATE)
+    access = data.get("access", access_choices.PRIVATE)
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     is_import = data.get("import", False)
     if is_import:
@@ -635,7 +635,7 @@ def redact_doc(data, _context=None):
 
     doc_id = data["doc_id"]
     slug = data["slug"]
-    access = data.get("access", utils.PRIVATE)
+    access = data.get("access", access_choices.PRIVATE)
     redactions = data["redactions"]
 
     # Get dirty pages
@@ -774,7 +774,7 @@ def read_page_text(data, _context=None):
                     {
                         "doc_id": doc_id,
                         "slug": slug,
-                        "access": utils.PRIVATE,  # private
+                        "access": access_choices.PRIVATE,
                         "import": True,
                         "org_id": org_id,
                         "partial": False,

@@ -29,9 +29,6 @@ REDIS_SOCKET_TIMEOUT = env.int("REDIS_SOCKET_TIMEOUT", default=10)
 REDIS_SOCKET_CONNECT_TIMEOUT = env.int("REDIS_SOCKET_CONNECT_TIMEOUT", default=10)
 REDIS_HEALTH_CHECK_INTERVAL = env.int("REDIS_HEALTH_CHECK_INTERVAL", default=10)
 
-# do not have access to DjangoChoices on serverless, so just define some constants here
-PUBLIC, ORGANIZATION, PRIVATE, INVISIBLE = 0, 1, 2, 3
-
 
 def get_redis():
     """Opens a connection to Redis and returns it"""

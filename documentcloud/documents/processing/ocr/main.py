@@ -13,7 +13,7 @@ env = environ.Env()
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
-    from documentcloud.common import path
+    from documentcloud.common import path, access_choices
     from documentcloud.common.environment import (
         get_pubsub_data,
         encode_pubsub_data,
@@ -24,7 +24,7 @@ if env.str("ENVIRONMENT").startswith("local"):
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
-    from common import path
+    from common import path, access_choices
     from common.environment import (
         get_pubsub_data,
         encode_pubsub_data,
@@ -109,7 +109,7 @@ def run_tesseract(data, _context=None):
     data = get_pubsub_data(data)
     doc_id = data["doc_id"]
     slug = data["slug"]
-    access = data.get("access", utils.PRIVATE)
+    access = data.get("access", access_choices.PRIVATE)
     paths_and_numbers = data["paths_and_numbers"]
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]

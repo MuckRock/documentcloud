@@ -11,15 +11,15 @@ import smart_open
 from botocore.client import Config
 
 # Local
-from ...serverless import utils
+from ... import access_choices
 
 env = environ.Env()
 
 ACLS = {
-    utils.PUBLIC: "public-read",
-    utils.ORGANIZATION: "private",
-    utils.PRIVATE: "private",
-    utils.INVISIBLE: "private",
+    access_choices.PUBLIC: "public-read",
+    access_choices.ORGANIZATION: "private",
+    access_choices.PRIVATE: "private",
+    access_choices.INVISIBLE: "private",
 }
 
 
@@ -64,7 +64,7 @@ class AwsStorage:
         )
 
     def simple_upload(
-        self, file_name, contents, content_type=None, access=utils.PRIVATE
+        self, file_name, contents, content_type=None, access=access_choices.PRIVATE
     ):
         bucket, key = self.bucket_key(file_name)
         extra_args = {"ACL": ACLS[access]}
