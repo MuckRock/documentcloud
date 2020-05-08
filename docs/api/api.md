@@ -489,8 +489,17 @@ These endpoints allow you to browse, add and remove documents from a project
 * `GET /api/projects/<project_id>/documents/` - List documents in the project
 * `POST /api/projects/<project_id>/documents/` - Add a document to the project
 * `PUT /api/projects/<project_id>/documents/` - Bulk update documents in the project
-* `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents in the project
-* `DELETE /api/projects/<project_id>/documents/` - Bulk remove documents from the project
+    * This will set the documents in the project to exactly match the list you
+      pass in.  This means any documents currently in the project not in the
+      list will be removed, and any in the list not currently in the project
+      will be added.
+* `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents
+  in the project
+    * This endpoint will not create or delete any documents in the project.  It
+      will simple update the metadata for each document passed in.  It expects
+      every document in the list to already be included in the project.
+* `DELETE /api/projects/<project_id>/documents/` - Bulk remove documents from
+  the project
     * You should specify which document IDs you want to delete using the
       `document_id__in` filter.  This endpoint *will* allow you to remove all
       documents in the project if you call it with no filter specified.
