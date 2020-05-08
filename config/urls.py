@@ -93,6 +93,7 @@ urlpatterns = [
     path(
         "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"
     ),
+    path("pages/", include("django.contrib.flatpages.urls")),
 ]
 
 if settings.DEBUG:
