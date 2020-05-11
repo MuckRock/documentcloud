@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.http.request import QueryDict
 from django.urls import reverse
 
 # Standard Library
@@ -7,6 +8,9 @@ import math
 
 # Third Party
 import pysolr
+from luqum.parser import ParseError, parser
+from luqum.tree import Boost, Not, Prohibit, Unary
+from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
@@ -15,23 +19,46 @@ from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
 
-FIELD_MAP = {
-    "user": "user",
-    "organization": "organization",
+FILTER_FIELDS = {
+    "id": "id",
+    "document": "id",
     "access": "access",
     "status": "status",
+    "language": "language",
+    "organization": "organization",
+    "group": "organization",
+    "projects": "projects",
     "project": "projects",
-    "document": "id",
+    "slug": "slug",
+    "user": "user",
+    "account": "user",
+    "tag": "data__tag",
+    "created_at": "created_at",
+    "updated_at": "updated_at",
+    "page_count": "page_count",
+    "pages": "page_count",
+}
+ID_FIELDS = ["id", "organization", "projects", "user"]
+# XXX switch to DateRange fields for date fields
+
+TEXT_FIELDS = {
     "title": "title",
     "source": "source",
     "description": "description",
+    "doctext": "doctext",
+    "text": "doctext",
 }
+
 SORT_MAP = {
     "score": "score desc, created_at desc",
     "created_at": "created_at desc",
+    "-created_at": "created_at asc",
     "page_count": "page_count desc, created_at desc",
+    "-page_count": "page_count asc, created_at desc",
     "title": "title_sort asc, created_at desc",
+    "-title": "title_sort desc, created_at desc",
     "source": "source_sort asc, created_at desc",
+    "-source": "source_sort desc, created_at desc",
 }
 SOLR = pysolr.Solr(
     settings.SOLR_URL,
@@ -47,12 +74,19 @@ def search(user, query_params):
     `user` is used to restrict access on documents - it may be an anonymous user
     `query_params` allows for text queries, other filters, sorting, and paginating
     """
-    # if no text query is given, use "*:*" to search for all documents
-    text_query = query_params.get("q", "*:*")
-    # remove curly braces to disallow subqueries
-    text_query.replace("{", "").replace("}", "")
-    field_queries = _field_queries(user, query_params)
-    sort = SORT_MAP.get(query_params.get("order"), SORT_MAP["score"])
+    text_query = query_params.get("q", "")
+
+    text_query, filter_params, sort_order = _parse(text_query, query_params)
+
+    filter_params.update(query_params)
+    field_queries = _field_queries(user, filter_params)
+
+    # "sort" or "order" query param takes precedence, then "sort:" filter passed in the
+    # query, then fall back to default of score
+    sort = SORT_MAP.get(
+        query_params.get("sort", query_params.get("order", sort_order)),
+        SORT_MAP["score"],
+    )
     rows, start, page = _paginate(query_params)
 
     kwargs = {"fq": field_queries, "sort": sort, "rows": rows, "start": start}
@@ -65,42 +99,191 @@ def search(user, query_params):
     return response
 
 
+class BooleanDetector(LuceneTreeVisitor):
+    """Walk the tree looking for any AND or OR nodes"""
+
+    def visit_base_operation(self, node, _parents=None):
+        return [node.op in ("AND", "OR")]
+
+
+class RemoveRootError(Exception):
+    """An exception signifying to remove the entire parse tree"""
+
+
+class SlugRemover(LuceneTreeTransformer):
+    """Remove the slug in <slug>-<id> formatted valued"""
+
+    def _ignore_slug(self, value):
+        """Just take the value past the last dash
+        If there is no dash, this will just return the entire value as is
+        """
+        return value.rsplit("-", 1)[-1]
+
+    def visit_word(self, node, _parents=None):
+        node.value = self._ignore_slug(node.value)
+        return node
+
+    def visit_phrase(self, node, _parents=None):
+        # strip quotes
+        value = node.value[1:-1]
+        value = self._ignore_slug(value)
+        node.value = f'"{value}"'
+        return node
+
+
+class FilterExtractor(LuceneTreeTransformer):
+    """Extract all of the applicable search filters from the text query
+    to use as field queries
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.sort_only = kwargs.pop("sort_only", False)
+        super().__init__(*args, **kwargs)
+        self.filters = QueryDict(mutable=True)
+        self.sort = None
+
+    def visit(self, node, parents=None):
+        try:
+            return super().visit(node, parents)
+        except RemoveRootError:
+            # if not at root, keep reraising the error until we get to the root,
+            # then return None
+            if parents is None:
+                return None
+            else:
+                raise
+
+    def visit_search_field(self, node, parents):
+        if node.name in FILTER_FIELDS:
+            filter_name = FILTER_FIELDS[node.name]
+            # update the node name to what it aliases to,
+            # so that the alias will hold even if we are in sort only mode
+            node.name = filter_name
+        elif node.name.startswith("data_"):
+            filter_name = node.name
+        else:
+            filter_name = None
+        if filter_name and not self.sort_only:
+            if filter_name in ID_FIELDS:
+                # remove the slug if its an ID field
+                value = str(SlugRemover().visit(node.expr))
+            else:
+                value = str(node.expr)
+
+            if parents and isinstance(parents[-1], (Not, Prohibit)):
+                filter_name = f"-{filter_name}"
+            self.filters.appendlist(filter_name, value)
+            self.prune_parents(parents)
+            return None
+        elif node.name in ("sort", "order"):
+            self.sort = str(node.expr)
+            self.prune_parents(parents)
+            return None
+        else:
+            return node
+
+    def prune_parents(self, parents):
+        """If we are removing a search node, this allows us to also remove any
+        unary parents from the tree
+        """
+        # only need to worry about Boost and Unary when removing search fields
+        # they are the only parents a search field can have which are unary
+
+        if len(parents) > 1 and isinstance(parents[-1], (Boost, Unary)):
+            self.replace_node(parents[-1], None, parents[-2])
+        elif len(parents) == 1 and isinstance(parents[-1], (Boost, Unary)):
+            raise RemoveRootError
+
+
+def _parse(text_query, query_params):
+    """Parse the text query and pull out filters and sorts
+
+    Accepts a text query
+    Returns a tuple of (text_query, filters, sort)
+        text_query - new text query with filters and sorts removed
+        filters - a list of filters to be passed in to solr as field queries
+            (`fq` field)
+        sort - a string from the SORT_MAP to sort on
+    """
+    try:
+        tree = parser.parse(text_query)
+    except (ParseError, TypeError):
+        # XXX do auto escape algorithm here
+        new_query = text_query
+        filters = QueryDict(mutable=True)
+        sort = None
+    else:
+        # check for boolean expressions to determine if we should pull out
+        # all filters or only sort filters
+        is_boolean = any(BooleanDetector().visit(tree))
+        filter_extractor = FilterExtractor(sort_only=is_boolean)
+        tree = filter_extractor.visit(tree)
+
+        new_query = str(tree) if tree is not None else ""
+        filters = filter_extractor.filters
+        sort = filter_extractor.sort
+
+    # pull text queries from the parameters into the text query
+    additional_text = _handle_params(
+        query_params, TEXT_FIELDS, prefix_fields=["page_no_"]
+    )
+    if additional_text:
+        new_query = "{} {}".format(new_query, " ".join(additional_text))
+
+    # if nothing is left in the query after pulling out filters, default to *:*
+    # which matches everything, otherwise convert the parse tree back to a text query
+    if not new_query:
+        new_query = "*:*"
+
+    return new_query, filters, sort
+
+
 def _field_queries(user, query_params):
     """Field queries restrict the search for a non-text query based on the
     given value for a given field
     """
     field_queries = _access_filter(user)
-
-    # handle generally supported filter fields
-    for param, field in FIELD_MAP.items():
-        if param in query_params:
-            values = " OR ".join(query_params.getlist(param))
-            field_queries.append(f"{field}:({values})")
-
-    # handle filtering on user defined data
-    data_params = [p for p in query_params if p.startswith("data_")]
-    for param in data_params:
-        values = query_params.getlist(param)
-        if "!" in values:
-            field_queries.append(f"!{param}:(*)")
-        else:
-            values = " OR ".join(query_params.getlist(param))
-            field_queries.append(f"{param}:({values})")
+    field_queries.extend(
+        _handle_params(query_params, FILTER_FIELDS, prefix_fields=["data_"])
+    )
 
     return field_queries
+
+
+def _handle_params(query_params, fields, prefix_fields):
+    """Convert query params to a list of Solr field queries"""
+    return_list = []
+    items = list(fields.items())
+    # add negated version of all fields
+    items = items + [(f"-{p}", f"-{f}") for p, f in items]
+    for param, field in items:
+        if param in query_params:
+            # joining with whitespace will default to OR
+            values = " ".join(query_params.getlist(param))
+            return_list.append(f"{field}:({values})")
+
+    for prefix in prefix_fields:
+        # XXX dont allow non alphanumeric characters in data fields?
+        # allow for negated prefix fields
+        prefix_params = [
+            p for p in query_params if p.startswith((prefix, f"-{prefix}"))
+        ]
+        for param in prefix_params:
+            values = " ".join(query_params.getlist(param))
+            return_list.append(f"{param}:({values})")
+
+    return return_list
 
 
 def _access_filter(user):
     """Restrict the user to documents that have access to"""
     if user.is_authenticated:
-        organizations = " OR ".join(
+        organizations = " ".join(
             str(o) for o in user.organizations.values_list("pk", flat=True)
         )
-        projects = " OR ".join(
-            str(p) for p in user.projects.values_list("pk", flat=True)
-        )
+        projects = " ".join(str(p) for p in user.projects.values_list("pk", flat=True))
         access_filter = (
-            f"(access:public AND status:(success OR readable))"
+            f"filter(access:public AND status:(success readable))"
             f" OR (user:{user.pk})"
             f" OR (access:organization AND organization:({organizations}))"
         )
@@ -108,7 +291,7 @@ def _access_filter(user):
             access_filter += f" OR (projects_edit_access:({projects}))"
         return ["!access:invisible", access_filter]
     else:
-        return ["access:public", "status:(success OR readable)"]
+        return ["access:public AND status:(success readable)"]
 
 
 def _paginate(query_params):

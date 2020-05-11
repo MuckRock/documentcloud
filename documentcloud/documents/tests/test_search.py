@@ -6,11 +6,17 @@ from django.http.request import QueryDict
 # Third Party
 import pysolr
 import pytest
+from luqum.parser import parser
 
 # DocumentCloud
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
-from documentcloud.documents.search import search
+from documentcloud.documents.search import (
+    BooleanDetector,
+    FilterExtractor,
+    _parse,
+    search,
+)
 from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.documents.tests.search_data import (
     DOCUMENTS,
@@ -80,7 +86,7 @@ def setup(django_db_setup, django_db_blocker):
 @pytest.mark.solr
 class TestSearch:
 
-    default_query_string = "per_page=10&order=created_at"
+    default_query_string = "per_page=10&sort=created_at"
 
     def assert_documents(
         self,
@@ -134,7 +140,7 @@ class TestSearch:
     def test_search_order(self):
         """Test fetching in a different order"""
 
-        response = self.search("order=title")
+        response = self.search("sort=title")
         self.assert_documents(response["results"], sort_key="title", sort_reverse=False)
 
     def test_search_expands(self):
@@ -168,6 +174,13 @@ class TestSearch:
         response = self.search("user=1")
         self.assert_documents(response["results"], test=lambda d: d["user"] == 1)
         assert response["count"] == 2
+
+    def test_search_user_negative(self):
+        """Test searching for a user"""
+
+        response = self.search("-user=1")
+        self.assert_documents(response["results"], test=lambda d: d["user"] != 1)
+        assert response["count"] == 9
 
     def test_search_users(self):
         """Test searching for a user"""
@@ -271,7 +284,7 @@ class TestSearch:
     def test_search_data_not_exists(self):
         """Test searching for a document by a data field not existing"""
 
-        response = self.search("data_edition=!")
+        response = self.search("-data_edition=*")
         self.assert_documents(
             response["results"], test=lambda d: "edition" not in d.get("data", {})
         )
@@ -306,3 +319,72 @@ class TestSearch:
 
         response = self.search("document=3", user=3)
         assert response["count"] == 1
+
+
+class TestBooleanDetector:
+    @pytest.mark.parametrize(
+        "query,has_bool",
+        [
+            ("a AND b", True),
+            ("a OR b", True),
+            ("(a OR b) AND c d", True),
+            ("a NOT b", False),
+            ("a b", False),
+        ],
+    )
+    def test_detector(self, query, has_bool):
+        tree = parser.parse(query)
+        assert any(BooleanDetector().visit(tree)) is has_bool
+
+
+class TestFilterExtractor:
+    @pytest.mark.parametrize(
+        "query,new_query,filters,sort_only,sort",
+        [
+            ("a user:1", "a", "user=1", False, None),
+            ("user:1", "", "user=1", False, None),
+            ("a -user:1", "a", "-user=1", False, None),
+            ("a +user:1", "a", "user=1", False, None),
+            ("a title:foo", "a title:foo", "", False, None),
+            ("a account:1", "a", "user=1", False, None),
+            ("a data_foo:1", "a", "data_foo=1", False, None),
+            ("a user:1 user:2", "a", "user=1&user=2", False, None),
+            ("a user:(1 2)", "a", "user=(1 2)", False, None),
+            ("a user:foo-1", "a", "user=1", False, None),
+            ('a user:"foo-1"', "a", 'user="1"', False, None),
+            ("a user:(foo-1 bar-2)", "a", "user=(1 2)", False, None),
+            ("a user:1 organization:2", "a", "user=1&organization=2", False, None),
+            ("a user:1 sort:title", "a", "user=1", False, "title"),
+            ("a user:1 sort:title", "a user:1", "", True, "title"),
+            ("a (user:1 AND sort:title)", "a (user:1)", "", True, "title"),
+        ],
+    )
+    def test_extract_filter(self, query, new_query, filters, sort_only, sort):
+        tree = parser.parse(query)
+        filter_extractor = FilterExtractor(sort_only=sort_only)
+        tree = filter_extractor.visit(tree)
+
+        assert str(tree) if tree else "" == new_query
+        assert filter_extractor.filters == QueryDict(filters)
+        assert filter_extractor.sort == sort
+
+
+class TestParse:
+    @pytest.mark.parametrize(
+        "query,query_params,new_query,filters,sort",
+        [
+            ("", "", "*:*", "", None),
+            ("user:1", "", "*:*", "user=1", None),
+            ("user:1 OR organization:1", "", "user:1 OR organization:1", "", None),
+            ("foo", "", "foo", "", None),
+            ("foo sort:title", "", "foo", "", "title"),
+            ("foo", "title=bar", "foo title:(bar)", "", None),
+            ("foo", "user=1", "foo", "", None),
+        ],
+    )
+    def test_parse(self, query, query_params, new_query, filters, sort):
+        assert _parse(query, QueryDict(query_params, mutable=True)) == (
+            new_query,
+            QueryDict(filters),
+            sort,
+        )

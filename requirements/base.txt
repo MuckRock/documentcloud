@@ -72,6 +72,7 @@ jinja2==2.10.1            # via coreschema
 jmespath==0.9.4           # via boto3, botocore
 kombu==4.6.8              # via celery
 listcrunch==1.0.0
+luqum==0.8.1
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via aiohttp, yarl
@@ -84,6 +85,7 @@ pebble==4.5.0
 pexpect==4.8.0            # via ipython
 pickleshare==0.7.5        # via ipython
 pillow==6.1.0
+ply==3.11                 # via luqum
 prompt-toolkit==3.0.3     # via ipython
 protobuf==3.10.0          # via google-api-core, googleapis-common-protos
 ptyprocess==0.6.0         # via pexpect

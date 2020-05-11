@@ -719,6 +719,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   updated_at
                   user
                 </str>
+                <str name="uf">* -projects_edit_access</str>
               </lst>
             </requestHandler>
 

@@ -94,6 +94,7 @@ jmespath==0.9.4
 kombu==4.6.8
 lazy-object-proxy==1.4.2  # via astroid
 listcrunch==1.0.0
+luqum==0.8.1
 markupsafe==1.1.1
 mccabe==0.6.1             # via flake8, pylint
 more-itertools==7.2.0
@@ -113,6 +114,7 @@ pickleshare==0.7.5
 pillow==6.1.0
 pip-tools==4.3.0
 pluggy==0.12.0            # via pytest
+ply==3.11
 prompt-toolkit==3.0.3
 protobuf==3.10.0
 psycopg2==2.8.3
