@@ -277,13 +277,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 raise serializers.ValidationError(
                     _("You may not update `access` while the document is processing")
                 )
-            if (
-                validated_data.get("access") == Access.public
-                and not instance.organization.verified_journalist
-            ):
-                raise serializers.ValidationError(
-                    _("Only verified journalists may make documents public")
-                )
 
     @transaction.atomic
     def perform_update(self, serializer):
