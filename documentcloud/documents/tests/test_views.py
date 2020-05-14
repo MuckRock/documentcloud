@@ -225,6 +225,17 @@ class TestDocumentAPI:
         # this check is currently disabled
         assert response.status_code == status.HTTP_201_CREATED
 
+    def test_create_bad_data(self, client, user):
+        """Data keys must be alphanumeric"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/",
+            {"title": "Test", "data": {"bad key?": ["foo"]}},
+            format="json",
+        )
+        # this check is currently disabled
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_bulk_create(self, client, user):
         """Create multiple documents"""
         client.force_authenticate(user=user)
@@ -1161,7 +1172,7 @@ class TestDataAPI:
             document.data, {"color": ["green", "yellow"], "state": ["ma"]}
         )
 
-    def test_update_bad(self, client, document, user):
+    def test_update_bad_access(self, client, document, user):
         """Add a new key value pair to a document for a document you cannot edit"""
         client.force_authenticate(user=user)
         response = client.put(
@@ -1170,6 +1181,16 @@ class TestDataAPI:
             format="json",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_update_bad_key(self, client, document):
+        """Try adding a non alphanumeric key"""
+        client.force_authenticate(user=document.user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/bad:key/",
+            {"values": ["red"]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update_duplicate(self, client, document):
         """Add a new key value pair to a document with duplicates"""

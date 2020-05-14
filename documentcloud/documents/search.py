@@ -5,6 +5,7 @@ from django.urls import reverse
 
 # Standard Library
 import math
+import re
 
 # Third Party
 import pysolr
@@ -14,6 +15,7 @@ from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
@@ -38,6 +40,7 @@ FILTER_FIELDS = {
     "page_count": "page_count",
     "pages": "page_count",
 }
+DYNAMIC_FILTER_FIELDS = [rf"data_{DATA_KEY_REGEX}"]
 ID_FIELDS = ["id", "organization", "projects", "user"]
 # XXX switch to DateRange fields for date fields
 
@@ -48,6 +51,7 @@ TEXT_FIELDS = {
     "doctext": "doctext",
     "text": "doctext",
 }
+DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 
 SORT_MAP = {
     "score": "score desc, created_at desc",
@@ -159,7 +163,7 @@ class FilterExtractor(LuceneTreeTransformer):
             # update the node name to what it aliases to,
             # so that the alias will hold even if we are in sort only mode
             node.name = filter_name
-        elif node.name.startswith("data_"):
+        elif any(re.match(rf"^{p}$", node.name) for p in DYNAMIC_FILTER_FIELDS):
             filter_name = node.name
         else:
             filter_name = None
@@ -224,9 +228,7 @@ def _parse(text_query, query_params):
         sort = filter_extractor.sort
 
     # pull text queries from the parameters into the text query
-    additional_text = _handle_params(
-        query_params, TEXT_FIELDS, prefix_fields=["page_no_"]
-    )
+    additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
     if additional_text:
         new_query = "{} {}".format(new_query, " ".join(additional_text))
 
@@ -244,13 +246,13 @@ def _field_queries(user, query_params):
     """
     field_queries = _access_filter(user)
     field_queries.extend(
-        _handle_params(query_params, FILTER_FIELDS, prefix_fields=["data_"])
+        _handle_params(query_params, FILTER_FIELDS, DYNAMIC_FILTER_FIELDS)
     )
 
     return field_queries
 
 
-def _handle_params(query_params, fields, prefix_fields):
+def _handle_params(query_params, fields, dynamic_fields):
     """Convert query params to a list of Solr field queries"""
     return_list = []
     items = list(fields.items())
@@ -262,13 +264,10 @@ def _handle_params(query_params, fields, prefix_fields):
             values = " ".join(query_params.getlist(param))
             return_list.append(f"{field}:({values})")
 
-    for prefix in prefix_fields:
-        # XXX dont allow non alphanumeric characters in data fields?
-        # allow for negated prefix fields
-        prefix_params = [
-            p for p in query_params if p.startswith((prefix, f"-{prefix}"))
-        ]
-        for param in prefix_params:
+    for pattern in dynamic_fields:
+        # allow for negated dynamic fields
+        dynamic_params = [p for p in query_params if re.match(fr"^-?{pattern}$", p)]
+        for param in dynamic_params:
             values = " ".join(query_params.getlist(param))
             return_list.append(f"{param}:({values})")
 

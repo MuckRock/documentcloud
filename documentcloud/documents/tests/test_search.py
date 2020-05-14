@@ -348,6 +348,7 @@ class TestFilterExtractor:
             ("a title:foo", "a title:foo", "", False, None),
             ("a account:1", "a", "user=1", False, None),
             ("a data_foo:1", "a", "data_foo=1", False, None),
+            ("a data_foo?:1", "a data_foo?:1", "", False, None),
             ("a user:1 user:2", "a", "user=1&user=2", False, None),
             ("a user:(1 2)", "a", "user=(1 2)", False, None),
             ("a user:foo-1", "a", "user=1", False, None),
@@ -364,7 +365,7 @@ class TestFilterExtractor:
         filter_extractor = FilterExtractor(sort_only=sort_only)
         tree = filter_extractor.visit(tree)
 
-        assert str(tree) if tree else "" == new_query
+        assert new_query == str(tree) if tree else ""
         assert filter_extractor.filters == QueryDict(filters)
         assert filter_extractor.sort == sort
 

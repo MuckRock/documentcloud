@@ -7,6 +7,7 @@ from rest_framework.relations import ManyRelatedField
 
 # Standard Library
 import logging
+import re
 import sys
 
 # Third Party
@@ -17,6 +18,7 @@ from rest_flex_fields import FlexFieldsModelSerializer
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import (
     Document,
@@ -225,6 +227,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         # wrap any lone strings in lists
         value = {k: [v] if isinstance(v, str) else v for k, v in value.items()}
 
+        key_p = re.compile(fr"^{DATA_KEY_REGEX}$")
+        if not all(isinstance(k, str) and key_p.match(k) for k in value):
+            raise serializers.ValidationError(
+                "`data` JSON object must have alphanumeric string keys"
+            )
+
         if not all(isinstance(v, list) for v in value.values()):
             raise serializers.ValidationError(
                 "`data` JSON object must have arrays for values of all top level "
@@ -234,7 +242,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if not all(isinstance(v, str) for v_ in value.values() for v in v_):
             raise serializers.ValidationError(
                 "`data` JSON object must have strings for all values within the lists"
-                "f top level object properties"
+                "of top level object properties"
             )
 
         return value

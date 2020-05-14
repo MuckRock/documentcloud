@@ -31,6 +31,7 @@ from documentcloud.core.permissions import (
     DocumentTokenPermissions,
 )
 from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import conditional_cache_control
 from documentcloud.documents.models import (
     Document,
@@ -535,6 +536,7 @@ class DataViewSet(viewsets.ViewSet):
     # pylint: disable=unused-argument
     serializer_class = DataSerializer
     permission_classes = (IsAuthenticatedOrReadOnly,)
+    lookup_value_regex = DATA_KEY_REGEX
 
     def get_object(self, edit=False):
         document = get_object_or_404(
