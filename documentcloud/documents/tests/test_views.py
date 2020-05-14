@@ -222,7 +222,8 @@ class TestDocumentAPI:
         response = client.post(
             f"/api/documents/", {"title": "Test", "access": "public"}, format="json"
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # this check is currently disabled
+        assert response.status_code == status.HTTP_201_CREATED
 
     def test_bulk_create(self, client, user):
         """Create multiple documents"""
@@ -342,7 +343,8 @@ class TestDocumentAPI:
         """Test updating a document to public when you are not a verified journalist"""
         client.force_authenticate(user=document.user)
         response = client.patch(f"/api/documents/{document.pk}/", {"access": "public"})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # this check is currently disabled
+        assert response.status_code == status.HTTP_200_OK
 
     def test_update_bad_file_url(self, client, document):
         """You may not update the file url"""

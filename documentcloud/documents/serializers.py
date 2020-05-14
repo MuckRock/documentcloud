@@ -239,20 +239,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
         return value
 
-    def validate_access(self, value):
-        """Validate non-journalists cannot create public documents
-        Updates are validated in the view due to bulk updates complicating things
-        """
-        request = self.context.get("request")
-        verified_journalist = request and request.user.organization.verified_journalist
-
-        if value == Access.public and not self.instance and not verified_journalist:
-            raise serializers.ValidationError(
-                _("Only verified journalists may make documents public")
-            )
-
-        return value
-
     def validate(self, attrs):
         if attrs.get("force_ocr") and "file_url" not in attrs:
             raise serializers.ValidationError(
