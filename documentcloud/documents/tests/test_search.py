@@ -17,6 +17,7 @@ from documentcloud.documents.search import (
     _parse,
     search,
 )
+from documentcloud.documents.search_escape import escape
 from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.documents.tests.search_data import (
     DOCUMENTS,
@@ -365,7 +366,7 @@ class TestFilterExtractor:
         filter_extractor = FilterExtractor(sort_only=sort_only)
         tree = filter_extractor.visit(tree)
 
-        assert new_query == str(tree) if tree else ""
+        assert new_query == (str(tree) if tree else "")
         assert filter_extractor.filters == QueryDict(filters)
         assert filter_extractor.sort == sort
 
@@ -381,6 +382,8 @@ class TestParse:
             ("foo sort:title", "", "foo", "", "title"),
             ("foo", "title=bar", "foo title:(bar)", "", None),
             ("foo", "user=1", "foo", "", None),
+            ("foo AND", "", 'foo "AND"', "", None),
+            ("foo (", "", "foo \\(", "", None),
         ],
     )
     def test_parse(self, query, query_params, new_query, filters, sort):
@@ -389,3 +392,41 @@ class TestParse:
             QueryDict(filters),
             sort,
         )
+
+
+class TestEscape:
+    @pytest.mark.parametrize(
+        "query,escaped",
+        [
+            ("foo:bar (", "foo:bar \\("),
+            ("foo:bar :foo", "foo:bar \\:foo"),
+            ("foo:bar foo:", "foo:bar foo\\:"),
+            ("foo:bar :", "foo:bar \\:"),
+            ("foo:bar+baz", "foo:bar\\+baz"),
+            ("foo (", "foo \\("),
+            ("foo )", "foo \\)"),
+            ("foo [", "foo \\["),
+            ("foo ]", "foo \\]"),
+            ("foo {", "foo \\{"),
+            ("foo }", "foo \\}"),
+            ("foo ~", "foo \\~"),
+            ("foo ^", "foo \\^"),
+            ("foo +", "foo \\+"),
+            ("foo -", "foo \\-"),
+            ("foo !", "foo \\!"),
+            ("foo /", "foo \\/"),
+            ("foo \\", "foo \\\\"),
+            ('foo "', 'foo \\"'),
+            ("foo AND", 'foo "AND"'),
+            ("foo OR", 'foo "OR"'),
+            ("foo NOT", 'foo "NOT"'),
+            ('foo "(" )', 'foo "(" \\)'),
+            ('foo "(" "', 'foo \\"\\(\\" \\"'),
+            (
+                "foo:foo AND (:bar OR baz:) (qux:qux AND",
+                'foo:foo "AND" \\(\\:bar "OR" baz:\\) qux:qux "AND"',
+            ),
+        ],
+    )
+    def test_escape(self, query, escaped):
+        assert escape(query) == escaped

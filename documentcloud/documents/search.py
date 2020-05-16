@@ -16,6 +16,7 @@ from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
+from documentcloud.documents.search_escape import escape
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.users.models import User
@@ -42,7 +43,6 @@ FILTER_FIELDS = {
 }
 DYNAMIC_FILTER_FIELDS = [rf"data_{DATA_KEY_REGEX}"]
 ID_FIELDS = ["id", "organization", "projects", "user"]
-# XXX switch to DateRange fields for date fields
 
 TEXT_FIELDS = {
     "title": "title",
@@ -83,7 +83,7 @@ def search(user, query_params):
     text_query, filter_params, sort_order = _parse(text_query, query_params)
 
     filter_params.update(query_params)
-    field_queries = _field_queries(user, filter_params)
+    filter_queries = _filter_queries(user, filter_params)
 
     # "sort" or "order" query param takes precedence, then "sort:" filter passed in the
     # query, then fall back to default of score
@@ -93,7 +93,7 @@ def search(user, query_params):
     )
     rows, start, page = _paginate(query_params)
 
-    kwargs = {"fq": field_queries, "sort": sort, "rows": rows, "start": start}
+    kwargs = {"fq": filter_queries, "sort": sort, "rows": rows, "start": start}
 
     results = SOLR.search(text_query, **kwargs)
     response = _format_response(results, query_params, page, rows)
@@ -209,14 +209,12 @@ def _parse(text_query, query_params):
             (`fq` field)
         sort - a string from the SORT_MAP to sort on
     """
-    try:
-        tree = parser.parse(text_query)
-    except (ParseError, TypeError):
-        # XXX do auto escape algorithm here
-        new_query = text_query
-        filters = QueryDict(mutable=True)
-        sort = None
-    else:
+    if text_query:
+        try:
+            tree = parser.parse(text_query)
+        except (ParseError, TypeError):
+            tree = parser.parse(escape(text_query))
+
         # check for boolean expressions to determine if we should pull out
         # all filters or only sort filters
         is_boolean = any(BooleanDetector().visit(tree))
@@ -226,6 +224,11 @@ def _parse(text_query, query_params):
         new_query = str(tree) if tree is not None else ""
         filters = filter_extractor.filters
         sort = filter_extractor.sort
+    else:
+        # special case for empty query
+        new_query = ""
+        filters = QueryDict(mutable=True)
+        sort = None
 
     # pull text queries from the parameters into the text query
     additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
@@ -240,16 +243,16 @@ def _parse(text_query, query_params):
     return new_query, filters, sort
 
 
-def _field_queries(user, query_params):
+def _filter_queries(user, query_params):
     """Field queries restrict the search for a non-text query based on the
     given value for a given field
     """
-    field_queries = _access_filter(user)
-    field_queries.extend(
+    filter_queries = _access_filter(user)
+    filter_queries.extend(
         _handle_params(query_params, FILTER_FIELDS, DYNAMIC_FILTER_FIELDS)
     )
 
-    return field_queries
+    return filter_queries
 
 
 def _handle_params(query_params, fields, dynamic_fields):
