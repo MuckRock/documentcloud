@@ -32,7 +32,7 @@ def split_into_clauses(query, ignore_quote=False):
         clause["field"] = get_field_name(query, pos, end)
         if clause["field"] is not None:
             disallow_user_field = False
-            colon = query.index(":", pos)
+            colon = query.find(":", pos)
             clause["raw_field"] = query[pos:colon]
             pos += colon - pos  # skip the field
             pos += 1  # skip the ':'
@@ -74,7 +74,6 @@ def split_into_clauses(query, ignore_quote=False):
 
             if in_string is None:
                 if char in '!():^[]{}~*?"+-\\|&/':
-                    clause["has_special_syntax"] = True
                     string_builder.append("\\")
             elif char == '"':
                 # only char we need to escape in a string is double quote
@@ -87,9 +86,6 @@ def split_into_clauses(query, ignore_quote=False):
                 # detected bad quote balancing... retry
                 # parsing with quotes like any other char
                 return split_into_clauses(query, True)
-
-            # special syntax in a string isn't special
-            clause["has_special_syntax"] = False
         else:
             # an empty clause... must be just a + or - on its own
             if not clause["val"]:
@@ -97,7 +93,6 @@ def split_into_clauses(query, ignore_quote=False):
                 if "must" in clause:
                     clause["val"] = "\\" + clause["must"]
                     clause["must"] = None
-                    clause.has_special_syntax = True
                 else:
                     # uh.. this shouldn't happen.
                     clause = None
@@ -122,10 +117,7 @@ def get_field_name(query, pos, end):
         return None
 
     cur_pos = pos
-    try:
-        colon = query.index(":", pos)
-    except ValueError:
-        return None
+    colon = query.find(":", pos)
     # make sure there is space after the colon, but not whitespace
     if colon <= pos or colon + 1 >= end or query[colon + 1].isspace():
         return None
@@ -144,14 +136,7 @@ def get_field_name(query, pos, end):
         if not (is_java_identifier_part.match(char) or char in "-."):
             return None
 
-    fname = query[pos:cur_pos]
-    return fname
-
-    # isInSchema = True # TODO: have schema and check if in it
-    # XXX what does limiting fields to valid fields buy us?
-    # isAlias = False
-    # isMagic = False
-    # return isInSchema || isAlias || isMagic ? fname : null;
+    return query[pos:cur_pos]
 
 
 def escape_user_query(clauses):
@@ -162,7 +147,7 @@ def escape_user_query(clauses):
         if not do_quote and clause["val"] in ("OR", "AND", "NOT"):
             do_quote = True
 
-        if "must" in clause:
+        if clause.get("must"):
             string_builder.append(clause["must"])
         if clause["field"] is not None:
             string_builder.append(clause["field"])
