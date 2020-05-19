@@ -10,7 +10,20 @@
 
 ## Syntax
 
+## Fields
+
+### Filter Fields
+
+### Text Fields
+
 ## API
+
+* q
+* All fields
+* sort
+* per\_page
+* page
+* expand
 
 `GET /api/documents/search/`
 | Param        | Type    | Description                                                                                            |
