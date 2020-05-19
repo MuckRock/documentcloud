@@ -83,7 +83,7 @@ def search(user, query_params):
     """
     text_query = query_params.get("q", "")
 
-    text_query, filter_params, sort_order = _parse(text_query, query_params)
+    text_query, filter_params, sort_order, escaped = _parse(text_query, query_params)
 
     filter_params.update(query_params)
     filter_queries = _filter_queries(user, filter_params)
@@ -99,7 +99,7 @@ def search(user, query_params):
     kwargs = {"fq": filter_queries, "sort": sort, "rows": rows, "start": start}
 
     results = SOLR.search(text_query, **kwargs)
-    response = _format_response(results, query_params, page, rows)
+    response = _format_response(results, query_params, page, rows, escaped)
 
     if settings.DEBUG:
         response["debug"] = {"text_query": text_query, **kwargs}
@@ -301,8 +301,10 @@ def _parse(text_query, query_params):
     if text_query:
         try:
             tree = parser.parse(text_query)
+            escaped = False
         except (ParseError, TypeError):
             tree = parser.parse(escape(text_query))
+            escaped = True
 
         # check for boolean expressions to determine if we should pull out
         # all filters or only sort filters
@@ -329,7 +331,7 @@ def _parse(text_query, query_params):
     if not new_query:
         new_query = "*:*"
 
-    return new_query, filters, sort
+    return new_query, filters, sort, escaped
 
 
 def _filter_queries(user, query_params):
@@ -408,7 +410,7 @@ def _paginate(query_params):
     return rows, start, page
 
 
-def _format_response(results, query_params, page, per_page):
+def _format_response(results, query_params, page, per_page, escaped):
     """Emulate the Django Rest Framework response format"""
     base_url = settings.DOCCLOUD_API_URL + reverse("document-search")
     query_params = query_params.copy()
@@ -440,6 +442,7 @@ def _format_response(results, query_params, page, per_page):
         "next": next_url,
         "previous": previous_url,
         "results": results,
+        "escaped": escaped,
     }
     return response
 
