@@ -35,8 +35,8 @@ from documentcloud.users.tests.factories import UserFactory
 # pylint: disable=too-many-public-methods
 
 
-@pytest.yield_fixture(autouse=True, scope="module")
-def setup(django_db_setup, django_db_blocker):
+@pytest.yield_fixture(scope="class")
+def setup_solr(django_db_setup, django_db_blocker):
     """Set up the models for the search tests
 
     `django_db_setup` causes pytest to initiate the test database
@@ -85,6 +85,7 @@ def setup(django_db_setup, django_db_blocker):
 
 @pytest.mark.django_db()
 @pytest.mark.solr
+@pytest.mark.usefixtures("setup_solr")
 class TestSearch:
 
     default_query_string = "per_page=10&sort=created_at"
