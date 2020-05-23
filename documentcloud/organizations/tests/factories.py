@@ -3,9 +3,7 @@ from django.utils.text import slugify
 
 # Third Party
 import factory
-
-# DocumentCloud
-from documentcloud.organizations.models import Membership
+from squarelet_auth.organizations.models import Membership
 
 
 class OrganizationFactory(factory.django.DjangoModelFactory):
@@ -34,7 +32,7 @@ class MembershipFactory(factory.django.DjangoModelFactory):
     """A factory for creating Membership test objects."""
 
     class Meta:
-        model = "organizations.Membership"
+        model = "squarelet_auth_organizations.Membership"
         django_get_or_create = ("user", "organization")
 
     user = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
@@ -48,7 +46,7 @@ class PlanFactory(factory.django.DjangoModelFactory):
     """A factory for creating Plan test objects"""
 
     class Meta:
-        model = "organizations.Plan"
+        model = "squarelet_auth_organizations.Plan"
         django_get_or_create = ("name",)
 
     name = factory.Sequence(lambda n: "Plan %d" % n)

@@ -1,8 +1,6 @@
 # Third Party
 import factory
-
-# DocumentCloud
-from documentcloud.organizations.models import Membership
+from squarelet_auth.organizations.models import Membership
 
 
 class UserFactory(factory.django.DjangoModelFactory):

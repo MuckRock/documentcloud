@@ -14,6 +14,7 @@ from uuid import uuid4
 
 # Third Party
 import requests
+from squarelet_auth.users.models import User as SAUser
 
 # DocumentCloud
 from documentcloud.core.choices import Language
@@ -23,69 +24,8 @@ from documentcloud.squarelet.utils import squarelet_get
 from documentcloud.users.managers import UserManager
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(SAUser):
     """User model for DocumentCloud"""
-
-    uuid = models.UUIDField(
-        _("UUID"),
-        unique=True,
-        editable=False,
-        default=uuid4,
-        db_index=True,
-        help_text=_("Unique ID to link users across MuckRock's sites"),
-    )
-    name = models.CharField(
-        _("full name"), max_length=255, help_text=_("The user's full name")
-    )
-    email = CIEmailField(
-        _("email"),
-        unique=True,
-        null=True,
-        help_text=_("The user's primary email address"),
-    )
-    username = CICharField(
-        _("username"),
-        max_length=150,
-        unique=True,
-        help_text=_("A unique public identifier for the user"),
-    )
-    avatar_url = models.URLField(
-        _("avatar url"),
-        blank=True,
-        max_length=255,
-        help_text=_("A URL which points to an avatar for the user"),
-    )
-    is_staff = models.BooleanField(
-        _("staff status"),
-        default=False,
-        help_text=_("Designates whether the user can log into this admin site."),
-    )
-    is_active = models.BooleanField(
-        _("active"),
-        default=True,
-        help_text=_(
-            "Designates whether this user should be treated as active. "
-            "Unselect this instead of deleting accounts."
-        ),
-    )
-
-    email_failed = models.BooleanField(
-        _("email failed"),
-        default=False,
-        help_text=_("Has an email we sent to this user's email address failed?"),
-    )
-    email_verified = models.BooleanField(
-        _("email verified"),
-        default=False,
-        help_text=_("Has this user's email address been verified?"),
-    )
-
-    created_at = AutoCreatedField(
-        _("created at"), help_text=_("Timestamp of when the user was created")
-    )
-    updated_at = AutoLastModifiedField(
-        _("updated at"), help_text=_("Timestamp of when the user was last updated")
-    )
 
     language = models.CharField(
         _("language"),
@@ -104,69 +44,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         help_text=_("The default language for documents uploaded by this user"),
     )
 
-    # preferences
-    use_autologin = models.BooleanField(
-        _("use autologin"),
-        default=True,
-        help_text=(
-            "Links you receive in emails from us will contain"
-            " a token to automatically log you in"
-        ),
-    )
-
-    USERNAME_FIELD = "username"
-    EMAIL_FIELD = "email"
-    REQUIRED_FIELDS = ["email"]
-
     objects = UserManager()
 
-    class Meta:
-        ordering = ("username",)
-
-    def __str__(self):
-        return self.username
-
-    @property
-    def date_joined(self):
-        """Alias date joined to create_at for third party apps"""
-        return self.created_at
-
-    def get_full_name(self):
-        return self.name
-
-    @property
-    def organization(self):
-        """Get the user's active organization"""
-        # first check the prefetch cache, for performance reasons
-        if hasattr(self, "active_memberships"):
-            return self.active_memberships[0].organization
-
-        return (
-            self.memberships.select_related("organization")
-            .get(active=True)
-            .organization
-        )
-
-    @organization.setter
-    def organization(self, organization):
-        """Set the user's active organization"""
-        if not organization.has_member(self):
-            raise ValueError(
-                "Cannot set a user's active organization to an organization "
-                "they are not a member of"
-            )
-        with transaction.atomic():
-            self.memberships.filter(active=True).update(active=False)
-            self.memberships.filter(organization=organization).update(active=True)
-
-    @property
-    def individual_organization(self):
-        """Get the user's individual organization
-        There should always be exactly one individual organization,
-        which has a matching UUID
-        """
-        return Organization.objects.get(uuid=self.uuid)
-
+    # XXX add to squarelet-auth?
     def wrap_url(self, link, **extra):
         """Wrap a URL for autologin"""
 
@@ -187,6 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         params = {"next": documentcloud_url, "url_auth_token": url_auth_token}
         return "{}/accounts/login/?{}".format(settings.SQUARELET_URL, urlencode(params))
 
+    # XXX add to squarelet-auth?
     def get_url_auth_token(self):
         """Get a URL auth token for the user
         Cache it so a single email will use a single auth token"""

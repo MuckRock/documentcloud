@@ -4,9 +4,11 @@
 from django.db import models
 from django.db.models import Prefetch, Q
 
+# Third Party
+from squarelet_auth.organizations.models import Membership
+
 # DocumentCloud
 from documentcloud.documents.choices import Access
-from documentcloud.organizations.models import Membership
 
 
 class UserQuerySet(models.QuerySet):

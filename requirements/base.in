@@ -27,6 +27,7 @@ django-filter
 django-extensions
 django-autoslug
 rules
+squarelet-auth
 
 # Django REST Framework
 djangorestframework

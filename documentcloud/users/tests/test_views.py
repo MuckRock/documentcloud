@@ -8,9 +8,9 @@ import json
 
 # Third Party
 import pytest
+from squarelet_auth.organizations.models import Membership
 
 # DocumentCloud
-from documentcloud.organizations.models import Membership
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.organizations.tests.factories import OrganizationFactory
 from documentcloud.users.serializers import UserSerializer

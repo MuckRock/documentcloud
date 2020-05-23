@@ -76,13 +76,14 @@ THIRD_PARTY_APPS = [
     "rules.apps.AutodiscoverRulesConfig",
     "social_django",
     "corsheaders",
+    "squarelet_auth.organizations.apps.OrganizationsConfig",
 ]
 
 LOCAL_APPS = [
     "documentcloud.core.apps.CoreConfig",
     "documentcloud.documents",
     "documentcloud.oembed.apps.OembedConfig",
-    "documentcloud.organizations",
+    "documentcloud.organizations.apps.OrganizationsConfig",
     "documentcloud.projects",
     "documentcloud.statistics",
     "documentcloud.users.apps.UsersConfig",
@@ -95,11 +96,13 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
 AUTHENTICATION_BACKENDS = [
     "rules.permissions.ObjectPermissionBackend",
-    "documentcloud.squarelet.backends.SquareletBackend",
+    # "documentcloud.squarelet.backends.SquareletBackend",
+    "squarelet_auth.backends.SquareletBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
 AUTH_USER_MODEL = "users.User"
+SQUARELET_ORGANIZATION_MODEL = "organizations.Organization"
 
 # SQUARELET AUTHENTICATION
 # ------------------------------------------------------------------------------
@@ -116,9 +119,12 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.auth_allowed",
     "social_core.pipeline.social_auth.social_user",
     "social_core.pipeline.user.get_username",
-    "documentcloud.squarelet.pipeline.associate_by_uuid",
-    "documentcloud.squarelet.pipeline.save_info",
-    "documentcloud.squarelet.pipeline.save_session_data",
+    # "documentcloud.squarelet.pipeline.associate_by_uuid",
+    # "documentcloud.squarelet.pipeline.save_info",
+    # "documentcloud.squarelet.pipeline.save_session_data",
+    "squarelet_auth.pipeline.associate_by_uuid",
+    "squarelet_auth.pipeline.save_info",
+    "squarelet_auth.pipeline.save_session_data",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
     "social_core.pipeline.user.user_details",
@@ -363,6 +369,7 @@ DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://api.dev.documentcloud
 DOCCLOUD_EMBED_URL = env(
     "DOCCLOUD_EMBED_URL", default="http://www.dev.documentcloud.org"
 )
+BASE_URL = DOCCLOUD_URL
 
 PUBLIC_ASSET_URL = env(
     "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
