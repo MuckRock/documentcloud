@@ -6,6 +6,7 @@ from django.urls import reverse
 # Standard Library
 import math
 import re
+from datetime import datetime
 
 # Third Party
 import pysolr
@@ -43,6 +44,8 @@ FILTER_FIELDS = {
 }
 DYNAMIC_FILTER_FIELDS = [rf"data_{DATA_KEY_REGEX}"]
 ID_FIELDS = ["id", "organization", "projects", "user"]
+NUMERIC_FIELDS = ID_FIELDS + ["page_count"]
+DATE_FIELDS = ["created_at", "updated_at"]
 
 TEXT_FIELDS = {
     "title": "title",
@@ -135,6 +138,56 @@ class SlugRemover(LuceneTreeTransformer):
         return node
 
 
+class Validator(LuceneTreeVisitor):
+    """Validate word and phrase nodes"""
+
+    def visit_word(self, node, _parents=None):
+        return [self._validate(node.value)]
+
+    def visit_phrase(self, node, _parents=None):
+        # remove quotes
+        return [self._validate(node.value[1:-1])]
+
+
+class NumberValidator(Validator):
+    """Validate nodes are numbers"""
+
+    def _validate(self, value):
+        return value.isdecimal()
+
+
+class DateValidator(Validator):
+    """Validate nodes are numbers"""
+
+    def visit_word(self, node, _parents=None):
+        """Always escape dates if they are unquoted"""
+        valid = super().visit_word(node)
+        if valid[0]:
+            node.value = node.value.replace(":", "\\:")
+        return valid
+
+    def _validate(self, value):
+        # date math??
+        if value in ["*", "NOW"]:
+            return True
+        try:
+            datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+            return True
+        except ValueError:
+            try:
+                datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+                return True
+            except ValueError:
+                return False
+
+
+class SearchFieldDetector(LuceneTreeVisitor):
+    """Validate that there are no nested search fields"""
+
+    def visit_search_field(self, _node, _parents=None):
+        return [True]
+
+
 class FilterExtractor(LuceneTreeTransformer):
     """Extract all of the applicable search filters from the text query
     to use as field queries
@@ -170,13 +223,24 @@ class FilterExtractor(LuceneTreeTransformer):
         if filter_name and not self.sort_only:
             if filter_name in ID_FIELDS:
                 # remove the slug if its an ID field
-                value = str(SlugRemover().visit(node.expr))
-            else:
-                value = str(node.expr)
+                node.expr = SlugRemover().visit(node.expr)
+
+            # validate fields and do not add to filters if they fail
+            if filter_name in NUMERIC_FIELDS and not all(
+                NumberValidator().visit(node.expr)
+            ):
+                return node
+
+            if filter_name in DATE_FIELDS and not all(DateValidator().visit(node.expr)):
+                return node
+
+            # no filters may have nested search fields
+            if any(SearchFieldDetector().visit(node.expr)):
+                return node
 
             if parents and isinstance(parents[-1], (Not, Prohibit)):
                 filter_name = f"-{filter_name}"
-            self.filters.appendlist(filter_name, value)
+            self.filters.appendlist(filter_name, str(node.expr))
             self.prune_parents(parents)
             return None
         elif node.name in ("sort", "order"):
