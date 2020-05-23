@@ -13,6 +13,7 @@ from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import (
     BooleanDetector,
+    DateValidator,
     FilterExtractor,
     _parse,
     search,
@@ -339,6 +340,42 @@ class TestBooleanDetector:
         assert any(BooleanDetector().visit(tree)) is has_bool
 
 
+class TestDateValidator:
+    @pytest.mark.parametrize(
+        "query,valid",
+        [
+            ("NOW", True),
+            ("*", True),
+            ("*+1DAY", False),
+            ("*/DAY", False),
+            ("2020-01-02T03:04:05Z", True),
+            ("2020-01-02T03:04:05.06Z", True),
+            ("2020-21-02T03:04:05Z", False),
+            ("2020-02-30T03:04:05Z", False),
+            ("2020-02-01T33:04:05Z", False),
+            ("2020-02-01", False),
+            ("NOW/YEAR", True),
+            ("NOW/YEARS", True),
+            ("NOW/DATE", True),
+            ("NOW/DATES", False),
+            ("2020-01-02T03:04:05Z/MINUTE", True),
+            ("2020-01-02T03:04:05Z/1MINUTE", False),
+            ("NOW-1MONTH", True),
+            ("NOW+2MONTHS", True),
+            ("NOW+2SECONDS-3MILLIS", True),
+            ("NOW*2MONTHS", False),
+            ("2020-01-02T03:04:05.06Z+1HOUR", True),
+            ("NOW+2MONTHS/MONTH", True),
+            ("NOW+2MONTHS+2DAYS/MONTH", True),
+            ("NOW/YEAR+2MONTHS/MONTH+2DAYS/DAY", True),
+            ("NOW/YEAR+NOW", False),
+        ],
+    )
+    def test_validator(self, query, valid):
+        tree = parser.parse(query)
+        assert all(DateValidator().visit(tree)) is valid
+
+
 class TestFilterExtractor:
     @pytest.mark.parametrize(
         "query,new_query,filters,sort_only,sort",
@@ -389,9 +426,9 @@ class TestFilterExtractor:
                 None,
             ),
             (
-                "a created_at:[2020-01-02T03:04:05Z TO NOW]",
+                "a created_at:[2020-01-02T03:04:05Z TO NOW-1DAY/DAY]",
                 "a",
-                "created_at=[2020-01-02T03\\:04\\:05Z TO NOW]",
+                "created_at=[2020-01-02T03\\:04\\:05Z TO NOW-1DAY/DAY]",
                 False,
                 None,
             ),

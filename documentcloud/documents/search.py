@@ -159,6 +159,25 @@ class NumberValidator(Validator):
 class DateValidator(Validator):
     """Validate nodes are numbers"""
 
+    datetime_pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?P<micros>\.\d+)?Z"
+    # https://github.com/apache/lucene-solr/blob/
+    # 1d85cd783863f75cea133fb9c452302214165a4d/solr/core/src/java/org/apache/solr/
+    # util/DateMathParser.java#L153
+    unit_pattern = r"((YEAR|MONTH|DAY|HOUR|MINUTE|SECOND|MILLI|MILLISECOND)S?|DATE)"
+    regex = re.compile(
+        rf"""
+        ^
+        (?P<date>NOW|{datetime_pattern}) # the base date can be NOW or a timestamp
+        (/{unit_pattern})?               # this may be rounded to the nearest unit
+        (
+            (\+|-)\d+{unit_pattern}      # you may add or subtract a number of units
+            (/{unit_pattern})?           # optionally rounded to the nearest unit
+        )*                               # you may have zero or more of these
+        $
+        """,
+        re.VERBOSE,
+    )
+
     def visit_word(self, node, _parents=None):
         """Always escape dates if they are unquoted"""
         valid = super().visit_word(node)
@@ -168,17 +187,24 @@ class DateValidator(Validator):
 
     def _validate(self, value):
         # date math??
-        if value in ["*", "NOW"]:
+        if value == "*":
             return True
+
+        match = self.regex.match(value)
+        if not match:
+            return False
+
+        if match.group("date") == "NOW":
+            return True
+
         try:
-            datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ")
+            if match.group("micros"):
+                datetime.strptime(match.group("date"), "%Y-%m-%dT%H:%M:%S.%fZ")
+            else:
+                datetime.strptime(match.group("date"), "%Y-%m-%dT%H:%M:%SZ")
             return True
         except ValueError:
-            try:
-                datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
-                return True
-            except ValueError:
-                return False
+            return False
 
 
 class SearchFieldDetector(LuceneTreeVisitor):
