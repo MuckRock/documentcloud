@@ -10,6 +10,18 @@
 
 ## Syntax
 
+* Field lookups
+* Logic
+* Sorting
+* Wildcard
+* Fuzzy
+* Proximity
+* Phrase
+* Grouping
+* Custom Weight
+* Range Searches
+* DateTime format
+
 ## Fields
 
 ### Filter Fields
