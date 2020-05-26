@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from reversion.admin import VersionAdmin
 
 # DocumentCloud
-from documentcloud.organizations.models import Organization, Plan
+from documentcloud.organizations.models import Organization
 from documentcloud.users.models import User
 
 
@@ -66,16 +66,3 @@ class OrganizationAdmin(VersionAdmin):
         return '<a href="%s">%s</a>' % (link, user.username)
 
     user_link.short_description = "User"
-
-
-@admin.register(Plan)
-class PlanAdmin(VersionAdmin):
-    """Plan Admin"""
-
-    list_display = (
-        "name",
-        "minimum_users",
-        "base_pages",
-        "pages_per_user",
-        "feature_level",
-    )

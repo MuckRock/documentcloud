@@ -90,7 +90,7 @@ class Organization(AbstractOrganization):
 
     def _update_resources(self, data):
         # calc reqs/month in case it has changed
-        self.pages_per_month = self.plan.pages_per_month(data["max_users"])
+        self.pages_per_month = self.calc_pages_per_month(data["max_users"])
 
         # if date update has changed, then this is a monthly restore of the
         # subscription, and we should restore monthly pages.  If not, pages
@@ -106,78 +106,11 @@ class Organization(AbstractOrganization):
             # reset monthly pages when date_update is updated
             self.monthly_pages = self.pages_per_month
 
-
-# XXX convert to squarelet_auth Membership
-class Membership(models.Model):
-    """Through table for organization membership"""
-
-    user = models.ForeignKey(
-        verbose_name=_("user"),
-        to="users.User",
-        on_delete=models.CASCADE,
-        related_name="memberships_old",
-        help_text=_("A user being linked to an organization"),
-    )
-    organization = models.ForeignKey(
-        verbose_name=_("organization"),
-        to="organizations.Organization",
-        on_delete=models.CASCADE,
-        related_name="memberships_old",
-        help_text=_("An organization being linked to a user"),
-    )
-    active = models.BooleanField(
-        _("active"),
-        default=False,
-        help_text=_("The user is currently working on behalf of this organization"),
-    )
-    admin = models.BooleanField(
-        _("admin"),
-        default=False,
-        help_text=_("The user is an administrator for this organization"),
-    )
-
-    class Meta:
-        unique_together = ("user", "organization")
-
-    def __str__(self):
-        return f"{self.user} in {self.organization}"
-
-
-# XXX convert to squarelet_auth Plan
-class Plan(models.Model):
-    """Plans that organizations can subscribe to"""
-
-    name = models.CharField(_("name"), max_length=255, unique=True)
-    slug = models.SlugField(_("slug"), max_length=255, unique=True)
-
-    minimum_users = models.PositiveSmallIntegerField(
-        _("minimum users"),
-        default=1,
-        help_text=_("The minimum number of users included with this plan"),
-    )
-    base_pages = models.PositiveSmallIntegerField(
-        _("base pages"),
-        default=0,
-        help_text=_("The number of monthly pages included by default with this plan"),
-    )
-    pages_per_user = models.PositiveSmallIntegerField(
-        _("pages per user"),
-        default=0,
-        help_text=_(
-            "The number of additional pages per month included with this plan for each "
-            "user over the minimum"
-        ),
-    )
-    feature_level = models.PositiveSmallIntegerField(
-        _("feature level"),
-        default=0,
-        help_text=_("The level of premium features included with this plan"),
-    )
-
-    def __str__(self):
-        return self.name
-
-    def pages_per_month(self, users):
+    def calc_pages_per_month(self, users):
         """Calculate how many pages an organization gets per month on this plan
         for a given number of users"""
-        return self.base_pages + (users - self.minimum_users) * self.pages_per_user
+        return (
+            self.plan.resources["base_pages"]
+            + (users - self.plan.resources["minimum_users"])
+            * self.plan.resources["pages_per_user"]
+        )

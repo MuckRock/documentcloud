@@ -174,7 +174,7 @@ sphinxcontrib-jsmath==1.0.1  # via sphinx
 sphinxcontrib-qthelp==1.0.2  # via sphinx
 sphinxcontrib-serializinghtml==1.1.3  # via sphinx
 sqlparse==0.3.0
-squarelet-auth==0.0.21
+squarelet-auth==0.0.22
 termcolor==1.1.0          # via pytest-sugar
 text-unidecode==1.2
 toml==0.10.0              # via black

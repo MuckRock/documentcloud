@@ -51,6 +51,12 @@ class PlanFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: "Plan %d" % n)
     slug = factory.LazyAttribute(lambda obj: slugify(obj.name))
+    resources = {
+        "minimum_users": 1,
+        "base_pages": 0,
+        "pages_per_user": 0,
+        "feature_level": 0,
+    }
 
 
 class FreePlanFactory(PlanFactory):
@@ -63,16 +69,21 @@ class ProfessionalPlanFactory(PlanFactory):
     """A professional plan factory"""
 
     name = "Professional"
-    minimum_users = 1
-    base_pages = 200
-    feature_level = 1
+    resources = {
+        "minimum_users": 1,
+        "base_pages": 200,
+        "pages_per_user": 0,
+        "feature_level": 1,
+    }
 
 
 class OrganizationPlanFactory(PlanFactory):
     """An organization plan factory"""
 
     name = "Organization"
-    minimum_users = 5
-    base_pages = 500
-    pages_per_user = 50
-    feature_level = 2
+    resources = {
+        "minimum_users": 5,
+        "base_pages": 500,
+        "pages_per_user": 50,
+        "feature_level": 2,
+    }
