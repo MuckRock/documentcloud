@@ -440,7 +440,7 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
