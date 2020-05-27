@@ -464,4 +464,10 @@ CACHE_CONTROL_MAX_AGE = env.int("CACHE_CONTROL_MAX_AGE", default=300)
 
 # Squarelet
 # ------------------------------------------------------------------------------
-DISABLE_SQUARELET_CREATE = env.bool("DISABLE_SQUARELET_CREATE", default=False)
+SQUARELET_DISABLE_CREATE = env.bool("SQUARELET_DISABLE_CREATE", default=True)
+SQUARELET_RESOURCE_FIELDS = {
+    "minimum_users": 1,
+    "base_pages": 0,
+    "pages_per_user": 0,
+    "feature_level": 0,
+}
