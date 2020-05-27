@@ -186,7 +186,6 @@ class DateValidator(Validator):
         return valid
 
     def _validate(self, value):
-        # date math??
         if value == "*":
             return True
 
