@@ -6,12 +6,16 @@ from django.db import migrations
 # Standard Library
 import re
 
+# Third Party
+from unidecode import unidecode
+
 
 def fix_data_keys(apps, schema_editor):
     Document = apps.get_model("documents", "Document")
     for document in Document.objects.exclude(data={}):
         document.data = {
-            re.sub(r"[^A-Za-z0-9_-]", "-", k): v for k, v in document.data.items()
+            re.sub(r"[^A-Za-z0-9_-]", "-", unidecode(k)): v
+            for k, v in document.data.items()
         }
         document.save()
 
