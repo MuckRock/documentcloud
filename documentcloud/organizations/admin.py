@@ -11,12 +11,12 @@ from documentcloud.organizations.models import Organization
 from documentcloud.users.models import User
 
 
-@admin.register(Organization)
+# @admin.register(Organization)
 class OrganizationAdmin(VersionAdmin):
     """Organization Admin"""
 
-    list_display = ("name", "plan", "private", "individual")
-    list_filter = ("plan", "private", "individual")
+    list_display = ("name", "entitlement", "private", "individual")
+    list_filter = ("entitlement", "private", "individual")
     search_fields = ("name", "users__username")
     fields = (
         "uuid",
@@ -24,7 +24,7 @@ class OrganizationAdmin(VersionAdmin):
         "slug",
         "private",
         "individual",
-        "plan",
+        "entitlement",
         "card",
         "pages_per_month",
         "monthly_pages",
@@ -37,12 +37,12 @@ class OrganizationAdmin(VersionAdmin):
         "slug",
         "private",
         "individual",
-        "plan",
+        "entitlement",
         "card",
         "pages_per_month",
         "date_update",
     )
-    list_select_related = ("plan",)
+    list_select_related = ("entitlement",)
 
     def get_fields(self, request, obj=None):
         """Only add user link for individual organizations"""

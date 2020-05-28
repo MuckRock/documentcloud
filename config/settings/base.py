@@ -77,6 +77,7 @@ THIRD_PARTY_APPS = [
     "social_django",
     "corsheaders",
     "squarelet_auth.organizations.apps.OrganizationsConfig",
+    "squarelet_auth.apps.SquareletAuthConfig",
 ]
 
 LOCAL_APPS = [
@@ -96,7 +97,6 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
 AUTHENTICATION_BACKENDS = [
     "rules.permissions.ObjectPermissionBackend",
-    # "documentcloud.squarelet.backends.SquareletBackend",
     "squarelet_auth.backends.SquareletBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
@@ -119,9 +119,6 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.auth_allowed",
     "social_core.pipeline.social_auth.social_user",
     "social_core.pipeline.user.get_username",
-    # "documentcloud.squarelet.pipeline.associate_by_uuid",
-    # "documentcloud.squarelet.pipeline.save_info",
-    # "documentcloud.squarelet.pipeline.save_session_data",
     "squarelet_auth.pipeline.associate_by_uuid",
     "squarelet_auth.pipeline.save_info",
     "squarelet_auth.pipeline.save_session_data",
@@ -322,7 +319,7 @@ CELERY_SLOW_TASK_SOFT_TIME_LIMIT = env.int(
 )
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#beat-scheduler
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-CELERY_IMPORTS = ["documentcloud.squarelet.tasks"]
+CELERY_IMPORTS = []
 CELERY_REDIS_MAX_CONNECTIONS = env.int("CELERY_REDIS_MAX_CONNECTIONS", default=40)
 CELERY_BROKER_POOL_LIMIT = env.int("CELERY_BROKER_POOL_LIMIT", default=0)
 CELERY_TASK_IGNORE_RESULT = True

@@ -89,7 +89,6 @@ urlpatterns = [
     # Social Django
     path("accounts/logout/", account_logout, name="logout"),
     path("accounts/", include("social_django.urls", namespace="social")),
-    # path("squarelet/", include("documentcloud.squarelet.urls", namespace="squarelet")),
     path("squarelet/", include("squarelet_auth.urls", namespace="squarelet_auth")),
     path(
         "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"

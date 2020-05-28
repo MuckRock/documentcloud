@@ -12,8 +12,8 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Organization {n}")
     slug = factory.LazyAttribute(lambda obj: slugify(obj.name))
     individual = False
-    plan = factory.SubFactory(
-        "documentcloud.organizations.tests.factories.FreePlanFactory"
+    entitlement = factory.SubFactory(
+        "documentcloud.organizations.tests.factories.FreeEntitlementFactory"
     )
 
     class Meta:
@@ -42,14 +42,14 @@ class MembershipFactory(factory.django.DjangoModelFactory):
     active = True
 
 
-class PlanFactory(factory.django.DjangoModelFactory):
-    """A factory for creating Plan test objects"""
+class EntitlementFactory(factory.django.DjangoModelFactory):
+    """A factory for creating Entitlement test objects"""
 
     class Meta:
-        model = "squarelet_auth_organizations.Plan"
+        model = "squarelet_auth_organizations.Entitlement"
         django_get_or_create = ("name",)
 
-    name = factory.Sequence(lambda n: "Plan %d" % n)
+    name = factory.Sequence(lambda n: "Entitlement %d" % n)
     slug = factory.LazyAttribute(lambda obj: slugify(obj.name))
     resources = {
         "minimum_users": 1,
@@ -59,14 +59,14 @@ class PlanFactory(factory.django.DjangoModelFactory):
     }
 
 
-class FreePlanFactory(PlanFactory):
-    """A free plan factory"""
+class FreeEntitlementFactory(EntitlementFactory):
+    """A free entitlement factory"""
 
     name = "Free"
 
 
-class ProfessionalPlanFactory(PlanFactory):
-    """A professional plan factory"""
+class ProfessionalEntitlementFactory(EntitlementFactory):
+    """A professional entitlement factory"""
 
     name = "Professional"
     resources = {
@@ -77,8 +77,8 @@ class ProfessionalPlanFactory(PlanFactory):
     }
 
 
-class OrganizationPlanFactory(PlanFactory):
-    """An organization plan factory"""
+class OrganizationEntitlementFactory(EntitlementFactory):
+    """An organization entitlement factory"""
 
     name = "Organization"
     resources = {
