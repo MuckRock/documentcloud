@@ -394,7 +394,7 @@ class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
         document = Document.objects.get(pk=view.kwargs["document_pk"])
         if document.sections.filter(page_number=value).exists():
             raise serializers.ValidationError(
-                f"You may not add more than one section to a page"
+                "You may not add more than one section to a page"
             )
         return value
 

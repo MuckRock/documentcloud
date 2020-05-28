@@ -36,7 +36,7 @@ class TestProjectAPI:
         """List projects"""
         size = 10
         ProjectFactory.create_batch(size)
-        response = client.get(f"/api/projects/")
+        response = client.get("/api/projects/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
@@ -45,8 +45,7 @@ class TestProjectAPI:
         """Create a new project"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/projects/",
-            {"title": "Test", "description": "This is a test project"},
+            "/api/projects/", {"title": "Test", "description": "This is a test project"}
         )
         assert response.status_code == status.HTTP_201_CREATED
         response_json = json.loads(response.content)

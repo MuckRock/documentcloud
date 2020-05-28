@@ -25,7 +25,7 @@ class TestUserAPI:
         users = UserFactory.create_batch(size)
         OrganizationFactory(members=users)
         client.force_authenticate(user=users[0])
-        response = client.get(f"/api/users/")
+        response = client.get("/api/users/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
@@ -66,7 +66,7 @@ class TestUserAPI:
     def test_retrieve_me(self, client, user):
         """Test retrieving the currently logged in user"""
         client.force_authenticate(user=user)
-        response = client.get(f"/api/users/me/")
+        response = client.get("/api/users/me/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         serializer = UserSerializer(user)
@@ -77,7 +77,7 @@ class TestUserAPI:
         """Test retrieving as staff exposes `is_staff`"""
         user = UserFactory(is_staff=True)
         client.force_authenticate(user=user)
-        response = client.get(f"/api/users/me/")
+        response = client.get("/api/users/me/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert "is_staff" in response_json
@@ -85,7 +85,7 @@ class TestUserAPI:
     def test_retrieve_me_expanded(self, client, user):
         """Test retrieving the currently logged in user"""
         client.force_authenticate(user=user)
-        response = client.get(f"/api/users/me/", {"expand": "organization"})
+        response = client.get("/api/users/me/", {"expand": "organization"})
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         organization_serializer = OrganizationSerializer(user.organization)
@@ -93,7 +93,7 @@ class TestUserAPI:
 
     def test_retrieve_me_anonymous(self, client):
         """me endpoint doesn't work for logged out users"""
-        response = client.get(f"/api/users/me/")
+        response = client.get("/api/users/me/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_update(self, client, user):

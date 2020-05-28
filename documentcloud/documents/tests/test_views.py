@@ -38,7 +38,7 @@ class TestDocumentAPI:
         """List documents"""
         size = 10
         DocumentFactory.create_batch(size)
-        response = client.get(f"/api/documents/")
+        response = client.get("/api/documents/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
@@ -53,7 +53,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         DocumentFactory.create_batch(size)
         DocumentFactory.create_batch(size, user=user)
-        response = client.get(f"/api/documents/", {"user": user.pk})
+        response = client.get("/api/documents/", {"user": user.pk})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
@@ -64,7 +64,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         DocumentFactory.create_batch(size, user=user, status=Status.success)
         DocumentFactory.create_batch(size, user=user, status=Status.error)
-        response = client.get(f"/api/documents/", {"status": "success"})
+        response = client.get("/api/documents/", {"status": "success"})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
@@ -77,12 +77,12 @@ class TestDocumentAPI:
         DocumentFactory.create_batch(size, user=user, status=Status.pending)
         DocumentFactory.create_batch(size, user=user, status=Status.error)
 
-        response = client.get(f"/api/documents/", {"status": ["success", "pending"]})
+        response = client.get("/api/documents/", {"status": ["success", "pending"]})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == 2 * size
 
-        response = client.get(f"/api/documents/", {"status": "success,pending"})
+        response = client.get("/api/documents/", {"status": "success,pending"})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == 2 * size
@@ -93,7 +93,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         DocumentFactory.create_batch(size, user=user, status=Status.success)
         DocumentFactory.create_batch(size, user=user, status=Status.error)
-        response = client.get(f"/api/documents/", {"status": "good"})
+        response = client.get("/api/documents/", {"status": "good"})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_list_order(self, client):
@@ -101,7 +101,7 @@ class TestDocumentAPI:
         DocumentFactory(page_count=3)
         DocumentFactory(page_count=1)
         DocumentFactory(page_count=2)
-        response = client.get(f"/api/documents/", {"ordering": "page_count"})
+        response = client.get("/api/documents/", {"ordering": "page_count"})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert [j["page_count"] for j in response_json["results"]] == [1, 2, 3]
@@ -110,7 +110,7 @@ class TestDocumentAPI:
         """List documents"""
         DocumentFactory(status=Status.nofile)
         DocumentFactory(status=Status.success)
-        response = client.get(f"/api/documents/")
+        response = client.get("/api/documents/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         for doc_json in response_json["results"]:
@@ -155,7 +155,7 @@ class TestDocumentAPI:
         """Upload a document with a file and a title"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/",
+            "/api/documents/",
             {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
         )
         assert response.status_code == status.HTTP_201_CREATED
@@ -167,7 +167,7 @@ class TestDocumentAPI:
         """Create a document and upload the file directly"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/",
+            "/api/documents/",
             {"title": "Test", "data": {"tag": ["good"]}},
             format="json",
         )
@@ -180,7 +180,7 @@ class TestDocumentAPI:
         """Create a document in a project"""
         client.force_authenticate(user=project.user)
         response = client.post(
-            f"/api/documents/",
+            "/api/documents/",
             {"title": "Test", "projects": [project.pk]},
             format="json",
         )
@@ -195,14 +195,14 @@ class TestDocumentAPI:
         user = UserFactory(membership__organization__verified_journalist=True)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/", {"title": "Test", "access": "public"}, format="json"
+            "/api/documents/", {"title": "Test", "access": "public"}, format="json"
         )
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_create_bad_no_user(self, client):
         """Must be logged in to create a document"""
         response = client.post(
-            f"/api/documents/",
+            "/api/documents/",
             {"title": "Test", "file_url": "http://www.example.com/test.pdf"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -211,7 +211,7 @@ class TestDocumentAPI:
         """Create a document and set an ID"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/", {"title": "Test", "id": 999}, format="json"
+            "/api/documents/", {"title": "Test", "id": 999}, format="json"
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["id"] != 999
@@ -220,7 +220,7 @@ class TestDocumentAPI:
         """Create a public document when you are not a verified journalist"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/", {"title": "Test", "access": "public"}, format="json"
+            "/api/documents/", {"title": "Test", "access": "public"}, format="json"
         )
         # this check is currently disabled
         assert response.status_code == status.HTTP_201_CREATED
@@ -229,7 +229,7 @@ class TestDocumentAPI:
         """Data keys must be alphanumeric"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/",
+            "/api/documents/",
             {"title": "Test", "data": {"bad key?": ["foo"]}},
             format="json",
         )
@@ -240,9 +240,7 @@ class TestDocumentAPI:
         """Create multiple documents"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/",
-            [{"title": "Test 1"}, {"title": "Test 2"}],
-            format="json",
+            "/api/documents/", [{"title": "Test 1"}, {"title": "Test 2"}], format="json"
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert (
@@ -254,7 +252,7 @@ class TestDocumentAPI:
         """Attempt to create too many documents"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/",
+            "/api/documents/",
             [{"title": f"Test {i}"} for i in range(settings.REST_BULK_LIMIT + 1)],
             format="json",
         )
@@ -424,7 +422,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         documents = DocumentFactory.create_batch(3, user=user, access=Access.private)
         response = client.patch(
-            f"/api/documents/",
+            "/api/documents/",
             [{"id": d.pk, "source": "Daily Planet"} for d in documents[:2]],
             format="json",
         )
@@ -437,7 +435,7 @@ class TestDocumentAPI:
         good_document = DocumentFactory(user=user, access=Access.public)
         bad_document = DocumentFactory(access=Access.public)
         response = client.patch(
-            f"/api/documents/",
+            "/api/documents/",
             [
                 {"id": good_document.pk, "access": "private"},
                 {"id": bad_document.pk, "access": "private"},
@@ -455,7 +453,7 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         document = DocumentFactory(user=user, access=Access.private)
         response = client.patch(
-            f"/api/documents/",
+            "/api/documents/",
             [{"id": document.pk, "access": "public"}, {"id": 1234, "access": "public"}],
             format="json",
         )
@@ -470,7 +468,7 @@ class TestDocumentAPI:
         num = settings.REST_BULK_LIMIT + 1
         documents = DocumentFactory.create_batch(num, user=user, access=Access.private)
         response = client.patch(
-            f"/api/documents/",
+            "/api/documents/",
             [{"id": document.pk, "access": "public"} for document in documents],
             format="json",
         )
@@ -483,7 +481,7 @@ class TestDocumentAPI:
         # make sure a processing document doesn't block other documents
         DocumentFactory(user=user, status=Status.readable)
         response = client.patch(
-            f"/api/documents/",
+            "/api/documents/",
             [{"id": d.pk, "access": "private"} for d in documents],
             format="json",
         )
@@ -499,7 +497,7 @@ class TestDocumentAPI:
             3, user=user, access=Access.private, status=Status.pending
         )
         response = client.patch(
-            f"/api/documents/",
+            "/api/documents/",
             [{"id": d.pk, "access": "public"} for d in documents],
             format="json",
         )
@@ -509,7 +507,7 @@ class TestDocumentAPI:
         """Test updating multiple documents, with bad ID"""
         client.force_authenticate(user=user)
         response = client.patch(
-            f"/api/documents/", [{"id": "a", "access": "private"}], format="json"
+            "/api/documents/", [{"id": "a", "access": "private"}], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -517,7 +515,7 @@ class TestDocumentAPI:
         """Test updating multiple documents, with missing IDs"""
         client.force_authenticate(user=user)
         response = client.patch(
-            f"/api/documents/", [{"access": "private"}], format="json"
+            "/api/documents/", [{"access": "private"}], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -551,7 +549,7 @@ class TestDocumentAPI:
         """May not delete *all* the documents"""
         client.force_authenticate(user=user)
         documents = DocumentFactory.create_batch(2, user=user)
-        response = client.delete(f"/api/documents/")
+        response = client.delete("/api/documents/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         for document in documents:
             document.refresh_from_db()
@@ -647,7 +645,7 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
+            "/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
         )
         assert response.status_code == status.HTTP_200_OK
         for document in documents:
@@ -663,9 +661,7 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/",
-            {"ids": [d.pk for d in documents]},
-            format="json",
+            "/api/documents/process/", {"ids": [d.pk for d in documents]}, format="json"
         )
         assert response.status_code == status.HTTP_200_OK
         for document in documents:
@@ -682,7 +678,7 @@ class TestDocumentAPI:
         force_ocrs = [False, True]
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/",
+            "/api/documents/process/",
             [{"id": d.pk, "force_ocr": f} for (d, f) in zip(documents, force_ocrs)],
             format="json",
         )
@@ -699,14 +695,14 @@ class TestDocumentAPI:
             "documentcloud.common.environment.storage.exists", return_value=True
         )
         client.force_authenticate(user=user)
-        response = client.post(f"/api/documents/process/")
+        response = client.post("/api/documents/process/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_process_no_id(self, client, user):
         """Test processing multiple documents with missing IDs"""
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/", [{"force_ocr": True}], format="json"
+            "/api/documents/process/", [{"force_ocr": True}], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -721,7 +717,7 @@ class TestDocumentAPI:
         bad_document = DocumentFactory(access=Access.public)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/",
+            "/api/documents/process/",
             [{"id": good_document.pk}, {"id": bad_document.pk}],
             format="json",
         )
@@ -732,7 +728,7 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/",
+            "/api/documents/process/",
             [{"id": d.pk} for d in documents] + [{"id": 9999}],
             format="json",
         )
@@ -748,7 +744,7 @@ class TestDocumentAPI:
         documents = DocumentFactory.create_batch(num, user=user)
         client.force_authenticate(user=user)
         response = client.post(
-            f"/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
+            "/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 

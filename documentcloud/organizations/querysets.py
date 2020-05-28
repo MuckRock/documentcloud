@@ -1,10 +1,7 @@
 """Custom querysets for organization app"""
 # Django
-from django.db import models, transaction
+from django.db import models
 from django.db.models import Q
-
-# Standard Library
-from datetime import datetime
 
 
 class OrganizationQuerySet(models.QuerySet):

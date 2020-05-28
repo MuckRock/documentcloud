@@ -18,7 +18,7 @@ class TestOrganizationAPI:
         """List organizations"""
         size = 10
         OrganizationFactory.create_batch(size)
-        response = client.get(f"/api/organizations/")
+        response = client.get("/api/organizations/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size

@@ -10,7 +10,6 @@ from django.utils.translation import ugettext_lazy as _
 
 # Standard Library
 import logging
-from uuid import uuid4
 
 # Third Party
 from squarelet_auth.organizations.models import AbstractOrganization

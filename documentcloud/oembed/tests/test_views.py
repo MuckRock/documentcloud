@@ -29,7 +29,7 @@ class TestOEmbed(OEmbed):
 class TestOEmbedView:
     def test_good(self, client):
         """Test a simple oembed call"""
-        response = client.get(f"/api/oembed/", {"url": "https://www.example.com/1/"})
+        response = client.get("/api/oembed/", {"url": "https://www.example.com/1/"})
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert response_json["query"] == ""
@@ -39,13 +39,13 @@ class TestOEmbedView:
 
     def test_no_url(self, client):
         """Test a oembed call without specifying a URL"""
-        response = client.get(f"/api/oembed/")
+        response = client.get("/api/oembed/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_options(self, client):
         """Test an oembed call with options"""
         response = client.get(
-            f"/api/oembed/",
+            "/api/oembed/",
             {
                 "url": "https://www.example.com/1/?embed=1&option=true",
                 "max_width": 100,
@@ -61,7 +61,7 @@ class TestOEmbedView:
     def test_bad_dimensions(self, client):
         """Test an oembed call with non integer dimensions"""
         response = client.get(
-            f"/api/oembed/",
+            "/api/oembed/",
             {
                 "url": "https://www.example.com/1/",
                 "max_width": "foo",
@@ -75,5 +75,5 @@ class TestOEmbedView:
 
     def test_404(self, client):
         """Test an oembed call with a non-matching URL"""
-        response = client.get(f"/api/oembed/", {"url": "https://www.example.com/foo/"})
+        response = client.get("/api/oembed/", {"url": "https://www.example.com/foo/"})
         assert response.status_code == status.HTTP_404_NOT_FOUND
