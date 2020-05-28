@@ -22,7 +22,8 @@ RUN apt-get -qq -y update && \
 
 # Requirements are installed here to ensure they will be cached.
 COPY ./requirements /requirements
-RUN pip install --upgrade pip && pip install -r /requirements/local.txt
+# RUN pip install --upgrade pip && pip install -r /requirements/local.txt
+RUN pip install -r /requirements/local.txt
 
 COPY ./compose/production/django/entrypoint /entrypoint
 RUN sed -i 's/\r//' /entrypoint && chmod +x /entrypoint
@@ -44,7 +45,7 @@ RUN sed -i 's/\r//' /start-flower && chmod +x /start-flower
 # =-=-=-=-=-=
 
 # Temporary measure to get pip-compile to work
-RUN pip install 'pip<19.2'
+# RUN pip install 'pip<19.2'
 
 WORKDIR /app
 
