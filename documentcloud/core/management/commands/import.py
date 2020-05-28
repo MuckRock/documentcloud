@@ -19,13 +19,14 @@ from listcrunch.listcrunch import uncrunch
 from reversion.models import Revision
 from smart_open import open as smart_open
 from social_django.models import UserSocialAuth
+from squarelet_auth.organizations.models import Entitlement, Membership
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 from documentcloud.documents.tasks import solr_index_dirty
-from documentcloud.organizations.models import Membership, Organization, Plan
+from documentcloud.organizations.models import Organization
 from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.projects.models import Collaboration, Project, ProjectMembership
 from documentcloud.users.models import User
@@ -107,7 +108,7 @@ class Command(BaseCommand):
 
     def import_org(self):
         self.stdout.write("Begin Organization Import {}".format(timezone.now()))
-        plan = Plan.objects.get(slug="free")
+        entitlement = Entitlement.objects.get(slug="free")
 
         # get the UUID from the map file
         with smart_open(f"{self.bucket_path}organizations_map.csv", "r") as mapfile:
@@ -157,7 +158,7 @@ class Command(BaseCommand):
                     slug=fields[2],
                     private=fields[9] == "t",
                     individual=False,
-                    plan=plan,
+                    entitlement=entitlement,
                     verified_journalist=True,
                     language=fields[6],
                     document_language=fields[7],
@@ -167,7 +168,7 @@ class Command(BaseCommand):
 
     def import_users(self, org):
         self.stdout.write("Begin Users Import {}".format(timezone.now()))
-        plan = Plan.objects.get(slug="free")
+        entitlement = Entitlement.objects.get(slug="free")
 
         with smart_open(f"{self.bucket_path}users.csv", "r") as infile, smart_open(
             f"{self.bucket_path}users_map.csv", "r"
@@ -250,7 +251,7 @@ class Command(BaseCommand):
                         slug=ind_org_slug,
                         private=True,
                         individual=True,
-                        plan=plan,
+                        entitlement=entitlement,
                         verified_journalist=False,
                         language=fields[7],
                         document_language=fields[8],
