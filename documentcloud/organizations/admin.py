@@ -11,7 +11,7 @@ from documentcloud.organizations.models import Organization
 from documentcloud.users.models import User
 
 
-# @admin.register(Organization)
+@admin.register(Organization)
 class OrganizationAdmin(VersionAdmin):
     """Organization Admin"""
 
