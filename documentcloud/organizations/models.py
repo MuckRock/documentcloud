@@ -88,7 +88,7 @@ class Organization(AbstractOrganization):
         """Is the user an admin of this organization?"""
         return self.users.filter(pk=user.pk, memberships__admin=True).exists()
 
-    def _update_resources(self, data):
+    def _update_resources(self, data, date_update):
         # calc reqs/month in case it has changed
         self.pages_per_month = self.calc_pages_per_month(data["max_users"])
 
@@ -97,7 +97,7 @@ class Organization(AbstractOrganization):
         # per month may have changed if they changed their plan or their user count,
         # in which case we should add the difference to their monthly pages
         # if pages per month increased
-        if self.date_update == data["date_update"]:
+        if self.date_update == date_update:
             # add additional monthly pages immediately
             self.monthly_pages = F("monthly_pages") + Greatest(
                 self.pages_per_month - F("pages_per_month"), 0
@@ -105,12 +105,15 @@ class Organization(AbstractOrganization):
         else:
             # reset monthly pages when date_update is updated
             self.monthly_pages = self.pages_per_month
+            self.date_update = date_update
+
+    def _choose_entitlement(self, entitlements):
+        return max(entitlements, key=lambda e: e["resources"].get("base_pages", 0))
 
     def calc_pages_per_month(self, users):
         """Calculate how many pages an organization gets per month on this plan
         for a given number of users"""
         return (
-            self.plan.resources["base_pages"]
-            + (users - self.plan.resources["minimum_users"])
-            * self.plan.resources["pages_per_user"]
+            self.entitlement.base_pages
+            + (users - self.entitlement.minimum_users) * self.entitlement.pages_per_user
         )
