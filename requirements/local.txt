@@ -14,7 +14,7 @@ alabaster==0.7.12         # via sphinx
 amqp==2.5.2               # via -r requirements/./base.txt, kombu
 appdirs==1.4.3            # via black
 argon2-cffi==19.1.0       # via -r requirements/./base.txt
-astroid==2.3.3            # via pylint, pylint-celery
+astroid==2.4.1            # via pylint, pylint-celery
 async-generator==1.10     # via -r requirements/./base.txt, aiobotocore
 async-timeout==3.0.1      # via -r requirements/./base.txt, aiohttp
 atomicwrites==1.3.0       # via pytest
@@ -130,9 +130,9 @@ pyflakes==2.1.1           # via flake8
 pygments==2.5.2           # via -r requirements/./base.txt, ipython, sphinx
 pyjwt==1.7.1              # via -r requirements/./base.txt, djangorestframework-simplejwt, social-auth-core
 pylint-celery==0.3        # via -r requirements/local.in
-pylint-django==2.0.13     # via -r requirements/local.in
+pylint-django==2.0.15     # via -r requirements/local.in
 pylint-plugin-utils==0.6  # via pylint-celery, pylint-django
-pylint==2.4.4             # via pylint-celery, pylint-django, pylint-plugin-utils
+pylint==2.5.2             # via pylint-celery, pylint-django, pylint-plugin-utils
 pyparsing==2.4.2          # via -r requirements/./base.txt, packaging
 pysolr==3.8.1             # via -r requirements/./base.txt
 pytest-django==3.5.1      # via -r requirements/local.in
@@ -174,10 +174,10 @@ sphinxcontrib-jsmath==1.0.1  # via sphinx
 sphinxcontrib-qthelp==1.0.2  # via sphinx
 sphinxcontrib-serializinghtml==1.1.3  # via sphinx
 sqlparse==0.3.0           # via -r requirements/./base.txt, django, django-debug-toolbar
-squarelet-auth==0.0.42    # via -r requirements/./base.txt
+squarelet-auth==0.0.43    # via -r requirements/./base.txt
 termcolor==1.1.0          # via pytest-sugar
 text-unidecode==1.2       # via -r requirements/./base.txt, faker, python-slugify
-toml==0.10.0              # via black
+toml==0.10.0              # via black, pylint
 traitlets==4.3.3          # via -r requirements/./base.txt, ipython
 typed-ast==1.4.0          # via astroid, black, mypy
 typing-extensions==3.7.4  # via -r requirements/./base.txt, aiohttp, mypy
