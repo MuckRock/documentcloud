@@ -10,10 +10,9 @@ def set_entitlements(apps, schema_editor):
     Entitlement = apps.get_model("squarelet_auth_organizations", "Entitlement")
 
     for plan in Plan.objects.all():
-        try:
-            entitlement = Entitlement.objects.get(slug=plan.slug)
-        except Entitlement.DoesNotExist:
-            continue
+        entitlement = Entitlement.objects.create(
+            name=plan.name, slug=plan.slug, resources=plan.resources
+        )
         Organization.objects.filter(plan=plan).update(entitlement=entitlement)
 
 
