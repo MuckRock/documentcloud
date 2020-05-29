@@ -174,7 +174,7 @@ sphinxcontrib-jsmath==1.0.1  # via sphinx
 sphinxcontrib-qthelp==1.0.2  # via sphinx
 sphinxcontrib-serializinghtml==1.1.3  # via sphinx
 sqlparse==0.3.0           # via -r requirements/./base.txt, django, django-debug-toolbar
-squarelet-auth==0.0.44    # via -r requirements/./base.txt
+squarelet-auth==0.0.45    # via -r requirements/./base.txt
 termcolor==1.1.0          # via pytest-sugar
 text-unidecode==1.2       # via -r requirements/./base.txt, faker, python-slugify
 toml==0.10.0              # via black, pylint
