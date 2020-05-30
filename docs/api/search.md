@@ -6,8 +6,6 @@
 * [Syntax](#syntax)
 * [API](#api)
 
-<!-- intra document search? -->
-
 ## Introduction
 
 DocumentCloud's search is powered by [Solr][1], an open source search engine by the Apache Software Foundation.  Most of the search syntax is passed through directly to Solr &em; you can read [Solr's documentation][2] directly for information on how its syntax works.  This document will reiterate the parts of that syntax that are applicable to DocumentCloud, as well as parts of the search that are specific to DocumentCloud.
@@ -69,49 +67,163 @@ You may sort using the syntax `sort:score`.  Possible sortings include:
 * `title` (alphabetical)
 * `source` (alphabetical)
 
-These may be reversed by prepending a `-` (`sort:-page_count`).
+These may be reversed by prepending a `-` (`sort:-page_count`).  You may use `order` as an alias to `sort`.
 
-### Autoescape Behavior
-<!-- let user know it was triggered -->
+### Escaping Special Characters
+
+Special characters may be escaped py preceding them with a `\` - for example, `\(1\+1\)` will search for a literal "(1+1)" in the text instead of using the characters special meaning.  If your query contains a syntax error, the parser will automatically escape your query to make a best effort at returning relevent results.  The [response](#response) will contain a field `escaped` informing you if this auto-escape mechanism was triggered.
 
 ### Filter Fields
 
-#### How fields are combined (lack of boolean)
+The following fields may be searched on, which will filter the documents show to you by the values they contain.  By default, all of these will be required (ie `user:1 mueller report` will show only documents from user 1 scored by the text query "mueller report").  If you include multiple of the same field, it will `OR` them together (ie `user:1 user:2 mueller report` will show documents by user 1 or 2).  If you include distinct fields, it will combine them with an `AND` (ie `user:1 user:2 tag:email` will find documents by user 1 or 2 and which are tagged as email).  If you use any explicit boolean operators (`AND` or `OR`), that will take precedance (ie `(user:1 AND tag:email) OR (user:2 AND tag:contract)` would return documents by user 1 tagged as email as well as documents by user 2 tagged as contract.  This allows you to make complex boolean queries using any available field.
 
+Available fields
 * user
+    * Specify using their user ID.  Also accepts their name preceding the ID for readability (ie `user:mitchell-kotler-1`).  `account` is an alias for user.
 * organization
+    * Specify using the organization ID.  Also accepts the slug preceding the ID for readability (ie `organization:muckrock-1`).  `group` is an alias for organization.
 * access
+    * Specify the access level.  Valid choices include `public`, `organization` and `private`.
 * status
+    * Specify the status of the document.  Valid choices include `success`, `readable`, `pending`, `error` and `nofile`.
 * project
+    * Specify using the project ID.  Also accepts the slug preceding the ID for readability (ie `project:manhatten-project-1`).  `projects` is an alias for project.
 * document
-* data\_\*
+    * Specify using the document ID.  Also accepts the slug preceding the ID for readability (ie `project:mueller-report-1`).  `id` is an alias for document.
 * language
+    * Specify the language the document is in.  Valid choices include:
+        * ara - Arabic
+        * zho - Chinese (Simplified)
+        * tra - Chinese (Traditional)
+        * hrv - Croatian
+        * dan - Danish
+        * nld - Dutch
+        * eng - English
+        * fra - French
+        * deu - German
+        * heb - Hebrew
+        * hun - Hungarian
+        * ind - Indonesian
+        * ita - Italian
+        * jpn - Japanese
+        * kor - Korean
+        * nor - Norwegian
+        * por - Portuguese
+        * ron - Romanian
+        * rus - Russian
+        * spa - Spanish
+        * swe - Swedish
+        * ukr - Ukrainian
 * slug
-* tag
+    * Specify the slug of the document.
 * created\_at
+    * The [date time](#specifying-dates-and-times) the document was created.
 * updated\_at
+    * The [date time](#specifying-dates-and-times) the document was last updated.
 * page\_count
+    * The number of pages the document has.  `pages` is an alias for page\_count.
+* data\_\*
+    * This allows you to search based on arbitrary key value pairs you can add to your document.  If you added the pair `color`: `blue` to a document, you may find that using `data_color: blue`.
+* tag
+    * This is an alias to `data__tag` which is used by the site as a simple tagging system.
 
 ### Text Fields
 
+Text fields can be used to search for text in a particular field of the document.  They are used to score the searches and are always treated as optional unless you use `+` or `AND` to require them.
+
 * title
+    * The title of the document.
 * source
+    * The source of the document.
 * description
+    * The description of the document.
 * text
+    * The full text of the document, as obtained by text embedded in the PDF or by OCR.  `doctext` is an alias for text.
 * page\_no\_\*
+    * You may search the text on the given page of a document.  To find all documents which contain the word report on page 2, you could use `page_no_2: report`.
 
 ## API
 
-* q
-* All fields
-* sort / order
-* per\_page
-* page
-* expand
+You may search via the API:
 
 `GET /api/documents/search/`
 
+You may pass the query as described above in the `q` parameter.  For all fielded searches, you may pass them in as standalone query parameters instead of in `q` if you prefer. (ie `/api/documents/search/?q=some+text&user=1` to search for some text in documents by user 1).  You may also negate fields by preceding them with a `-` in this way (ie `/api/documents/search/?q=some+text&-user=1` to search for some text in documents not by user 1).  You may specify the sort order using either `sort` or `order` as a parameter (ie `/api/documents/search/?q=some+text&order=title` to search for some text in documents sorted by their title).
+
+You can also specify `per_page`, `page` and `expand` as you would for `/api/documents/`.  `expand` may be `user` or `organization` (or both `user,organization`).  The response will be in a JSON object like a list response:
+
+```
+{
+    "count": <count>,
+    "next": <next url if applicable>,
+    "previous": <previous url if applicable>,
+    "results": <list of results>,
+    "escaped": <bool>
+}
+```
+with the addition of the "escaped" property to specify if the query had a syntax error and needed to be autoescaped.  Each document will also contain a "highlights" property, which will contain relevant snippets from the document containing the given search term.
+
+```
+{
+    "count": 413,
+    "next": "https://api.beta.documentcloud.org/api/documents/search/?q=report&page=2",
+    "previous": null,
+    "results": [
+        {
+            "id": "20059100",
+            "user": 100000,
+            "organization": 10001,
+            "access": "public",
+            "status": "success",
+            "title": "the-mueller-report",
+            "slug": "the-mueller-report",
+            "source": "gema_georgia_gov",
+            "language": "eng",
+            "created_at": "2020-04-05T13:36:08.507Z",
+            "updated_at": "2020-04-24T18:47:52.985Z",
+            "page_count": 448,
+            "highlights": {
+                "title": [
+                    "the-mueller-<em>report</em>"
+                ],
+                "page_no_9": [
+                    "-CrinP6te\nINTRODUCTION TO VOLUME T |\n\nThis <em>report</em> is submitted to the Attorey General pursuant to 28 C-F.R"
+                ]
+            },
+            "data": {},
+            "asset_url": "https://assets.documentcloud.org/"
+        },
+    ]
+}
+```
+
+You may search within a document using the following endpoint:
+
 `GET /api/documents/<doc_id>/search/`
+
+This will return up to 25 highlights per page for your query.  You may use the same search syntax as above, although most of the fielded queries will not be meaningful when searching within a single document.
+
+Example response:
+
+```
+{
+    "title": [
+        "the-mueller-<em>report</em>"
+    ],
+    "page_no_9": [
+        "-CrinP6te\nINTRODUCTION TO VOLUME T |\n\nThis <em>report</em> is submitted to the Attorey General pursuant to 28 C-F.R",
+        " the Attorney\nGeneral a confidential <em>report</em> explaining the prosecution or declination decisions [the",
+        " in detail in this <em>report</em>, the Special Counsel's investigation established that\nRussia interfered in"
+    ],
+    "page_no_10": [
+        "\n‘overview of the two volumes of our <em>report</em>.\n\nThe <em>report</em> describes actions and events that the Special",
+        ", the <em>report</em> points out\nthe absence of evidence or conflicts in the evidence about a particular fact or",
+        " with\nconfidence, the <em>report</em> states that the investigation established that certain actions or events",
+        "\n‘coordination in that sense when stating in the <em>report</em> thatthe investigation did not establish that the\n‘Trump",
+        " Campaign coordinated with the Russian government in its election interference activities.\n\nThe <em>report</em> on"
+    ]
+}
+```
 
 [1]: https://lucene.apache.org/solr/
 [2]: https://lucene.apache.org/solr/guide/6_6/the-standard-query-parser.html
