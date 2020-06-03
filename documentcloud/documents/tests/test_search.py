@@ -460,24 +460,25 @@ class TestFilterExtractor:
 
 class TestParse:
     @pytest.mark.parametrize(
-        "query,query_params,new_query,filters,sort",
+        "query,query_params,new_query,filters,sort,escaped",
         [
-            ("", "", "*:*", "", None),
-            ("user:1", "", "*:*", "user=1", None),
-            ("user:1 OR organization:1", "", "user:1 OR organization:1", "", None),
-            ("foo", "", "foo", "", None),
-            ("foo sort:title", "", "foo", "", "title"),
-            ("foo", "title=bar", "foo title:(bar)", "", None),
-            ("foo", "user=1", "foo", "", None),
-            ("foo AND", "", 'foo "AND"', "", None),
-            ("foo (", "", "foo \\(", "", None),
+            ("", "", "*:*", "", None, False),
+            ("user:1", "", "*:*", "user=1", None, False),
+            ("user:1 OR access:public", "", "user:1 OR access:public", "", None, False),
+            ("foo", "", "foo", "", None, False),
+            ("foo sort:title", "", "foo", "", "title", False),
+            ("foo", "title=bar", "foo title:(bar)", "", None, False),
+            ("foo", "user=1", "foo", "", None, False),
+            ("foo AND", "", 'foo "AND"', "", None, True),
+            ("foo (", "", "foo \\(", "", None, True),
         ],
     )
-    def test_parse(self, query, query_params, new_query, filters, sort):
+    def test_parse(self, query, query_params, new_query, filters, sort, escaped):
         assert _parse(query, QueryDict(query_params, mutable=True)) == (
             new_query,
             QueryDict(filters),
             sort,
+            escaped,
         )
 
 

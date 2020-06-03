@@ -320,6 +320,7 @@ def _parse(text_query, query_params):
         new_query = ""
         filters = QueryDict(mutable=True)
         sort = None
+        escaped = False
 
     # pull text queries from the parameters into the text query
     additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
