@@ -95,6 +95,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         help_text=_("Projects this document belongs to"),
     )
 
+    canonical_url = serializers.SerializerMethodField(
+        label=_("Canonical URL"),
+        read_only=True,
+        help_text=_("The canonical URL to access this document"),
+    )
+
     class Meta:
         model = Document
         list_serializer_class = BulkListSerializer
@@ -102,6 +108,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "id",
             "access",
             "asset_url",
+            "canonical_url",
             "created_at",
             "data",
             "description",
@@ -282,6 +289,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if not request:
             return False
         return request.user.has_perm("documents.change_document", obj)
+
+    def get_canonical_url(self, obj):
+        return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}"
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
