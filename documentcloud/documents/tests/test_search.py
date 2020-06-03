@@ -474,6 +474,7 @@ class TestParse:
         ],
     )
     def test_parse(self, query, query_params, new_query, filters, sort, escaped):
+        # pylint: disable=too-many-arguments
         assert _parse(query, QueryDict(query_params, mutable=True)) == (
             new_query,
             QueryDict(filters),
