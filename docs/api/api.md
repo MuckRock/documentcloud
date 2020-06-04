@@ -59,6 +59,7 @@ A select few of the resources support some bulk operations on the `/api/<resourc
 
 | HTTP Verb | REST Operation      | Parameters                                                                                                                    |
 | ---       | ---                 | ---                                                                                                                           |
+| POST      | Bulk create         | A list of objects, where each object is what you would `POST` for a single object                                             |
 | PUT       | Bulk update         | A list of objects, where each object is what you would `PUT` for a single object &mdash; except it must also include the ID   |
 | PATCH     | Bulk partial update | A list of objects, where each object is what you would `PATCH` for a single object &mdash; except it must also include the ID |
 | DELETE    | Bulk destroy        | Bulk destroys will have a filtering parameter, often required, to specify which resources to delete                           |
@@ -199,16 +200,29 @@ writable document fields (besides `file_url`).  The response will contain all
 the fields for the document, with two being of note for this flow:
 `presigned_url` and `id`.
 
+If you would like to upload files in bulk, you may `POST` a list of JSON
+objects to `/api/documents/` instead of a single object.  The response will
+contain a list of document objects.
+
 2. `PUT <presigned_url>`
 
 Next, you will `PUT` the binary data for the file to the given
 `presigned_url`.  The presigned URL is valid for 5 minutes.  You may obtain a
 new URL by issuing a `GET` request to `/api/documents/\<id\>/`
 
+If you are bulk uploading, you will still need to issue a single `PUT` to the
+corresponding `presigned_url` for each file.
+
 3. `POST /api/documents/<id>/process/`
 
 Finally, you will begin processing of the document.  Note that this endpoint
-accepts no additional parameters.
+accepts only one optional parameter &mdash; `force_ocr` which, if set to true,
+will OCR the document even if it contains embedded text.
+
+If you are uploading in bulk you can issue a single `POST` to
+`/api/document/process/` which will begin processing in bulk.  You should pass
+a list of objects containing the document IDs of the documents you would like
+to being processing.  You may optionally specify `force_ocr` for each document.
 
 #### URL Upload Flow
 
@@ -216,6 +230,9 @@ accepts no additional parameters.
 
 If you set `file_url` to a URL pointing to a publicly accessible PDF, our
 servers will fetch the PDF and begin processing it automatically.
+
+You may also send a list of document objects with `file_url` set to bulk upload
+files using this flow.
 
 ### Endpoints
 
