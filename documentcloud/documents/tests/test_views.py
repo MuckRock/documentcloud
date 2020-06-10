@@ -853,6 +853,76 @@ class TestNoteAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_create_page_note(self, client):
+        """Create a page level note"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/notes/",
+            {
+                "title": "Test",
+                "content": "Lorem Ipsum",
+                "page_number": 1,
+                "access": "public",
+            },
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_page_note2(self, client):
+        """Create a page level note"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/notes/",
+            {
+                "title": "Test",
+                "content": "Lorem Ipsum",
+                "page_number": 1,
+                "access": "public",
+                "x1": None,
+                "x2": None,
+                "y1": None,
+                "y2": None,
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_create_partial_coords(self, client):
+        """You must specify all or none of the coordinates"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/notes/",
+            {
+                "title": "Test",
+                "content": "Lorem Ipsum",
+                "page_number": 1,
+                "access": "public",
+                "x1": 0.1,
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_coords(self, client):
+        """Coordinates must be in order"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/notes/",
+            {
+                "title": "Test",
+                "content": "Lorem Ipsum",
+                "page_number": 1,
+                "access": "public",
+                "x1": 0.1,
+                "x2": 0.2,
+                "y1": 0.3,
+                "y2": 0.2,
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_create_private(self, client, user):
         """Create a private note"""
         document = DocumentFactory(page_count=2)

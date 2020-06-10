@@ -357,10 +357,16 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
         return value
 
     def validate(self, attrs):
-        """Check the access level and coordinates"""
-        # Bounds should either all be set or not set at all
-        if all(attr not in attrs for attr in ("x1", "x2", "y1", "y2")):
+        """Check the coordinates"""
+        # if none of the coords are set, this is a page note, no further validating
+        if all(attrs.get(attr) is None for attr in ("x1", "x2", "y1", "y2")):
             return attrs
+
+        # if some of the coordinates are set, all must be set
+        if any(attrs.get(attr) is None for attr in ("x1", "x2", "y1", "y2")):
+            raise serializers.ValidationError(
+                "You must set either all of none of the note coordinates"
+            )
 
         # If bounds were set, ensure they are in range
         if attrs["x1"] >= attrs["x2"]:
