@@ -682,7 +682,7 @@ example, `612.0x792.0:0-447`
 ### Static Assets
 
 The static assets for a document are loaded from different URLs depending on
-its [access level](#access-levels).  Append the following to the `static_url`
+its [access level](#access-levels).  Append the following to the `asset_url`
 returned to load the static asset:
 
 | Asset      | Path                                                          | Description                                                     |
