@@ -294,12 +294,12 @@ Notes can be left on documents for yourself, or to be shared with other users.  
 | ID           | Integer   | Read Only          | The ID for the note                                                |
 | access       | String    | Default: `private` | The [access level](#access-levels) for the note                    |
 | content      | String    | Not Required       | Content for the note, which may include HTML                       |
-| created\_at  | Date Time | Read Only          | Time stamp when this note was created                               |
+| created\_at  | Date Time | Read Only          | Time stamp when this note was created                              |
 | edit\_access | Bool      | Read Only          | Does the current user have edit access to this note                |
 | organization | Integer   | Read Only          | The ID for the [organization](#organizations) this note belongs to |
 | page\_number | Integer   | Required           | The page of the document this note appears on                      |
 | title        | String    | Required           | Title for the note                                                 |
-| updated\_at  | Date Time | Read Only          | Time stamp when this note was last updated                          |
+| updated\_at  | Date Time | Read Only          | Time stamp when this note was last updated                         |
 | user         | ID        | Read Only          | The ID for the [user](#users) this note belongs to                 |
 | x1           | Float     | Not Required       | Left most coordinate of the note, as a percentage of page size     |
 | x2           | Float     | Not Required       | Right most coordinate of the note, as a percentage of page size    |
