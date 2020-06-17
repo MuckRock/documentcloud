@@ -12,5 +12,6 @@ from django.dispatch import receiver
     dispatch_uid="documentcloud.core.signals.flatpage_invalidate_cache",
 )
 def flatpage_invalidate_cache(instance, **kwargs):
+    # pylint: disable=unused-argument
     key = make_template_fragment_key("flatpage", [instance.pk])
     cache.delete(key)
