@@ -11,10 +11,6 @@ All APIs besides the authentication endpoints are served from
 * [Documents](#documents)
     * [Notes](#notes)
     * [Sections](#sections)
-    <!-- No entity support yet
-    * [Entities](#entities)
-    * [Entity Dates](#entity-dates)
-    -->
     * [Errors](#errors)
     * [Data](#data)
     * [Redactions](#redactions)
@@ -251,8 +247,7 @@ files using this flow.
     It expects a list of objects, where each object contains the ID of the
     document to process, and an optional boolean, `force_ocr`, which will OCR
     the document even if it contains embedded text if set to `true`
-* `GET /api/documents/search/` &mdash; [Search](#search-help) documents
-    * TODO: in depth search help
+* `GET /api/documents/search/` &mdash; [Search][6] documents
 * `GET /api/documents/<id>/` &mdash; Get document
 * `PUT /api/documents/<id>/` &mdash; Update document
 * `PATCH /api/documents/<id>/` &mdash; Partial update document
@@ -267,7 +262,7 @@ files using this flow.
 * `DELETE /api/documents/<id>/process/` &mdash; Cancel processing document
     * This will cancel the processing of a document.  Note that it is an error
       to try to cancel the processing if the document is not processing.
-* `GET /api/documents/<id>/search/` &mdash; [Search](#search-help) within a document
+* `GET /api/documents/<id>/search/` &mdash; [Search][6] within a document
 
 ### Filters
 
@@ -747,3 +742,4 @@ To expand all fields:
 [3]: https://accounts.muckrock.com/
 [4]: https://oembed.com
 [5]: https://github.com/rsinger86/drf-flex-fields
+[6]: https://beta.documentcloud.org/help/search/
