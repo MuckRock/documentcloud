@@ -79,7 +79,7 @@ jmespath==0.9.4
 kombu==4.6.8
 listcrunch==1.0.0
 luqum==0.8.1
-markdown==3.2.2
+markdown==2.6.11
 markupsafe==1.1.1
 more-itertools==7.2.0
 multidict==4.7.5
@@ -97,6 +97,7 @@ prompt-toolkit==3.0.3
 protobuf==3.10.0
 psycopg2==2.8.3
 ptyprocess==0.6.0
+py-gfm==0.1.4
 pyasn1-modules==0.2.7
 pyasn1==0.4.7
 pycparser==2.19

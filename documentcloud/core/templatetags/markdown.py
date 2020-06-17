@@ -16,9 +16,11 @@ def markdown_filter(text):
     extensions = [
         # for smart quotes
         "markdown.extensions.smarty",
-        # for table support
-        "markdown.extensions.tables",
         # for adding IDs to all headings for intra document linking
         "markdown.extensions.toc",
+        # for GitHub flavored markdown
+        "mdx_gfm",
     ]
-    return mark_safe(markdown.markdown(text, extensions=extensions))
+    return mark_safe(
+        markdown.markdown(text, extensions=extensions, output_format="html")
+    )

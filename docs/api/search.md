@@ -77,7 +77,8 @@ Special characters may be escaped by preceding them with a `\` — for example, 
 
 The following fields may be searched on, which will filter the resulting documents based on their properties.  By default, all fields included in the query are treated as required (e.g. `user:1 report` will show only documents from user 1 scored by the text query “report”).  If you include multiple of the same field, the query is equivalent to applying `OR` between each of the same field (e.g. `user:1 user:2 report` will show documents by user 1 or 2).  If you include distinct fields, the query is equivalent to applying `AND` between each set of distinct fields (e.g. `user:1 user:2 tag:email` will find documents by user 1 or 2 and which are tagged as email).  If you use any explicit boolean operators (`AND` or `OR`), that will take precedence (e.g. `(user:1 AND tag:email) OR (user:2 AND tag:contract)` would return documents by user 1 tagged as email as well as documents by user 2 tagged as contract.  This allows you to make complex boolean queries using any available field.
 
-Available fields
+Available fields:
+
 * **user**
     * Specify using the user ID.  Also accepts the slug preceding the ID for readability (e.g. `user:mitchell-kotler-1`).  `account` is an alias for user.
 * **organization**
