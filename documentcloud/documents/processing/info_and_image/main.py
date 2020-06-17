@@ -76,9 +76,17 @@ IMAGE_WIDTHS = [
     parse_extract_width(x)
     for x in env.list(
         "IMAGE_EXTRACT_WIDTHS",
-        default=["large:1000", "normal:700", "small:180", "thumbnail:60"],
+        default=[
+            "xlarge:2000",
+            "large:1000",
+            "normal:700",
+            "small:180",
+            "thumbnail:60",
+        ],
     )
 ]  # width of images to OCR
+# Index of image widths to use for OCR
+OCR_IMAGE_INDEX = env.int("IMAGE_EXTRACT_OCR_INDEX", 1)
 REDIS = utils.get_redis()
 
 # Topic names for the messaging queue
@@ -403,7 +411,7 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     """Internal method to extract a single page from a PDF file as an image.
 
     Returns:
-        The path to the newly rendered large image path.
+        The page dimensions.
     """
 
     # Extract the page as an image with a certain width
@@ -432,7 +440,7 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
@@ -552,7 +560,10 @@ def extract_image(data, _context=None):
                         return "Ok"
                 else:
                     # Prepare the image to be OCRd.
-                    ocr_queue.append([page_number, large_image_path])
+                    ocr_image_path = path.page_image_path(
+                        doc_id, slug, page_number, IMAGE_WIDTHS[OCR_IMAGE_INDEX][0]
+                    )
+                    ocr_queue.append([page_number, ocr_image_path])
                     check_and_flush(ocr_queue)
 
     flush(ocr_queue)
