@@ -13,5 +13,12 @@ register = Library()
 @stringfilter
 def markdown_filter(text):
     """Take the provided markdown-formatted text and convert it to HTML."""
-    extensions = ["markdown.extensions.smarty", "markdown.extensions.tables"]
+    extensions = [
+        # for smart quotes
+        "markdown.extensions.smarty",
+        # for table support
+        "markdown.extensions.tables",
+        # for adding IDs to all headings for intra document linking
+        "markdown.extensions.toc",
+    ]
     return mark_safe(markdown.markdown(text, extensions=extensions))

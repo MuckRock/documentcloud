@@ -29,9 +29,9 @@ def test_flatpage_markdown(client):
     )
     flatpage.sites.add(Site.objects.get_current())
     response = client.get("/pages/about/")
-    assert b"<h1>This is a heading</h1>" in response.content
+    assert b'<h1 id="this-is-a-heading">This is a heading</h1>' in response.content
     # check that cache is cleared on save
     flatpage.content = "## Now H2"
     flatpage.save()
     response = client.get("/pages/about/")
-    assert b"<h2>Now H2</h2>" in response.content
+    assert b'<h2 id="now-h2">Now H2</h2>' in response.content
