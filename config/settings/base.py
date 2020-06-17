@@ -79,7 +79,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    "documentcloud.core",
+    "documentcloud.core.apps.CoreConfig",
     "documentcloud.documents",
     "documentcloud.oembed.apps.OembedConfig",
     "documentcloud.organizations",

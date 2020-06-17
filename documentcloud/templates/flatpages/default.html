@@ -1,1 +1,5 @@
-{{ flatpage.content }}
+{% load cache %}
+{% load markdown %}
+{% cache None flatpage flatpage.pk %}
+{{ flatpage.content|markdown }}
+{% endcache %}

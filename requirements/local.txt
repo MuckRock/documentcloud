@@ -95,6 +95,7 @@ kombu==4.6.8
 lazy-object-proxy==1.4.2  # via astroid
 listcrunch==1.0.0
 luqum==0.8.1
+markdown==3.2.2
 markupsafe==1.1.1
 mccabe==0.6.1             # via flake8, pylint
 more-itertools==7.2.0

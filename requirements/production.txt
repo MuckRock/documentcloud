@@ -79,6 +79,7 @@ jmespath==0.9.4
 kombu==4.6.8
 listcrunch==1.0.0
 luqum==0.8.1
+markdown==3.2.2
 markupsafe==1.1.1
 more-itertools==7.2.0
 multidict==4.7.5

@@ -62,7 +62,7 @@ grpc-google-iam-v1==0.12.3  # via google-cloud-pubsub
 grpcio==1.24.1            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 idna-ssl==1.1.0           # via aiohttp
 idna==2.8                 # via idna-ssl, requests, yarl
-importlib-metadata==0.21  # via kombu
+importlib-metadata==0.21  # via kombu, markdown
 inflection==0.3.1         # via drf-yasg
 ipython-genutils==0.2.0   # via traitlets
 ipython==7.11.1
@@ -73,6 +73,7 @@ jmespath==0.9.4           # via boto3, botocore
 kombu==4.6.8              # via celery
 listcrunch==1.0.0
 luqum==0.8.1
+markdown==3.2.2
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via aiohttp, yarl
