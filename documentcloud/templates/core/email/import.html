@@ -1,0 +1,110 @@
+{% extends "core/email/base.html" %}
+
+{% block body %}
+  <p>
+  Hi {{ name }},
+  </p>
+
+  <p>
+
+  {% if disabled %}
+    Previously you had a DocumentCloud account through {{ org_name }} that
+    was later disabled. We've recently upgraded the site, migrated the data, and
+    enabled freelancer accounts, and have re-activated your account independent
+    of the organization.
+  {% else %}
+    We’re writing to let you know that {{ org_name }}’s DocumentCloud account
+    has been successfully upgraded{% if freelancer %} and you now have an
+    independent freelancer account on the platform as well{% endif %}.
+  {% endif %}
+    
+  {% if muckrock %}
+    To log in, please use your MuckRock account credentials here
+    (note that your MuckRock and DocumentCloud accounts have been merged):
+  {% else %}
+    To log in, please use your same account credentials here:
+  {% endif %}:
+      
+  </p>
+
+  <a href="https://beta.documentcloud.org">https://beta.documentcloud.org</a>
+
+  <p>
+  Having trouble remembering your password or username? You can just put in your
+  email address here and have a reminder and reset link sent:
+  </p>
+
+  <a href="https://accounts.muckrock.com/accounts/password/reset/">https://accounts.muckrock.com/accounts/password/reset/</a>
+
+  <p>
+  {% if freelancer or disabled %}
+    As a reminder, because {% if freelancer %}you were listed as a freelancer
+    in{% else %}your account was disabled from{% endif %} {{ org_name }}'s
+    account, you'll have to request that an administrator there grant you access
+    if you would like to upload documents directly to their account. Going
+    forward, you can upload documents directly into your own freelancer account
+    without specifying an organization.
+  {% else %}
+    Any existing projects, documents, and users should be ported over. If anything
+    looks off, just let us know — everything is backed up and we’re happy to work
+    to get things right.
+  {% endif %}
+  </p>
+
+  <p>
+  Here’s a 10-minute video that walks you through all of DocumentCloud’s key features:
+  </p>
+
+  <a href="https://www.youtube.com/watch?v=i_d0zsw6hhQ">https://www.youtube.com/watch?v=i_d0zsw6hhQ</a>
+
+  {% if admin %}
+  <p>
+  We’ve included a list below of current team members on your organization
+  account. If there are people who should be removed — or if you need to add
+  additional members, here’s a video detailing how to manage accounts associated
+  with your organization:
+  </p>
+  {% endif %}
+
+  <a href="https://youtu.be/H2QvD8qslyk">https://youtu.be/H2QvD8qslyk</a>
+
+  <p>
+  Please register for our mailing list to get updates on feature additions, tips
+  and tricks, funding opportunities, and other important DocumentCloud updates:
+  </p>
+
+  <a href="https://documentcloud.us11.list-manage.com/subscribe?u=4e1ca6e52b3163639d641f360&id=20a793193a">https://documentcloud.us11.list-manage.com/subscribe?u=4e1ca6e52b3163639d641f360&id=20a793193a</a>
+
+  <p>
+  Thanks again for the important work you do — we’d love to hear how
+  DocumentCloud helps your reporting, so please send over any example stories or
+  creative uses of the platform and we’d love to promote them.
+  </p>
+
+  <p>
+  Sincerely,<br>
+  The DocumentCloud Team
+  </p>
+
+  {% if admin %}
+    <p>
+    Members of {{ org_name }}
+    </p>
+    <ul>
+      {% for name, email, user_admin in users %}
+        <li>{{ name }}, {{ email }}, {{ user_admin|yesno:"admin,member" }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>
+    Admins of {{ org_name }}
+    </p>
+    <ul>
+      {% for name, email, user_admin in users %}
+        {% if user_admin %}
+          <li>{{ name }}, {{ email }}, admin</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock body %}

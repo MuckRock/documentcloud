@@ -26,6 +26,8 @@ coreapi==2.3.3            # via -r requirements/base.in, drf-yasg
 coreschema==0.0.4         # via coreapi, drf-yasg
 cpuprofile==1.0.1         # via -r requirements/base.in
 cryptography==2.8         # via -r requirements/base.in
+cssselect==1.1.0          # via premailer
+cssutils==1.0.2           # via premailer
 decorator==4.4.0          # via gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 django-appconf==1.0.3     # via django-compressor
@@ -38,6 +40,7 @@ django-environ==0.4.5     # via -r requirements/base.in
 django-extensions==2.2.5  # via -r requirements/base.in
 django-filter==2.2.0      # via -r requirements/base.in
 django-model-utils==3.2.0  # via -r requirements/base.in
+django-premailer==0.2.0   # via -r requirements/base.in
 django-redis==4.10.0      # via -r requirements/base.in, python-redis-lock
 django-reversion==3.0.4   # via -r requirements/base.in
 django-timezone-field==3.0  # via django-celery-beat
@@ -60,6 +63,7 @@ google-cloud-pubsub==1.0.2  # via -r requirements/base.in
 googleapis-common-protos[grpc]==1.6.0  # via google-api-core, grpc-google-iam-v1
 grpc-google-iam-v1==0.12.3  # via google-cloud-pubsub
 grpcio==1.24.1            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
+html2text==2020.1.16      # via -r requirements/base.in
 idna-ssl==1.1.0           # via aiohttp
 idna==2.8                 # via idna-ssl, requests, yarl
 importlib-metadata==0.21  # via kombu, markdown
@@ -73,6 +77,7 @@ jmespath==0.9.4           # via boto3, botocore
 kombu==4.6.8              # via celery
 listcrunch==1.0.0         # via -r requirements/base.in
 luqum==0.8.1              # via -r requirements/base.in
+lxml==4.5.1               # via premailer
 markdown==3.2.2           # via -r requirements/base.in
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
@@ -87,6 +92,7 @@ pexpect==4.8.0            # via ipython
 pickleshare==0.7.5        # via ipython
 pillow==6.1.0             # via -r requirements/base.in
 ply==3.11                 # via luqum
+premailer==3.0.0          # via django-premailer
 prompt-toolkit==3.0.3     # via ipython
 protobuf==3.10.0          # via google-api-core, googleapis-common-protos
 ptyprocess==0.6.0         # via pexpect
@@ -107,7 +113,7 @@ pytz==2019.2              # via -r requirements/base.in, celery, django, django-
 rcssmin==1.0.6            # via -r requirements/base.in, django-compressor
 redis==3.4.1              # via -r requirements/base.in, django-redis, python-redis-lock
 requests-oauthlib==1.2.0  # via google-auth-oauthlib, social-auth-core
-requests==2.22.0          # via coreapi, gcsfs, google-api-core, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
+requests==2.22.0          # via coreapi, gcsfs, google-api-core, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
 rest-social-auth==2.2.0   # via -r requirements/base.in
 rjsmin==1.1.0             # via django-compressor
 rsa==4.0                  # via google-auth, python-jose

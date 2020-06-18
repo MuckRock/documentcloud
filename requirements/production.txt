@@ -29,6 +29,8 @@ coreapi==2.3.3            # via -r requirements/./base.txt, drf-yasg
 coreschema==0.0.4         # via -r requirements/./base.txt, coreapi, drf-yasg
 cpuprofile==1.0.1         # via -r requirements/./base.txt
 cryptography==2.8         # via -r requirements/./base.txt
+cssselect==1.1.0          # via -r requirements/./base.txt, premailer
+cssutils==1.0.2           # via -r requirements/./base.txt, premailer
 decorator==4.4.0          # via -r requirements/./base.txt, gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via -r requirements/./base.txt, python3-openid, social-auth-core
 django-anymail[mailgun]==6.1.0  # via -r requirements/production.in
@@ -42,6 +44,7 @@ django-environ==0.4.5     # via -r requirements/./base.txt
 django-extensions==2.2.5  # via -r requirements/./base.txt
 django-filter==2.2.0      # via -r requirements/./base.txt
 django-model-utils==3.2.0  # via -r requirements/./base.txt
+django-premailer==0.2.0   # via -r requirements/./base.txt
 django-redis==4.10.0      # via -r requirements/./base.txt, python-redis-lock
 django-reversion==3.0.4   # via -r requirements/./base.txt
 django-storages[boto3]==1.7.1  # via -r requirements/production.in, collectfast
@@ -66,6 +69,7 @@ googleapis-common-protos[grpc]==1.6.0  # via -r requirements/./base.txt, google-
 grpc-google-iam-v1==0.12.3  # via -r requirements/./base.txt, google-cloud-pubsub
 grpcio==1.24.1            # via -r requirements/./base.txt, google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gunicorn==19.9.0          # via -r requirements/production.in
+html2text==2020.1.16      # via -r requirements/./base.txt
 idna-ssl==1.1.0           # via -r requirements/./base.txt, aiohttp
 idna==2.8                 # via -r requirements/./base.txt, idna-ssl, requests, yarl
 importlib-metadata==0.21  # via -r requirements/./base.txt, kombu, markdown
@@ -79,6 +83,7 @@ jmespath==0.9.4           # via -r requirements/./base.txt, boto3, botocore
 kombu==4.6.8              # via -r requirements/./base.txt, celery
 listcrunch==1.0.0         # via -r requirements/./base.txt
 luqum==0.8.1              # via -r requirements/./base.txt
+lxml==4.5.1               # via -r requirements/./base.txt, premailer
 markdown==3.2.2           # via -r requirements/./base.txt
 markupsafe==1.1.1         # via -r requirements/./base.txt, jinja2
 more-itertools==7.2.0     # via -r requirements/./base.txt, zipp
@@ -93,6 +98,7 @@ pexpect==4.8.0            # via -r requirements/./base.txt, ipython
 pickleshare==0.7.5        # via -r requirements/./base.txt, ipython
 pillow==6.1.0             # via -r requirements/./base.txt
 ply==3.11                 # via -r requirements/./base.txt, luqum
+premailer==3.0.0          # via -r requirements/./base.txt, django-premailer
 prompt-toolkit==3.0.3     # via -r requirements/./base.txt, ipython
 protobuf==3.10.0          # via -r requirements/./base.txt, google-api-core, googleapis-common-protos
 psycopg2==2.8.3           # via -r requirements/production.in
@@ -114,7 +120,7 @@ pytz==2019.2              # via -r requirements/./base.txt, celery, django, djan
 rcssmin==1.0.6            # via -r requirements/./base.txt, django-compressor
 redis==3.4.1              # via -r requirements/./base.txt, django-redis, python-redis-lock
 requests-oauthlib==1.2.0  # via -r requirements/./base.txt, google-auth-oauthlib, social-auth-core
-requests==2.22.0          # via -r requirements/./base.txt, coreapi, django-anymail, gcsfs, google-api-core, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
+requests==2.22.0          # via -r requirements/./base.txt, coreapi, django-anymail, gcsfs, google-api-core, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
 rest-social-auth==2.2.0   # via -r requirements/./base.txt
 rjsmin==1.1.0             # via -r requirements/./base.txt, django-compressor
 rsa==4.0                  # via -r requirements/./base.txt, google-auth, python-jose

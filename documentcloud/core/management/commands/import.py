@@ -12,10 +12,11 @@ import json
 import os
 import re
 import time
+from datetime import timedelta
 
 # Third Party
 import pytz
-from dateutil.parser import parse
+from dateutil.parser import isoparse, parse
 from listcrunch.listcrunch import uncrunch
 from reversion.models import Revision
 from smart_open import open as smart_open
@@ -25,6 +26,7 @@ from unidecode import unidecode
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
+from documentcloud.core.mail import send_mail
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
 from documentcloud.documents.tasks import solr_index_dirty
@@ -52,6 +54,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("organization", type=int, help="Organization ID to import")
         parser.add_argument(
+            "--upcoming",
+            type=isoparse,
+            help="Send email to organizational users about upcoming import - "
+            "does not perform any importing",
+        )
+        parser.add_argument(
             "--allow_duplicate",
             action="store_true",
             help="Allow the organization ID to exist in the database",
@@ -64,16 +72,24 @@ class Command(BaseCommand):
         # pylint: disable=unused-argument
         org_id = kwargs["organization"]
         dry_run = kwargs["dry_run"]
+        upcoming = kwargs["upcoming"]
         self.allow_duplicate = kwargs["allow_duplicate"]
         self.bucket_path = f"s3://{BUCKET}/{IMPORT_DIR}/organization-{org_id}/"
         # https://stackoverflow.com/a/54517228/2204914
         csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
 
+        if upcoming is not None:
+            self.stdout.write(
+                "Sending out upcoming migration notice.  Not performaing any migration"
+            )
+            self.upcoming(upcoming.date())
+            return
+
         self.run_import_lambda(org_id)
         with transaction.atomic():
             sid = transaction.savepoint()
             org = self.import_org()
-            self.import_users(org)
+            users = self.import_users(org)
             self.import_documents()
             self.import_notes()
             self.import_sections()
@@ -86,6 +102,9 @@ class Command(BaseCommand):
             if dry_run:
                 self.stdout.write("Dry run, not commiting changes")
                 transaction.savepoint_rollback(sid)
+                return
+
+            self.send_emails(org, users)
 
     def run_import_lambda(self, org_id):
         """Run the pre-process lambda script to generate the .txt.json files
@@ -181,8 +200,9 @@ class Command(BaseCommand):
 
             create_users = []
             create_memberships = []
+            users = []
 
-            for fields, (user_id, uuid, username, ind_org_slug) in zip(
+            for fields, (user_id, uuid, username, ind_org_slug, created) in zip(
                 reader, map_reader
             ):
                 # fields[0] is the user_id, it should match between files
@@ -231,13 +251,18 @@ class Command(BaseCommand):
                                 admin=fields[10] == "1",
                             )
                         )
+                    # name, email, role, created
+                    users.append((user.name, user.email, fields[10], created))
                 else:
                     self.stdout.write(f"Creating {fields[3]}")
+                    name = f"{fields[1]} {fields[2]}"
+                    # name, email, role, created
+                    users.append((name, fields[3], fields[10], created))
                     create_users.append(
                         User(
                             id=user_id,
                             uuid=uuid,
-                            name=f"{fields[1]} {fields[2]}",
+                            name=name,
                             email=fields[3],
                             username=username,
                             email_verified=True,
@@ -254,7 +279,7 @@ class Command(BaseCommand):
                         private=True,
                         individual=True,
                         entitlement=entitlement,
-                        verified_journalist=False,
+                        verified_journalist=True,
                         language=fields[7],
                         document_language=fields[8],
                     )
@@ -288,7 +313,8 @@ class Command(BaseCommand):
             User.objects.bulk_create(create_users)
             Membership.objects.bulk_create(create_memberships)
 
-        self.stdout.write("End Organization Import {}".format(timezone.now()))
+        self.stdout.write("End Users Import {}".format(timezone.now()))
+        return users
 
     def import_documents(self):
         self.stdout.write("Begin Documents Import {}".format(timezone.now()))
@@ -646,3 +672,81 @@ class Command(BaseCommand):
             ProjectMembership.objects.bulk_create(create_pms, batch_size=1000)
 
         self.stdout.write("End Project Memberships Import {}".format(timezone.now()))
+
+    def send_emails(self, org, users):
+        self.stdout.write("Begin Send Emails {}".format(timezone.now()))
+        org_users = [
+            (m.user.name, m.user.email, m.admin)
+            for m in org.memberhsips.select_related("user")
+        ]
+        for name, email, role, created in users:
+            if role in ("1", "2"):
+                subject = f"{org.name}'s DocumentCloud Account has been upgraded"
+            else:
+                subject = "Your new DocumentCloud Account is ready"
+            send_mail(
+                subject=subject,
+                template="core/email/import.html",
+                to=[email],
+                extra_context={
+                    "admin": role == "1",
+                    "freelancer": role == "4",
+                    "disabled": role == "0",
+                    # they had a muckrock account if it was *not* created during import
+                    "muckrock": not created,
+                    "name": name,
+                    "org_name": org.name,
+                    "users": org_users,
+                },
+            )
+        self.stdout.write("End Send Emails {}".format(timezone.now()))
+
+    def upcoming(self, upcoming_date):
+
+        self.stdout.write("Begin Upcoming Emails {}".format(timezone.now()))
+
+        reply_date = upcoming_date - timedelta(days=4)
+
+        with smart_open(f"{self.bucket_path}organizations.csv", "r") as infile:
+            reader = csv.reader(infile)
+            next(reader)  # discard headers
+            fields = next(reader)
+            org_name = fields[1]
+
+        users = []
+
+        with smart_open(f"{self.bucket_path}users.csv", "r") as infile:
+            reader = csv.reader(infile)
+            next(reader)  # discard headers
+
+            for fields in reader:
+                # name, email, admin
+                name = f"{fields[1]} {fields[2]}"
+                role = fields[10]
+                if role != "0":
+                    users.append((name, fields[3], role))
+
+        org_users = [
+            (name, email, role == "1")
+            for name, email, role in users
+            if role in ("1", "2")
+        ]
+
+        for name, email, role in users:
+            send_mail(
+                subject=f"Heads Up: {org_name}’s DocumentCloud account is "
+                "getting an upgrade",
+                template="core/email/upcoming.html",
+                to=[email],
+                extra_context={
+                    "admin": role == "1",
+                    "freelancer": role == "4",
+                    "name": name,
+                    "org_name": org_name,
+                    "reply_date": reply_date,
+                    "upcoming_date": upcoming_date,
+                    "users": org_users,
+                },
+            )
+
+        self.stdout.write("End Upcoming Emails {}".format(timezone.now()))

@@ -78,6 +78,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "squarelet_auth.organizations.apps.OrganizationsConfig",
     "squarelet_auth.apps.SquareletAuthConfig",
+    "django_premailer",
 ]
 
 LOCAL_APPS = [
@@ -256,6 +257,9 @@ EMAIL_BACKEND = env(
 )
 # https://docs.djangoproject.com/en/2.2/ref/settings/#email-timeout
 EMAIL_TIMEOUT = 5
+DEFAULT_FROM_EMAIL = env(
+    "DJANGO_DEFAULT_FROM_EMAIL", default="MuckRock <info@muckrock.com>"
+)
 
 # ADMIN
 # ------------------------------------------------------------------------------
