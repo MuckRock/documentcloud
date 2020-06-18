@@ -10,6 +10,7 @@ import csv
 import ctypes
 import json
 import os
+import re
 import time
 
 # Third Party
@@ -20,6 +21,7 @@ from reversion.models import Revision
 from smart_open import open as smart_open
 from social_django.models import UserSocialAuth
 from squarelet_auth.organizations.models import Entitlement, Membership
+from unidecode import unidecode
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
@@ -314,6 +316,8 @@ class Command(BaseCommand):
             "9": (Access.public, Status.success),
         }
 
+        p_alphanumeric = re.compile(r"[^A-Za-z0-9_-]")
+
         with smart_open(f"{self.bucket_path}documents.pagespec.csv", "r") as infile:
             reader = csv.reader(infile)
             next(reader)  # discard headers
@@ -327,7 +331,10 @@ class Command(BaseCommand):
                 access, status = access_status_map[fields[3]]
                 if fields[26]:
                     # wrap the data dictionary so each value is in a list now
-                    data = {k: [v] for k, v in json.loads(fields[26]).items()}
+                    data = {
+                        p_alphanumeric.sub("-", unidecode(k)): [v]
+                        for k, v in json.loads(fields[26]).items()
+                    }
                 else:
                     data = {}
                 create_docs.append(
