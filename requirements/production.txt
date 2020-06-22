@@ -68,7 +68,7 @@ grpcio==1.24.1            # via -r requirements/./base.txt, google-api-core, goo
 gunicorn==19.9.0          # via -r requirements/production.in
 idna-ssl==1.1.0           # via -r requirements/./base.txt, aiohttp
 idna==2.8                 # via -r requirements/./base.txt, idna-ssl, requests, yarl
-importlib-metadata==0.21  # via -r requirements/./base.txt, kombu
+importlib-metadata==0.21  # via -r requirements/./base.txt, kombu, markdown
 inflection==0.3.1         # via -r requirements/./base.txt, drf-yasg
 ipython-genutils==0.2.0   # via -r requirements/./base.txt, traitlets
 ipython==7.11.1           # via -r requirements/./base.txt
@@ -79,7 +79,7 @@ jmespath==0.9.4           # via -r requirements/./base.txt, boto3, botocore
 kombu==4.6.8              # via -r requirements/./base.txt, celery
 listcrunch==1.0.0         # via -r requirements/./base.txt
 luqum==0.8.1              # via -r requirements/./base.txt
-markdown==2.6.11          # via -r requirements/./base.txt, py-gfm
+markdown==3.2.2           # via -r requirements/./base.txt
 markupsafe==1.1.1         # via -r requirements/./base.txt, jinja2
 more-itertools==7.2.0     # via -r requirements/./base.txt, zipp
 multidict==4.7.5          # via -r requirements/./base.txt, aiohttp, yarl
@@ -97,7 +97,6 @@ prompt-toolkit==3.0.3     # via -r requirements/./base.txt, ipython
 protobuf==3.10.0          # via -r requirements/./base.txt, google-api-core, googleapis-common-protos
 psycopg2==2.8.3           # via -r requirements/production.in
 ptyprocess==0.6.0         # via -r requirements/./base.txt, pexpect
-py-gfm==0.1.4             # via -r requirements/./base.txt
 pyasn1-modules==0.2.7     # via -r requirements/./base.txt, google-auth
 pyasn1==0.4.7             # via -r requirements/./base.txt, pyasn1-modules, rsa
 pycparser==2.19           # via -r requirements/./base.txt, cffi

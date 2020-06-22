@@ -18,8 +18,10 @@ def markdown_filter(text):
         "markdown.extensions.smarty",
         # for adding IDs to all headings for intra document linking
         "markdown.extensions.toc",
-        # for GitHub flavored markdown
-        "mdx_gfm",
+        # for table support
+        "markdown.extensions.tables",
+        # for better code block support
+        "markdown.extensions.fenced_code",
     ]
     return mark_safe(
         markdown.markdown(text, extensions=extensions, output_format="html")
