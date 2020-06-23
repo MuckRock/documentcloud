@@ -677,7 +677,7 @@ class Command(BaseCommand):
         self.stdout.write("Begin Send Emails {}".format(timezone.now()))
         org_users = [
             (m.user.name, m.user.email, m.admin)
-            for m in org.memberhsips.select_related("user")
+            for m in org.memberships.select_related("user")
         ]
         for name, email, role, created in users:
             if role in ("1", "2"):
