@@ -384,6 +384,11 @@ def process_pdf(data, _context=None):
         storage.delete(path.path(doc_id))
         raise PdfSizeError()
 
+    # files are always uploaded to S3 as private, set to public on S3
+    # if uploaded publicallt to DocumentCloud
+    if access == access_choices.PUBLIC:
+        storage.set_access([doc_path], access)
+
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)
     initialize_redis_page_data(doc_id, page_count)
