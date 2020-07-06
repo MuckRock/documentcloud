@@ -732,6 +732,10 @@ class Command(BaseCommand):
             if role in ("1", "2")
         ]
 
+        self.stdout.write(
+            "There are {} users and {} org users".format(len(users), len(org_users))
+        )
+
         for name, email, role in users:
             send_mail(
                 subject=f"Heads Up: {org_name}’s DocumentCloud account is "
