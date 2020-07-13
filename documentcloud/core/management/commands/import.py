@@ -85,12 +85,13 @@ class Command(BaseCommand):
             self.upcoming(upcoming.date())
             return
 
-        self.run_import_lambda(org_id)
+        has_documents = self.run_import_lambda(org_id)
         with transaction.atomic():
             sid = transaction.savepoint()
             org = self.import_org()
             users = self.import_users(org)
-            self.import_documents()
+            if has_documents:
+                self.import_documents()
             self.import_notes()
             self.import_sections()
             self.import_entities()
@@ -111,6 +112,18 @@ class Command(BaseCommand):
         and to calculate the page spec for all documents
         """
         self.stdout.write("Begin Pre-Process Lambda {}".format(timezone.now()))
+
+        with smart_open(f"{self.bucket_path}documents.csv", "r") as infile:
+            try:
+                # try reading the first two lines of the file to ensure we have
+                # at least one document to import
+                next(infile)  # headers
+                next(infile)  # first row
+            except StopIteration:
+                self.stdout.write("No documents to import, skipping Pre-Process Lambda")
+                self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
+                return False
+
         httpsub.post(settings.IMPORT_URL, json={"org_id": org_id})
         # now we wait for the import script to finish by polling S3 for the existance
         # of the pagespec csv
@@ -126,6 +139,7 @@ class Command(BaseCommand):
             exists = storage.exists(pagespec_path)
             time.sleep(5)
         self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
+        return True
 
     def import_org(self):
         self.stdout.write("Begin Organization Import {}".format(timezone.now()))
