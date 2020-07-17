@@ -440,7 +440,9 @@ else:
 SOLR_SEARCH_HANDLER = env("SOLR_SEARCH_HANDLER", default="/mainsearch")
 # The certificate needs to be in a file if present
 SOLR_VERIFY = env.str("SOLR_VERIFY", multiline=True, default="")
-if SOLR_VERIFY:
+if SOLR_VERIFY == "False":
+    SOLR_VERIFY = False
+elif SOLR_VERIFY:
     # if present, put the contents into a named temp file
     # and set the var to the name of the file
     cert = NamedTemporaryFile(delete=False)
