@@ -454,6 +454,7 @@ else:
 SOLR_DIRTY_LIMIT = env.int("SOLR_DIRTY_LIMIT", default=200)
 SOLR_DIRTY_COUNTDOWN = env.int("SOLR_DIRTY_COUNTDOWN", default=60)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
+SOLR_PAGE_INDEX_LIMIT = env.int("SOLR_PAGE_INDEX_LIMIT", default=5000)
 
 # OEmbed
 # ------------------------------------------------------------------------------

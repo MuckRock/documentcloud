@@ -184,6 +184,13 @@ def finish_update_access(document_pk, status, access):
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
+    """Index a document into solr"""
+    logger.info(
+        "indexing document %d, fields %s, text %s",
+        document_pk,
+        field_updates,
+        index_text,
+    )
     if field_updates is not None and "data" in field_updates:
         # update all fields if data was updated to ensure we remove any data keys
         # from solr which were removed from the document
@@ -194,6 +201,25 @@ def solr_index(document_pk, solr_document=None, field_updates=None, index_text=F
         except Document.DoesNotExist:
             # if document no longer exists, just skip
             return
+
+        if index_text and document.page_count > settings.SOLR_PAGE_INDEX_LIMIT:
+            # if we are indexing text for a large document, we will break it up into
+            # chunks to send to solr, so we do not time out
+            logger.info(
+                "indexing: document %d too large (%d pages), chunking",
+                document_pk,
+                document.page_count,
+            )
+            tasks = []
+            for i in range(0, document.page_count, settings.SOLR_PAGE_INDEX_LIMIT):
+                tasks.append(solr_index_pages.s(document_pk, i))
+            chord(tasks, finish_solr_index_pages.si(document_pk)).delay()
+            # we will index the non-page fields here
+            solr_document = document.solr(index_text=False)
+            SOLR.add([solr_document])
+            # do not mark solr_dirty as False into all pages have been indexed
+            return
+
         if field_updates:
             solr_document = document.solr(field_updates.keys(), index_text=index_text)
         else:
@@ -201,6 +227,34 @@ def solr_index(document_pk, solr_document=None, field_updates=None, index_text=F
 
     SOLR.add([solr_document], fieldUpdates=field_updates)
 
+    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+def solr_index_pages(document_pk, first_page):
+    """Index a chunk of pages for a document"""
+
+    logger.info("indexing document %d, starting at page %d", document_pk, first_page)
+
+    try:
+        document = Document.objects.get(pk=document_pk)
+    except Document.DoesNotExist:
+        # if document no longer exists, just skip
+        return
+
+    # only update the chunk of pages for this task, leave other fields as is
+    field_updates = {
+        f"page_no_{i}": "set"
+        for i in range(first_page, first_page + settings.SOLR_PAGE_INDEX_LIMIT)
+    }
+    solr_document = document.solr(field_updates.keys(), index_text=True)
+    SOLR.add([solr_document], fieldUpdates=field_updates)
+
+
+@task
+def finish_solr_index_pages(document_pk):
+    """Make document as no longer solr dirty after indexing all page chunks"""
+    logger.info("finishing indexing pages %d", document_pk)
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
