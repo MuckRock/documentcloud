@@ -2,7 +2,7 @@
 
 # Django
 from django.db import models
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch
 
 # Third Party
 from squarelet_auth.organizations.models import Membership
@@ -19,11 +19,15 @@ class UserQuerySet(models.QuerySet):
         and anybody with a public document
         """
         if user.is_authenticated:
+            # unions are much more performant than complex conditions
             return self.filter(
-                Q(organizations__in=user.organizations.all())
-                | Q(projects__in=user.projects.all())
-                | Q(documents__access=Access.public)
-            ).distinct()
+                pk__in=self.filter(organizations__in=user.organizations.all())
+                .values("pk")
+                .union(
+                    self.filter(projects__in=user.projects.all()).values("pk"),
+                    self.filter(documents__access=Access.public).values("pk"),
+                )
+            )
         else:
             return self.filter(documents__access=Access.public).distinct()
 
