@@ -424,6 +424,11 @@ class Note(models.Model):
         to="users.User",
         on_delete=models.PROTECT,
         related_name="notes",
+        # This is set to false so we can import notes
+        # which are made by users who haven't been imported yet
+        # Once migration from old DocumentCloud is complete, this should
+        # be set back to True
+        db_constraint=False,
         help_text=_("The user who created this note"),
     )
     organization = models.ForeignKey(
