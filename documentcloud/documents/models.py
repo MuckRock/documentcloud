@@ -584,6 +584,11 @@ class EntityDate(models.Model):
         to="documents.Document",
         on_delete=models.CASCADE,
         related_name="dates",
+        # This is set to false so we can import entities
+        # which are attached to documents which haven't been imported yet
+        # Once migration from old DocumentCloud is complete, this should
+        # be set back to True
+        db_constraint=False,
         help_text=_("The document this entity belongs to"),
     )
     date = models.DateField(_("date"), help_text=_("The date"))
