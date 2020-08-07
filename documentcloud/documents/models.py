@@ -508,6 +508,11 @@ class Section(models.Model):
         to="documents.Document",
         on_delete=models.CASCADE,
         related_name="sections",
+        # This is set to false so we can import sections
+        # which are attached to documents which haven't been imported yet
+        # Once migration from old DocumentCloud is complete, this should
+        # be set back to True
+        db_constraint=False,
         help_text=_("The document this section belongs to"),
     )
     page_number = models.PositiveIntegerField(
