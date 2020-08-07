@@ -25,6 +25,12 @@ def test_store_statistics():
         documents.extend(
             DocumentFactory.create_batch(num, access=access, page_count=page_count)
         )
+    # to test user / org uniqueness count
+    documents[1].user = documents[0].user
+    documents[1].organization = documents[0].organization
+    documents[1].save()
+    documents[2].organization = documents[0].organization
+    documents[2].save()
     note_data = [
         (Access.public, 35),
         (Access.organization, 25),
@@ -38,19 +44,35 @@ def test_store_statistics():
     store_statistics()
     stats = Statistics.objects.first()
     assert stats.date == date.today() - timedelta(1)
+
     assert stats.total_documents == sum(d[1] for d in doc_data)
     assert stats.total_documents_public == doc_data[0][1]
     assert stats.total_documents_organization == doc_data[1][1]
     assert stats.total_documents_private == doc_data[2][1]
     assert stats.total_documents_invisible == doc_data[3][1]
+
     assert stats.total_pages == sum(d[1] * d[2] for d in doc_data)
     assert stats.total_pages_public == doc_data[0][1] * doc_data[0][2]
     assert stats.total_pages_organization == doc_data[1][1] * doc_data[1][2]
     assert stats.total_pages_private == doc_data[2][1] * doc_data[2][2]
     assert stats.total_pages_invisible == doc_data[3][1] * doc_data[3][2]
+
     assert stats.total_notes == sum(n[1] for n in note_data)
     assert stats.total_notes_public == note_data[0][1]
     assert stats.total_notes_organization == note_data[1][1]
     assert stats.total_notes_private == note_data[2][1]
     assert stats.total_notes_invisible == note_data[3][1]
+
     assert stats.total_projects == num_projects
+
+    # one repeat user on public documents
+    assert stats.total_users_uploaded == sum(d[1] for d in doc_data) - 1
+    assert stats.total_users_public_uploaded == doc_data[0][1] - 1
+    assert stats.total_users_organization_uploaded == doc_data[1][1]
+    assert stats.total_users_private_uploaded == doc_data[2][1]
+
+    # two repeat organizations on public documents
+    assert stats.total_organizations_uploaded == sum(d[1] for d in doc_data) - 2
+    assert stats.total_organizations_public_uploaded == doc_data[0][1] - 2
+    assert stats.total_organizations_organization_uploaded == doc_data[1][1]
+    assert stats.total_organizations_private_uploaded == doc_data[2][1]

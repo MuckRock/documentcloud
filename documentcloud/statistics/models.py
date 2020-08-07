@@ -61,6 +61,48 @@ class Statistics(models.Model):
         help_text=_("The total number of invisible notes")
     )
     total_projects = models.IntegerField(help_text=_("The total number of projects"))
+    total_users_uploaded = models.IntegerField(
+        help_text=_("The total number of users who have uploaded at least one document")
+    )
+    total_users_public_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of users who have uploaded at least one public document"
+        )
+    )
+    total_users_private_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of users who have uploaded at least one private document"
+        )
+    )
+    total_users_organization_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of users who have uploaded at least one organizational "
+            "document"
+        )
+    )
+    total_organizations_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of organizations who have uploaded at least one document"
+        )
+    )
+    total_organizations_public_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of organizations who have uploaded at least one public "
+            "document"
+        )
+    )
+    total_organizations_private_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of organizations who have uploaded at least one private "
+            "document"
+        )
+    )
+    total_organizations_organization_uploaded = models.IntegerField(
+        help_text=_(
+            "The total number of organizations who have uploaded at least one "
+            "organizational document"
+        )
+    )
 
     def __str__(self):
         return f"Stats for {self.date}"

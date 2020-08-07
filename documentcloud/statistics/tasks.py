@@ -64,6 +64,54 @@ def store_statistics():
     kwargs["total_notes_invisible"] = Note.objects.filter(
         access=Access.invisible
     ).count()
+    kwargs["total_users_uploaded"] = (
+        Document.objects.order_by().values("user_id").distinct().count()
+    )
+    kwargs["total_users_public_uploaded"] = (
+        Document.objects.order_by()
+        .filter(access=Access.public)
+        .values("user_id")
+        .distinct()
+        .count()
+    )
+    kwargs["total_users_private_uploaded"] = (
+        Document.objects.order_by()
+        .filter(access=Access.private)
+        .values("user_id")
+        .distinct()
+        .count()
+    )
+    kwargs["total_users_organization_uploaded"] = (
+        Document.objects.order_by()
+        .filter(access=Access.organization)
+        .values("user_id")
+        .distinct()
+        .count()
+    )
+    kwargs["total_organizations_uploaded"] = (
+        Document.objects.order_by().values("organization_id").distinct().count()
+    )
+    kwargs["total_organizations_public_uploaded"] = (
+        Document.objects.order_by()
+        .filter(access=Access.public)
+        .values("organization_id")
+        .distinct()
+        .count()
+    )
+    kwargs["total_organizations_private_uploaded"] = (
+        Document.objects.order_by()
+        .filter(access=Access.private)
+        .values("organization_id")
+        .distinct()
+        .count()
+    )
+    kwargs["total_organizations_organization_uploaded"] = (
+        Document.objects.order_by()
+        .filter(access=Access.organization)
+        .values("organization_id")
+        .distinct()
+        .count()
+    )
 
     kwargs["total_projects"] = Project.objects.count()
 
