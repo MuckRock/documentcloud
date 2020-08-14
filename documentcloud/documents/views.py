@@ -483,6 +483,13 @@ class NoteViewSet(FlexFieldsModelViewSet):
             organization=self.request.user.organization,
         )
 
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = Note
+            fields = ["page_number"]
+
+    filterset_class = Filter
+
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class SectionViewSet(viewsets.ModelViewSet):
