@@ -390,6 +390,11 @@ CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL, DOCCLOUD_EMBED_URL]
 # This enables cookies
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_PATHS = [
+    "^/api/documents/[0-9]+/$",
+    "^/api/documents/[0-9]+/notes/$",
+    "^/api/documents/[0-9]+/notes/[0-9]+/$",
+]
 
 # this allows communication from muckrock to squarelet to bypass rate limiting
 BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
