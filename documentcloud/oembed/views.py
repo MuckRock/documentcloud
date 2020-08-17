@@ -5,8 +5,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-# Standard Library
-from urllib.parse import urlsplit
+# Third Party
+from furl import furl
 
 # DocumentCloud
 from documentcloud.oembed.registry import registry
@@ -33,14 +33,14 @@ class OEmbedView(APIView):
             except (ValueError, KeyError):
                 return None
 
-        try:
-            query = urlsplit(request.GET["url"]).query
-        except ValueError:
-            raise Http404
+        furl_url = furl(request.GET["url"])
+        query = str(furl_url.query)
+        furl_url.query = None
+        url = furl_url.url
 
         for oembed in registry:
             for pattern in oembed.patterns:
-                match = pattern.match(request.GET["url"])
+                match = pattern.match(url)
                 if match:
                     oembed_response = oembed.response(
                         request,

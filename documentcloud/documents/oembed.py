@@ -5,8 +5,10 @@ from rest_framework.generics import get_object_or_404
 
 # Standard Library
 import re
+import time
 
 # DocumentCloud
+from documentcloud.common.path import page_image_path, page_text_path
 from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
@@ -14,11 +16,12 @@ from documentcloud.oembed.registry import register
 
 @register
 class DocumentOEmbed(RichOEmbed):
+    template = "oembed/document.html"
     patterns = [
         # viewer url
-        re.compile(rf"{settings.DOCCLOUD_URL}/documents/(?P<pk>[0-9]+)/?"),
+        re.compile(rf"^{settings.DOCCLOUD_URL}/documents/(?P<pk>[0-9]+)[a-z0-9_-]*/?$"),
         # api url
-        re.compile(rf"{settings.DOCCLOUD_API_URL}/api/documents/(?P<pk>[0-9]+)/?"),
+        re.compile(rf"^{settings.DOCCLOUD_API_URL}/api/documents/(?P<pk>[0-9]+)/?$"),
     ]
 
     def response(self, request, query, max_width=None, max_height=None, **kwargs):
@@ -26,16 +29,22 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
 
-        width, height = self.get_dimensions(
-            document.aspect_ratio, max_width, max_height
-        )
+        aspect_ratio = self.get_aspect_ratio(document, **kwargs)
+        width, height = self.get_dimensions(aspect_ratio, max_width, max_height)
         oembed = {"title": document.title, "width": width, "height": height}
-        template = get_template("oembed/document.html")
+        context = self.get_context(document, query, oembed, **kwargs)
+        template = get_template(self.template)
+        oembed["html"] = template.render(context)
+        return self.oembed(**oembed)
+
+    def get_aspect_ratio(self, document, **kwargs):
+        return document.aspect_ratio
+
+    def get_context(self, document, query, extra, **kwargs):
         src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
         if query:
             src = f"{src}?{query}"
-        oembed["html"] = template.render({"src": src, **oembed})
-        return self.oembed(**oembed)
+        return {"src": src, **extra}
 
     def get_dimensions(self, aspect_ratio, max_width, max_height):
         default_width = 700
@@ -52,3 +61,39 @@ class DocumentOEmbed(RichOEmbed):
             return int(max_height * aspect_ratio), max_height
         else:
             return default_width, int(default_width / aspect_ratio)
+
+
+@register
+class PageOEmbed(DocumentOEmbed):
+    template = "oembed/page.html"
+    patterns = [
+        re.compile(
+            rf"^{settings.DOCCLOUD_URL}/documents/"
+            r"(?P<pk>[0-9]+)[a-z0-9_-]*/?#document/p(?P<page>[0-9]+)$"
+        )
+    ]
+
+    def get_aspect_ratio(self, document, **kwargs):
+        # page_aspect_ratio is 0 indexed, so subtract one from the page
+        return document.page_aspect_ratio(int(kwargs["page"]) - 1)
+
+    def get_context(self, document, query, extra, **kwargs):
+        page = int(kwargs["page"])
+        timestamp = int(time.time())
+        return {
+            "page": page,
+            "page_url": "{}{}#document/p{}".format(
+                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), page
+            ),
+            "img_url": "{}?ts={}".format(
+                page_image_path(document.pk, document.slug, page - 1, "xlarge"),
+                timestamp,
+            ),
+            "text_url": "{}?ts={}".format(
+                page_text_path(document.pk, document.slug, page - 1), timestamp
+            ),
+            "user_org_string": f"{document.user.name} ({document.organization})",
+            "app_url": settings.DOCCLOUD_URL,
+            "enhance_src": f"{settings.DOCCLOUD_URL}embed/enhance.js",
+            **extra,
+        }

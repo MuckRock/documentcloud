@@ -254,6 +254,10 @@ class Document(models.Model):
     @property
     def aspect_ratio(self):
         """Return the aspect ratio of the first page"""
+        return self.page_aspect_ratio(0)
+
+    def page_aspect_ratio(self, page):
+        """Return the aspect ratio for a given page"""
         default = 0.77
         if not self.page_spec:
             return default
