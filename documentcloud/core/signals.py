@@ -33,15 +33,9 @@ def flatpage_invalidate_cache(instance, **kwargs):
 def check_cors(sender, request, **kwargs):
     """Allow anonymous GET/OPTIONS requests to the pre-defined allowed paths"""
     # pylint: disable=unused-argument
-    print(
-        "check cors",
-        request.path,
-        request.method,
-        request.user.is_anonymous,
-        any(p.match(request.path) for p in ALLOW_PATHS),
-    )
+    anonymous = not hasattr(request, "user") or request.user.is_anonymous
     return (
         request.method.lower() in ["get", "options"]
-        and request.user.is_anonymous
+        and anonymous
         and any(p.match(request.path) for p in ALLOW_PATHS)
     )
