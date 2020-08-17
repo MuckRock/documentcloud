@@ -31,7 +31,7 @@ def flatpage_invalidate_cache(instance, **kwargs):
 
 @receiver(check_request_enabled, dispatch_uid="documentcloud.core.signals.check_cors")
 def check_cors(sender, request, **kwargs):
-    """Allow anonymous GET requests to the pre-defined allowed paths"""
+    """Allow anonymous GET/OPTIONS requests to the pre-defined allowed paths"""
     # pylint: disable=unused-argument
     logger.info(
         "check cors\npath: %s\nmethod: %s\nanonymous: %s\nmatch: %s",
@@ -41,7 +41,7 @@ def check_cors(sender, request, **kwargs):
         any(p.match(request.path) for p in ALLOW_PATHS),
     )
     return (
-        request.method.lower() == "get"
+        request.method.lower() in ["get", "options"]
         and request.user.is_anonymous
         and any(p.match(request.path) for p in ALLOW_PATHS)
     )
