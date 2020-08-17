@@ -7,12 +7,15 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 # Standard Library
+import logging
 import re
 
 # Third Party
 from corsheaders.signals import check_request_enabled
 
 ALLOW_PATHS = [re.compile(p) for p in settings.CORS_ALLOW_PATHS]
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(
@@ -30,7 +33,13 @@ def flatpage_invalidate_cache(instance, **kwargs):
 def check_cors(sender, request, **kwargs):
     """Allow anonymous GET requests to the pre-defined allowed paths"""
     # pylint: disable=unused-argument
-
+    logger.debug(
+        "check cors\npath: %s\nmethod: %s\nanonymous: %s\nmatch: %s",
+        request.path,
+        request.method,
+        request.user.is_anonymous,
+        any(p.match(request.path) for p in ALLOW_PATHS),
+    )
     return (
         request.method.lower() == "get"
         and request.user.is_anonymous
