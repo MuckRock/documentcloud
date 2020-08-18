@@ -73,7 +73,10 @@ class PageOEmbed(DocumentOEmbed):
 
     def get_dimensions(self, document, max_width, max_height):
         default_width = 700
-        return (min(max_width, default_width), None)
+        if max_width:
+            return (min(max_width, default_width), None)
+        else:
+            return default_width, None
 
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
@@ -106,7 +109,7 @@ class NoteOEmbed(RichOEmbed):
             r"#document/p(?P<page>[0-9]+)/a(?P<pk>[0-9]+)$"
         )
     ]
-    width = 600
+    width = 750
 
     def response(self, request, query, max_width=None, max_height=None, **kwargs):
         document = get_object_or_404(
@@ -131,6 +134,7 @@ class NoteOEmbed(RichOEmbed):
             "note_html_src": "{}{}annotations/{}".format(
                 settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
             ),
+            **oembed,
         }
         template = get_template(self.template)
         oembed["html"] = template.render(context)
