@@ -38,9 +38,11 @@ class DocumentOEmbed(RichOEmbed):
         return self.oembed(**oembed)
 
     def get_aspect_ratio(self, document, **kwargs):
+        # pylint: disable=unused-argument
         return document.aspect_ratio
 
     def get_context(self, document, query, extra, **kwargs):
+        # pylint: disable=unused-argument
         src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
         if query:
             src = f"{src}?{query}"
@@ -97,3 +99,43 @@ class PageOEmbed(DocumentOEmbed):
             "enhance_src": f"{settings.DOCCLOUD_URL}embed/enhance.js",
             **extra,
         }
+
+
+@register
+class NoteOEmbed(RichOEmbed):
+    template = "oembed/note.html"
+    patterns = [
+        re.compile(
+            rf"^{settings.DOCCLOUD_URL}/documents/(?P<doc_pk>[0-9]+)[a-z0-9_-]*/?"
+            r"#document/p(?P<page>[0-9]+)/a(?P<pk>[0-9]+)$"
+        )
+    ]
+    width = 600
+
+    def response(self, request, query, max_width=None, max_height=None, **kwargs):
+        document = get_object_or_404(
+            Document.objects.get_viewable(request.user), pk=kwargs["doc_pk"]
+        )
+        note = get_object_or_404(
+            document.notes.get_viewable(request.user), pk=kwargs["pk"]
+        )
+
+        height = None
+        if max_width and max_width < self.width:
+            width = max_width
+        else:
+            width = self.width
+        oembed = {"title": note.title, "width": width, "height": height}
+        context = {
+            "pk": note.pk,
+            "loader_src": f"{settings.DOCCLOUD_URL}notes/loader.js",
+            "note_src": "{}{}annotations/{}.js".format(
+                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
+            ),
+            "note_html_src": "{}{}annotations/{}".format(
+                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
+            ),
+        }
+        template = get_template(self.template)
+        oembed["html"] = template.render(context)
+        return self.oembed(**oembed)
