@@ -263,7 +263,7 @@ class Document(models.Model):
             return default
 
         try:
-            dimensions = uncrunch(self.page_spec)[0]
+            dimensions = uncrunch(self.page_spec)[page]
         except (ValueError, KeyError):
             return default
 
