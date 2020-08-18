@@ -95,7 +95,7 @@ class PageOEmbed(DocumentOEmbed):
             ),
             "user_org_string": f"{document.user.name} ({document.organization})",
             "app_url": settings.DOCCLOUD_URL,
-            "enhance_src": f"{settings.DOCCLOUD_URL}embed/enhance.js",
+            "enhance_src": f"{settings.DOCCLOUD_URL}/embed/enhance.js",
             **extra,
         }
 
@@ -127,7 +127,7 @@ class NoteOEmbed(RichOEmbed):
         oembed = {"title": note.title, "width": width, "height": height}
         context = {
             "pk": note.pk,
-            "loader_src": f"{settings.DOCCLOUD_URL}notes/loader.js",
+            "loader_src": f"{settings.DOCCLOUD_URL}/notes/loader.js",
             "note_src": "{}{}annotations/{}.js".format(
                 settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
             ),
