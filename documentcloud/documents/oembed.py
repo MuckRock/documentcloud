@@ -29,17 +29,12 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
 
-        aspect_ratio = self.get_aspect_ratio(document, **kwargs)
-        width, height = self.get_dimensions(aspect_ratio, max_width, max_height)
+        width, height = self.get_dimensions(document, max_width, max_height)
         oembed = {"title": document.title, "width": width, "height": height}
         context = self.get_context(document, query, oembed, **kwargs)
         template = get_template(self.template)
         oembed["html"] = template.render(context)
         return self.oembed(**oembed)
-
-    def get_aspect_ratio(self, document, **kwargs):
-        # pylint: disable=unused-argument
-        return document.aspect_ratio
 
     def get_context(self, document, query, extra, **kwargs):
         # pylint: disable=unused-argument
@@ -48,8 +43,9 @@ class DocumentOEmbed(RichOEmbed):
             src = f"{src}?{query}"
         return {"src": src, **extra}
 
-    def get_dimensions(self, aspect_ratio, max_width, max_height):
+    def get_dimensions(self, document, max_width, max_height):
         default_width = 700
+        aspect_ratio = document.aspect_ratio
         if max_width and max_height:
             if max_width / aspect_ratio > max_height:
                 # cap based on max_height
@@ -75,9 +71,9 @@ class PageOEmbed(DocumentOEmbed):
         )
     ]
 
-    def get_aspect_ratio(self, document, **kwargs):
-        # page_aspect_ratio is 0 indexed, so subtract one from the page
-        return document.page_aspect_ratio(int(kwargs["page"]) - 1)
+    def get_dimensions(self, document, max_width, max_height):
+        default_width = 700
+        return (min(max_width, default_width), None)
 
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
