@@ -730,7 +730,7 @@ def import_document(data, _context=None):
             for page_number in range(page_count):
                 page = doc.load_page(page_number)
                 pagespec[f"{page.width}x{page.height}"].append(page_number)
-    except ValueError:
+    except (ValueError, AssertionError):
         # document was not found
         REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
         publisher.publish(
