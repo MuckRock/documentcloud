@@ -332,6 +332,9 @@ def process_page_cache(data, _context=None):
         doc.load_page(page_count - 1)
         cached = pdf_file.cache
 
+        # Write the file hash to the model
+        utils.send_update(REDIS, doc_id, {"file_hash": pdf_file.sha1})
+
         # Create an index file that stores the memory locations of each page of the
         # PDF file.
         write_cache(path.index_path(doc_id, slug), cached, access)

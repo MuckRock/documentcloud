@@ -113,6 +113,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "data",
             "description",
             "edit_access",
+            "file_hash",
             "file_url",
             "force_ocr",
             "language",
@@ -161,7 +162,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if self._authenticate_processing(request):
             # If this request is from our serverless processing functions,
             # make the following fields writable
-            for field in ["page_count", "page_spec", "status"]:
+            for field in ["file_hash", "page_count", "page_spec", "status"]:
                 self.fields[field].read_only = False
 
         if view and view.action in ("bulk_update", "bulk_partial_update"):

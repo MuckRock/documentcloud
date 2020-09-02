@@ -1,6 +1,7 @@
 # Standard Library
 import collections
 import ctypes
+import hashlib
 import io
 import os
 from ctypes import (
@@ -711,11 +712,14 @@ class StorageHandler:
         if self.read_all:
             # Create a temporary file in memory and cache the entire file
             with storage.open(filename, "rb") as storage_file:
-                self.mem_file = io.BytesIO(storage_file.read())
+                contents = storage_file.read()
+                self.sha1 = hashlib.sha1(contents).hexdigest()
+                self.mem_file = io.BytesIO(contents)
             self.size = self.mem_file.getbuffer().nbytes
             self.handle = self.mem_file.__enter__()
         else:
             # Read from abstracted storage
+            self.sha1 = None  # Only compute hash if full file loaded
             self.handle = storage.open(filename, "rb").__enter__()
             self.size = storage.size(filename)
 
