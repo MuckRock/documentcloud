@@ -332,8 +332,8 @@ def process_page_cache(data, _context=None):
         doc.load_page(page_count - 1)
         cached = pdf_file.cache
 
-        # Write the file hash to the model
-        utils.send_update(REDIS, doc_id, {"file_hash": pdf_file.sha1})
+        # Set the file hash in Redis to go out with the next update
+        REDIS.set(redis_fields.file_hash(doc_id), pdf_file.sha1)
 
         # Create an index file that stores the memory locations of each page of the
         # PDF file.
@@ -388,7 +388,7 @@ def process_pdf(data, _context=None):
         raise PdfSizeError()
 
     # files are always uploaded to S3 as private, set to public on S3
-    # if uploaded publicallt to DocumentCloud
+    # if uploaded publicly to DocumentCloud
     if access == access_choices.PUBLIC:
         storage.set_access([doc_path], access)
 

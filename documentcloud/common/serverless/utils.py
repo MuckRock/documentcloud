@@ -55,6 +55,12 @@ def send_update(redis, doc_id, json_):
     if not still_processing(redis, doc_id):
         return
 
+    # Add file hash data in if present
+    file_hash = redis.get(redis_fields.file_hash(doc_id))
+    if file_hash:
+        json_["file_hash"] = file_hash
+        redis.delete(redis_fields.file_hash(doc_id))
+
     requests.patch(
         urljoin(API_CALLBACK, f"documents/{doc_id}/"),
         json=json_,

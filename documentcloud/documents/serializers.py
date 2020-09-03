@@ -135,6 +135,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "created_at": {"read_only": True},
             "description": {"required": False},
+            "file_hash": {"read_only": True},
             "language": {"default": Language.english},
             "organization": {"read_only": True},
             "page_count": {"read_only": True},

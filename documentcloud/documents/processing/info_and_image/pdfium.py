@@ -719,9 +719,13 @@ class StorageHandler:
             self.handle = self.mem_file.__enter__()
         else:
             # Read from abstracted storage
-            self.sha1 = None  # Only compute hash if full file loaded
             self.handle = storage.open(filename, "rb").__enter__()
             self.size = storage.size(filename)
+            # The sha1 hash is only computed if the whole file is read into
+            # memory. Technically the hash could be computed in chunks, but the
+            # primary caller of this code will read the whole file into memory
+            # at least once.
+            self.sha1 = None
 
         # If block size is used, storage cacher wraps the reads into retrieving
         # blocks, for more efficient read access.

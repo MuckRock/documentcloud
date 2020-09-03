@@ -39,6 +39,10 @@ def text_bits(doc_id):
     return f"{doc_id}:textBits"
 
 
+def file_hash(doc_id):
+    return f"{doc_id}:fileHash"
+
+
 def import_pagespecs(org_id):
     return f"{org_id}:pagespec"
 
