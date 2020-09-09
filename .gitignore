@@ -293,3 +293,4 @@ compose/local/pdfium/test_pdfs/*
 awsbin/
 template.yaml
 packaged.yaml
+*.traineddata
