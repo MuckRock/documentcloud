@@ -226,7 +226,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document.save()
         transaction.on_commit(
             lambda: process.delay(
-                document.pk, document.slug, document.access, force_ocr
+                document.pk,
+                document.slug,
+                document.access,
+                document.language,
+                force_ocr,
             )
         )
         transaction.on_commit(

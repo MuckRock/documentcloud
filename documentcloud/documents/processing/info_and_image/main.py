@@ -105,9 +105,8 @@ ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
-OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
-)
+# The language gets subbed in dynamically
+OCR_TOPIC = env.str("OCR_TOPIC", default="ocr-extraction")
 
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
@@ -318,6 +317,7 @@ def process_page_cache(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
+    language = data.get("language", "eng")
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
 
@@ -349,6 +349,7 @@ def process_page_cache(data, _context=None):
                             "doc_id": doc_id,
                             "slug": slug,
                             "access": access,
+                            "language": language,
                             "pages": pages,
                             "partial": dirty,
                             "force_ocr": force_ocr,
@@ -379,6 +380,7 @@ def process_pdf(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     force_ocr = data.get("force_ocr", False)
+    language = data.get("language", "eng")
 
     # Ensure PDF size is within the limit
     doc_path = path.doc_path(doc_id, slug)
@@ -403,7 +405,13 @@ def process_pdf(data, _context=None):
     publisher.publish(
         PAGE_CACHE_TOPIC,
         data=encode_pubsub_data(
-            {"doc_id": doc_id, "slug": slug, "access": access, "force_ocr": force_ocr}
+            {
+                "doc_id": doc_id,
+                "slug": slug,
+                "access": access,
+                "language": language,
+                "force_ocr": force_ocr,
+            }
         ),
     )
 
@@ -445,6 +453,13 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     return (page.width, page.height)
 
 
+def ocr_topic_for_language(ocr_topic, language):
+    parts = ocr_topic.split("-")
+    return publisher.topic_path(
+        "documentcloud", "-".join([parts[0], language, *parts[1:]])
+    )
+
+
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
@@ -454,6 +469,7 @@ def extract_image(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
+    language = data.get("language", "eng")
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
@@ -468,13 +484,14 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            OCR_TOPIC,
+            ocr_topic_for_language(OCR_TOPIC, language),
             data=encode_pubsub_data(
                 {
                     "paths_and_numbers": ocr_queue,
                     "doc_id": doc_id,
                     "slug": slug,
                     "access": access,
+                    "language": language,
                     "partial": partial,
                     "force_ocr": force_ocr,
                 }

@@ -70,13 +70,15 @@ def fetch_file_url(file_url, document_pk, force_ocr):
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
-        process.delay(document_pk, document.slug, document.access, force_ocr)
+        process.delay(
+            document_pk, document.slug, document.access, document.language, force_ocr
+        )
 
 
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def process(document_pk, slug, access, force_ocr):
+def process(document_pk, slug, access, language, force_ocr):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
@@ -85,6 +87,7 @@ def process(document_pk, slug, access, force_ocr):
             "slug": slug,
             "access": access,
             "method": "process_pdf",
+            "language": language,
             "force_ocr": force_ocr,
         },
     )
