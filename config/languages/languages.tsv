@@ -1,0 +1,103 @@
+Code	OCR	Name
+afr	afr	Afrikaans
+amh	amh	Amharic
+ara	ara	Arabic
+asm	asm	Assamese
+aze	aze	Azerbaijani
+aze_cyrl	aze_cyrl	Azerbaijani - Cyrillic
+bel	bel	Belarusian
+ben	ben	Bengali
+bod	bod	Tibetan
+bos	bos	Bosnian
+bul	bul	Bulgarian
+cat	cat	Catalan
+ceb	ceb	Cebuano
+ces	ces	Czech
+zho	chi_sim	Chinese - Simplified
+tra	chi_tra	Chinese - Traditional
+chr	chr	Cherokee
+cym	cym	Welsh
+dan	dan	Danish
+deu	deu	German
+dzo	dzo	Dzongkha
+ell	ell	Greek, Modern (1453-)
+eng	eng	English
+enm	enm	English, Middle (1100-1500)
+epo	epo	Esperanto
+est	est	Estonian
+eus	eus	Basque
+fas	fas	Persian
+fin	fin	Finnish
+fra	fra	French
+frk	frk	German Fraktur
+frm	frm	French, Middle (ca. 1400-1600)
+gle	gle	Irish
+glg	glg	Galician
+grc	grc	Greek, Ancient (-1453)
+guj	guj	Gujarati
+hat	hat	Haitian; Haitian Creole
+heb	heb	Hebrew
+hin	hin	Hindi
+hrv	hrv	Croatian
+hun	hun	Hungarian
+iku	iku	Inuktitut
+ind	ind	Indonesian
+isl	isl	Icelandic
+ita	ita	Italian
+ita_old	ita_old	Italian - Old
+jav	jav	Javanese
+jpn	jpn	Japanese
+kan	kan	Kannada
+kat	kat	Georgian
+kat_old	kat_old	Georgian - Old
+kaz	kaz	Kazakh
+khm	khm	Central Khmer
+kir	kir	Kirghiz; Kyrgyz
+kor	kor	Korean
+kur	kur	Kurdish
+lao	lao	Lao
+lat	lat	Latin
+lav	lav	Latvian
+lit	lit	Lithuanian
+mal	mal	Malayalam
+mar	mar	Marathi
+mkd	mkd	Macedonian
+mlt	mlt	Maltese
+msa	msa	Malay
+mya	mya	Burmese
+nep	nep	Nepali
+nld	nld	Dutch; Flemish
+nor	nor	Norwegian
+ori	ori	Oriya
+pan	pan	Panjabi; Punjabi
+pol	pol	Polish
+por	por	Portuguese
+pus	pus	Pushto; Pashto
+ron	ron	Romanian; Moldavian; Moldovan
+rus	rus	Russian
+san	san	Sanskrit
+sin	sin	Sinhala; Sinhalese
+slk	slk	Slovak
+slv	slv	Slovenian
+spa	spa	Spanish; Castilian
+spa_old	spa_old	Spanish; Castilian - Old
+sqi	sqi	Albanian
+srp	srp	Serbian
+srp_latn	srp_latn	Serbian - Latin
+swa	swa	Swahili
+swe	swe	Swedish
+syr	syr	Syriac
+tam	tam	Tamil
+tel	tel	Telugu
+tgk	tgk	Tajik
+tgl	tgl	Tagalog
+tha	tha	Thai
+tir	tir	Tigrinya
+tur	tur	Turkish
+uig	uig	Uighur; Uyghur
+ukr	ukr	Ukrainian
+urd	urd	Urdu
+uzb	uzb	Uzbek
+uzb_cyrl	uzb_cyrl	Uzbek - Cyrillic
+vie	vie	Vietnamese
+yid	yid	Yiddish

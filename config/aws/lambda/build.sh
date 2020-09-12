@@ -6,7 +6,7 @@ set -e
 ./build_info_and_image.sh
 
 # Get all languages
-languages=($(DJANGO_SETTINGS_MODULE=config.settings.local python -c "from django.core.wsgi import get_wsgi_application;application = get_wsgi_application();from documentcloud.core.choices import Language;print(*[Language.ocr_name(x[0]) for x in Language.choices])"))
+languages=$(cat ../../languages/languages.tsv | tail -n +2 | cut -f2 | tr "\n" " ")
 # Run ocr build script for each language
 for lang in $languages
 do
