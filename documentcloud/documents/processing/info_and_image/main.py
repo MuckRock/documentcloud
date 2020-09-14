@@ -312,6 +312,7 @@ def get_redis_pagespec(doc_id):
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
     """Memoize the memory accesses of all the pages of a PDF in a cache."""
+    # pylint: disable=too-many-locals
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
