@@ -81,7 +81,7 @@ def page_extracted(page_number):
     pass
 
 
-def page_ocrd(page_path):
+def page_ocrd(page_path, language):
     pass
 
 
@@ -185,8 +185,8 @@ def update_pagespec(doc_id):
     pagespec_written()
 
 
-def ocr_page(page_path):
-    page_ocrd(page_path)
+def ocr_page(page_path, language):
+    page_ocrd(page_path, language)
 
 
 def write_text_file(text_path, text, access):
