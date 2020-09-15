@@ -306,7 +306,7 @@ class Command(BaseCommand):
                             )
                         except IntegrityError as exc:
                             self.stdout.write("Integrity Error: Slug {}".format(slug))
-                            self.stdout.write(exc)
+                            self.stdout.write(str(exc))
                             # rollback to before the integrity error
                             transaction.savepoint_rollback(sid)
                             # calc new slug in case it clashes with the org slug
