@@ -290,32 +290,29 @@ class Command(BaseCommand):
                     base_slug = ind_org_slug
                     slug = ind_org_slug
                     index = 1
-                    sid = transaction.savepoint()
                     while True:
                         try:
-                            individual_organization = Organization.objects.create(
-                                uuid=uuid,
-                                name=username,
-                                slug=slug,
-                                private=True,
-                                individual=True,
-                                entitlement=entitlement,
-                                verified_journalist=True,
-                                language=fields[7],
-                                document_language=fields[8],
-                            )
+                            with transaction.atomic():
+                                individual_organization = Organization.objects.create(
+                                    uuid=uuid,
+                                    name=username,
+                                    slug=slug,
+                                    private=True,
+                                    individual=True,
+                                    entitlement=entitlement,
+                                    verified_journalist=True,
+                                    language=fields[7],
+                                    document_language=fields[8],
+                                )
                         except IntegrityError as exc:
                             self.stdout.write("Integrity Error: Slug {}".format(slug))
                             self.stdout.write(str(exc))
-                            # rollback to before the integrity error
-                            transaction.savepoint_rollback(sid)
                             # calc new slug in case it clashes with the org slug
                             index += 1
                             postfix = f"-{index}"
                             # ensure it is not too long
                             slug = base_slug[: 255 - len(postfix)] + postfix
                         else:
-                            transaction.savepoint_commit(sid)
                             break
 
                     if fields[10] not in ("0", "4"):
