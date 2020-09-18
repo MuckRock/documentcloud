@@ -477,7 +477,7 @@ class Command(BaseCommand):
 
             for fields in reader:
                 if fields[8]:  # 8 is location
-                    y1, x2, y2, x1 = [int(i) for i in fields[8].split(",")]
+                    y1, x2, y2, x1 = [float(i) for i in fields[8].split(",")]
                     # add document_id to list of documents to load
                     document_ids.append(fields[3])
                 else:
