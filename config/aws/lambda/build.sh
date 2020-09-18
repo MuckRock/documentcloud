@@ -5,12 +5,12 @@ set -e
 # Run info_and_image build script
 ./build_info_and_image.sh
 
-# Get all languages
-languages=$(cat ../../languages/languages.tsv | tail -n +2 | cut -f2 | tr "\n" " ")
-# Run ocr build script for each language
+# Get all language bundles
+languages=$(cat language_bundles.txt)
+# Run ocr build script for each language bundle
 for lang in $languages
 do
-    ./build_ocr.sh $lang
+    ./build_ocr.sh $(echo $lang | tr '|' ' ')
 done
 
 # Run utils build script

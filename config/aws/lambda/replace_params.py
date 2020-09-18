@@ -36,10 +36,14 @@ env = sys.argv[1]
 contents = contents.replace("{$ENV$}", env)
 
 # Get all languages
-with open("../../languages/languages.tsv", "r") as f:
-    tsvreader = csv.reader(f, delimiter="\t")
-    next(tsvreader)
-    languages = [row[1] for row in tsvreader]
+with open("language_bundles.txt", "r") as f:
+    language_bundles = [x for x in f.read().split(" ") if x]
+language_topics = ",".join(
+    [
+        f"ocr-{x.replace('|', '-').strip()}-extraction-{env}".strip()
+        for x in language_bundles
+    ]
+)
 
 # Find each language blocks
 def title_case(s):
@@ -52,19 +56,45 @@ def titleize(s):
     return "".join([title_case(x) for x in re.split("[^a-zA-Z0-9]+", s) if x])
 
 
-def lang_replace(match):
+def topicize(s):
+    return "-".join([x for x in re.split("[^a-zA-Z0-9_]+", s) if x])
+
+
+def fnize(s):
+    return "_".join([x for x in re.split("[^a-zA-Z0-9]+", s) if x])
+
+
+def language_replace(match, languages):
     contents = ""
-    for lang in languages:
+    for language in languages.split("|"):
+        language = language.strip()
         contents += (
             match.group(1)
-            .replace("{$LANG$}", lang)
-            .replace("{$TITLE_LANG$}", titleize(lang))
+            .replace("{$TITLE_LANG$}", titleize(language))
+            .replace("{$LANG$}", language)
+        )
+    return contents
+
+
+def languages_replace(match):
+    contents = ""
+    for languages in language_bundles:
+        languages = languages.strip()
+        contents += (
+            match.group(1)
+            .replace("{$FN_LANGUAGES$}", fnize(languages))
+            .replace("{$TITLE_LANGUAGES$}", titleize(languages))
+            .replace("{$TOPIC_LANGUAGES$}", topicize(languages))
         )
     return contents
 
 
 resolved_contents = re.sub(
-    r"{{each:LANG}}\n(.*)\n{{/each}}", lang_replace, contents, 0, re.DOTALL
+    r"{{each:LANGUAGES}}\n(.*)\n{{/each:LANGUAGES}}",
+    languages_replace,
+    contents,
+    0,
+    re.DOTALL,
 )
 
 # Grab all the topics mentioned
@@ -100,6 +130,7 @@ def aws_replace(match):
 
 # Resolve the contents and write to template.yaml
 resolved_contents = re.sub(SSM_TOPIC_RE, aws_replace, resolved_contents)
+resolved_contents = resolved_contents.replace("{$LANGUAGE_TOPICS$}", language_topics)
 
 with open("template.yaml", "w") as f:
     f.write(resolved_contents)

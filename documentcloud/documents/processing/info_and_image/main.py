@@ -105,8 +105,13 @@ ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
-# The language gets subbed in dynamically
-OCR_TOPIC = env.str("OCR_TOPIC", default="ocr-extraction")
+# All OCR topics
+OCR_TOPICS = env.list("OCR_TOPICS", default=["ocr-eng-extraction-dev"])
+OCR_TOPIC_MAP = {}
+for topic in OCR_TOPICS:
+    lang_parts = topic.split("-")[1:-2]
+    for lang in lang_parts:
+        OCR_TOPIC_MAP[lang] = topic
 
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
@@ -454,10 +459,9 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     return (page.width, page.height)
 
 
-def ocr_topic_for_language(ocr_topic, language):
-    parts = ocr_topic.split("-")
+def ocr_topic_for_language(language):
     return publisher.topic_path(
-        "documentcloud", "-".join([parts[0], language, *parts[1:]])
+        "documentcloud", OCR_TOPIC_MAP.get(language, OCR_TOPIC_MAP["eng"])
     )
 
 
@@ -485,7 +489,7 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            ocr_topic_for_language(OCR_TOPIC, language),
+            ocr_topic_for_language(language),
             data=encode_pubsub_data(
                 {
                     "paths_and_numbers": ocr_queue,
