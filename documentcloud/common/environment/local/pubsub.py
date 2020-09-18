@@ -1,6 +1,5 @@
 # Standard Library
 import base64
-import csv
 import json
 
 # Third Party
