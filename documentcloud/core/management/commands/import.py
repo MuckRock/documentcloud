@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.admin.models import LogEntry
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.utils import IntegrityError
 from django.utils import timezone
 
 # Standard Library
@@ -286,17 +287,34 @@ class Command(BaseCommand):
                             document_language=fields[8],
                         )
                     )
-                    individual_organization = Organization.objects.create(
-                        uuid=uuid,
-                        name=username,
-                        slug=ind_org_slug,
-                        private=True,
-                        individual=True,
-                        entitlement=entitlement,
-                        verified_journalist=True,
-                        language=fields[7],
-                        document_language=fields[8],
-                    )
+                    base_slug = ind_org_slug
+                    slug = ind_org_slug
+                    index = 1
+                    while True:
+                        try:
+                            with transaction.atomic():
+                                individual_organization = Organization.objects.create(
+                                    uuid=uuid,
+                                    name=username,
+                                    slug=slug,
+                                    private=True,
+                                    individual=True,
+                                    entitlement=entitlement,
+                                    verified_journalist=True,
+                                    language=fields[7],
+                                    document_language=fields[8],
+                                )
+                        except IntegrityError as exc:
+                            self.stdout.write("Integrity Error: Slug {}".format(slug))
+                            self.stdout.write(str(exc))
+                            # calc new slug in case it clashes with the org slug
+                            index += 1
+                            postfix = f"-{index}"
+                            # ensure it is not too long
+                            slug = base_slug[: 255 - len(postfix)] + postfix
+                        else:
+                            break
+
                     if fields[10] not in ("0", "4"):
                         create_memberships.append(
                             Membership(

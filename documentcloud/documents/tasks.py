@@ -214,7 +214,7 @@ def solr_index(document_pk, solr_document=None, field_updates=None, index_text=F
                 document.page_count,
             )
             tasks = []
-            for i in range(0, document.page_count, settings.SOLR_PAGE_INDEX_LIMIT):
+            for i in range(1, document.page_count + 1, settings.SOLR_PAGE_INDEX_LIMIT):
                 tasks.append(solr_index_pages.s(document_pk, i))
             chord(tasks, finish_solr_index_pages.si(document_pk)).delay()
             # we will index the non-page fields here
