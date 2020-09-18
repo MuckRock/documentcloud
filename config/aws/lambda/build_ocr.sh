@@ -2,8 +2,9 @@
 
 set -e
 
-LANG=$1
-CODE_DIR="awsbin/ocr_${LANG}"
+LANGUAGES=$@
+LANGUAGES_FN=$(echo $LANGUAGES | tr ' ' '_')
+CODE_DIR="awsbin/ocr_${LANGUAGES_FN}"
 OCR_DIRECTORY="../../../documentcloud/documents/processing/ocr"
 
 # Clear the code directory if it already exists
@@ -12,11 +13,14 @@ OCR_DIRECTORY="../../../documentcloud/documents/processing/ocr"
 [ ! -d "$CODE_DIR" ] || mkdir -p $CODE_DIR
 
 # Fetch OCR language if not already present
-OCR_FILE="${OCR_DIRECTORY}/tesseract/tessdata/${LANG}.traineddata"
-if [ ! -f "$OCR_FILE" ]; then
-    TESSDATA_URL="https://github.com/tesseract-ocr/tessdata/raw/4.00/${LANG}.traineddata"
-    wget -O "${OCR_FILE}" "${TESSDATA_URL}"
-fi
+for LANG in $LANGUAGES
+do
+    OCR_FILE="${OCR_DIRECTORY}/tesseract/tessdata/${LANG}.traineddata"
+    if [ ! -f "$OCR_FILE" ]; then
+        TESSDATA_URL="https://github.com/tesseract-ocr/tessdata/raw/4.00/${LANG}.traineddata"
+        wget -O "${OCR_FILE}" "${TESSDATA_URL}"
+    fi
+done
 
 # Copy the code from the Django app, excluding tesseract data
 rsync -aL "${OCR_DIRECTORY}/" $CODE_DIR --exclude tesseract
@@ -24,9 +28,14 @@ rsync -aL "${OCR_DIRECTORY}/" $CODE_DIR --exclude tesseract
 # Sub in Amazon Linux compiled Tesseract libraries
 [ -f $CODE_DIR/tesseract ] && rm -r $CODE_DIR/tesseract
 cp -r ocr_libraries/ $CODE_DIR/tesseract 2>/dev/null || :
+mkdir $CODE_DIR/tesseract/tessdata
 
 # Copy in just the desired tessdata language
-cp "${OCR_FILE}" "${CODE_DIR}/tesseract/tessdata"
+for LANG in $LANGUAGES
+do
+    OCR_FILE="${OCR_DIRECTORY}/tesseract/tessdata/${LANG}.traineddata"
+    cp "${OCR_FILE}" "${CODE_DIR}/tesseract/tessdata/${LANG}.traineddata"
+done
 
 # Set AWS requirements
 cp cloud-requirements.txt $CODE_DIR/cloud-requirements.txt

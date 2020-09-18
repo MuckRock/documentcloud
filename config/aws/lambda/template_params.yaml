@@ -24,7 +24,7 @@ Globals:
         PDF_PROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/pdf_process/topic:latest}}"
         PAGE_CACHE_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/topic:latest}}"
         IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/topic:latest}}"
-        OCR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/topic:latest}}"
+        OCR_TOPICS: {$LANGUAGE_TOPICS$}
         ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
         START_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/topic:latest}}"
@@ -167,29 +167,28 @@ Resources:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
-{{each:LANG}}
-  RunTesseractFunction{$TITLE_LANG$}:
+{{each:LANGUAGES}}
+  RunTesseractFunction{$TITLE_LANGUAGES$}:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.7
       Handler: main.run_tesseract
-      CodeUri: ./awsbin/ocr_{$LANG$}
+      CodeUri: ./awsbin/ocr_{$FN_LANGUAGES$}
       Environment:
         Variables:
           LD_LIBRARY_PATH: /var/task/tesseract
           TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/timeout:latest}}"
-          OCR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-{$LANG$}-extraction-{$ENV$}
-          LANGUAGE: {$LANG$}
+          OCR_TOPIC: ocr-{$TOPIC_LANGUAGES$}-extraction-{$ENV$}
       # Trigger function via SNS
       Events:
-        OcrApi:
+        OcrApi{$TITLE_LANGUAGES$}:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-{$LANG$}-extraction-{$ENV$}
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-{$TOPIC_LANGUAGES$}-extraction-{$ENV$}
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
 
-{{/each}}
+{{/each:LANGUAGES}}
   AssembleTextFunction:
     Type: AWS::Serverless::Function
     Properties:
