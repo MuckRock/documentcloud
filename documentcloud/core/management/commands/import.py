@@ -386,7 +386,9 @@ class Command(BaseCommand):
                 if i % 10000 == 0:
                     self.stdout.write(f"Document {i:,}...")
                 # assert fields[0] == doc_id
-                access, status = access_status_map[fields[3]]
+                access, status = access_status_map.get(
+                    fields[3], (Access.private, Status.success)
+                )
                 if fields[26]:
                     # wrap the data dictionary so each value is in a list now
                     data = {
