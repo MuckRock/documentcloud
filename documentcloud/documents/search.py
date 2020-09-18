@@ -96,7 +96,13 @@ def search(user, query_params):
     )
     rows, start, page = _paginate(query_params)
 
-    kwargs = {"fq": filter_queries, "sort": sort, "rows": rows, "start": start}
+    kwargs = {
+        "fq": filter_queries,
+        "sort": sort,
+        "rows": rows,
+        "start": start,
+        "hl": "off",
+    }
 
     results = SOLR.search(text_query, **kwargs)
     response = _format_response(results, query_params, page, rows, escaped)
