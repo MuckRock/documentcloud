@@ -118,19 +118,10 @@ publisher.register_internal_callback(
     ("documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")),
     extract_image_task,
 )
-
-# Register OCR topics for each language
-with open("config/languages/languages.tsv", "r") as f:
-    tsvreader = csv.reader(f, delimiter="\t")
-    next(tsvreader)
-    languages = [row[1] for row in tsvreader]
-ocr_topic = env.str("OCR_TOPIC", default="ocr-extraction")
-for language in languages:
-    parts = ocr_topic.split("-")
-    publisher.register_internal_callback(
-        ("documentcloud", "-".join([parts[0], language, *parts[1:]])), ocr_page_task
-    )
-
+publisher.register_internal_callback(
+    ("documentcloud", env.str("OCR_TOPIC", default="ocr-eng-extraction-dev")),
+    ocr_page_task,
+)
 publisher.register_internal_callback(
     ("documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")),
     assemble_text_task,

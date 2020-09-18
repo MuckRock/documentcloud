@@ -51,7 +51,7 @@ else:
 REDIS = utils.get_redis()
 
 OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-eng-extraction-dev")
 )
 ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
