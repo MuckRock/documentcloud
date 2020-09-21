@@ -560,13 +560,16 @@ class Command(BaseCommand):
             create_sections = []
 
             for fields in reader:
-                create_sections.append(
-                    Section(
-                        document_id=fields[3],
-                        page_number=int(fields[6]) - 1,
-                        title=fields[5],
+                page_number = int(fields[6]) - 1
+                if page_number >= 0:
+                    # silently drop sections on illegal pages
+                    create_sections.append(
+                        Section(
+                            document_id=fields[3],
+                            page_number=page_number,
+                            title=fields[5],
+                        )
                     )
-                )
 
             Section.objects.bulk_create(create_sections, batch_size=1000)
 
