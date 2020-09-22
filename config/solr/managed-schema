@@ -131,14 +131,14 @@
        EXAMPLE:  name="*_i" will match any field ending in _i (like myid_i, z_i)
        RESTRICTION: the glob-like pattern in the name attribute must have a "*" only at the start or the end.  -->
 
-    <dynamicField name="page_no_*" type="text_general" indexed="true" stored="true"/>
+    <dynamicField name="page_no_*" type="text_general" indexed="true" stored="true" storeOffsetsWithPositions="true" termVectors="true" />
     <field name="doctext" type="text_general" indexed="true" stored="false"/>
     <copyField source="page_no_*" dest="doctext"/>
     <dynamicField name="data_*" type="strings" indexed="true" stored="true"/>
 
     <field name="access" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="created_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
-    <field name="description" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
+    <field name="description" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false" storeOffsetsWithPositions="true" termVectors="true" />
     <field name="language" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="organization" type="pint" uninvertible="true" indexed="true" stored="true"/>
     <field name="page_count" type="pint" uninvertible="true" indexed="true" stored="true"/>
