@@ -702,6 +702,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 <str name="qf">title^10 source^10 description^5 doctext^1</str>
                 <str name="hl">true</str>		
                 <str name="hl.fl">title source description page_no_*</str>
+                <str name="hl.method">unified</str>		
                 <str name="fl">
                   id
                   access
