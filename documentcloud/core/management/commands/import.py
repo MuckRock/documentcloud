@@ -676,7 +676,7 @@ class Command(BaseCommand):
                         project_id=fields[0],
                         user_id=fields[1],
                         creator_id=fields[2],
-                        access=CollaboratorAccess.edit,
+                        access=CollaboratorAccess.admin,
                     )
                 )
 
