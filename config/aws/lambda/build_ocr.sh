@@ -17,6 +17,7 @@ for LANG in $LANGUAGES
 do
     OCR_FILE="${OCR_DIRECTORY}/tesseract/tessdata/${LANG}.traineddata"
     if [ ! -f "$OCR_FILE" ]; then
+        mkdir -p "$(dirname $OCR_FILE)"
         TESSDATA_URL="https://github.com/tesseract-ocr/tessdata/raw/4.00/${LANG}.traineddata"
         wget -O "${OCR_FILE}" "${TESSDATA_URL}"
     fi
