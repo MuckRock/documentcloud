@@ -648,28 +648,108 @@ The status informs you to the current status of your document.
 <details>
 <summary>Language choices</summary>
 
+* afr &ndash; Afrikaans
+* amh &ndash; Amharic
 * ara &ndash; Arabic
-* zho &ndash; Chinese (Simplified)
-* tra &ndash; Chinese (Traditional)
-* hrv &ndash; Croatian
+* asm &ndash; Assamese
+* aze &ndash; Azerbaijani
+* aze\_cyrl &ndash; Azerbaijani - Cyrillic
+* bel &ndash; Belarusian
+* ben &ndash; Bengali
+* bod &ndash; Tibetan
+* bos &ndash; Bosnian
+* bul &ndash; Bulgarian
+* cat &ndash; Catalan; Valencian
+* ceb &ndash; Cebuano
+* ces &ndash; Czech
+* zho &ndash; Chinese - Simplified
+* tra &ndash; Chinese - Traditional
+* chr &ndash; Cherokee
+* cym &ndash; Welsh
 * dan &ndash; Danish
-* nld &ndash; Dutch
-* eng &ndash; English
-* fra &ndash; French
 * deu &ndash; German
+* dzo &ndash; Dzongkha
+* ell &ndash; Greek
+* eng &ndash; English
+* enm &ndash; Middle English
+* epo &ndash; Esperanto
+* est &ndash; Estonian
+* eus &ndash; Basque
+* fas &ndash; Persian
+* fin &ndash; Finnish
+* fra &ndash; French
+* frk &ndash; German Fraktur
+* frm &ndash; Middle French
+* gle &ndash; Irish
+* glg &ndash; Galician
+* grc &ndash; Ancient Greek
+* guj &ndash; Gujarati
+* hat &ndash; Haitian; Haitian Creole
 * heb &ndash; Hebrew
+* hin &ndash; Hindi
+* hrv &ndash; Croatian
 * hun &ndash; Hungarian
+* iku &ndash; Inuktitut
 * ind &ndash; Indonesian
+* isl &ndash; Icelandic
 * ita &ndash; Italian
+* ita\_old &ndash; Italian - Old
+* jav &ndash; Javanese
 * jpn &ndash; Japanese
+* kan &ndash; Kannada
+* kat &ndash; Georgian
+* kat\_old &ndash; Georgian - Old
+* kaz &ndash; Kazakh
+* khm &ndash; Central Khmer
+* kir &ndash; Kirghiz; Kyrgyz
 * kor &ndash; Korean
+* kur &ndash; Kurdish
+* lao &ndash; Lao
+* lat &ndash; Latin
+* lav &ndash; Latvian
+* lit &ndash; Lithuanian
+* mal &ndash; Malayalam
+* mar &ndash; Marathi
+* mkd &ndash; Macedonian
+* mlt &ndash; Maltese
+* msa &ndash; Malay
+* mya &ndash; Burmese
+* nep &ndash; Nepali
+* nld &ndash; Dutch; Flemish
 * nor &ndash; Norwegian
+* ori &ndash; Oriya
+* pan &ndash; Panjabi; Punjabi
+* pol &ndash; Polish
 * por &ndash; Portuguese
-* ron &ndash; Romanian
+* pus &ndash; Pushto; Pashto
+* ron &ndash; Romanian; Moldavian; Moldovan
 * rus &ndash; Russian
-* spa &ndash; Spanish
+* san &ndash; Sanskrit
+* sin &ndash; Sinhala; Sinhalese
+* slk &ndash; Slovak
+* slv &ndash; Slovenian
+* spa &ndash; Spanish; Castilian
+* spa\_old &ndash; Spanish; Castilian - Old
+* sqi &ndash; Albanian
+* srp &ndash; Serbian
+* srp\_latn &ndash; Serbian - Latin
+* swa &ndash; Swahili
 * swe &ndash; Swedish
+* syr &ndash; Syriac
+* tam &ndash; Tamil
+* tel &ndash; Telugu
+* tgk &ndash; Tajik
+* tgl &ndash; Tagalog
+* tha &ndash; Thai
+* tir &ndash; Tigrinya
+* tur &ndash; Turkish
+* uig &ndash; Uighur; Uyghur
 * ukr &ndash; Ukrainian
+* urd &ndash; Urdu
+* uzb &ndash; Uzbek
+* uzb\_cyrl &ndash; Uzbek - Cyrillic
+* vie &ndash; Vietnamese
+* yid &ndash; Yiddish
 
 </details>
 

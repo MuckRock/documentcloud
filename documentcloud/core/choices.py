@@ -7,57 +7,117 @@ from djchoices import ChoiceItem, DjangoChoices
 
 class Language(DjangoChoices):
     # pylint: disable=no-init
-    arabic = ChoiceItem("ara", _("Arabic"))
-    chinese_simplified = ChoiceItem("zho", _("Chinese (Simplified)"))
-    chinese_traditional = ChoiceItem("tra", _("Chinese (Traditional)"))
-    croatian = ChoiceItem("hrv", _("Croatian"))
-    danish = ChoiceItem("dan", _("Danish"))
-    dutch = ChoiceItem("nld", _("Dutch"))
-    english = ChoiceItem("eng", _("English"))
-    french = ChoiceItem("fra", _("French"))
-    german = ChoiceItem("deu", _("German"))
-    hebrew = ChoiceItem("heb", _("Hebrew"))
-    hungarian = ChoiceItem("hun", _("Hungarian"))
-    indonesian = ChoiceItem("ind", _("Indonesian"))
-    italian = ChoiceItem("ita", _("Italian"))
-    japanese = ChoiceItem("jpn", _("Japanese"))
-    korean = ChoiceItem("kor", _("Korean"))
-    norwegian = ChoiceItem("nor", _("Norwegian"))
-    portuguese = ChoiceItem("por", _("Portuguese"))
-    romanian = ChoiceItem("ron", _("Romanian"))
-    russian = ChoiceItem("rus", _("Russian"))
-    spanish = ChoiceItem("spa", _("Spanish"))
-    swedish = ChoiceItem("swe", _("Swedish"))
-    ukrainian = ChoiceItem("ukr", _("Ukrainian"))
-
-    user = [
-        danish.value,
-        english.value,
-        french.value,
-        russian.value,
-        spanish.value,
-        ukrainian.value,
-    ]
-
-    # For user facing purposes, documents are considered to have only a language.
-    # In reality documents possess two distinct properties a language
-    # and a written script. The former can be represented by ISO-639-2
-    # language codes and the latter by ISO-15924 script codes.
-    #
-    # In almost all cases the script of a document can be inferred based
-    # on its language (Ukrainian language documents are all written using Cyrillic)
-    # with the exception of Chinese which for political and historical reasons
-    # possesses two written scripts, traditional and simplified.
-    #
-    # The Tesseract OCR system requires knowing both language and script in order
-    # to be able to correctly process documents, and consequently has two separate
-    # langauge packages for Chinese, 'chi-tra' and 'chi-sim'.  All other language
-    # packs are identical to their ISO-639-2 code.
-    @classmethod
-    def ocr_name(cls, code):
-        if code == cls.chinese_traditional:
-            return "chi_tra"
-        elif code == cls.chinese_simplified:
-            return "chi_sim"
-        else:
-            return code
+    afrikaans = ChoiceItem("afr", _("Afrikaans"), ocr_code="afr")
+    amharic = ChoiceItem("amh", _("Amharic"), ocr_code="amh")
+    arabic = ChoiceItem("ara", _("Arabic"), ocr_code="ara")
+    assamese = ChoiceItem("asm", _("Assamese"), ocr_code="asm")
+    azerbaijani = ChoiceItem("aze", _("Azerbaijani"), ocr_code="aze")
+    azerbaijani_cyrillic = ChoiceItem(
+        "aze_cyrl", _("Azerbaijani - Cyrillic"), ocr_code="aze_cyrl"
+    )
+    belarusian = ChoiceItem("bel", _("Belarusian"), ocr_code="bel")
+    bengali = ChoiceItem("ben", _("Bengali"), ocr_code="ben")
+    tibetan = ChoiceItem("bod", _("Tibetan"), ocr_code="bod")
+    bosnian = ChoiceItem("bos", _("Bosnian"), ocr_code="bos")
+    bulgarian = ChoiceItem("bul", _("Bulgarian"), ocr_code="bul")
+    catalan_valencian = ChoiceItem("cat", _("Catalan; Valencian"), ocr_code="cat")
+    cebuano = ChoiceItem("ceb", _("Cebuano"), ocr_code="ceb")
+    czech = ChoiceItem("ces", _("Czech"), ocr_code="ces")
+    chinese_simplified = ChoiceItem(
+        "zho", _("Chinese - Simplified"), ocr_code="chi_sim"
+    )
+    chinese_traditional = ChoiceItem(
+        "tra", _("Chinese - Traditional"), ocr_code="chi_tra"
+    )
+    cherokee = ChoiceItem("chr", _("Cherokee"), ocr_code="chr")
+    welsh = ChoiceItem("cym", _("Welsh"), ocr_code="cym")
+    danish = ChoiceItem("dan", _("Danish"), ocr_code="dan")
+    german = ChoiceItem("deu", _("German"), ocr_code="deu")
+    dzongkha = ChoiceItem("dzo", _("Dzongkha"), ocr_code="dzo")
+    greek = ChoiceItem("ell", _("Greek"), ocr_code="ell")
+    english = ChoiceItem("eng", _("English"), ocr_code="eng")
+    middle_english = ChoiceItem("enm", _("Middle English"), ocr_code="enm")
+    esperanto = ChoiceItem("epo", _("Esperanto"), ocr_code="epo")
+    estonian = ChoiceItem("est", _("Estonian"), ocr_code="est")
+    basque = ChoiceItem("eus", _("Basque"), ocr_code="eus")
+    persian = ChoiceItem("fas", _("Persian"), ocr_code="fas")
+    finnish = ChoiceItem("fin", _("Finnish"), ocr_code="fin")
+    french = ChoiceItem("fra", _("French"), ocr_code="fra")
+    german_fraktur = ChoiceItem("frk", _("German Fraktur"), ocr_code="frk")
+    middle_french = ChoiceItem("frm", _("Middle French"), ocr_code="frm")
+    irish = ChoiceItem("gle", _("Irish"), ocr_code="gle")
+    galician = ChoiceItem("glg", _("Galician"), ocr_code="glg")
+    ancient_greek = ChoiceItem("grc", _("Ancient Greek"), ocr_code="grc")
+    gujarati = ChoiceItem("guj", _("Gujarati"), ocr_code="guj")
+    haitian_haitian_creole = ChoiceItem(
+        "hat", _("Haitian; Haitian Creole"), ocr_code="hat"
+    )
+    hebrew = ChoiceItem("heb", _("Hebrew"), ocr_code="heb")
+    hindi = ChoiceItem("hin", _("Hindi"), ocr_code="hin")
+    croatian = ChoiceItem("hrv", _("Croatian"), ocr_code="hrv")
+    hungarian = ChoiceItem("hun", _("Hungarian"), ocr_code="hun")
+    inuktitut = ChoiceItem("iku", _("Inuktitut"), ocr_code="iku")
+    indonesian = ChoiceItem("ind", _("Indonesian"), ocr_code="ind")
+    icelandic = ChoiceItem("isl", _("Icelandic"), ocr_code="isl")
+    italian = ChoiceItem("ita", _("Italian"), ocr_code="ita")
+    italian_old = ChoiceItem("ita_old", _("Italian - Old"), ocr_code="ita_old")
+    javanese = ChoiceItem("jav", _("Javanese"), ocr_code="jav")
+    japanese = ChoiceItem("jpn", _("Japanese"), ocr_code="jpn")
+    kannada = ChoiceItem("kan", _("Kannada"), ocr_code="kan")
+    georgian = ChoiceItem("kat", _("Georgian"), ocr_code="kat")
+    georgian_old = ChoiceItem("kat_old", _("Georgian - Old"), ocr_code="kat_old")
+    kazakh = ChoiceItem("kaz", _("Kazakh"), ocr_code="kaz")
+    central_khmer = ChoiceItem("khm", _("Central Khmer"), ocr_code="khm")
+    kirghiz_kyrgyz = ChoiceItem("kir", _("Kirghiz; Kyrgyz"), ocr_code="kir")
+    korean = ChoiceItem("kor", _("Korean"), ocr_code="kor")
+    kurdish = ChoiceItem("kur", _("Kurdish"), ocr_code="kur")
+    lao = ChoiceItem("lao", _("Lao"), ocr_code="lao")
+    latin = ChoiceItem("lat", _("Latin"), ocr_code="lat")
+    latvian = ChoiceItem("lav", _("Latvian"), ocr_code="lav")
+    lithuanian = ChoiceItem("lit", _("Lithuanian"), ocr_code="lit")
+    malayalam = ChoiceItem("mal", _("Malayalam"), ocr_code="mal")
+    marathi = ChoiceItem("mar", _("Marathi"), ocr_code="mar")
+    macedonian = ChoiceItem("mkd", _("Macedonian"), ocr_code="mkd")
+    maltese = ChoiceItem("mlt", _("Maltese"), ocr_code="mlt")
+    malay = ChoiceItem("msa", _("Malay"), ocr_code="msa")
+    burmese = ChoiceItem("mya", _("Burmese"), ocr_code="mya")
+    nepali = ChoiceItem("nep", _("Nepali"), ocr_code="nep")
+    dutch_flemish = ChoiceItem("nld", _("Dutch; Flemish"), ocr_code="nld")
+    norwegian = ChoiceItem("nor", _("Norwegian"), ocr_code="nor")
+    oriya = ChoiceItem("ori", _("Oriya"), ocr_code="ori")
+    panjabi_punjabi = ChoiceItem("pan", _("Panjabi; Punjabi"), ocr_code="pan")
+    polish = ChoiceItem("pol", _("Polish"), ocr_code="pol")
+    portuguese = ChoiceItem("por", _("Portuguese"), ocr_code="por")
+    pushto_pashto = ChoiceItem("pus", _("Pushto; Pashto"), ocr_code="pus")
+    romanian_moldavian_moldovan = ChoiceItem(
+        "ron", _("Romanian; Moldavian; Moldovan"), ocr_code="ron"
+    )
+    russian = ChoiceItem("rus", _("Russian"), ocr_code="rus")
+    sanskrit = ChoiceItem("san", _("Sanskrit"), ocr_code="san")
+    sinhala_sinhalese = ChoiceItem("sin", _("Sinhala; Sinhalese"), ocr_code="sin")
+    slovak = ChoiceItem("slk", _("Slovak"), ocr_code="slk")
+    slovenian = ChoiceItem("slv", _("Slovenian"), ocr_code="slv")
+    spanish_castilian = ChoiceItem("spa", _("Spanish; Castilian"), ocr_code="spa")
+    spanish_castilian_old = ChoiceItem(
+        "spa_old", _("Spanish; Castilian - Old"), ocr_code="spa_old"
+    )
+    albanian = ChoiceItem("sqi", _("Albanian"), ocr_code="sqi")
+    serbian = ChoiceItem("srp", _("Serbian"), ocr_code="srp")
+    serbian_latin = ChoiceItem("srp_latn", _("Serbian - Latin"), ocr_code="srp_latn")
+    swahili = ChoiceItem("swa", _("Swahili"), ocr_code="swa")
+    swedish = ChoiceItem("swe", _("Swedish"), ocr_code="swe")
+    syriac = ChoiceItem("syr", _("Syriac"), ocr_code="syr")
+    tamil = ChoiceItem("tam", _("Tamil"), ocr_code="tam")
+    telugu = ChoiceItem("tel", _("Telugu"), ocr_code="tel")
+    tajik = ChoiceItem("tgk", _("Tajik"), ocr_code="tgk")
+    tagalog = ChoiceItem("tgl", _("Tagalog"), ocr_code="tgl")
+    thai = ChoiceItem("tha", _("Thai"), ocr_code="tha")
+    tigrinya = ChoiceItem("tir", _("Tigrinya"), ocr_code="tir")
+    turkish = ChoiceItem("tur", _("Turkish"), ocr_code="tur")
+    uighur_uyghur = ChoiceItem("uig", _("Uighur; Uyghur"), ocr_code="uig")
+    ukrainian = ChoiceItem("ukr", _("Ukrainian"), ocr_code="ukr")
+    urdu = ChoiceItem("urd", _("Urdu"), ocr_code="urd")
+    uzbek = ChoiceItem("uzb", _("Uzbek"), ocr_code="uzb")
+    uzbek_cyrillic = ChoiceItem("uzb_cyrl", _("Uzbek - Cyrillic"), ocr_code="uzb_cyrl")
+    vietnamese = ChoiceItem("vie", _("Vietnamese"), ocr_code="vie")
+    yiddish = ChoiceItem("yid", _("Yiddish"), ocr_code="yid")
