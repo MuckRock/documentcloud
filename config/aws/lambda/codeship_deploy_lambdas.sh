@@ -5,12 +5,14 @@ set -e
 PROCESSING_FOLDERS='(^config\/)|(^documentcloud\/documents\/processing\/)|(^documentcloud\/common\/)'
 TAG=staging-lambda-test
 deploy_lambdas=0
-if git rev-parse $TAG >/dev/null 2>&1 then
+if git rev-parse $TAG >/dev/null 2>&1
+then
     # The tag exists. Check diffed files and deploy if needed
     echo "tag exists" $TAG
     changed_files=$(git diff --name-only $TAG $CI_COMMIT_ID)
     for file in $changed_files do
-        if [[ $file =~ $PROCESSING_FOLDERS ]] then
+        if [[ $file =~ $PROCESSING_FOLDERS ]]
+        then
             echo "changed file" $file "matches"
             deploy_lambdas=1
             break
@@ -22,7 +24,8 @@ else
     deploy_lambdas=1
 fi
 
-if [[ $deploy_lambdas == 1 ]]; then
+if [[ $deploy_lambdas == 1 ]]
+then
     echo "deploying to lambda"
     # deploy to lambda
     # sam requires python 3.7, app is currently using python 3.6
