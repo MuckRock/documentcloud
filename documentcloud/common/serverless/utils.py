@@ -207,12 +207,12 @@ def register_page_ocrd(redis, doc_id, page_number):
     return texts_remaining == 0
 
 
-def write_page_text(redis, doc_id, page_number, page_text, ocr, language="eng"):
+def write_page_text(redis, doc_id, page_number, page_text, ocr, ocr_code="eng"):
     """Write page text to Redis."""
     redis.hset(
         redis_fields.page_text(doc_id),
         f"{page_number}",
-        json.dumps({"text": page_text, "ocr": ocr, "lang": language}),
+        json.dumps({"text": page_text, "ocr": ocr, "ocr_code": ocr_code}),
     )
 
 
