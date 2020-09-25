@@ -10,7 +10,8 @@ then
     # The tag exists. Check diffed files and deploy if needed
     echo "tag exists" $TAG
     changed_files=$(git diff --name-only $TAG $CI_COMMIT_ID)
-    for file in $changed_files do
+    for file in $changed_files
+    do
         if [[ $file =~ $PROCESSING_FOLDERS ]]
         then
             echo "changed file" $file "matches"
