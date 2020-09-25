@@ -3,7 +3,7 @@
 set -e
 
 PROCESSING_FOLDERS='(^config\/)|(^documentcloud\/documents\/processing\/)|(^documentcloud\/common\/)'
-TAG=staging-lambda
+TAG=$1
 deploy_lambdas=0
 tag_exists=0
 if git rev-parse $TAG >/dev/null 2>&1
