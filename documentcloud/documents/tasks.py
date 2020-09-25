@@ -76,7 +76,7 @@ def fetch_file_url(file_url, document_pk, force_ocr):
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def process(document_pk, slug, access, force_ocr):
+def process(document_pk, slug, access, ocr_code, force_ocr):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
@@ -84,6 +84,7 @@ def process(document_pk, slug, access, force_ocr):
             "doc_id": document_pk,
             "slug": slug,
             "access": access,
+            "ocr_code": ocr_code,
             "method": "process_pdf",
             "force_ocr": force_ocr,
         },
@@ -93,7 +94,7 @@ def process(document_pk, slug, access, force_ocr):
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def redact(document_pk, slug, access, redactions):
+def redact(document_pk, slug, access, ocr_code, redactions):
     """Start the redacting"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
@@ -102,6 +103,7 @@ def redact(document_pk, slug, access, redactions):
             "doc_id": document_pk,
             "slug": slug,
             "access": access,
+            "ocr_code": ocr_code,
             "redactions": redactions,
         },
     )

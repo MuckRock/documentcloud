@@ -24,6 +24,7 @@ from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.common.environment import storage
+from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
@@ -226,7 +227,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document.save()
         transaction.on_commit(
             lambda: process.delay(
-                document.pk, document.slug, document.access, force_ocr
+                document.pk,
+                document.slug,
+                document.access,
+                Language.get_choice(document.language).ocr_code,
+                force_ocr,
             )
         )
         transaction.on_commit(
@@ -647,5 +652,11 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
-        redact.delay(document.pk, document.slug, document.access, serializer.data)
+        redact.delay(
+            document.pk,
+            document.slug,
+            document.access,
+            Language.get_choice(document.language).ocr_code,
+            serializer.data,
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
