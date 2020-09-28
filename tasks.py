@@ -217,6 +217,12 @@ def heroku(c, staging=False):
 
 
 @task
+def download_tesseract_data(c):
+    """Download Tesseract data files. Needed to be able to do OCR locally."""
+    c.run("cd config/aws/lambda; ./build.sh")
+
+
+@task
 def deploy_lambdas(c, staging=False):
     """Deploy lambda functions on AWS"""
     if staging:

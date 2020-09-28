@@ -105,9 +105,13 @@ ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
-OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
-)
+# All OCR topics
+OCR_TOPICS = env.list("OCR_TOPICS", default=["ocr-eng-extraction-dev"])
+OCR_TOPIC_MAP = {}
+for topic in OCR_TOPICS:
+    lang_parts = topic.split("-")[1:-2]
+    for lang in lang_parts:
+        OCR_TOPIC_MAP[lang] = topic
 
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
@@ -313,11 +317,13 @@ def get_redis_pagespec(doc_id):
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
     """Memoize the memory accesses of all the pages of a PDF in a cache."""
+    # pylint: disable=too-many-locals
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
+    ocr_code = data.get("ocr_code", "eng")
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
 
@@ -349,6 +355,7 @@ def process_page_cache(data, _context=None):
                             "doc_id": doc_id,
                             "slug": slug,
                             "access": access,
+                            "ocr_code": ocr_code,
                             "pages": pages,
                             "partial": dirty,
                             "force_ocr": force_ocr,
@@ -379,6 +386,7 @@ def process_pdf(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     force_ocr = data.get("force_ocr", False)
+    ocr_code = data.get("ocr_code", "eng")
 
     # Ensure PDF size is within the limit
     doc_path = path.doc_path(doc_id, slug)
@@ -403,7 +411,13 @@ def process_pdf(data, _context=None):
     publisher.publish(
         PAGE_CACHE_TOPIC,
         data=encode_pubsub_data(
-            {"doc_id": doc_id, "slug": slug, "access": access, "force_ocr": force_ocr}
+            {
+                "doc_id": doc_id,
+                "slug": slug,
+                "access": access,
+                "ocr_code": ocr_code,
+                "force_ocr": force_ocr,
+            }
         ),
     )
 
@@ -445,6 +459,12 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     return (page.width, page.height)
 
 
+def ocr_topic_for_code(ocr_code):
+    return publisher.topic_path(
+        "documentcloud", OCR_TOPIC_MAP.get(ocr_code, OCR_TOPIC_MAP["eng"])
+    )
+
+
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
@@ -454,6 +474,7 @@ def extract_image(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
+    ocr_code = data.get("ocr_code", "eng")
     doc_path = path.doc_path(doc_id, slug)
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
@@ -468,13 +489,14 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            OCR_TOPIC,
+            ocr_topic_for_code(ocr_code),
             data=encode_pubsub_data(
                 {
                     "paths_and_numbers": ocr_queue,
                     "doc_id": doc_id,
                     "slug": slug,
                     "access": access,
+                    "ocr_code": ocr_code,
                     "partial": partial,
                     "force_ocr": force_ocr,
                 }
@@ -656,6 +678,7 @@ def redact_doc(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     redactions = data["redactions"]
+    ocr_code = data.get("ocr_code", "eng")
 
     # Get dirty pages
     dirty_pages = set()
@@ -677,6 +700,7 @@ def redact_doc(data, _context=None):
                 "doc_id": doc_id,
                 "slug": slug,
                 "access": access,
+                "ocr_code": ocr_code,
                 "dirty": dirty_pages_list,
             }
         ),

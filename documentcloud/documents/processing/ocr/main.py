@@ -51,7 +51,7 @@ else:
 REDIS = utils.get_redis()
 
 OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-eng-extraction-dev")
 )
 ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
@@ -75,7 +75,7 @@ def write_text_file(text_path, text, access):
     storage.simple_upload(text_path, text.encode("utf8"), access=access)
 
 
-def ocr_page(page_path):
+def ocr_page(page_path, ocr_code="eng"):
     """Internal method to run OCR on a single page.
 
     Returns:
@@ -93,7 +93,7 @@ def ocr_page(page_path):
     height, width, depth = img_data.shape  # pylint: disable=unpacking-non-sequence
 
     # Run Tesseract OCR on the image
-    tess = Tesseract()
+    tess = Tesseract(ocr_code)
     tess.set_image(img_data.ctypes, width, height, depth)
     text = tess.get_text()
     return text
@@ -110,6 +110,7 @@ def run_tesseract(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
+    ocr_code = data.get("ocr_code", "eng")
     paths_and_numbers = data["paths_and_numbers"]
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
@@ -133,6 +134,7 @@ def run_tesseract(data, _context=None):
                         "doc_id": doc_id,
                         "slug": slug,
                         "access": access,
+                        "ocr_code": ocr_code,
                         "partial": partial,
                         "force_ocr": force_ocr,
                     }
@@ -159,14 +161,16 @@ def run_tesseract(data, _context=None):
 
             # Benchmark OCR speed
             start_time = time.time()
-            text = ocr_page(image_path)
+            text = ocr_page(image_path, ocr_code)
 
             elapsed_time = time.time() - start_time
             elapsed_times.append(elapsed_time)
 
             # Write the output text
             write_text_file(text_path, text, access)
-            utils.write_page_text(REDIS, doc_id, page_number, text, ocr_version)
+            utils.write_page_text(
+                REDIS, doc_id, page_number, text, ocr_version, ocr_code
+            )
 
             # Decrement the texts remaining, sending complete if done.
             texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
@@ -178,6 +182,7 @@ def run_tesseract(data, _context=None):
                             "doc_id": doc_id,
                             "slug": slug,
                             "access": access,
+                            "ocr_code": ocr_code,
                             "partial": partial,
                         }
                     ),
