@@ -4,8 +4,10 @@ set -e
 
 PROCESSING_FOLDERS='(^config\/)|(^documentcloud\/documents\/processing\/)|(^documentcloud\/common\/)'
 TAG=$1
+DEPLOY_CONTEXT=$2
 deploy_lambdas=0
 tag_exists=0
+echo "got tag $1 and deploy context $2"
 if git rev-parse $TAG >/dev/null 2>&1
 then
     # The tag exists. Check diffed files and deploy if needed
@@ -37,7 +39,7 @@ then
     pip install awscli
     pip install aws-sam-cli
     pip install invoke
-    inv deploy-lambdas --staging
+    inv deploy-lambdas $DEPLOY_CONTEXT
     PYENV_VERSION=$OLD_PYENV_VERSION
     # Set the tag in Git
     echo "pushing tag"
