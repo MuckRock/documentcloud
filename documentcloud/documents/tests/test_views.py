@@ -1373,7 +1373,7 @@ class TestRedactionAPI:
         )
         assert response.status_code == status.HTTP_201_CREATED
         mock_redact.delay.assert_called_once_with(
-            document.pk, document.slug, document.access, data
+            document.pk, document.slug, document.access, document.language, data
         )
 
     def test_create_anonymous(self, client):
