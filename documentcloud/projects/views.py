@@ -1,5 +1,6 @@
 # Django
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
@@ -112,7 +113,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         Document.objects.filter(
             pk__in=[d["document"].pk for d in validated_datas]
-        ).update(solr_dirty=True)
+        ).update(solr_dirty=True, updated_at=timezone.now())
         for data in validated_datas:
             self._solr_add(data)
 
@@ -132,7 +133,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         Document.objects.filter(
             pk__in=[d["document"].pk for d in validated_datas]
-        ).update(solr_dirty=True)
+        ).update(solr_dirty=True, updated_at=timezone.now())
         for data in validated_datas:
             self._solr_update(data)
 
@@ -151,7 +152,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         # mark all documents as solr dirty
         Document.objects.filter(
             pk__in=[d.pk for d in membership_mapping.keys() | data_mapping.keys()]
-        ).update(solr_dirty=True)
+        ).update(solr_dirty=True, updated_at=timezone.now())
         # create new memberships and update existing memberships
         memberships = []
         for document, data in data_mapping.items():
@@ -176,7 +177,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @transaction.atomic
     def bulk_perform_destroy(self, objects):
         Document.objects.filter(pk__in=[o.document.pk for o in objects]).update(
-            solr_dirty=True
+            solr_dirty=True, updated_at=timezone.now()
         )
         ProjectMembership.objects.filter(pk__in=[o.pk for o in objects]).delete()
         for obj in objects:
