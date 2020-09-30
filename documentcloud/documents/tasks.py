@@ -5,6 +5,7 @@ from celery.task import periodic_task, task
 from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
+from django.utils import timezone
 
 # Standard Library
 import logging
@@ -18,7 +19,7 @@ from requests.exceptions import HTTPError, RequestException
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents.choices import Access, Status
-from documentcloud.documents.models import Document
+from documentcloud.documents.models import DeletedDocument, Document
 from documentcloud.documents.search import SOLR
 
 logger = logging.getLogger(__name__)
@@ -347,13 +348,15 @@ def solr_index_dirty():
 
 
 @task
-def solr_reindex_all(collection_url, after_timestamp=None):
+def solr_reindex_all(collection_url, after_timestamp=None, delete_timestamp=None):
     """
     Re-index all documents to a new collection
     """
     documents = Document.objects.exclude(status=Status.deleted).order_by("updated_at")
     if after_timestamp is None:
         logger.info("starting a solr full re-index")
+        # check for any document deleted after we start the full re-index
+        delete_timestamp = timezone.now()
     else:
         logger.info("continuing a solr full re-index: %s", after_timestamp.isoformat())
         documents = documents.filter(updated_at__gt=after_timestamp)
@@ -367,8 +370,8 @@ def solr_reindex_all(collection_url, after_timestamp=None):
         settings.SOLR_DIRTY_LIMIT
     ]
     documents = documents.filter(updated_at__lte=before_timestamp)
+    logger.info("solr index full: reindexing %d documents", documents.count())
     for document in documents:
-        logger.info("solr index full: reindexing %s", document.pk)
         # only index the full text if the document is in a successful state
         solr_index.delay(
             document.pk,
@@ -385,7 +388,7 @@ def solr_reindex_all(collection_url, after_timestamp=None):
     if documents_left > settings.SOLR_DIRTY_LIMIT:
         # if more than the limit, continue the re-indexing
         solr_reindex_all.apply_async(
-            args=[collection_url, before_timestamp],
+            args=[collection_url, before_timestamp, delete_timestamp],
             countdown=settings.SOLR_DIRTY_COUNTDOWN,
         )
     else:
@@ -393,10 +396,24 @@ def solr_reindex_all(collection_url, after_timestamp=None):
         # as solr dirty
         # XXX
         update_alias()
-        Document.objects.exclude(status=Status.deleted).filter(
-            updated_at__gt=before_timestamp
-        ).count()
         logger.info(
             "solr index full: done, re-index all documents updated after %s",
             before_timestamp.isoformat(),
         )
+        Document.objects.exclude(status=Status.deleted).filter(
+            updated_at__gt=before_timestamp
+        ).update(solr_dirty=True)
+        solr_index_dirty.delay()
+
+        logger.info(
+            "solr index full: done, re-index all documents updated after %s, delete "
+            "all documents after %s",
+            before_timestamp.isoformat(),
+            delete_timestamp.isoformat(),
+        )
+        # delete all documents from the new solr collection that were deleted since
+        # we started re-indexing
+        for document in DeletedDocument.objects.filter(
+            created_at__gte=delete_timestamp
+        ):
+            solr_delete.delay(document.pk)

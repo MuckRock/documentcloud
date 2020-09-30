@@ -220,6 +220,7 @@ class Document(models.Model):
 
         self.status = Status.deleted
         self.save()
+        DeletedDocument.objects.create(pk=self.pk)
         transaction.on_commit(lambda: delete_document_files.delay(self.path))
         transaction.on_commit(lambda: solr_delete.delay(self.pk))
 
@@ -357,6 +358,27 @@ class Document(models.Model):
             solr_document = new_solr_document
 
         return solr_document
+
+
+class DeletedDocument(models.Model):
+    """If a document is deleted, keep track of it here"""
+
+    id = models.IntegerField(
+        _("id"),
+        primary_key=True,
+        help_text=_("The ID of the document that was deleted"),
+    )
+    created_at = AutoCreatedField(
+        _("created at"),
+        db_index=True,
+        help_text=_("Timestamp of when the document was deleted"),
+    )
+
+    class Meta:
+        ordering = ("created_at",)
+
+    def __str__(self):
+        return str(self.pk)
 
 
 class DocumentError(models.Model):
