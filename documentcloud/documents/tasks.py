@@ -392,6 +392,10 @@ def solr_reindex_all(collection_url, after_timestamp=None):
         # otherwise, switch over the alias, then mark the remanining documents
         # as solr dirty
         # XXX
+        update_alias()
+        Document.objects.exclude(status=Status.deleted).filter(
+            updated_at__gt=before_timestamp
+        ).count()
         logger.info(
             "solr index full: done, re-index all documents updated after %s",
             before_timestamp.isoformat(),
