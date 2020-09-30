@@ -15,6 +15,7 @@ import sys
 # Third Party
 import pysolr
 import redis
+import requests
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
@@ -200,7 +201,7 @@ def solr_index(
     solr_document=None,
     field_updates=None,
     index_text=False,
-    collection_url=None,
+    collection_name=None,
 ):
     """Index a document into solr"""
     logger.info(
@@ -209,11 +210,11 @@ def solr_index(
         field_updates,
         index_text,
     )
-    if collection_url is None:
+    if collection_name is None:
         solr = SOLR
     else:
         solr = pysolr.Solr(
-            collection_url,
+            settings.SOLR_BASE_URL + collection_name,
             auth=settings.SOLR_AUTH,
             search_handler=settings.SOLR_SEARCH_HANDLER,
             verify=settings.SOLR_VERIFY,
@@ -241,11 +242,13 @@ def solr_index(
             tasks = []
             for i in range(1, document.page_count + 1, settings.SOLR_PAGE_INDEX_LIMIT):
                 tasks.append(
-                    solr_index_pages.s(document_pk, i, collection_url=collection_url)
+                    solr_index_pages.s(document_pk, i, collection_name=collection_name)
                 )
             chord(
                 tasks,
-                finish_solr_index_pages.si(document_pk, collection_url=collection_url),
+                finish_solr_index_pages.si(
+                    document_pk, collection_name=collection_name
+                ),
             ).delay()
             # we will index the non-page fields here
             solr_document = document.solr(index_text=False)
@@ -260,21 +263,21 @@ def solr_index(
 
     solr.add([solr_document], fieldUpdates=field_updates)
 
-    if collection_url is None:
+    if collection_name is None:
         # only clear solr dirty if indexing to primary solr collection
         Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
-def solr_index_pages(document_pk, first_page, collection_url=None):
+def solr_index_pages(document_pk, first_page, collection_name=None):
     """Index a chunk of pages for a document"""
 
     logger.info("indexing document %d, starting at page %d", document_pk, first_page)
-    if collection_url is None:
+    if collection_name is None:
         solr = SOLR
     else:
         solr = pysolr.Solr(
-            collection_url,
+            settings.SOLR_BASE_URL + collection_name,
             auth=settings.SOLR_AUTH,
             search_handler=settings.SOLR_SEARCH_HANDLER,
             verify=settings.SOLR_VERIFY,
@@ -296,10 +299,10 @@ def solr_index_pages(document_pk, first_page, collection_url=None):
 
 
 @task
-def finish_solr_index_pages(document_pk, collection_url=None):
+def finish_solr_index_pages(document_pk, collection_name=None):
     """Make document as no longer solr dirty after indexing all page chunks"""
     logger.info("finishing indexing pages %d", document_pk)
-    if collection_url is None:
+    if collection_name is None:
         # only clear solr dirty if indexing to primary solr collection
         Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
@@ -360,7 +363,7 @@ def solr_index_dirty():
 
 
 @task
-def solr_reindex_all(collection_url, after_timestamp=None, delete_timestamp=None):
+def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """
     Re-index all documents to a new collection
     """
@@ -388,7 +391,7 @@ def solr_reindex_all(collection_url, after_timestamp=None, delete_timestamp=None
         solr_index.delay(
             document.pk,
             index_text=document.status == Status.success,
-            collection_url=collection_url,
+            collection_name=collection_name,
         )
 
     # check how many documents we have left to re-index
@@ -400,29 +403,42 @@ def solr_reindex_all(collection_url, after_timestamp=None, delete_timestamp=None
     if documents_left > settings.SOLR_DIRTY_LIMIT:
         # if more than the limit, continue the re-indexing
         solr_reindex_all.apply_async(
-            args=[collection_url, before_timestamp, delete_timestamp],
+            args=[collection_name, before_timestamp, delete_timestamp],
             countdown=settings.SOLR_DIRTY_COUNTDOWN,
         )
     else:
         # otherwise, switch over the alias, then mark the remanining documents
         # as solr dirty
-        # XXX
-        update_alias()
+
         logger.info(
-            "solr index full: done, re-index all documents updated after %s",
+            "solr index full: done, re-index all documents updated after %s, "
+            "delete all documents after %s",
             before_timestamp.isoformat(),
+            delete_timestamp.isoformat(),
         )
+        response = requests.get(
+            f"{settings.SOLR_BASE_URL}admin/collections",
+            data={
+                "action": "CREATEALIAS",
+                "collections": collection_name,
+                "name": settings.SOLR_COLLECTION_NAME,
+                "wt": "json",
+            },
+            auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD),
+        )
+        if response.status_code != 200:
+            logger.error(
+                "Error creating solr alias: %d %s",
+                response.status_code,
+                response.content,
+            )
+            return
+
         Document.objects.exclude(status=Status.deleted).filter(
             updated_at__gt=before_timestamp
         ).update(solr_dirty=True)
         solr_index_dirty.delay()
 
-        logger.info(
-            "solr index full: done, re-index all documents updated after %s, delete "
-            "all documents after %s",
-            before_timestamp.isoformat(),
-            delete_timestamp.isoformat(),
-        )
         # delete all documents from the new solr collection that were deleted since
         # we started re-indexing
         for document in DeletedDocument.objects.filter(
