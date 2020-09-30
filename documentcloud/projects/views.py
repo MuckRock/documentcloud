@@ -28,6 +28,18 @@ from documentcloud.projects.serializers import (
 from documentcloud.users.models import User
 
 
+def _solr_remove(instance):
+    """Remove the project from the document's solr index"""
+    solr_document = {"id": instance.document_id, "projects": instance.project_id}
+    field_updates = {"projects": "remove"}
+    if instance.edit_access:
+        solr_document["projects_edit_access"] = instance.project_id
+        field_updates["projects_edit_access"] = "remove"
+    transaction.on_commit(
+        lambda: solr_index.delay(instance.document_id, solr_document, field_updates)
+    )
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     queryset = Project.objects.none()
@@ -47,6 +59,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
             creator=self.request.user,
             access=CollaboratorAccess.admin,
         )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        """When destroying a project, make sure we remove all of its documents
+        from the project on solr
+        """
+        # get all of the project memberships for this project
+        project_memberships = instance.projectmembership_set.all()
+        # set solr dirty and updated at for all of the documents in this project
+        Document.objects.filter(
+            pk__in=[pm.document.pk for pm in project_memberships]
+        ).update(solr_dirty=True, updated_at=timezone.now())
+        # remove the documents from the project on solr
+        for project_membership in project_memberships:
+            _solr_remove(project_membership)
+
+        super().perform_destroy(instance)
 
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, field_name="collaborators")
@@ -226,14 +255,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _solr_remove(self, instance):
         """Remove the project from the document's solr index"""
-        solr_document = {"id": instance.document_id, "projects": instance.project_id}
-        field_updates = {"projects": "remove"}
-        if instance.edit_access:
-            solr_document["projects_edit_access"] = instance.project_id
-            field_updates["projects_edit_access"] = "remove"
-        transaction.on_commit(
-            lambda: solr_index.delay(instance.document_id, solr_document, field_updates)
-        )
+        _solr_remove(instance)
 
     class Filter(django_filters.FilterSet):
         class Meta:
