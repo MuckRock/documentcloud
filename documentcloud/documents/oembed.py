@@ -19,7 +19,9 @@ class DocumentOEmbed(RichOEmbed):
     template = "oembed/document.html"
     patterns = [
         # viewer url
-        re.compile(rf"^{settings.DOCCLOUD_URL}/documents/(?P<pk>[0-9]+)[a-z0-9_-]*/?$"),
+        re.compile(
+            rf"^{settings.DOCCLOUD_URL}/documents/(?P<pk>[0-9]+)[A-Za-z0-9_-]*/?$"
+        ),
         # api url
         re.compile(rf"^{settings.DOCCLOUD_API_URL}/api/documents/(?P<pk>[0-9]+)/?$"),
     ]
@@ -67,7 +69,7 @@ class PageOEmbed(DocumentOEmbed):
     patterns = [
         re.compile(
             rf"^{settings.DOCCLOUD_URL}/documents/"
-            r"(?P<pk>[0-9]+)[a-z0-9_-]*/?#document/p(?P<page>[0-9]+)$"
+            r"(?P<pk>[0-9]+)[A-Za-z0-9_-]*/?#document/p(?P<page>[0-9]+)$"
         )
     ]
 
@@ -105,7 +107,7 @@ class NoteOEmbed(RichOEmbed):
     template = "oembed/note.html"
     patterns = [
         re.compile(
-            rf"^{settings.DOCCLOUD_URL}/documents/(?P<doc_pk>[0-9]+)[a-z0-9_-]*/?"
+            rf"^{settings.DOCCLOUD_URL}/documents/(?P<doc_pk>[0-9]+)[A-Za-z0-9_-]*/?"
             r"#document/p(?P<page>[0-9]+)/a(?P<pk>[0-9]+)$"
         )
     ]
