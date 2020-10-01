@@ -372,8 +372,14 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     before_timestamp = documents.values_list("updated_at", flat=True)[
         settings.SOLR_DIRTY_LIMIT
     ]
+    full_count = documents.count()
     documents = documents.filter(updated_at__lte=before_timestamp)
-    logger.info("solr index full: reindexing %d documents", documents.count())
+    logger.info(
+        "solr index full: reindexing %d documents now, %d documents left to "
+        "re-index in total",
+        documents.count(),
+        full_count,
+    )
     for document in documents:
         # only index the full text if the document is in a successful state
         solr_index.delay(
