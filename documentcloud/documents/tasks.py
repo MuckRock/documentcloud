@@ -369,11 +369,11 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     """
     documents = Document.objects.exclude(status=Status.deleted).order_by("updated_at")
     if after_timestamp is None:
-        logger.info("starting a solr full re-index")
+        logger.info("[SOLR REINDEX] starting")
         # check for any document deleted after we start the full re-index
         delete_timestamp = timezone.now()
     else:
-        logger.info("continuing a solr full re-index: %s", after_timestamp.isoformat())
+        logger.info("[SOLR REINDEX] continuing after: %s", after_timestamp)
         documents = documents.filter(updated_at__gt=after_timestamp)
 
     # we want to index about SOLR_DIRTY_LIMIT documents at a time
@@ -387,7 +387,7 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     full_count = documents.count()
     documents = documents.filter(updated_at__lte=before_timestamp)
     logger.info(
-        "solr index full: reindexing %d documents now, %d documents left to "
+        "[SOLR REINDEX] reindexing %d documents now, %d documents left to "
         "re-index in total",
         documents.count(),
         full_count,
@@ -408,6 +408,7 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     )
     if documents_left > settings.SOLR_DIRTY_LIMIT:
         # if more than the limit, continue the re-indexing
+        logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
         solr_reindex_all.apply_async(
             args=[collection_name, before_timestamp, delete_timestamp],
             countdown=settings.SOLR_DIRTY_COUNTDOWN,
@@ -417,10 +418,10 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         # as solr dirty
 
         logger.info(
-            "solr index full: done, re-index all documents updated after %s, "
+            "[SOLR REINDEX] done, re-index all documents updated after %s, "
             "delete all documents after %s",
-            before_timestamp.isoformat(),
-            delete_timestamp.isoformat(),
+            before_timestamp,
+            delete_timestamp,
         )
         response = requests.get(
             f"{settings.SOLR_BASE_URL}admin/collections",
@@ -434,7 +435,7 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         )
         if response.status_code != 200:
             logger.error(
-                "Error creating solr alias: %d %s",
+                "[SOLR REINDEX] Error creating solr alias: %d %s",
                 response.status_code,
                 response.content,
             )
