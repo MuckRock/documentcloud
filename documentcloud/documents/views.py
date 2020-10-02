@@ -653,6 +653,8 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
+        # TODO: pass document extension here and delete original document if
+        # applicable once PDF is modified
         redact.delay(
             document.pk,
             document.slug,
