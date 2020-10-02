@@ -28,6 +28,7 @@ if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
     from documentcloud.documents.local_tasks import (
         process_file_internal,
+        document_convert,
         cache_pages,
         extract_images,
         ocr_pages,
@@ -70,6 +71,7 @@ def fetch_file_url(file_url, document_pk, force_ocr):
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
+        # TODO: investigate: do we need to grab extension here for document conversion?
         process.delay(
             document_pk, document.slug, document.access, document.language, force_ocr
         )
@@ -78,13 +80,14 @@ def fetch_file_url(file_url, document_pk, force_ocr):
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
-def process(document_pk, slug, access, ocr_code, force_ocr):
+def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
     """Start the processing"""
     httpsub.post(
         settings.DOC_PROCESSING_URL,
         json={
             "doc_id": document_pk,
             "slug": slug,
+            "extension": extension,
             "access": access,
             "ocr_code": ocr_code,
             "method": "process_pdf",

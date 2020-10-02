@@ -49,6 +49,9 @@ REDIS = utils.get_redis()
 PDF_PROCESS_TOPIC = publisher.topic_path(
     "documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")
 )
+DOCUMENT_CONVERT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("DOCUMENT_CONVERT_TOPIC", default="document-convert")
+)
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
@@ -63,13 +66,18 @@ def process_doc(request, _context=None):
     data = get_http_data(request)
     doc_id = data["doc_id"]
     job_type = data["method"]
+    extension = data.get("extension", "pdf")
 
     # Initialize the processing environment
     utils.initialize(REDIS, doc_id)
 
     # Launch PDF processing via pubsub
     if job_type == "process_pdf":
-        publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
+        if extension == "pdf":
+            publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
+        else:
+            # Non-PDF files require conversion first
+            publisher.publish(DOCUMENT_CONVERT_TOPIC, data=encode_pubsub_data(data))
     elif job_type == "redact_doc":
         publisher.publish(REDACT_TOPIC, data=encode_pubsub_data(data))
     elif job_type == "cancel_doc_processing":

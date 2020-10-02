@@ -212,7 +212,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not self.request.user.has_perm("documents.change_document", document):
             return f"You do not have permission to edit document {document.pk}"
 
-        if not storage.exists(document.doc_path):
+        if not storage.exists(document.original_path):
             return f"No File: {document.pk}"
 
         if document.processing:
@@ -232,6 +232,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 document.access,
                 Language.get_choice(document.language).ocr_code,
                 force_ocr,
+                document.original_extension,
             )
         )
         transaction.on_commit(
@@ -652,6 +653,8 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
+        # TODO: pass document extension here and delete original document if
+        # applicable once PDF is modified
         redact.delay(
             document.pk,
             document.slug,
