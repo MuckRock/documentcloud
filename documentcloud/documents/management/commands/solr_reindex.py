@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 # DocumentCloud
+from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_reindex_all
 
@@ -20,16 +21,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         total = Document.objects.exclude(status=Status.deleted).count()
-        time = (
-            (total / settings.SOLR_DIRTY_LIMIT) * settings.SOLR_DIRTY_COUNTDOWN
-        ) // 60
         self.stdout.write(
             "Starting a full solr reindex:\n"
             f"\tInto collection: {kwargs['collection_name']}\n"
             f"\t{total} documents total\n"
-            f"\t{settings.SOLR_DIRTY_LIMIT} documents at a time (SOLR_DIRTY_LIMIT)\n"
-            f"\t{settings.SOLR_DIRTY_COUNTDOWN} seconds apart (SOLR_DIRTY_COUNTDOWN)\n"
-            f"This should take about {time} minutes ({time / 60:.1f} hours)\n"
+            f"\t{settings.SOLR_REINDEX_LIMIT} documents at a time "
+            "(SOLR_REINDEX_LIMIT)\n"
         )
         if input("Continue? [y/N] ") == "y":
             self.stdout.write("Starting")
