@@ -350,11 +350,23 @@ def solr_index_dirty():
         logger.info("Solr index dirty failed to acquire the lock")
 
 
-@task
+@task(
+    autoretry_for=(pysolr.SolrError,),
+    retry_backoff=60,
+    retry_jitter=False,
+    retry_kwargs={"max_retries": 8},
+)
 def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """
-    Re-index all documents to a new collection
+    Re-index all documents to a new Solr collection
     """
+    solr = pysolr.Solr(
+        settings.SOLR_BASE_URL + collection_name,
+        auth=settings.SOLR_AUTH,
+        search_handler=settings.SOLR_SEARCH_HANDLER,
+        verify=settings.SOLR_VERIFY,
+    )
+
     documents = Document.objects.exclude(status=Status.deleted).order_by("updated_at")
     if after_timestamp is None:
         logger.info("[SOLR REINDEX] starting")
@@ -364,13 +376,13 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         logger.info("[SOLR REINDEX] continuing after: %s", after_timestamp)
         documents = documents.filter(updated_at__gt=after_timestamp)
 
-    # we want to index about SOLR_DIRTY_LIMIT documents at a time
+    # we want to index about SOLR_REINDEX_LIMIT documents at a time
     # grab the timestamp from the document that many documents from the beginning
     # then we will filter for all documents before or equal to that timestamp
     # this ensures we do not miss any documents due to multiple documents
     # with equal updated_at timestamps
     before_timestamp = documents.values_list("updated_at", flat=True)[
-        settings.SOLR_DIRTY_LIMIT
+        settings.SOLR_REINDEX_LIMIT
     ]
     full_count = documents.count()
     documents = documents.filter(updated_at__lte=before_timestamp)
@@ -380,13 +392,8 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         documents.count(),
         full_count,
     )
-    for document in documents:
-        # only index the full text if the document is in a successful state
-        solr_index.delay(
-            document.pk,
-            index_text=document.status == Status.success,
-            collection_name=collection_name,
-        )
+    solr_documents = [d.solr(index_text=d.status == Status.success) for d in documents]
+    solr.add(solr_documents)
 
     # check how many documents we have left to re-index
     documents_left = (
@@ -394,23 +401,23 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         .filter(updated_at__gt=before_timestamp)
         .count()
     )
-    if documents_left > settings.SOLR_DIRTY_LIMIT:
-        # if more than the limit, continue the re-indexing
+    if (
+        documents_left > settings.SOLR_REINDEX_LIMIT
+        and (timezone.now() - before_timestamp).seconds
+        > settings.SOLR_REINDEX_CATCHUP_SECONDS
+    ):
+        # if there are many documents left and we are not too close to the current time
+        # continue re-indexing
         logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
-        solr_reindex_all.apply_async(
-            args=[collection_name, before_timestamp, delete_timestamp],
-            countdown=settings.SOLR_DIRTY_COUNTDOWN,
-        )
+        solr_reindex_all.delay(collection_name, before_timestamp, delete_timestamp)
     else:
-        # otherwise, switch over the alias, then mark the remanining documents
-        # as solr dirty
-
         logger.info(
             "[SOLR REINDEX] done, re-index all documents updated after %s, "
             "delete all documents after %s",
             before_timestamp,
             delete_timestamp,
         )
+        # otherwise, switch over the alias
         response = requests.get(
             f"{settings.SOLR_BASE_URL}admin/collections",
             data={
@@ -429,6 +436,7 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
             )
             return
 
+        # mark all remaining documents as dirty and begin re-indexing them
         Document.objects.exclude(status=Status.deleted).filter(
             updated_at__gt=before_timestamp
         ).update(solr_dirty=True)
