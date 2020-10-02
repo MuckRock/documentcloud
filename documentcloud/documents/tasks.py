@@ -71,6 +71,7 @@ def fetch_file_url(file_url, document_pk, force_ocr):
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
+        # TODO: investigate: do we need to grab extension here for document conversion?
         process.delay(
             document_pk,
             document.slug,
