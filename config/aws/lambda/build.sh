@@ -13,5 +13,8 @@ do
     ./build_ocr.sh $(echo $lang | tr '|' ' ')
 done
 
+# Run document conversion build script
+./build_document_conversion.sh
+
 # Run utils build script
 ./build_utils.sh

@@ -234,6 +234,13 @@ class Document(models.Model):
         return path.doc_path(self.pk, self.slug)
 
     @property
+    def original_path(self):
+        """The path to the document before PDF conversion"""
+        if self.original_extension == "pdf":
+            return self.doc_path
+        return path.original_path(self.pk, self.slug, self.original_extension)
+
+    @property
     def public(self):
         return self.access == Access.public and self.status in (
             Status.success,

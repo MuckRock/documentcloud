@@ -118,6 +118,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "force_ocr",
             "language",
             "organization",
+            "original_extension",
             "page_count",
             "page_spec",
             "presigned_url",
@@ -265,7 +266,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
-        return storage.presign_url(obj.doc_path, "put_object")
+        return storage.presign_url(obj.original_path, "put_object")
 
     def get_remaining(self, obj):
         """Get the progress data from the serverless function"""
