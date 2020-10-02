@@ -294,5 +294,3 @@ awsbin/
 template.yaml
 packaged.yaml
 *.traineddata
-
-document_conversion/

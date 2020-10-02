@@ -13,7 +13,9 @@ RUN apt-get -qq -y update && \
   # Postgres dependencies
   libpq-dev postgresql-client python-psycopg2 \
   # Tesseract dependencies
-  libjpeg-turbo8 libtiff5 && \
+  libjpeg-turbo8 libtiff5 \
+  # LibreOffice dependencies
+  libnss3-dev libcurl4-nss-dev libxslt1-dev libpixman-1-0 libxcb-render0-dev && \
   # Symlink bash and python
   ln -sf bash /bin/sh && rm -f /usr/bin/python && \
   ln -s /usr/bin/python3 /usr/bin/python && \

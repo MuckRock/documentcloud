@@ -51,6 +51,12 @@ def process_pdf_task(data):
     return process_file_internal.delay(data)
 
 
+def document_convert_task(data):
+    from documentcloud.documents.tasks import document_convert
+
+    return document_convert.delay(data)
+
+
 def page_cache_task(data):
     from documentcloud.documents.tasks import cache_pages
 
@@ -102,6 +108,10 @@ def finish_import_task(data):
 publisher.register_internal_callback(
     ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
     process_pdf_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("DOCUMENT_CONVERT_TOPIC", default="document-convert")),
+    document_convert_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("PAGE_CACHE_TOPIC", default="page-cache")),

@@ -32,6 +32,11 @@ def doc_path(doc_id, slug):
     return file_path(doc_id, slug, DOCUMENT_SUFFIX)
 
 
+def original_path(doc_id, slug, extension):
+    """The path to the original file before converting to PDF"""
+    return path(doc_id) + "original/" + f"{slug}.{extension}"
+
+
 def index_path(doc_id, slug):
     """The path to the index file"""
     return file_path(doc_id, slug, INDEX_SUFFIX)

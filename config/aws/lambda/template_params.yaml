@@ -25,6 +25,7 @@ Globals:
         PAGE_CACHE_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/topic:latest}}"
         IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/topic:latest}}"
         OCR_TOPICS: {$LANGUAGE_TOPICS$}
+        DOCUMENT_CONVERT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/document_conversion/topic:latest}}"
         ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
         START_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/topic:latest}}"
@@ -188,6 +189,23 @@ Resources:
 
 
 {{/each:LANGUAGES}}
+  ConvertDocFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.run_document_conversion
+      CodeUri: ./awsbin/document_conversion
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/document_conversion/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/document_conversion/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
   AssembleTextFunction:
     Type: AWS::Serverless::Function
     Properties:
