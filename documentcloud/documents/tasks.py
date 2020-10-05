@@ -18,6 +18,7 @@ import requests
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
+from documentcloud.common import path
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import DeletedDocument, Document
@@ -189,13 +190,7 @@ def finish_update_access(document_pk, status, access):
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
-def solr_index(
-    document_pk,
-    solr_document=None,
-    field_updates=None,
-    index_text=False,
-    collection_name=None,
-):
+def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     """Index a document into solr"""
     logger.info(
         "indexing document %d, fields %s, text %s",
@@ -203,16 +198,6 @@ def solr_index(
         field_updates,
         index_text,
     )
-    if collection_name is None:
-        solr = SOLR
-    else:
-        solr = pysolr.Solr(
-            settings.SOLR_BASE_URL + collection_name,
-            auth=settings.SOLR_AUTH,
-            search_handler=settings.SOLR_SEARCH_HANDLER,
-            verify=settings.SOLR_VERIFY,
-        )
-
     if field_updates is not None and "data" in field_updates:
         # update all fields if data was updated to ensure we remove any data keys
         # from solr which were removed from the document
@@ -234,18 +219,11 @@ def solr_index(
             )
             tasks = []
             for i in range(1, document.page_count + 1, settings.SOLR_PAGE_INDEX_LIMIT):
-                tasks.append(
-                    solr_index_pages.s(document_pk, i, collection_name=collection_name)
-                )
-            chord(
-                tasks,
-                finish_solr_index_pages.si(
-                    document_pk, collection_name=collection_name
-                ),
-            ).delay()
+                tasks.append(solr_index_pages.s(document_pk, i))
+            chord(tasks, finish_solr_index_pages.si(document_pk)).delay()
             # we will index the non-page fields here
             solr_document = document.solr(index_text=False)
-            solr.add([solr_document])
+            SOLR.add([solr_document])
             # do not mark solr_dirty as False into all pages have been indexed
             return
 
@@ -254,27 +232,16 @@ def solr_index(
         else:
             solr_document = document.solr(index_text=index_text)
 
-    solr.add([solr_document], fieldUpdates=field_updates)
+    SOLR.add([solr_document], fieldUpdates=field_updates)
 
-    if collection_name is None:
-        # only clear solr dirty if indexing to primary solr collection
-        Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
-def solr_index_pages(document_pk, first_page, collection_name=None):
+def solr_index_pages(document_pk, first_page):
     """Index a chunk of pages for a document"""
 
     logger.info("indexing document %d, starting at page %d", document_pk, first_page)
-    if collection_name is None:
-        solr = SOLR
-    else:
-        solr = pysolr.Solr(
-            settings.SOLR_BASE_URL + collection_name,
-            auth=settings.SOLR_AUTH,
-            search_handler=settings.SOLR_SEARCH_HANDLER,
-            verify=settings.SOLR_VERIFY,
-        )
 
     try:
         document = Document.objects.get(pk=document_pk)
@@ -288,16 +255,14 @@ def solr_index_pages(document_pk, first_page, collection_name=None):
         for i in range(first_page, first_page + settings.SOLR_PAGE_INDEX_LIMIT)
     }
     solr_document = document.solr(field_updates.keys(), index_text=True)
-    solr.add([solr_document], fieldUpdates=field_updates)
+    SOLR.add([solr_document], fieldUpdates=field_updates)
 
 
 @task
-def finish_solr_index_pages(document_pk, collection_name=None):
+def finish_solr_index_pages(document_pk):
     """Make document as no longer solr dirty after indexing all page chunks"""
     logger.info("finishing indexing pages %d", document_pk)
-    if collection_name is None:
-        # only clear solr dirty if indexing to primary solr collection
-        Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
 @periodic_task(run_every=crontab(minute=30))
@@ -360,6 +325,10 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     """
     Re-index all documents to a new Solr collection
     """
+    if cache.get("solr_reindex_cancel"):
+        logger.info("[SOLR REINDEX] solr_reindex_all cancelled")
+        return
+
     solr = pysolr.Solr(
         settings.SOLR_BASE_URL + collection_name,
         auth=settings.SOLR_AUTH,
@@ -367,22 +336,24 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         verify=settings.SOLR_VERIFY,
     )
 
+    if delete_timestamp is None:
+        # check for any document deleted after we start the full re-index
+        delete_timestamp = timezone.now()
+
     documents = Document.objects.exclude(status=Status.deleted).order_by("updated_at")
     if after_timestamp is None:
         logger.info("[SOLR REINDEX] starting")
-        # check for any document deleted after we start the full re-index
-        delete_timestamp = timezone.now()
     else:
         logger.info("[SOLR REINDEX] continuing after: %s", after_timestamp)
         documents = documents.filter(updated_at__gt=after_timestamp)
 
-    # we want to index about SOLR_REINDEX_LIMIT documents at a time
+    # we want to index about SOLR_REINDEX_LIMIT documents at a time per worker
     # grab the timestamp from the document that many documents from the beginning
     # then we will filter for all documents before or equal to that timestamp
     # this ensures we do not miss any documents due to multiple documents
     # with equal updated_at timestamps
     before_timestamp = documents.values_list("updated_at", flat=True)[
-        settings.SOLR_REINDEX_LIMIT
+        settings.SOLR_REINDEX_LIMIT - 1
     ]
     full_count = documents.count()
     documents = documents.filter(updated_at__lte=before_timestamp)
@@ -392,7 +363,9 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
         documents.count(),
         full_count,
     )
-    solr_documents = [d.solr(index_text=d.status == Status.success) for d in documents]
+    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
+    page_text = storage.async_download(file_names)
+    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_text)]
     solr.add(solr_documents)
 
     # check how many documents we have left to re-index
