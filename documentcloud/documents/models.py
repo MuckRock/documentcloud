@@ -318,9 +318,17 @@ class Document(models.Model):
         fields is a sequence of field names to restrict indexing to
         This is useful when the document has already been indexed, and you just
         need to update a subset of fields
+
+        if index_text is True, fetch all of the page text to index
+        index_text may also be set to the page text data if it has been
+        pre-fetched
         """
-        if index_text:
+        if index_text is True:
             page_text = self.get_all_page_text()
+        elif isinstance(index_text, dict):
+            page_text = index_text
+
+        if index_text:
             pages = {
                 f"page_no_{i}": p["contents"]
                 for i, p in enumerate(page_text["pages"], start=1)

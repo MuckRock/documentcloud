@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.core.cache import cache
 from django.core.management.base import BaseCommand
 
 # DocumentCloud
@@ -18,8 +19,17 @@ class Command(BaseCommand):
             help="The name of the new collection to index to (you must manually "
             "create this index in solr first)",
         )
+        parser.add_argument(
+            "--cancel", action="store_true", help="Cancel current re-indexing"
+        )
 
     def handle(self, *args, **kwargs):
+        if kwargs["cancel"]:
+            self.stdout.write("Cancelling re-indexing")
+            cache.set("solr_reindex_cancel", True, 300)
+            return
+
+        cache.delete("solr_reindex_cancel")
         total = Document.objects.exclude(status=Status.deleted).count()
         self.stdout.write(
             "Starting a full solr reindex:\n"
