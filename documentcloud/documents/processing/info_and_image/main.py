@@ -370,9 +370,10 @@ def process_page_cache(data, _context=None):
         # Set the file hash in Redis to go out with the next update
         REDIS.set(redis_fields.file_hash(doc_id), pdf_file.sha1)
 
-        # Create an index file that stores the memory locations of each page of the
-        # PDF file.
-        write_cache(path.index_path(doc_id, slug), cached, access)
+        if not is_import:
+            # Create an index file that stores the memory locations of each page of the
+            # PDF file.
+            write_cache(path.index_path(doc_id, slug), cached, access)
 
         # Method to publish image batches
         def pub(pages):
@@ -500,7 +501,7 @@ def ocr_topic_for_code(ocr_code):
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
-    # pylint: disable=too-many-locals, too-many-statements
+    # pylint: disable=too-many-locals, too-many-statements, too-many-branches
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
@@ -798,21 +799,14 @@ def import_document(data, _context=None):
     publisher.publish(
         PAGE_CACHE_TOPIC,
         data=encode_pubsub_data(
-            {
-                "doc_id": doc_id,
-                "slug": slug,
-                "access": access,
-                "ocr_code": ocr_code,
-                "force_ocr": force_ocr,
-                "org_id": org_id,
-                "import": True,
-            }
+            {"doc_id": doc_id, "slug": slug, "org_id": org_id, "import": True}
         ),
     )
 
 
 @pubsub_function(REDIS, READ_PAGE_TEXT_TOPIC, skip_processing_check=True)
 def read_page_text(data, _context=None):
+    # pylint: disable=too-many-locals
     """A function to read page text from documents in batch."""
     data = get_pubsub_data(data)
     org_id = data["org_id"]
