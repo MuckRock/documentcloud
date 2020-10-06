@@ -314,6 +314,33 @@ def get_redis_pagespec(doc_id):
     return pagespec
 
 
+def import_grab_page_texts(doc_id, org_id, page_count, slug):
+    pagespec = get_redis_pagespec(doc_id)
+    crunched_pagespec = crunch_collection(pagespec)
+    # Run a Redis pipeline
+    pipeline = REDIS.pipeline()
+    pipeline.hset(redis_fields.import_pagespecs(org_id), f"{doc_id}", crunched_pagespec)
+
+    # Set Redis texts remaining to page count
+    pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
+
+    # Set Redis text bits field flooded to 0 to track each page
+    text_bits_field = redis_fields.text_bits(doc_id)
+    pipeline.delete(text_bits_field)
+    pipeline.setbit(text_bits_field, page_count - 1, 0)
+    pipeline.execute()
+
+    # Kick off reading text files
+    for i in range(0, page_count, TEXT_READ_BATCH):
+        pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
+        publisher.publish(
+            READ_PAGE_TEXT_TOPIC,
+            encode_pubsub_data(
+                {"org_id": org_id, "doc_id": doc_id, "slug": slug, "pages": pages}
+            ),
+        )
+
+
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
     """Memoize the memory accesses of all the pages of a PDF in a cache."""
@@ -326,6 +353,8 @@ def process_page_cache(data, _context=None):
     ocr_code = data.get("ocr_code", "eng")
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
+    org_id = data.get("org_id", "")
+    is_import = data.get("import", False)  # don't extract images if so
 
     doc_path = path.doc_path(doc_id, slug)
 
@@ -359,6 +388,9 @@ def process_page_cache(data, _context=None):
                             "pages": pages,
                             "partial": dirty,
                             "force_ocr": force_ocr,
+                            "page_count": page_count,
+                            "org_id": org_id,
+                            "import": is_import,
                         }
                     ),
                 )
@@ -479,6 +511,9 @@ def extract_image(data, _context=None):
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
+    page_count = data.get("page_count", 0)
+    org_id = data.get("org_id", "")
+    is_import = data.get("import", False)  # only extract dimensions if import
 
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
@@ -523,17 +558,22 @@ def extract_image(data, _context=None):
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            large_image_path = path.page_image_path(
-                doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
-            )
+            if not is_import:
+                large_image_path = path.page_image_path(
+                    doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
+                )
             page = None
             if not utils.page_extracted(REDIS, doc_id, page_number):
                 # Extract the image.
                 if page is None:
                     page = doc.load_page(page_number)
-                width, height = extract_single_page(
-                    doc_id, slug, access, page, page_number, large_image_path
-                )
+                if is_import:
+                    # Skip extracting image to get dimensions
+                    width, height = page.width, page.height
+                else:
+                    width, height = extract_single_page(
+                        doc_id, slug, access, page, page_number, large_image_path
+                    )
                 page_dimension = f"{width}x{height}"
 
                 if not partial:
@@ -552,9 +592,15 @@ def extract_image(data, _context=None):
                 # Write the pagespec dimensions if all images have finished and
                 # it's not a partial update.
                 if images_finished and not partial:
-                    update_pagespec(doc_id)
+                    if is_import:
+                        # After all page specs have been extracted in import
+                        # mode, grab page texts
+                        import_grab_page_texts(doc_id, org_id, page_count, slug)
+                        return "Ok"
+                    else:
+                        update_pagespec(doc_id)
 
-            if not utils.page_ocrd(REDIS, doc_id, page_number):
+            if not is_import and not utils.page_ocrd(REDIS, doc_id, page_number):
                 # Extract page text if possible
                 if force_ocr:
                     text = None
@@ -739,7 +785,34 @@ def start_import(data, _context=None):
 @pubsub_function(REDIS, IMPORT_DOCUMENT_TOPIC, skip_processing_check=True)
 def import_document(data, _context=None):
     """Handles the import process for a single document."""
-    # pylint: disable=too-many-locals
+    data = get_pubsub_data(data)
+    org_id = data["org_id"]
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+
+    # Extract the page count and store it in Redis
+    page_count = extract_pagecount(doc_id, slug)
+    initialize_redis_page_data(doc_id, page_count)
+
+    # Kick off page cache processing
+    publisher.publish(
+        PAGE_CACHE_TOPIC,
+        data=encode_pubsub_data(
+            {
+                "doc_id": doc_id,
+                "slug": slug,
+                "access": access,
+                "ocr_code": ocr_code,
+                "force_ocr": force_ocr,
+                "org_id": org_id,
+                "import": True,
+            }
+        ),
+    )
+
+
+@pubsub_function(REDIS, FINISH_IMPORT_DOCUMENT_TOPIC, skip_processing_check=True)
+def finish_import_document(data, _context=None):
     data = get_pubsub_data(data)
     org_id = data["org_id"]
     doc_id = data["doc_id"]
