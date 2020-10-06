@@ -811,61 +811,6 @@ def import_document(data, _context=None):
     )
 
 
-@pubsub_function(REDIS, FINISH_IMPORT_DOCUMENT_TOPIC, skip_processing_check=True)
-def finish_import_document(data, _context=None):
-    data = get_pubsub_data(data)
-    org_id = data["org_id"]
-    doc_id = data["doc_id"]
-    slug = data["slug"]
-
-    # Get the pagespec from the PDF
-    pagespec = collections.defaultdict(list)
-    doc_path = path.doc_path(doc_id, slug)
-    try:
-        with Workspace() as workspace, StorageHandler(
-            storage, doc_path, record=False, playback=False, cache=None, read_all=True
-        ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
-            # Get the page spec by grabbing the dimension from each page
-            page_count = doc.page_count
-            for page_number in range(page_count):
-                page = doc.load_page(page_number)
-                pagespec[f"{page.width}x{page.height}"].append(page_number)
-    except (ValueError, AssertionError):
-        # document was not found
-        REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
-        publisher.publish(
-            FINISH_IMPORT_TOPIC,
-            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
-        )
-        return
-
-    # Set the pagespec
-    crunched_pagespec = crunch_collection(pagespec)
-
-    # Run a Redis pipeline
-    pipeline = REDIS.pipeline()
-    pipeline.hset(redis_fields.import_pagespecs(org_id), f"{doc_id}", crunched_pagespec)
-
-    # Set Redis texts remaining to page count
-    pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
-
-    # Set Redis text bits field flooded to 0 to track each page
-    text_bits_field = redis_fields.text_bits(doc_id)
-    pipeline.delete(text_bits_field)
-    pipeline.setbit(text_bits_field, page_count - 1, 0)
-    pipeline.execute()
-
-    # Kick off reading text files
-    for i in range(0, page_count, TEXT_READ_BATCH):
-        pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
-        publisher.publish(
-            READ_PAGE_TEXT_TOPIC,
-            encode_pubsub_data(
-                {"org_id": org_id, "doc_id": doc_id, "slug": slug, "pages": pages}
-            ),
-        )
-
-
 @pubsub_function(REDIS, READ_PAGE_TEXT_TOPIC, skip_processing_check=True)
 def read_page_text(data, _context=None):
     """A function to read page text from documents in batch."""
