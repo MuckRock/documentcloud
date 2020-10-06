@@ -516,7 +516,11 @@ class Command(BaseCommand):
                 # if the note has coordinates and the document is in the map then
                 # grab the coordinates of the correct page and convert
                 # all the coordinates to percentages
-                if note.x1 is not None and note.document_id in document_map:
+                if (
+                    note.x1 is not None
+                    and note.document_id in document_map
+                    and len(document_map[note.document_id]) > note.page_number
+                ):
                     width, height = map(
                         float,
                         document_map[note.document_id][note.page_number].split("x"),
