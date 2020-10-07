@@ -24,6 +24,7 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
                 "slug": ["exact"],
                 "uuid": ["exact"],
                 "id": ["in"],
+                "name": ["exact", "istartswith"],
             }
 
     filterset_class = Filter
