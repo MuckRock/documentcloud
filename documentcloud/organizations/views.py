@@ -19,6 +19,11 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     class Filter(django_filters.FilterSet):
         class Meta:
             model = Organization
-            fields = ["individual", "slug", "uuid"]
+            fields = {
+                "individual": ["exact"],
+                "slug": ["exact"],
+                "uuid": ["exact"],
+                "name": ["exact", "istartswith"],
+            }
 
     filterset_class = Filter

@@ -45,6 +45,12 @@ class UserViewSet(
 
         class Meta:
             model = User
-            fields = ["organization", "project", "name", "username", "uuid"]
+            fields = {
+                "organization": ["exact"],
+                "project": ["exact"],
+                "name": ["exact", "istartswith"],
+                "username": ["exact"],
+                "uuid": ["exact"],
+            }
 
     filterset_class = Filter
