@@ -57,6 +57,7 @@ def pubsub_function(
                         redis,
                         None if skip_processing_check else doc_id,
                         "Function has timed out (max retries exceeded)",
+                        True,
                     )
                     return "ok"
 
