@@ -5,7 +5,6 @@ from celery.task import periodic_task, task
 from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
-from django.utils import timezone
 
 # Standard Library
 import logging
@@ -14,14 +13,13 @@ import sys
 # Third Party
 import pysolr
 import redis
-import requests
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
-from documentcloud.common import path
 from documentcloud.common.environment import httpsub, storage
+from documentcloud.documents import reindex
 from documentcloud.documents.choices import Access, Status
-from documentcloud.documents.models import DeletedDocument, Document
+from documentcloud.documents.models import Document
 from documentcloud.documents.search import SOLR
 
 logger = logging.getLogger(__name__)
@@ -325,99 +323,4 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     """
     Re-index all documents to a new Solr collection
     """
-    if cache.get("solr_reindex_cancel"):
-        logger.info("[SOLR REINDEX] solr_reindex_all cancelled")
-        return
-
-    solr = pysolr.Solr(
-        settings.SOLR_BASE_URL + collection_name,
-        auth=settings.SOLR_AUTH,
-        search_handler=settings.SOLR_SEARCH_HANDLER,
-        verify=settings.SOLR_VERIFY,
-    )
-
-    if delete_timestamp is None:
-        # check for any document deleted after we start the full re-index
-        delete_timestamp = timezone.now()
-
-    documents = Document.objects.exclude(status=Status.deleted).order_by("updated_at")
-    if after_timestamp is None:
-        logger.info("[SOLR REINDEX] starting")
-    else:
-        logger.info("[SOLR REINDEX] continuing after: %s", after_timestamp)
-        documents = documents.filter(updated_at__gt=after_timestamp)
-
-    # we want to index about SOLR_REINDEX_LIMIT documents at a time per worker
-    # grab the timestamp from the document that many documents from the beginning
-    # then we will filter for all documents before or equal to that timestamp
-    # this ensures we do not miss any documents due to multiple documents
-    # with equal updated_at timestamps
-    before_timestamp = documents.values_list("updated_at", flat=True)[
-        settings.SOLR_REINDEX_LIMIT - 1
-    ]
-    full_count = documents.count()
-    documents = documents.filter(updated_at__lte=before_timestamp)
-    logger.info(
-        "[SOLR REINDEX] reindexing %d documents now, %d documents left to "
-        "re-index in total",
-        documents.count(),
-        full_count,
-    )
-    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
-    page_text = storage.async_download(file_names)
-    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_text)]
-    solr.add(solr_documents)
-
-    # check how many documents we have left to re-index
-    documents_left = (
-        Document.objects.exclude(status=Status.deleted)
-        .filter(updated_at__gt=before_timestamp)
-        .count()
-    )
-    if (
-        documents_left > settings.SOLR_REINDEX_LIMIT
-        and (timezone.now() - before_timestamp).seconds
-        > settings.SOLR_REINDEX_CATCHUP_SECONDS
-    ):
-        # if there are many documents left and we are not too close to the current time
-        # continue re-indexing
-        logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
-        solr_reindex_all.delay(collection_name, before_timestamp, delete_timestamp)
-    else:
-        logger.info(
-            "[SOLR REINDEX] done, re-index all documents updated after %s, "
-            "delete all documents after %s",
-            before_timestamp,
-            delete_timestamp,
-        )
-        # otherwise, switch over the alias
-        response = requests.get(
-            f"{settings.SOLR_BASE_URL}admin/collections",
-            data={
-                "action": "CREATEALIAS",
-                "collections": collection_name,
-                "name": settings.SOLR_COLLECTION_NAME,
-                "wt": "json",
-            },
-            auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD),
-        )
-        if response.status_code != 200:
-            logger.error(
-                "[SOLR REINDEX] Error creating solr alias: %d %s",
-                response.status_code,
-                response.content,
-            )
-            return
-
-        # mark all remaining documents as dirty and begin re-indexing them
-        Document.objects.exclude(status=Status.deleted).filter(
-            updated_at__gt=before_timestamp
-        ).update(solr_dirty=True)
-        solr_index_dirty.delay()
-
-        # delete all documents from the new solr collection that were deleted since
-        # we started re-indexing
-        for document in DeletedDocument.objects.filter(
-            created_at__gte=delete_timestamp
-        ):
-            solr_delete.delay(document.pk)
+    reindex.solr_reindex_all(collection_name, after_timestamp, delete_timestamp)
