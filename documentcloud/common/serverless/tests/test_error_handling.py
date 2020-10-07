@@ -212,5 +212,5 @@ class TestErrorHandling:
     def test_timeout_cfunctype(self, mock_send_error):
         timeout_cfunctype(encode({"doc_id": 1}))
         mock_send_error.assert_called_with(
-            redis, 1, "Function has timed out (max retries exceeded)"
+            redis, 1, "Function has timed out (max retries exceeded)", True
         )
