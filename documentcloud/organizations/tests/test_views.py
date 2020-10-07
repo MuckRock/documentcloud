@@ -33,6 +33,19 @@ class TestOrganizationAPI:
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == len(some_ids)
 
+    def test_list_filter(self, client):
+        """List organizations"""
+        names = ["abcdef", "ABC123", "abcxyz", "xyz123", "x12345", "qwerty"]
+        for name in names:
+            OrganizationFactory.create(name=name)
+
+        prefixes = [("abc", 3), ("a", 3), ("x", 2), ("xyz", 1), ("qwerty", 1)]
+        for prefix, size in prefixes:
+            response = client.get("/api/organizations/", {"name__istartswith": prefix})
+            assert response.status_code == status.HTTP_200_OK
+            response_json = json.loads(response.content)
+            assert len(response_json["results"]) == size
+
     def test_retrieve(self, client, organization):
         """Test retrieving an organization"""
         response = client.get(f"/api/organizations/{organization.pk}/")
