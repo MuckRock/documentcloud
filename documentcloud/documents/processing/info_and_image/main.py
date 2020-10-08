@@ -207,13 +207,13 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
     pipeline.execute()
 
 
-def write_cache(filename, cache, access):
+def write_cache(filename, cache):
     """Helper method to write a cache file."""
     mem_file = io.BytesIO()
     with gzip.open(mem_file, "wb") as zip_file:
         pickle.dump(cache, zip_file)
 
-    storage.simple_upload(filename, mem_file.getvalue(), access=access)
+    storage.simple_upload(filename, mem_file.getvalue(), access=access_choices.PRIVATE)
     mem_file.close()
 
 
@@ -386,10 +386,9 @@ def process_page_cache(data, _context=None):
         # Set the file hash in Redis to go out with the next update
         REDIS.set(redis_fields.file_hash(doc_id), pdf_file.sha1)
 
-        if not is_import:
-            # Create an index file that stores the memory locations of each page of the
-            # PDF file.
-            write_cache(path.index_path(doc_id, slug), cached, access)
+        # Create an index file that stores the memory locations of each page of the
+        # PDF file.
+        write_cache(path.index_path(doc_id, slug), cached)
 
         # Method to publish image batches
         def pub(pages):
