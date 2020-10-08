@@ -26,7 +26,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         if kwargs["cancel"]:
             self.stdout.write("Cancelling re-indexing")
-            cache.set("solr_reindex_cancel", True, 300)
+            cache.set("solr_reindex_cancel", True, 3600)
             return
 
         cache.delete("solr_reindex_cancel")
