@@ -4,6 +4,7 @@ import csv
 import gzip
 import io
 import json
+import logging
 import pickle
 
 # Third Party
@@ -13,6 +14,8 @@ from listcrunch import crunch_collection
 from PIL import Image
 
 env = environ.Env()
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -315,6 +318,13 @@ def get_redis_pagespec(doc_id):
 
 
 def import_grab_page_texts(doc_id, org_id, page_count, slug):
+    logger.info(
+        "[IMPORT GRAB PAGE TEXTS] doc_id %s org_id %s page_count %s slug %s",
+        doc_id,
+        org_id,
+        page_count,
+        slug,
+    )
     pagespec = get_redis_pagespec(doc_id)
     crunched_pagespec = crunch_collection(pagespec)
     # Run a Redis pipeline
@@ -333,6 +343,7 @@ def import_grab_page_texts(doc_id, org_id, page_count, slug):
     # Kick off reading text files
     for i in range(0, page_count, TEXT_READ_BATCH):
         pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
+        logger.info("[IMPORT GRAB PAGE TEXTS] pages %s", pages)
         publisher.publish(
             READ_PAGE_TEXT_TOPIC,
             encode_pubsub_data(
@@ -357,6 +368,11 @@ def process_page_cache(data, _context=None):
     is_import = data.get("import", False)  # don't extract images if so
 
     doc_path = path.doc_path(doc_id, slug)
+
+    if is_import:
+        logger.info(
+            "[PROCESS PAGE CACHE] org_id %s doc_id %s slug %s", org_id, doc_id, slug
+        )
 
     # Read the entire document into memory
     with Workspace() as workspace, StorageHandler(
@@ -397,6 +413,8 @@ def process_page_cache(data, _context=None):
                 )
 
         # Trigger image extraction tasks for each page
+        if is_import:
+            logger.info("[PROCESS PAGE CACHE] dirty %s", dirty)
         if dirty:
             # If only dirty pages are flagged, process the relevant ones in batches
             dirty = sorted(dirty)
@@ -405,6 +423,12 @@ def process_page_cache(data, _context=None):
                 pub(pages)
         else:
             # Otherwise, process all pages in batches
+            if is_import:
+                logger.info(
+                    "[PROCESS PAGE CACHE] page count %s image batch %s",
+                    page_count,
+                    IMAGE_BATCH,
+                )
             for i in range(0, page_count, IMAGE_BATCH):
                 pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
                 pub(pages)
@@ -519,6 +543,16 @@ def extract_image(data, _context=None):
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
 
+    if is_import:
+        logger.info(
+            "[EXTRACT IMAGE] org_id %s doc_id %s slug %s page_numbers %s page_count %s",
+            org_id,
+            doc_id,
+            slug,
+            page_numbers,
+            page_count,
+        )
+
     def flush(ocr_queue):
         if not ocr_queue:
             return
@@ -564,6 +598,12 @@ def extract_image(data, _context=None):
                     doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
                 )
             page = None
+            if is_import:
+                logger.info(
+                    "[EXTRACT IMAGE] page_number %s page_extracted %s",
+                    page_number,
+                    utils.page_extracted(REDIS, doc_id, page_number),
+                )
             if not utils.page_extracted(REDIS, doc_id, page_number):
                 # Extract the image.
                 if page is None:
@@ -592,6 +632,12 @@ def extract_image(data, _context=None):
 
                 # Write the pagespec dimensions if all images have finished and
                 # it's not a partial update.
+                if is_import:
+                    logger.info(
+                        "[EXTRACT IMAGE] images_finished %s partial %s",
+                        images_finished,
+                        partial,
+                    )
                 if images_finished and not partial:
                     if is_import:
                         # After all page specs have been extracted in import
@@ -660,6 +706,9 @@ def assemble_page_text(data, _context=None):
     is_import = data.get("import", False)
     if is_import:
         org_id = data["org_id"]
+        logger.info(
+            "[ASSEMBLE PAGE TEXT] org_id %s doc_id %s slug %s", org_id, doc_id, slug
+        )
 
     results = utils.get_all_page_text(REDIS, doc_id, is_import)
 
@@ -762,6 +811,8 @@ def start_import(data, _context=None):
     data = get_pubsub_data(data)
     org_id = data["org_id"]
 
+    logger.info("[START IMPORT] org id %s", org_id)
+
     with storage.open(path.import_org_csv(org_id), "r") as csvfile:
         csvreader = csv.reader(csvfile)
         next(csvreader)  # discard headers
@@ -775,6 +826,7 @@ def start_import(data, _context=None):
     REDIS.set(redis_fields.import_docs_remaining(org_id), len(doc_ids))
 
     for doc_id, slug in doc_ids:
+        logger.info("[START IMPORT] doc_id %s slug %s", doc_id, slug)
         publisher.publish(
             IMPORT_DOCUMENT_TOPIC,
             encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
@@ -791,9 +843,13 @@ def import_document(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
 
+    logger.info("[IMPORT DOCUMENT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
+
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)
     initialize_redis_page_data(doc_id, page_count)
+
+    logger.info("[IMPORT DOCUMENT] page_count %s", page_count)
 
     # Kick off page cache processing
     publisher.publish(
@@ -814,6 +870,14 @@ def read_page_text(data, _context=None):
     slug = data["slug"]
     pages = data["pages"]
 
+    logger.info(
+        "[READ PAGE TEXT] org_id %s doc_id %s slug %s pages %s",
+        org_id,
+        doc_id,
+        slug,
+        pages,
+    )
+
     for page_number in pages:
         text_path = path.page_text_path(doc_id, slug, page_number)
         try:
@@ -828,6 +892,12 @@ def read_page_text(data, _context=None):
 
         # Decrement the texts remaining, assembling text if done.
         texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
+        logger.info(
+            "[READ PAGE TEXT] page_number %s texts_finished %s texts remaining %s",
+            page_number,
+            texts_finished,
+            REDIS.get(redis_fields.texts_remaining(doc_id)),
+        )
         if texts_finished:
             publisher.publish(
                 ASSEMBLE_TEXT_TOPIC,
@@ -852,6 +922,13 @@ def finish_import(data, _context=None):
     doc_id = data["doc_id"]
 
     import_docs_remaining = REDIS.decr(redis_fields.import_docs_remaining(org_id))
+
+    logger.info(
+        "[FINISH IMPORT] org_id %s doc_id %s import_docs_remaining %s",
+        org_id,
+        doc_id,
+        import_docs_remaining,
+    )
 
     if import_docs_remaining == 0:
         # Done importing! Assemble the resulting CSV
