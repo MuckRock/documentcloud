@@ -193,7 +193,7 @@ def check_remaining_documents(collection_name, before_timestamp, delete_timestam
     )
     if (
         documents_left > settings.SOLR_REINDEX_LIMIT
-        and (timezone.now() - before_timestamp).seconds
+        and (timezone.now() - before_timestamp).total_seconds()
         > settings.SOLR_REINDEX_CATCHUP_SECONDS
     ):
         # if there are many documents left and we are not too close to the current time
