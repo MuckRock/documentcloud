@@ -101,9 +101,15 @@ def batch_index(collection_name, documents):
         # if the solr_documents are too large to be batch indexed, remove
         # the largest document
         logger.info(
-            "[SOLR REINDEX] document batch too large, removing largest document"
+            "[SOLR REINDEX] document batch too large (%s), removing largest document",
+            documents_size(solr_documents),
         )
         large_document, solr_documents = remove_largest_document(solr_documents)
+        logger.info(
+            "[SOLR REINDEX] removed one document of size %s, rest size %s",
+            document_size(large_document),
+            documents_size(solr_documents),
+        )
         single_index(solr, large_document)
 
     solr.add(solr_documents)
@@ -129,27 +135,36 @@ def remove_largest_document(solr_documents):
 
 def single_index(solr, document):
     """Index a single, large document"""
+    logger.info("[SOLR REINDEX] indexing large document %s", document.get("title"))
     if document_size(document) < settings.SOLR_REINDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
-        solr.add(document)
+        logger.info("[SOLR REINDEX] indexing large document done")
+        solr.add([document])
         return
 
     # first index the non page text fields
+    logger.info("[SOLR REINDEX] indexing large document non page fields")
     non_page_document = {
         k: v for k, v in document.items() if not k.startswith("page_no")
     }
-    solr.add(non_page_document)
+    solr.add([non_page_document])
 
     # now update the pages, staying under the limit
     size = 0
     field_updates = {}
     page_document = {}
-    page_fields = {k: v for k, v in document.items if k.startswith("page_no")}
-    for page_field, page_value in page_fields:
+    page_fields = {k: v for k, v in document.items() if k.startswith("page_no")}
+    logger.info(
+        "[SOLR REINDEX] indexing large document page fields: %s", len(page_fields)
+    )
+    for page_field, page_value in page_fields.items():
         size += len(page_value)
         # if adding the next page would put us over the limit, add the current fields
         # to solr, then start building up a new document
         if size > settings.SOLR_REINDEX_MAX_SIZE:
+            logger.info(
+                "[SOLR REINDEX] indexing large document pages: %s", len(page_document)
+            )
             solr.add([page_document], fieldUpdates=field_updates)
             size = len(page_value)
             field_updates = {}
@@ -160,6 +175,7 @@ def single_index(solr, document):
         field_updates[page_field] = "set"
 
     # index the remaining pages
+    logger.info("[SOLR REINDEX] indexing large document pages: %s", len(page_document))
     solr.add([page_document], fieldUpdates=field_updates)
 
 
