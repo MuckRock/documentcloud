@@ -163,7 +163,7 @@ class StorageOpen:
 files_cached = {}
 
 
-def write_cache(filename, cache, access):
+def write_cache(filename, cache):
     files_cached[filename] = cache
     cache_written(filename, cache)
 
