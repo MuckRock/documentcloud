@@ -227,7 +227,9 @@ def check_remaining_documents(collection_name, before_timestamp, delete_timestam
 
 def update_alias(collection_name):
     """Point the solr alias to the newly indexed collection"""
-    response = requests.get(
+    session = requests.Session()
+    session.verify = settings.SOLR_VERIFY
+    response = session.get(
         f"{settings.SOLR_BASE_URL}admin/collections",
         data={
             "action": "CREATEALIAS",
