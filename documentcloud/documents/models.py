@@ -330,9 +330,10 @@ class Document(models.Model):
             # do not get page text for a partial update, as it is slow and
             # not needed
             pages = {}
-        project_ids = [p.pk for p in self.projects.all()]
+        project_memberships = self.projectmembership_set.all()
+        project_ids = [p.project_id for p in project_memberships]
         project_edit_access_ids = [
-            p.pk for p in self.projects.filter(projectmembership__edit_access=True)
+            p.project_id for p in project_memberships if p.edit_access
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
         solr_document = {
