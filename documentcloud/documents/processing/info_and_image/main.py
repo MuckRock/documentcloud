@@ -343,7 +343,12 @@ def import_grab_page_texts(doc_id, org_id, page_count, slug):
     # Kick off reading text files
     for i in range(0, page_count, TEXT_READ_BATCH):
         pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
-        logger.info("[IMPORT GRAB PAGE TEXTS] pages %s", pages)
+        logger.info(
+            "[IMPORT GRAB PAGE TEXTS] doc_id %s org_id %s pages %s",
+            doc_id,
+            org_id,
+            pages,
+        )
         publisher.publish(
             READ_PAGE_TEXT_TOPIC,
             encode_pubsub_data(
@@ -412,8 +417,6 @@ def process_page_cache(data, _context=None):
                 )
 
         # Trigger image extraction tasks for each page
-        if is_import:
-            logger.info("[PROCESS PAGE CACHE] dirty %s", dirty)
         if dirty:
             # If only dirty pages are flagged, process the relevant ones in batches
             dirty = sorted(dirty)
@@ -424,7 +427,10 @@ def process_page_cache(data, _context=None):
             # Otherwise, process all pages in batches
             if is_import:
                 logger.info(
-                    "[PROCESS PAGE CACHE] page count %s image batch %s",
+                    "[PROCESS PAGE CACHE] org_id %s doc_id %s page count %s "
+                    "image batch %s",
+                    org_id,
+                    doc_id,
                     page_count,
                     IMAGE_BATCH,
                 )
@@ -599,7 +605,10 @@ def extract_image(data, _context=None):
             page = None
             if is_import:
                 logger.info(
-                    "[EXTRACT IMAGE] page_number %s page_extracted %s",
+                    "[EXTRACT IMAGE] org_id %s doc_id %s page_number %s "
+                    "page_extracted %s",
+                    org_id,
+                    doc_id,
                     page_number,
                     utils.page_extracted(REDIS, doc_id, page_number),
                 )
@@ -633,7 +642,10 @@ def extract_image(data, _context=None):
                 # it's not a partial update.
                 if is_import:
                     logger.info(
-                        "[EXTRACT IMAGE] images_finished %s partial %s",
+                        "[EXTRACT IMAGE] org_id %s doc_id %s images_finished %s "
+                        "partial %s",
+                        org_id,
+                        doc_id,
                         images_finished,
                         partial,
                     )
@@ -810,7 +822,7 @@ def start_import(data, _context=None):
     data = get_pubsub_data(data)
     org_id = data["org_id"]
 
-    logger.info("[START IMPORT] org id %s", org_id)
+    logger.info("[START IMPORT] org_id %s", org_id)
 
     with storage.open(path.import_org_csv(org_id), "r") as csvfile:
         csvreader = csv.reader(csvfile)
@@ -825,7 +837,7 @@ def start_import(data, _context=None):
     REDIS.set(redis_fields.import_docs_remaining(org_id), len(doc_ids))
 
     for doc_id, slug in doc_ids:
-        logger.info("[START IMPORT] doc_id %s slug %s", doc_id, slug)
+        logger.info("[START IMPORT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
         publisher.publish(
             IMPORT_DOCUMENT_TOPIC,
             encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
@@ -857,7 +869,12 @@ def import_document(data, _context=None):
         return
     initialize_redis_page_data(doc_id, page_count)
 
-    logger.info("[IMPORT DOCUMENT] page_count %s", page_count)
+    logger.info(
+        "[IMPORT DOCUMENT] org_id %s doc_id %s page_count %s",
+        org_id,
+        doc_id,
+        page_count,
+    )
 
     # Kick off page cache processing
     publisher.publish(
@@ -901,7 +918,10 @@ def read_page_text(data, _context=None):
         # Decrement the texts remaining, assembling text if done.
         texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
         logger.info(
-            "[READ PAGE TEXT] page_number %s texts_finished %s texts remaining %s",
+            "[READ PAGE TEXT] org_id %s doc_id %s page_number %s texts_finished %s "
+            "texts remaining %s",
+            org_id,
+            doc_id,
             page_number,
             texts_finished,
             REDIS.get(redis_fields.texts_remaining(doc_id)),
