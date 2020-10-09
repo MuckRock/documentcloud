@@ -845,7 +845,16 @@ def import_document(data, _context=None):
     logger.info("[IMPORT DOCUMENT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
 
     # Extract the page count and store it in Redis
-    page_count = extract_pagecount(doc_id, slug)
+    try:
+        page_count = extract_pagecount(doc_id, slug)
+    except (ValueError, AssertionError):
+        # document was not found
+        REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
+        publisher.publish(
+            FINISH_IMPORT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+        return
     initialize_redis_page_data(doc_id, page_count)
 
     logger.info("[IMPORT DOCUMENT] page_count %s", page_count)
