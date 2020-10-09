@@ -69,11 +69,13 @@ def prepare_documents(after_timestamp):
         settings.SOLR_REINDEX_LIMIT - 1
     ]
     full_count = documents.count()
-    documents = documents.filter(updated_at__lte=before_timestamp)
+    documents = documents.filter(updated_at__lte=before_timestamp).prefetch_related(
+        "projectmembership_set"
+    )
     logger.info(
         "[SOLR REINDEX] reindexing %d documents now, %d documents left to "
         "re-index in total",
-        documents.count(),
+        len(list(documents)),
         full_count,
     )
     return documents, before_timestamp
@@ -84,10 +86,13 @@ def batch_index(collection_name, documents):
     solr = get_solr_connection(collection_name)
 
     # get the json txt file names for all of the documents
+    logger.info("[SOLR REINDEX] get file names...")
     file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
     # download the files in parallel
+    logger.info("[SOLR REINDEX] get page text...")
     page_text = storage.async_download(file_names)
     # generate the data to index into solr
+    logger.info("[SOLR REINDEX] get solr documents...")
     solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_text)]
 
     # We don't want to send too large of a payload to solr at once
@@ -112,6 +117,7 @@ def batch_index(collection_name, documents):
         )
         single_index(solr, large_document)
 
+    logger.info("[SOLR REINDEX] solr add")
     solr.add(solr_documents)
 
 
