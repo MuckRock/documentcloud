@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 # Standard Library
+import json
 import logging
 
 # Third Party
@@ -90,10 +91,16 @@ def batch_index(collection_name, documents):
     file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
     # download the files in parallel
     logger.info("[SOLR REINDEX] get page text...")
-    page_text = storage.async_download(file_names)
+    page_texts_ = storage.async_download(file_names)
+    page_texts = []
+    for text in page_texts_:
+        try:
+            page_texts.append(json.loads(text.decode("utf8")))
+        except ValueError:
+            page_texts.append({"pages": [], "updated": None})
     # generate the data to index into solr
     logger.info("[SOLR REINDEX] get solr documents...")
-    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_text)]
+    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_texts)]
 
     # We don't want to send too large of a payload to solr at once
     # most documents are well, well under the size limit where it would start to be a
