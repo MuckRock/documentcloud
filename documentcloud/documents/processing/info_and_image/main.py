@@ -68,6 +68,7 @@ BLOCK_SIZE = env.int(
 )  # Block size to use for reading chunks of the PDF
 TEXT_READ_BATCH = env.int("TEXT_READ_BATCH", 5)
 IMPORT_OCR_VERSION = env.str("IMPORT_OCR_VERSION", default="dc-import")
+IMPORT_PAGE_LIMIT = env.int("IMPORT_PAGE_LIMIT", 0)
 
 
 def parse_extract_width(width_str):
@@ -861,12 +862,32 @@ def import_document(data, _context=None):
         page_count = extract_pagecount(doc_id, slug)
     except (ValueError, AssertionError):
         # document was not found
+        logger.info(
+            "[IMPORT DOCUMENT] DOCUMENT NOT FOUND org_id %s doc_id %s slug %s",
+            org_id,
+            doc_id,
+            slug,
+        )
         REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
         publisher.publish(
             FINISH_IMPORT_TOPIC,
             encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
         )
         return
+    if IMPORT_PAGE_LIMIT and page_count > IMPORT_PAGE_LIMIT:
+        logger.info(
+            "[IMPORT DOCUMENT] DOCUMENT TOO LARGE org_id %s doc_id %s slug %s",
+            org_id,
+            doc_id,
+            slug,
+        )
+        REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
+        publisher.publish(
+            FINISH_IMPORT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+        return
+
     initialize_redis_page_data(doc_id, page_count)
 
     logger.info(
