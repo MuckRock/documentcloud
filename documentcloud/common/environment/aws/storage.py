@@ -172,14 +172,11 @@ class AwsStorage:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
 
-        json_data = []
+        return_data = []
         for datum in data:
             datum.seek(0)
-            try:
-                json_data.append(json.loads(datum.read().decode("utf8")))
-            except ValueError:
-                json_data.append({"pages": [], "updated": None})
-        return json_data
+            return_data.append(datum.read())
+        return return_data
 
     def list(self, file_prefix, marker=None, limit=None):
         """List files in the given path
