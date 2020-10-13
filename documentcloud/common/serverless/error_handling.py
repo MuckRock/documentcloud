@@ -5,6 +5,7 @@ handling baked in.
 
 # Standard Library
 import logging
+import sys
 from concurrent import futures
 from functools import wraps
 
@@ -123,9 +124,8 @@ def pubsub_function_import(redis, finish_pubsub_topic):
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 # Handle any error that comes up during function execution
-                error_message = str(exc)
-                utils.send_error(redis, doc_id, error_message, True)
-                return f"An error has occurred: {error_message}"
+                logging.error(exc, exc_info=sys.exc_info())
+                return "An error has occurred"
 
         return wraps(func)(wrapper)
 
