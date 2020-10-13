@@ -17,6 +17,9 @@ env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# remove this when done with import code
+# pylint: disable=too-many-lines
+
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
     from documentcloud.common import path, redis_fields, access_choices
@@ -27,7 +30,10 @@ if env.str("ENVIRONMENT").startswith("local"):
         storage,
     )
     from documentcloud.common.serverless import utils
-    from documentcloud.common.serverless.error_handling import pubsub_function
+    from documentcloud.common.serverless.error_handling import (
+        pubsub_function,
+        pubsub_function_import,
+    )
     from documentcloud.documents.processing.info_and_image.pdfium import (
         StorageHandler,
         Workspace,
@@ -41,7 +47,7 @@ else:
         storage,
     )
     from common.serverless import utils
-    from common.serverless.error_handling import pubsub_function
+    from common.serverless.error_handling import pubsub_function, pubsub_function_import
     from pdfium import StorageHandler, Workspace
 
     # only initialize sentry on serverless
@@ -847,7 +853,7 @@ def start_import(data, _context=None):
     return "Ok"
 
 
-@pubsub_function(REDIS, IMPORT_DOCUMENT_TOPIC, skip_processing_check=True)
+@pubsub_function_import(REDIS, FINISH_IMPORT_TOPIC)
 def import_document(data, _context=None):
     """Handles the import process for a single document."""
     data = get_pubsub_data(data)

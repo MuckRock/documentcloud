@@ -13,6 +13,7 @@ import environ
 from pebble import concurrent
 
 # Local
+from .. import redis_fields
 from ..environment import encode_pubsub_data, get_pubsub_data, publisher
 from . import utils
 
@@ -86,6 +87,44 @@ def pubsub_function(
                     error_message,
                     True,
                 )
+                return f"An error has occurred: {error_message}"
+
+        return wraps(func)(wrapper)
+
+    return decorator
+
+
+def pubsub_function_import(redis, finish_pubsub_topic):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+
+            # Get data
+            data = get_pubsub_data(args[0])
+            doc_id = data.get("doc_id")
+            org_id = data.get("org_id")
+            slug = data.get("slug")
+
+            # Set up the timeout
+            timeout_seconds = 800  # lambda timeout is 900
+            concurrent_func = concurrent.process(timeout=timeout_seconds)(func)
+            future = concurrent_func(*args, **kwargs)
+
+            try:
+                # Run the function as originally intended
+                return future.result()
+            except futures.TimeoutError:
+                # if we timeout, skip to finish import
+                redis.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
+                publisher.publish(
+                    finish_pubsub_topic,
+                    encode_pubsub_data(
+                        {"org_id": org_id, "doc_id": doc_id, "slug": slug}
+                    ),
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                # Handle any error that comes up during function execution
+                error_message = str(exc)
+                utils.send_error(redis, doc_id, error_message, True)
                 return f"An error has occurred: {error_message}"
 
         return wraps(func)(wrapper)
