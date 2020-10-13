@@ -216,7 +216,7 @@ def write_page_text(redis, doc_id, page_number, page_text, ocr, ocr_code="eng"):
     )
 
 
-def get_all_page_text(redis, doc_id, is_import=False):
+def get_all_page_text(redis, doc_id):
     """Read all the page text stored in Redis."""
     page_text_map = redis.hgetall(redis_fields.page_text(doc_id))
     pages = sorted([int(page_number) for page_number in page_text_map.keys()])
@@ -237,6 +237,4 @@ def get_all_page_text(redis, doc_id, is_import=False):
 
     results = [get_page(page_number) for page_number in pages]
     response = {"updated": current_millis, "pages": results}
-    if is_import:
-        response["is_import"] = True
     return response
