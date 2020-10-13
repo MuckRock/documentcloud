@@ -378,14 +378,8 @@ def process_page_cache(data, _context=None):
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
     org_id = data.get("org_id", "")
-    is_import = data.get("import", False)  # don't extract images if so
 
     doc_path = path.doc_path(doc_id, slug)
-
-    if is_import:
-        logger.info(
-            "[PROCESS PAGE CACHE] org_id %s doc_id %s slug %s", org_id, doc_id, slug
-        )
 
     # Read the entire document into memory
     with Workspace() as workspace, StorageHandler(
@@ -419,7 +413,6 @@ def process_page_cache(data, _context=None):
                             "force_ocr": force_ocr,
                             "page_count": page_count,
                             "org_id": org_id,
-                            "import": is_import,
                         }
                     ),
                 )
@@ -433,15 +426,6 @@ def process_page_cache(data, _context=None):
                 pub(pages)
         else:
             # Otherwise, process all pages in batches
-            if is_import:
-                logger.info(
-                    "[PROCESS PAGE CACHE] org_id %s doc_id %s page count %s "
-                    "image batch %s",
-                    org_id,
-                    doc_id,
-                    page_count,
-                    IMAGE_BATCH,
-                )
             for i in range(0, page_count, IMAGE_BATCH):
                 pages = list(range(i, min(i + IMAGE_BATCH, page_count)))
                 pub(pages)
@@ -549,22 +533,9 @@ def extract_image(data, _context=None):
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
-    page_count = data.get("page_count", 0)
-    org_id = data.get("org_id", "")
-    is_import = data.get("import", False)  # only extract dimensions if import
 
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
-
-    if is_import:
-        logger.info(
-            "[EXTRACT IMAGE] org_id %s doc_id %s slug %s page_numbers %s page_count %s",
-            org_id,
-            doc_id,
-            slug,
-            page_numbers,
-            page_count,
-        )
 
     def flush(ocr_queue):
         if not ocr_queue:
@@ -606,31 +577,17 @@ def extract_image(data, _context=None):
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         for page_number in page_numbers:
             # Only process if it has not processed previously
-            if not is_import:
-                large_image_path = path.page_image_path(
-                    doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
-                )
+            large_image_path = path.page_image_path(
+                doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
+            )
             page = None
-            if is_import:
-                logger.info(
-                    "[EXTRACT IMAGE] org_id %s doc_id %s page_number %s "
-                    "page_extracted %s",
-                    org_id,
-                    doc_id,
-                    page_number,
-                    utils.page_extracted(REDIS, doc_id, page_number),
-                )
             if not utils.page_extracted(REDIS, doc_id, page_number):
                 # Extract the image.
                 if page is None:
                     page = doc.load_page(page_number)
-                if is_import:
-                    # Skip extracting image to get dimensions
-                    width, height = page.width, page.height
-                else:
-                    width, height = extract_single_page(
-                        doc_id, slug, access, page, page_number, large_image_path
-                    )
+                width, height = extract_single_page(
+                    doc_id, slug, access, page, page_number, large_image_path
+                )
                 page_dimension = f"{width}x{height}"
 
                 if not partial:
@@ -648,25 +605,10 @@ def extract_image(data, _context=None):
 
                 # Write the pagespec dimensions if all images have finished and
                 # it's not a partial update.
-                if is_import:
-                    logger.info(
-                        "[EXTRACT IMAGE] org_id %s doc_id %s images_finished %s "
-                        "partial %s",
-                        org_id,
-                        doc_id,
-                        images_finished,
-                        partial,
-                    )
                 if images_finished and not partial:
-                    if is_import:
-                        # After all page specs have been extracted in import
-                        # mode, grab page texts
-                        import_grab_page_texts(doc_id, org_id, page_count, slug)
-                        return "Ok"
-                    else:
-                        update_pagespec(doc_id)
+                    update_pagespec(doc_id)
 
-            if not is_import and not utils.page_ocrd(REDIS, doc_id, page_number):
+            if not utils.page_ocrd(REDIS, doc_id, page_number):
                 # Extract page text if possible
                 if force_ocr:
                     text = None
@@ -722,14 +664,8 @@ def assemble_page_text(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
-    is_import = data.get("import", False)
-    if is_import:
-        org_id = data["org_id"]
-        logger.info(
-            "[ASSEMBLE PAGE TEXT] org_id %s doc_id %s slug %s", org_id, doc_id, slug
-        )
 
-    results = utils.get_all_page_text(REDIS, doc_id, is_import)
+    results = utils.get_all_page_text(REDIS, doc_id)
 
     if partial:
         # Patch the old results in if it's a partial update
@@ -747,17 +683,16 @@ def assemble_page_text(data, _context=None):
         # Overwrite the original results
         results = old_results
 
-    if not is_import:
-        # Compile concatenated text only outside of import mode
-        # (we don't want to overwrite the previous file)
-        concatenated_text = b"\n\n".join(
-            [page["contents"].encode("utf-8") for page in results["pages"]]
-        )
+    # Compile concatenated text only outside of import mode
+    # (we don't want to overwrite the previous file)
+    concatenated_text = b"\n\n".join(
+        [page["contents"].encode("utf-8") for page in results["pages"]]
+    )
 
-        # Write the concatenated text file
-        storage.simple_upload(
-            path.text_path(doc_id, slug), concatenated_text, access=access
-        )
+    # Write the concatenated text file
+    storage.simple_upload(
+        path.text_path(doc_id, slug), concatenated_text, access=access
+    )
 
     # Write the json text file
     storage.simple_upload(
@@ -766,20 +701,7 @@ def assemble_page_text(data, _context=None):
         access=access,
     )
 
-    if is_import:
-        # Clean up Redis page text
-        REDIS.delete(
-            redis_fields.texts_remaining(doc_id),
-            redis_fields.text_bits(doc_id),
-            redis_fields.page_text(doc_id),
-        )
-
-        publisher.publish(
-            FINISH_IMPORT_TOPIC,
-            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
-        )
-    else:
-        utils.send_complete(REDIS, doc_id)
+    utils.send_complete(REDIS, doc_id)
 
     return "Ok"
 
@@ -856,6 +778,7 @@ def start_import(data, _context=None):
 
 @pubsub_function_import(REDIS, FINISH_IMPORT_TOPIC)
 def import_document(data, _context=None):
+    # pylint: disable=too-many-locals
     """All-in-one function that handles the import process for a single document."""
     data = get_pubsub_data(data)
     org_id = data["org_id"]
@@ -866,6 +789,7 @@ def import_document(data, _context=None):
 
     # STEP 1: Grab page count and write index file for caching PDF memory accesses
     logger.info("[PAGE COUNT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
+    doc_path = path.doc_path(doc_id, slug)
     with Workspace() as workspace, StorageHandler(
         storage, doc_path, record=True, playback=False, cache=None, read_all=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
@@ -884,13 +808,14 @@ def import_document(data, _context=None):
     with Workspace() as workspace, StorageHandler(
         storage, doc_path, record=False, playback=False, cache=None, read_all=True
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
-        page = doc.load_page(page_number)
-        # Grab page dimensions
-        width, height = page.width, page.height
-        page_dimension = f"{width}x{height}"
+        for page_number in range(page_count):
+            page = doc.load_page(page_number)
+            # Grab page dimensions
+            width, height = page.width, page.height
+            page_dimension = f"{width}x{height}"
 
-        # Assemble page spec piece-by-piece
-        pagespec[page_dimension].append(page_number)
+            # Assemble page spec piece-by-piece
+            pagespec[page_dimension].append(page_number)
 
     # STEP 3: Crunch pagespec down and store in Redis
     logger.info("[STORE PAGESPECS] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
@@ -936,7 +861,7 @@ def import_document(data, _context=None):
     # Write the json text file
     storage.simple_upload(
         path.json_text_path(doc_id, slug),
-        json.dumps(page_texts_json_pages).encode("utf-8"),
+        json.dumps(page_texts_json).encode("utf-8"),
         access=access_choices.PRIVATE,
     )
 
