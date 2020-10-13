@@ -151,6 +151,32 @@ class AwsStorage:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
 
+    def async_download(self, file_names):
+        """Set access for given keys asynchronously"""
+        # import aioboto3 locally to avoid needing it installed on lambda
+        import aioboto3
+
+        data = [io.BytesIO() for _ in file_names]
+
+        async def main():
+            # pylint: disable=not-async-context-manager
+            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+                tasks = []
+                for file_name, datum in zip(file_names, data):
+                    bucket, key = self.bucket_key(file_name)
+                    object_ = as3_resource.Object(bucket, key)
+                    tasks.append(object_.download_fileobj(datum))
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+
+        return_data = []
+        for datum in data:
+            datum.seek(0)
+            return_data.append(datum.read())
+        return return_data
+
     def list(self, file_prefix, marker=None, limit=None):
         """List files in the given path
         marker if given will start from after that file
