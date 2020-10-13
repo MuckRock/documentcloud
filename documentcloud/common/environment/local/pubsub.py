@@ -93,12 +93,6 @@ def import_document_task(data):
     return import_doc.delay(data)
 
 
-def read_page_text_task(data):
-    from documentcloud.documents.tasks import read_page
-
-    return read_page.delay(data)
-
-
 def finish_import_task(data):
     from documentcloud.documents.tasks import finish_import_process
 
@@ -135,10 +129,6 @@ publisher.register_internal_callback(
 publisher.register_internal_callback(
     ("documentcloud", env.str("IMPORT_DOCUMENT_TOPIC", default="import-document")),
     import_document_task,
-)
-publisher.register_internal_callback(
-    ("documentcloud", env.str("READ_PAGE_TEXT_TOPIC", default="read-page-text")),
-    read_page_text_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")),

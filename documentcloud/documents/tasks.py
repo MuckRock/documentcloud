@@ -34,7 +34,6 @@ if settings.ENVIRONMENT.startswith("local"):
         redact_document,
         start_import_process,
         import_doc,
-        read_page,
         finish_import_process,
     )
 

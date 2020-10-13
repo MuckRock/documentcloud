@@ -9,7 +9,6 @@ from documentcloud.documents.processing.info_and_image.main import (
     import_document,
     process_page_cache,
     process_pdf,
-    read_page_text,
     redact_doc,
     start_import,
 )
@@ -58,11 +57,6 @@ def start_import_process(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def import_doc(data):
     import_document(data, None)
-
-
-@task(soft_time_limit=SOFT_TIME_LIMIT)
-def read_page(data):
-    read_page_text(data, None)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)
