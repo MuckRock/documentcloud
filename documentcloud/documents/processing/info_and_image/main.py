@@ -924,17 +924,11 @@ def read_page_text(data, _context=None):
         pages,
     )
 
-    for page_number in pages:
-        text_path = path.page_text_path(doc_id, slug, page_number)
-        try:
-            with storage.open(text_path, "r") as text_file:
-                text = text_file.read()
-        except (ValueError, AssertionError):
-            # error reading the file, just set text to blank for import
-            # can re-process the file manually if necessary
-            text = ""
-        finally:
-            utils.write_page_text(REDIS, doc_id, page_number, text, IMPORT_OCR_VERSION)
+    file_names = [path.page_text_path(doc_id, slug, p) for p in pages]
+    texts = storage.async_download(file_names)
+
+    for page_number, text in zip(pages, texts):
+        utils.write_page_text(REDIS, doc_id, page_number, text, IMPORT_OCR_VERSION)
 
         # Decrement the texts remaining, assembling text if done.
         texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
