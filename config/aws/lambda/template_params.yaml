@@ -29,7 +29,6 @@ Globals:
         REDACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
         START_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/topic:latest}}"
         IMPORT_DOCUMENT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
-        READ_PAGE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/read_page_text/topic:latest}}"
         FINISH_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_import/topic:latest}}"
         PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
         BLOCK_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/block_size:latest}}"
@@ -238,23 +237,6 @@ Resources:
           Type: SNS
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
-      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
-
-  ReadPageTextFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.7
-      Handler: main.read_page_text
-      CodeUri: ./awsbin/info_and_image
-      # Trigger function via SNS
-      Environment:
-        Variables:
-          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/read_page_text/timeout:latest}}"
-      Events:
-        ExtractImageApi:
-          Type: SNS
-          Properties:
-            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/read_page_text/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   FinishImportFunction:
