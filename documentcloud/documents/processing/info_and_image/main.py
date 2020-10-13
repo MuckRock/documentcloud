@@ -73,9 +73,8 @@ PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 BLOCK_SIZE = env.int(
     "BLOCK_SIZE", 8 * 1024 * 1024
 )  # Block size to use for reading chunks of the PDF
-TEXT_READ_BATCH = env.int("TEXT_READ_BATCH", 50)
+TEXT_READ_BATCH = env.int("TEXT_READ_BATCH", 1000)
 IMPORT_OCR_VERSION = env.str("IMPORT_OCR_VERSION", default="dc-import")
-IMPORT_PAGE_LIMIT = env.int("IMPORT_PAGE_LIMIT", 0)
 
 
 def parse_extract_width(width_str):
@@ -129,9 +128,6 @@ START_IMPORT_TOPIC = publisher.topic_path(
 )
 IMPORT_DOCUMENT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("IMPORT_DOCUMENT_TOPIC", default="import-document")
-)
-READ_PAGE_TEXT_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("READ_PAGE_TEXT_TOPIC", default="read-page-text")
 )
 FINISH_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")
@@ -323,46 +319,6 @@ def get_redis_pagespec(doc_id):
             pipeline.reset()
 
     return pagespec
-
-
-def import_grab_page_texts(doc_id, org_id, page_count, slug):
-    logger.info(
-        "[IMPORT GRAB PAGE TEXTS] doc_id %s org_id %s page_count %s slug %s",
-        doc_id,
-        org_id,
-        page_count,
-        slug,
-    )
-    pagespec = get_redis_pagespec(doc_id)
-    crunched_pagespec = crunch_collection(pagespec)
-    # Run a Redis pipeline
-    pipeline = REDIS.pipeline()
-    pipeline.hset(redis_fields.import_pagespecs(org_id), f"{doc_id}", crunched_pagespec)
-
-    # Set Redis texts remaining to page count
-    pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
-
-    # Set Redis text bits field flooded to 0 to track each page
-    text_bits_field = redis_fields.text_bits(doc_id)
-    pipeline.delete(text_bits_field)
-    pipeline.setbit(text_bits_field, page_count - 1, 0)
-    pipeline.execute()
-
-    # Kick off reading text files
-    for i in range(0, page_count, TEXT_READ_BATCH):
-        pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
-        logger.info(
-            "[IMPORT GRAB PAGE TEXTS] doc_id %s org_id %s pages %s",
-            doc_id,
-            org_id,
-            pages,
-        )
-        publisher.publish(
-            READ_PAGE_TEXT_TOPIC,
-            encode_pubsub_data(
-                {"org_id": org_id, "doc_id": doc_id, "slug": slug, "pages": pages}
-            ),
-        )
 
 
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
@@ -790,16 +746,31 @@ def import_document(data, _context=None):
     # STEP 1: Grab page count and write index file for caching PDF memory accesses
     logger.info("[PAGE COUNT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
     doc_path = path.doc_path(doc_id, slug)
-    with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=True, playback=False, cache=None, read_all=True
-    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
-        # Load the final page to memoize all page accesses
-        page_count = doc.page_count
-        doc.load_page(page_count - 1)
-        cached = pdf_file.cache
+    try:
+        with Workspace() as workspace, StorageHandler(
+            storage, doc_path, record=True, playback=False, cache=None, read_all=True
+        ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+            # Load the final page to memoize all page accesses
+            page_count = doc.page_count
+            doc.load_page(page_count - 1)
+            cached = pdf_file.cache
 
-        # Write the index file
-        write_cache(path.index_path(doc_id, slug), cached)
+            # Write the index file
+            write_cache(path.index_path(doc_id, slug), cached)
+    except (ValueError, AssertionError):
+        # document was not found
+        logger.info(
+            "[IMPORT DOCUMENT] DOCUMENT NOT FOUND org_id %s doc_id %s slug %s",
+            org_id,
+            doc_id,
+            slug,
+        )
+        REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
+        publisher.publish(
+            FINISH_IMPORT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+        return
 
     # STEP 2: Grab all pagespecs from fully read PDF file
     # (we could combine with previous step, but memoizing all accesses could be costly)
@@ -826,14 +797,11 @@ def import_document(data, _context=None):
     logger.info(
         "[DOWNLOAD PAGE TEXTS] org_id %s doc_id %s slug %s", org_id, doc_id, slug
     )
-    page_texts = {}
+    page_texts = []
     for i in range(0, page_count, TEXT_READ_BATCH):
         pages = list(range(i, min(i + TEXT_READ_BATCH, page_count)))
         file_names = [path.page_text_path(doc_id, slug, p) for p in pages]
-        texts = storage.async_download(file_names)
-        # Store resulting texts in dictionary indexed by page number
-        for page_number, text in zip(pages, texts):
-            page_texts[page_number] = text
+        page_texts.extend(storage.async_download(file_names))
 
     # STEP 5: assemble page texts into JSON
     logger.info(
@@ -847,7 +815,7 @@ def import_document(data, _context=None):
         {
             "page": page_number,
             "contents": page_texts[page_number],
-            "ocr": "",  # Unknown because it's an import
+            "ocr": IMPORT_OCR_VERSION,
             "updated": current_millis,
         }
         for page_number in range(page_count)
@@ -870,57 +838,6 @@ def import_document(data, _context=None):
         FINISH_IMPORT_TOPIC,
         encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
     )
-
-
-@pubsub_function(REDIS, READ_PAGE_TEXT_TOPIC, skip_processing_check=True)
-def read_page_text(data, _context=None):
-    # pylint: disable=too-many-locals
-    """A function to read page text from documents in batch."""
-    data = get_pubsub_data(data)
-    org_id = data["org_id"]
-    doc_id = data["doc_id"]
-    slug = data["slug"]
-    pages = data["pages"]
-
-    logger.info(
-        "[READ PAGE TEXT] org_id %s doc_id %s slug %s pages %s",
-        org_id,
-        doc_id,
-        slug,
-        pages,
-    )
-
-    file_names = [path.page_text_path(doc_id, slug, p) for p in pages]
-    texts = storage.async_download(file_names)
-
-    for page_number, text in zip(pages, texts):
-        utils.write_page_text(REDIS, doc_id, page_number, text, IMPORT_OCR_VERSION)
-
-        # Decrement the texts remaining, assembling text if done.
-        texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
-        logger.info(
-            "[READ PAGE TEXT] org_id %s doc_id %s page_number %s texts_finished %s "
-            "texts remaining %s",
-            org_id,
-            doc_id,
-            page_number,
-            texts_finished,
-            REDIS.get(redis_fields.texts_remaining(doc_id)),
-        )
-        if texts_finished:
-            publisher.publish(
-                ASSEMBLE_TEXT_TOPIC,
-                encode_pubsub_data(
-                    {
-                        "doc_id": doc_id,
-                        "slug": slug,
-                        "access": access_choices.PRIVATE,
-                        "import": True,
-                        "org_id": org_id,
-                        "partial": False,
-                    }
-                ),
-            )
 
 
 @pubsub_function(REDIS, FINISH_IMPORT_TOPIC, skip_processing_check=True)
