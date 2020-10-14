@@ -814,7 +814,7 @@ def import_document(data, _context=None):
     page_texts_json_pages = [
         {
             "page": page_number,
-            "contents": page_texts[page_number],
+            "contents": page_texts[page_number].decode("utf8"),
             "ocr": IMPORT_OCR_VERSION,
             "updated": current_millis,
         }
