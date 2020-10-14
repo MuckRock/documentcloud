@@ -1,2 +1,3 @@
-boto3==1.9.204
+aioboto3==6.5.0
+boto3==1.10.14
 smart-open==1.8.4
