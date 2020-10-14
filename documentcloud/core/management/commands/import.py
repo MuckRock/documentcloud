@@ -351,6 +351,9 @@ class Command(BaseCommand):
     def import_documents(self):
         self.stdout.write("Begin Documents Import {}".format(timezone.now()))
 
+        unattributed_id = User.objects.get(username="Unattributed").pk
+        user_ids = set(User.objects.values_list("pk", flat=True))
+
         access_status_map = {
             # DELETED
             "0": (Access.invisible, Status.deleted),
@@ -397,10 +400,14 @@ class Command(BaseCommand):
                     }
                 else:
                     data = {}
+                if int(fields[2]) in user_ids:
+                    user_id = fields[2]
+                else:
+                    user_id = unattributed_id
                 create_docs.append(
                     Document(
                         id=fields[0],
-                        user_id=fields[2],
+                        user_id=user_id,
                         organization_id=fields[1],
                         access=access,
                         status=status,
