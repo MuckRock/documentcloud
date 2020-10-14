@@ -1,6 +1,7 @@
 -r cloud-requirements.txt
 
 Pillow==6.0.0
+aioboto3==6.5.0
 django-environ==0.4.5
 furl==2.1.0
 listcrunch==0.1.0
