@@ -76,7 +76,7 @@ BLOCK_SIZE = env.int(
 )  # Block size to use for reading chunks of the PDF
 TEXT_READ_BATCH = env.int("TEXT_READ_BATCH", 1000)
 IMPORT_OCR_VERSION = env.str("IMPORT_OCR_VERSION", default="dc-import")
-IMPORT_DOCS_BATCH = env.int("IMPORT_DOCS_BATCH", 3000)
+IMPORT_DOCS_BATCH = env.int("IMPORT_DOCS_BATCH", 10000)
 
 
 def parse_extract_width(width_str):
@@ -712,7 +712,9 @@ def start_import(data, _context=None):
     offset = data.get("offset", 0)
     num_docs = data.get("num_docs", 0)
 
-    logger.info("[START IMPORT] org_id %s", org_id)
+    logger.info(
+        "[START IMPORT] org_id %s offset %d num_docs %d", org_id, offset, num_docs
+    )
 
     with storage.open(path.import_org_csv(org_id), "r") as csvfile:
         csvreader = csv.reader(csvfile)
@@ -731,8 +733,7 @@ def start_import(data, _context=None):
             # but to prevent any strange behavior the same approach is used.
             csvreader = csv.reader(csvfile)
             next(csvreader)  # discard headers
-            for _ in csvreader:
-                num_docs += 1
+            num_docs = sum(1 for _ in csvreader)
         REDIS.set(redis_fields.import_docs_remaining(org_id), num_docs)
 
     for doc_id, slug in doc_ids:
