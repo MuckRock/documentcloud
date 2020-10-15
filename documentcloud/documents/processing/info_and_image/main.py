@@ -877,12 +877,19 @@ def finish_import(data, _context=None):
                 pagespec = pagespecs[doc_id]
                 # Add pagespec to each row
                 rows.append(row + [pagespec])
+                logger.info(
+                    "[FINISH IMPORT] READING CSV org_id %s doc_id %s pagespec %s",
+                    org_id,
+                    doc_id,
+                    pagespec,
+                )
 
         # Write the new pagespec-enhanced CSV
         with storage.open(path.import_org_pagespec_csv(org_id), "w") as new_csv_file:
             csvwriter = csv.writer(new_csv_file)
             for row in rows:
                 csvwriter.writerow(row)
+                logger.info("[FINISH IMPORT] WRITING CSV row %s", row)
 
         # Clean up Redis
         REDIS.delete(
