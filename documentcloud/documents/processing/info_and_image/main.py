@@ -3,6 +3,7 @@ import collections
 import csv
 import gzip
 import io
+import itertools
 import json
 import logging
 import pickle
@@ -75,6 +76,7 @@ BLOCK_SIZE = env.int(
 )  # Block size to use for reading chunks of the PDF
 TEXT_READ_BATCH = env.int("TEXT_READ_BATCH", 1000)
 IMPORT_OCR_VERSION = env.str("IMPORT_OCR_VERSION", default="dc-import")
+IMPORT_DOCS_BATCH = env.int("IMPORT_DOCS_BATCH", 3000)
 
 
 def parse_extract_width(width_str):
@@ -707,6 +709,8 @@ def start_import(data, _context=None):
     """Reads in an org's import CSV and starts the import process."""
     data = get_pubsub_data(data)
     org_id = data["org_id"]
+    offset = data.get("offset", 0)
+    num_docs = data.get("num_docs", 0)
 
     logger.info("[START IMPORT] org_id %s", org_id)
 
@@ -715,18 +719,40 @@ def start_import(data, _context=None):
         next(csvreader)  # discard headers
 
         doc_ids = []
-        for row in csvreader:
+        for row in itertools.islice(csvreader, offset, offset + IMPORT_DOCS_BATCH):
             # Pull the doc id (1st column) and slug (7th column)
             doc_ids.append((row[0], row[6]))
 
-    # Initialize Redis
-    REDIS.set(redis_fields.import_docs_remaining(org_id), len(doc_ids))
+    # Initialize Redis on first invocation
+    if offset == 0:
+        with storage.open(path.import_org_csv(org_id), "r") as csvfile:
+            # Getting total number of docs requires reading the whole file
+            # rather than a slice. This could be done without a CSV file reader
+            # but to prevent any strange behavior the same approach is used.
+            csvreader = csv.reader(csvfile)
+            next(csvreader)  # discard headers
+            for _ in csvreader:
+                num_docs += 1
+        REDIS.set(redis_fields.import_docs_remaining(org_id), num_docs)
 
     for doc_id, slug in doc_ids:
         logger.info("[START IMPORT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
         publisher.publish(
             IMPORT_DOCUMENT_TOPIC,
             encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+
+    if offset + IMPORT_DOCS_BATCH < num_docs:
+        # More docs remaining
+        publisher.publish(
+            START_IMPORT_TOPIC,
+            encode_pubsub_data(
+                {
+                    "org_id": org_id,
+                    "offset": offset + IMPORT_DOCS_BATCH,
+                    "num_docs": num_docs,
+                }
+            ),
         )
 
     return "Ok"
