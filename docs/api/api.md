@@ -89,7 +89,7 @@ permission to will return status 403.
 ### Pagination
 
 All list views accept a `per_page` parameter, which specifies how many
-resources to list per page.  It is `25` by default and may be set up to `1000`.
+resources to list per page.  It is `25` by default and may be set up to `100`.
 You may view subsequent pages by using the `next` URL, or by specifying a
 `page` parameter directly.
 
