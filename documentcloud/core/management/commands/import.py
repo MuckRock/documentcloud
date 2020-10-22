@@ -114,6 +114,16 @@ class Command(BaseCommand):
         """
         self.stdout.write("Begin Pre-Process Lambda {}".format(timezone.now()))
 
+        # check if the pagespec exists from a previous run before launching a new one
+        # strip off the s3://
+        pagespec_path = f"{self.bucket_path}documents.pagespec.csv"[len("s3://") :]
+        exists = storage.exists(pagespec_path)
+
+        if exists:
+            self.stdout.write("Page spec already exists")
+            self.stdout.write("End Pre-Process Lambda {}".format(timezone.now()))
+            return True
+
         with smart_open(f"{self.bucket_path}documents.csv", "r") as infile:
             try:
                 # try reading the first two lines of the file to ensure we have
@@ -126,11 +136,9 @@ class Command(BaseCommand):
                 return False
 
         httpsub.post(settings.IMPORT_URL, json={"org_id": org_id})
+
         # now we wait for the import script to finish by polling S3 for the existance
         # of the pagespec csv
-        exists = False
-        # strip off the s3://
-        pagespec_path = f"{self.bucket_path}documents.pagespec.csv"[len("s3://") :]
         while not exists:
             self.stdout.write(
                 "Waiting for pagespec CSV... {} {}".format(
