@@ -792,7 +792,7 @@ def import_document(data, _context=None):
             doc_id,
             slug,
         )
-        REDIS.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
+        REDIS.hset(redis_fields.import_pagespecs(org_id), f"{doc_id}", "")
         publisher.publish(
             FINISH_IMPORT_TOPIC,
             encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
@@ -901,7 +901,7 @@ def finish_import(data, _context=None):
 
             for row in csvreader:
                 doc_id = row[0]
-                pagespec = pagespecs[doc_id]
+                pagespec = pagespecs.get(doc_id, "")
                 # Add pagespec to each row
                 rows.append(row + [pagespec])
                 logger.info(
