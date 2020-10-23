@@ -294,7 +294,7 @@ def solr_index_dirty():
             dirty_count = dirty.count()
             logger.info("Solr index dirty: %d documents to index", dirty_count)
             dirty_documents = dirty[: settings.SOLR_DIRTY_LIMIT]
-            for document in dirty_documents:
+            for document in dirty_documents.iterator():
                 logger.info("solr index dirty: reindexing %s", document.pk)
                 # only index the full text if the document is in a successful state
                 solr_index.delay(
