@@ -286,8 +286,10 @@ def solr_index_dirty():
                 solr_delete.delay(document.pk)
 
             # get the dirty documents and index them
-            dirty = Document.objects.filter(solr_dirty=True).exclude(
-                status=Status.deleted
+            dirty = (
+                Document.objects.filter(solr_dirty=True)
+                .exclude(status=Status.deleted)
+                .order_by("-created_at")
             )
             dirty_count = dirty.count()
             logger.info("Solr index dirty: %d documents to index", dirty_count)
