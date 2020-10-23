@@ -1,5 +1,6 @@
 # Django
 from celery import chord
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
@@ -305,6 +306,9 @@ def solr_index_dirty():
                 or dirty_count > settings.SOLR_DIRTY_LIMIT
             ):
                 solr_index_dirty.apply_async(countdown=settings.SOLR_DIRTY_COUNTDOWN)
+        except SoftTimeLimitExceeded:
+            # if we take too long, just run again after a delay
+            solr_index_dirty.apply_async(countdown=settings.SOLR_DIRTY_COUNTDOWN)
         finally:
             lock.release()
     else:
