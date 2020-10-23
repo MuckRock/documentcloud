@@ -23,6 +23,16 @@ class TestOrganizationAPI:
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
 
+    def test_list_id_in_filter(self, client):
+        """List organizations"""
+        size = 10
+        orgs = OrganizationFactory.create_batch(size)
+        some_ids = [str(o.id) for o in orgs[:5]]
+        response = client.get("/api/organizations/", {"id__in": ",".join(some_ids)})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert len(response_json["results"]) == len(some_ids)
+
     def test_retrieve(self, client, organization):
         """Test retrieving an organization"""
         response = client.get(f"/api/organizations/{organization.pk}/")
