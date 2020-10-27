@@ -577,14 +577,18 @@ class Command(BaseCommand):
             next(reader)  # discard headers
 
             create_sections = []
+            seen_sections = set()
 
             for fields in reader:
                 page_number = int(fields[6]) - 1
-                if page_number >= 0:
+                document_id = fields[3]
+                if page_number >= 0 and (document_id, page_number) not in seen_sections:
                     # silently drop sections on illegal pages
+                    # skip duplicate sections
+                    seen_sections.add((document_id, page_number))
                     create_sections.append(
                         Section(
-                            document_id=fields[3],
+                            document_id=document_id,
                             page_number=page_number,
                             title=fields[5],
                         )
