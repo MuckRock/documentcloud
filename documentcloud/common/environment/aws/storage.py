@@ -155,7 +155,7 @@ class AwsStorage:
         loop.run_until_complete(main())
 
     def async_download(self, file_names):
-        """Set access for given keys asynchronously"""
+        """Download given files in parallel"""
         # import aioboto3 locally to avoid needing it installed on lambda
         import aioboto3
 
