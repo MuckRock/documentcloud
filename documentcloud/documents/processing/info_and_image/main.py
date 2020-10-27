@@ -803,17 +803,32 @@ def import_document(data, _context=None):
     # (we could combine with previous step, but memoizing all accesses could be costly)
     logger.info("[COLLECT PAGESPECS] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
     pagespec = collections.defaultdict(list)
-    with Workspace() as workspace, StorageHandler(
-        storage, doc_path, record=False, playback=False, cache=None, read_all=True
-    ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
-        for page_number in range(page_count):
-            page = doc.load_page(page_number)
-            # Grab page dimensions
-            width, height = page.width, page.height
-            page_dimension = f"{width}x{height}"
+    try:
+        with Workspace() as workspace, StorageHandler(
+            storage, doc_path, record=False, playback=False, cache=None, read_all=True
+        ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+            for page_number in range(page_count):
+                page = doc.load_page(page_number)
+                # Grab page dimensions
+                width, height = page.width, page.height
+                page_dimension = f"{width}x{height}"
 
-            # Assemble page spec piece-by-piece
-            pagespec[page_dimension].append(page_number)
+                # Assemble page spec piece-by-piece
+                pagespec[page_dimension].append(page_number)
+    except (ValueError, AssertionError):
+        # document is corrupt
+        logger.info(
+            "[IMPORT DOCUMENT] DOCUMENT NOT FOUND org_id %s doc_id %s slug %s",
+            org_id,
+            doc_id,
+            slug,
+        )
+        REDIS.hset(redis_fields.import_pagespecs(org_id), f"{doc_id}", "")
+        publisher.publish(
+            FINISH_IMPORT_TOPIC,
+            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+        )
+        return
 
     # STEP 3: Crunch pagespec down and store in Redis
     logger.info("[STORE PAGESPECS] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
