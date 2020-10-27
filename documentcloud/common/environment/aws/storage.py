@@ -94,11 +94,13 @@ class AwsStorage:
                 return True
         return False
 
-    def fetch_url(self, url, file_name):
-        bucket, key = self.bucket_key(file_name)
-        with requests.get(url, stream=True) as response:
+    def fetch_url(self, url, file_name, access):
+        with self.open(file_name, "wb", access=access) as out_file, requests.get(
+            url, stream=True
+        ) as response:
             response.raise_for_status()
-            self.s3_resource.Bucket(bucket).upload_fileobj(response.raw, key)
+            for chunk in response.iter_content(chunk_size=10 * 1024 * 1024):
+                out_file.write(chunk)
 
     def delete(self, file_prefix):
         bucket, prefix = self.bucket_key(file_prefix)
