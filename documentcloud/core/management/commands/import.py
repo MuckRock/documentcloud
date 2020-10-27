@@ -374,7 +374,7 @@ class Command(BaseCommand):
             # PUBLIC
             "4": (Access.public, Status.success),
             # PENDING
-            "5": (Access.private, Status.pending),
+            "5": (Access.private, Status.success),
             # INVISIBLE
             "6": (Access.invisible, Status.success),
             # ERROR
