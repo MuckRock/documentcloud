@@ -2,6 +2,9 @@
 from celery.task import task
 
 # DocumentCloud
+from documentcloud.documents.processing.document_conversion.main import (
+    run_document_conversion,
+)
 from documentcloud.documents.processing.info_and_image.main import (
     assemble_page_text,
     extract_image,
@@ -13,9 +16,6 @@ from documentcloud.documents.processing.info_and_image.main import (
     start_import,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
-from documentcloud.documents.processing.document_conversion.main import (
-    run_document_conversion,
-)
 
 # Set a high soft time limit so document processing can
 # proceed without timing out.

@@ -1,10 +1,11 @@
+# Standard Library
 import locale
 import os
-from pathlib import Path
 import shlex
 import shutil
 import tarfile
 import tempfile
+from pathlib import Path
 
 # Third Party
 import environ
