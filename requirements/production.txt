@@ -49,10 +49,11 @@ django-redis==4.10.0      # via -r requirements/./base.txt, python-redis-lock
 django-reversion==3.0.4   # via -r requirements/./base.txt
 django-storages[boto3]==1.7.1  # via -r requirements/production.in, collectfast
 django-timezone-field==3.0  # via -r requirements/./base.txt, django-celery-beat
-django==2.2.5             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
+django==2.2.5             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/./base.txt
 djangorestframework==3.11.0  # via -r requirements/./base.txt, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
 docutils==0.15.2          # via -r requirements/./base.txt, botocore
+dogslow==1.2              # via -r requirements/./base.txt
 drf-flex-fields==0.6.1    # via -r requirements/./base.txt
 drf-nested-routers==0.91  # via -r requirements/./base.txt
 drf-yasg==1.17.0          # via -r requirements/./base.txt

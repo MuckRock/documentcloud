@@ -29,6 +29,7 @@ django-autoslug
 django-premailer
 rules
 squarelet-auth
+dogslow
 
 # Django REST Framework
 djangorestframework

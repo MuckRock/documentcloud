@@ -153,6 +153,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/dev/ref/settings/#middleware
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "dogslow.WatchdogMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -475,3 +476,16 @@ SQUARELET_RESOURCE_FIELDS = {
     "pages_per_user": 0,
     "feature_level": 0,
 }
+
+# Dogslow
+# ------------------------------------------------------------------------------
+DOGSLOW = True
+DOGSLOW_LOG_TO_FILE = False
+DOGSLOW_TIMER = 25
+DOGSLOW_LOGGER = "dogslow"
+DOGSLOW_LOG_LEVEL = "ERROR"
+DOGSLOW_LOG_TO_SENTRY = True
+DOGSLOW_STACK_VARS = True
+
+DOGSLOW_EMAIL_TO = env("DOGSLOW_EMAIL_TO", default="mitch@muckrock.com")
+DOGSLOW_EMAIL_FROM = env("DOGSLOW_EMAIL_FROM", default="info@muckrock.com")
