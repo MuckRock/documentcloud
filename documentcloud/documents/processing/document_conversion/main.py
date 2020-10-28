@@ -47,6 +47,132 @@ else:
         dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration(), RedisIntegration()]
     )
 
+DOCUMENT_SIZE_LIMIT = env.int("DOCUMENT_SIZE_LIMIT", 26 * 1024 * 1024)
+SUPPORTED_DOCUMENT_EXTENSIONS = env.list(
+    "DOCUMENT_TYPES",
+    default=[
+        "123",
+        "602",
+        "abw",
+        "agd",
+        "bmp",
+        "cdr",
+        "cgm",
+        "cmx",
+        "csv",
+        "cwk",
+        "dbf",
+        "dif",
+        "doc",
+        "docx",
+        "dot",
+        "emf",
+        "eps",
+        "fb2",
+        "fhd",
+        "fodg",
+        "fodp",
+        "fods",
+        "fodt",
+        "gif",
+        "gnm",
+        "gnumeric",
+        "htm",
+        "html",
+        "hwp",
+        "jpeg",
+        "jpg",
+        "jtd",
+        "jtt",
+        "key",
+        "kth",
+        "mml",
+        "numbers",
+        "odb",
+        "odf",
+        "odg",
+        "odp",
+        "ods",
+        "odt",
+        "p65",
+        "pages",
+        "pbm",
+        "pcd",
+        "pct",
+        "pcx",
+        "pdf",
+        "pgm",
+        "plt",
+        "pm3",
+        "pm4",
+        "pm5",
+        "pm6",
+        "pmd",
+        "png",
+        "pot",
+        "ppm",
+        "pps",
+        "ppt",
+        "pptx",
+        "psd",
+        "pub",
+        "qxp",
+        "ras",
+        "rlf",
+        "rtf",
+        "sda",
+        "sdc",
+        "sdd",
+        "sdp",
+        "sdw",
+        "sgf",
+        "sgl",
+        "sgv",
+        "slk",
+        "stc",
+        "std",
+        "sti",
+        "stw",
+        "svg",
+        "svm",
+        "sxc",
+        "sxd",
+        "sxi",
+        "sxm",
+        "sxw",
+        "tga",
+        "tif",
+        "tiff",
+        "txt",
+        "uof",
+        "uop",
+        "uos",
+        "uot",
+        "vor",
+        "vsd",
+        "wb2",
+        "wdb",
+        "wk1",
+        "wk3",
+        "wk4",
+        "wks",
+        "wpd",
+        "wps",
+        "wq1",
+        "wq2",
+        "wri",
+        "xbm",
+        "xls",
+        "xlsx",
+        "xlt",
+        "xlw",
+        "xml",
+        "xpm",
+        "zabw",
+        "zmf",
+    ],
+)
+
 REDIS = utils.get_redis()
 
 DOCUMENT_CONVERT_TOPIC = publisher.topic_path(
@@ -113,6 +239,14 @@ def convert(input_filename, doc_id, slug):
     shutil.rmtree(document_directory)
 
 
+class DocumentExtensionError(Exception):
+    pass
+
+
+class DocumentSizeError(Exception):
+    pass
+
+
 @pubsub_function(REDIS, DOCUMENT_CONVERT_TOPIC)
 def run_document_conversion(data, _context=None):
     """Converts document passed in to PDF and triggers PDF extraction."""
@@ -121,7 +255,17 @@ def run_document_conversion(data, _context=None):
     slug = data["slug"]
     extension = data["extension"]
 
+    # Ensure whitelisted file extension
+    if extension.lower().strip() not in SUPPORTED_DOCUMENT_EXTENSIONS:
+        raise DocumentExtensionError()
+
     input_file = path.original_path(doc_id, slug, extension)
+
+    # Ensure non-PDF document size is within the limit
+    if storage.size(input_file) > DOCUMENT_SIZE_LIMIT:
+        # If not, remove the PDF
+        storage.delete(path.path(doc_id))
+        raise DocumentSizeError()
 
     # Run conversion
     convert(input_file, doc_id, slug)
