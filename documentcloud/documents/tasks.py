@@ -47,7 +47,7 @@ def fetch_file_url(file_url, document_pk, force_ocr):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
     try:
-        storage.fetch_url(file_url, document.doc_path)
+        storage.fetch_url(file_url, document.original_path)
     except RequestException as exc:
         if (
             exc.response
@@ -71,9 +71,13 @@ def fetch_file_url(file_url, document_pk, force_ocr):
         transaction.on_commit(
             lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
         )
-        # TODO: investigate: do we need to grab extension here for document conversion?
         process.delay(
-            document_pk, document.slug, document.access, document.language, force_ocr
+            document_pk,
+            document.slug,
+            document.access,
+            document.language,
+            force_ocr,
+            document.original_extension,
         )
 
 
