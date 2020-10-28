@@ -270,5 +270,8 @@ def run_document_conversion(data, _context=None):
     # Run conversion
     convert(input_file, doc_id, slug)
 
+    # Delete the original file
+    storage.delete(input_file)
+
     # Trigger PDF processing (output file should be expected doc path)
     publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
