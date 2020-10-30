@@ -35,12 +35,15 @@ then
     # deploy to lambda
     # sam requires python 3.7, app is currently using python 3.6
     OLD_PYENV_VERSION=$PYENV_VERSION
+    OLD_PATH=$PATH
     PYENV_VERSION=3.7
+    PATH=/home/rof/.pyenv/versions/3.8/bin/:$PATH
     pip install awscli
     pip install aws-sam-cli
     pip install invoke
     inv deploy-lambdas $DEPLOY_CONTEXT
     PYENV_VERSION=$OLD_PYENV_VERSION
+    PATH=$OLD_PATH
     # Set the tag in Git
     echo "pushing tag"
     if [[ $tag_exists == 1 ]]
