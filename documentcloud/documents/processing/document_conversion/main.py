@@ -197,6 +197,18 @@ LIBRE_OFFICE_PATH = "/tmp/libreoffice"
 LIBRE_OFFICE_BINARY = os.path.join(LIBRE_OFFICE_PATH, "instdir/program/soffice.bin")
 
 
+class DocumentExtensionError(Exception):
+    pass
+
+
+class DocumentConversionError(Exception):
+    pass
+
+
+class DocumentSizeError(Exception):
+    pass
+
+
 def libre_office_convert(input_filename):
     # If not already uncompressed, uncompress
     if not os.path.exists(LIBRE_OFFICE_PATH):
@@ -205,11 +217,20 @@ def libre_office_convert(input_filename):
 
     # Run LibreOffice
     # Adapted from https://github.com/vladgolubev/serverless-libreoffice/blob/master/src/libreoffice.js
-    command = f'cd {shlex.quote(LIBRE_OFFICE_PATH)} && export HOME={shlex.quote(LIBRE_OFFICE_PATH)} && SAL_DISABLE_CPD=true {shlex.quote(LIBRE_OFFICE_BINARY)} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to "pdf:writer_pdf_Export" --outdir {shlex.quote(os.path.dirname(input_filename))} {shlex.quote(input_filename)}'
+    command = (
+        f"cd {shlex.quote(LIBRE_OFFICE_PATH)} && export "
+        f"HOME={shlex.quote(LIBRE_OFFICE_PATH)} && SAL_DISABLE_CPD=true "
+        f"{shlex.quote(LIBRE_OFFICE_BINARY)} --headless --norestore --invisible "
+        f"--nodefault --nofirststartwizard --nolockcheck --nologo --convert-to "
+        f'"pdf:writer_pdf_Export" --outdir '
+        f"{shlex.quote(os.path.dirname(input_filename))} "
+        f"{shlex.quote(input_filename)}"
+    )
     if os.system(command) != 0:
         # For unknown reasons, run twice
         # https://github.com/vladgolubev/serverless-libreoffice/blob/master/src/libreoffice.js#L19
-        assert os.system(command) == 0
+        if os.system(command) != 0:
+            raise DocumentConversionError()
 
 
 def convert(input_filename, doc_id, slug):
@@ -238,14 +259,6 @@ def convert(input_filename, doc_id, slug):
 
     # Remove temporary directory
     shutil.rmtree(document_directory)
-
-
-class DocumentExtensionError(Exception):
-    pass
-
-
-class DocumentSizeError(Exception):
-    pass
 
 
 @pubsub_function(REDIS, DOCUMENT_CONVERT_TOPIC)
