@@ -180,6 +180,25 @@ class AwsStorage:
             return_data.append(datum.read())
         return return_data
 
+    def async_size(self, file_names):
+        """Get the size of the given files in parallel"""
+        # import aioboto3 locally to avoid needing it installed on lambda
+        import aioboto3
+
+        async def main():
+            # pylint: disable=not-async-context-manager
+            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+                tasks = []
+                for file_name in file_names:
+                    bucket, key = self.bucket_key(file_name)
+                    object_ = as3_resource.Object(bucket, key)
+                    tasks.append(object_.content_length)
+                return await asyncio.gather(*tasks, return_exceptions=True)
+
+        loop = asyncio.get_event_loop()
+        sizes = loop.run_until_complete(main())
+        return [0 if isinstance(s, Exception) else s for s in sizes]
+
     def list(self, file_prefix, marker=None, limit=None):
         """List files in the given path
         marker if given will start from after that file
