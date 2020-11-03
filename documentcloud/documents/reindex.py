@@ -19,6 +19,7 @@ from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import DeletedDocument, Document
+from documentcloud.documents.search import SOLR
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,8 @@ def prepare_documents(after_timestamp):
 
 def batch_index(collection_name, documents):
     """Batch re-index a list of documents"""
+    from documentcloud.documents import tasks
+
     solr = get_solr_connection(collection_name)
 
     # get the json txt file names for all of the documents
@@ -122,6 +125,7 @@ def batch_index(collection_name, documents):
             document_size(large_document),
             documents_size(solr_documents),
         )
+        # XXX tasks.solr_index(large_document['id'])
         single_index(solr, large_document)
 
     logger.info("[SOLR REINDEX] solr add")
@@ -146,13 +150,17 @@ def remove_largest_document(solr_documents):
     return large_document, solr_documents
 
 
-def single_index(solr, document):
-    """Index a single, large document"""
-    logger.info("[SOLR REINDEX] indexing large document %s", document.get("title"))
+def single_index(document, field_updates=None, solr=SOLR):
+    """Index a single document"""
+    logger.info(
+        "[SOLR REINDEX] indexing document %d %s",
+        document.get("id"),
+        document.get("title"),
+    )
     if document_size(document) < settings.SOLR_REINDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
-        logger.info("[SOLR REINDEX] indexing large document done")
-        solr.add([document])
+        logger.info("[SOLR REINDEX] indexing document done")
+        solr.add([document], fieldUpdates=field_updates)
         return
 
     # first index the non page text fields
