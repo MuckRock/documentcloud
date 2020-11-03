@@ -118,7 +118,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "force_ocr",
             "language",
             "organization",
-            "original_extension",
             "page_count",
             "page_spec",
             "presigned_url",
