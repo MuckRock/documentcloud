@@ -1,5 +1,6 @@
 # Standard Library
 import locale
+import logging
 import os
 import shlex
 import shutil
@@ -13,6 +14,8 @@ import environ
 locale.setlocale(locale.LC_ALL, "C")
 
 env = environ.Env()
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -268,6 +271,8 @@ def run_document_conversion(data, _context=None):
     doc_id = data["doc_id"]
     slug = data["slug"]
     extension = data["extension"]
+
+    logger.info("[DOCUMENT CONVERSION] doc_id %s extension %s", doc_id, extension)
 
     # Ensure whitelisted file extension
     if extension.lower().strip() not in SUPPORTED_DOCUMENT_EXTENSIONS:

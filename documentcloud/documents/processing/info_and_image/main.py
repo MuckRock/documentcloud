@@ -337,6 +337,8 @@ def process_page_cache(data, _context=None):
     force_ocr = data.get("force_ocr", False)
     org_id = data.get("org_id", "")
 
+    logger.info("[PROCESS PAGE CACHE] doc_id %s", doc_id)
+
     doc_path = path.doc_path(doc_id, slug)
 
     # Read the entire document into memory
@@ -399,6 +401,8 @@ def process_pdf(data, _context=None):
     access = data.get("access", access_choices.PRIVATE)
     force_ocr = data.get("force_ocr", False)
     ocr_code = data.get("ocr_code", "eng")
+
+    logger.info("[PROCESS PDF] doc_id %s", doc_id)
 
     # Ensure PDF size is within the limit
     doc_path = path.doc_path(doc_id, slug)
@@ -491,6 +495,10 @@ def extract_image(data, _context=None):
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
+
+    logger.info(
+        "[EXTRACT IMAGE] doc_id %s pages %s", doc_id, ",".join(map(str, page_numbers))
+    )
 
     # Store a queue of pages to OCR to fill the batch
     ocr_queue = []
@@ -623,6 +631,8 @@ def assemble_page_text(data, _context=None):
     access = data.get("access", access_choices.PRIVATE)
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
 
+    logger.info("[ASSEMBLE TEXT] doc_id %s", doc_id)
+
     results = utils.get_all_page_text(REDIS, doc_id)
 
     if partial:
@@ -674,6 +684,12 @@ def redact_doc(data, _context=None):
     access = data.get("access", access_choices.PRIVATE)
     redactions = data["redactions"]
     ocr_code = data.get("ocr_code", "eng")
+
+    logger.info(
+        "[REDACT DOC] doc_id %s redactions %s",
+        doc_id,
+        ",".join([str(r["page_number"]) for r in redactions]),
+    )
 
     # Get dirty pages
     dirty_pages = set()
