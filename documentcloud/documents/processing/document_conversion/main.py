@@ -264,14 +264,6 @@ def convert(input_filename, doc_id, slug):
     shutil.rmtree(document_directory)
 
 
-class DocumentExtensionError(Exception):
-    pass
-
-
-class DocumentSizeError(Exception):
-    pass
-
-
 @pubsub_function(REDIS, DOCUMENT_CONVERT_TOPIC)
 def run_document_conversion(data, _context=None):
     """Converts document passed in to PDF and triggers PDF extraction."""
