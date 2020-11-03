@@ -49,10 +49,7 @@ class DocumentQuerySet(models.QuerySet):
                 # you can edit documents you own
                 Q(user=user)
                 # you may edit documents in your projects shared for editing
-                | Q(
-                    projects__collaborators=user,
-                    projects__projectmembership__edit_access=True,
-                )
+                | Q(projects__collaborators=user, projectmembership__edit_access=True)
                 # you can edit organization level documents in your
                 # organization
                 | Q(
