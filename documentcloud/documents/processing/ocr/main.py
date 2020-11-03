@@ -10,6 +10,8 @@ from cpuprofile import profile_cpu
 from PIL import Image
 
 env = environ.Env()
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -118,6 +120,14 @@ def run_tesseract(data, _context=None):
         ocr_version = f"{OCR_VERSION}_force"
     else:
         ocr_version = OCR_VERSION
+
+    logger.info(
+        "[RUN TESSERACT] doc_id %s ocr_code %s ocr_version %s page_numbers %s",
+        doc_id,
+        ocr_code,
+        ocr_version,
+        ",".join([str(number[0]) for number in paths_and_numbers]),
+    )
 
     result = {}
 
