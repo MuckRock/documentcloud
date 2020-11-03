@@ -29,10 +29,12 @@ class TestOEmbed(OEmbed):
 class TestOEmbedView:
     def test_good(self, client):
         """Test a simple oembed call"""
-        response = client.get("/api/oembed/", {"url": "https://www.example.com/1/"})
+        response = client.get(
+            "/api/oembed/", {"url": "https://www.example.com/1/?_escaped_fragment_"}
+        )
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
-        assert response_json["query"] == ""
+        assert response_json["query"] == "embed=1"
         assert response_json["max_width"] is None
         assert response_json["max_height"] is None
         assert response_json["kwargs"] == {"pk": "1"}

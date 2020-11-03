@@ -34,6 +34,10 @@ class OEmbedView(APIView):
                 return None
 
         furl_url = furl(request.GET["url"])
+        # remove _escaped_fragment_ if it exists
+        furl_url.query.params.pop("_escaped_fragment_", None)
+        # always add embed=1
+        furl_url.query.params["embed"] = 1
         query = str(furl_url.query)
         furl_url.query = None
         url = furl_url.url
