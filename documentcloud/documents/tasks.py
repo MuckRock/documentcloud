@@ -225,6 +225,21 @@ def solr_index(document_pk, solr_document=None, field_updates=None, index_text=F
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+def solr_reindex(document_pk, collection_name):
+    """Re index a document into solr"""
+    logger.info(
+        "re indexing document %d, solr collection %s", document_pk, collection_name
+    )
+    try:
+        document = Document.objects.get(pk=document_pk)
+    except Document.DoesNotExist:
+        # if document no longer exists, just skip
+        return
+    solr_document = document.solr(index_text=True)
+    reindex.single_index(solr_document)
+
+
 @periodic_task(run_every=crontab(minute=30))
 def solr_index_dirty():
     """Task to try and index all dirty models periodically"""

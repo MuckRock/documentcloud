@@ -150,56 +150,6 @@ def remove_largest_document(solr_documents):
     return large_document, solr_documents
 
 
-def single_index(document, field_updates=None, solr=SOLR):
-    """Index a single document"""
-    logger.info(
-        "[SOLR REINDEX] indexing document %d %s",
-        document.get("id"),
-        document.get("title"),
-    )
-    if document_size(document) < settings.SOLR_REINDEX_MAX_SIZE:
-        # if the document is within the size limit on its own, just index it
-        logger.info("[SOLR REINDEX] indexing document done")
-        solr.add([document], fieldUpdates=field_updates)
-        return
-
-    # first index the non page text fields
-    logger.info("[SOLR REINDEX] indexing large document non page fields")
-    non_page_document = {
-        k: v for k, v in document.items() if not k.startswith("page_no")
-    }
-    solr.add([non_page_document])
-
-    # now update the pages, staying under the limit
-    size = 0
-    field_updates = {}
-    page_document = {}
-    page_fields = {k: v for k, v in document.items() if k.startswith("page_no")}
-    logger.info(
-        "[SOLR REINDEX] indexing large document page fields: %s", len(page_fields)
-    )
-    for page_field, page_value in page_fields.items():
-        size += len(page_value)
-        # if adding the next page would put us over the limit, add the current fields
-        # to solr, then start building up a new document
-        if size > settings.SOLR_REINDEX_MAX_SIZE:
-            logger.info(
-                "[SOLR REINDEX] indexing large document pages: %s", len(page_document)
-            )
-            solr.add([page_document], fieldUpdates=field_updates)
-            size = len(page_value)
-            field_updates = {}
-            page_document = {}
-
-        # continue adding pages to the document to index
-        page_document[page_field] = page_value
-        field_updates[page_field] = "set"
-
-    # index the remaining pages
-    logger.info("[SOLR REINDEX] indexing large document pages: %s", len(page_document))
-    solr.add([page_document], fieldUpdates=field_updates)
-
-
 def check_remaining_documents(collection_name, before_timestamp, delete_timestamp):
     """Check how many documents are remaining and decide it we should continue
     reindexing
@@ -267,3 +217,120 @@ def update_alias(collection_name):
             response.content,
         )
         raise AliasError
+
+
+def _single(solr, document_pk):
+    """Index a single document"""
+    logger.info("[SOLR INDEX] indexing document %d", document_pk)
+
+    try:
+        document = Document.objects.get(pk=document_pk)
+    except Document.DoesNotExist:
+        # if document no longer exists, just skip
+        logger.info("[SOLR INDEX] indexing document %d - not found", document_pk)
+        return
+
+    solr_document = document.solr(index_text=document.status == Status.success)
+
+    if document_size(solr_document) < settings.SOLR_REINDEX_MAX_SIZE:
+        # if the document is within the size limit on its own, just index it
+        solr.add([solr_document])
+        logger.info("[SOLR REINDEX] indexing document %d - done", document_pk)
+        return
+
+    # first index the non page text fields
+    logger.info("[SOLR REINDEX] indexing large document non page fields")
+    non_page_document = {
+        k: v for k, v in solr_document.items() if not k.startswith("page_no")
+    }
+    solr.add([non_page_document])
+
+    # now update the pages, staying under the limit
+    size = 0
+    field_updates = {}
+    page_document = {}
+    page_fields = {k: v for k, v in solr_document.items() if k.startswith("page_no")}
+    logger.info(
+        "[SOLR REINDEX] indexing large document %d - page fields: %s",
+        document_pk,
+        len(page_fields),
+    )
+    for page_field, page_value in page_fields.items():
+        size += len(page_value)
+        # if adding the next page would put us over the limit, add the current fields
+        # to solr, then start building up a new document
+        if size > settings.SOLR_REINDEX_MAX_SIZE:
+            logger.info(
+                "[SOLR REINDEX] indexing large document %d - pages: %s",
+                document_pk,
+                len(page_document),
+            )
+            solr.add([page_document], fieldUpdates=field_updates)
+            size = len(page_value)
+            field_updates = {}
+            page_document = {}
+
+        # continue adding pages to the document to index
+        page_document[page_field] = page_value[: settings.SOLR_REINDEX_MAX_SIZE]
+        field_updates[page_field] = "set"
+
+    # index the remaining pages
+    logger.info(
+        "[SOLR REINDEX] indexing large document %d - pages: %s",
+        document_pk,
+        len(page_document),
+    )
+    solr.add([page_document], fieldUpdates=field_updates)
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def index_single(document_pk, solr_document=None, field_updates=None, index_text=False):
+    """Index single document into Solr"""
+    logger.info(
+        "[SOLR INDEX] indexing document %d, fields %s, text %s",
+        document_pk,
+        field_updates,
+        index_text,
+    )
+    if field_updates is not None and "data" in field_updates:
+        # update all fields if data was updated to ensure we remove any data keys
+        # from solr which were removed from the document
+        field_updates = None
+
+    if solr_document is None:
+        try:
+            document = Document.objects.get(pk=document_pk)
+        except Document.DoesNotExist:
+            # if document no longer exists, just skip
+            return
+
+        if field_updates:
+            solr_document = document.solr(field_updates.keys(), index_text=index_text)
+        else:
+            solr_document = document.solr(index_text=index_text)
+
+    reindex.single_index(solr_document, field_updates=field_updates)
+
+    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+
+
+def reindex_single(collection_name, document_pk):
+    """Re-index a single document into a new Solr collection"""
+
+
+def index_batch(document_pks):
+    """Index a batch of dirty documents into Solr"""
+
+
+def reindex_batch(collection_name, document_pks):
+    """Re-index a batch of documents into a new Solr collection"""
+
+
+def index_dirty(before_timestamp=None):
+    """Index dirty documents"""
+
+
+def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
+    """Re-index all documents"""
