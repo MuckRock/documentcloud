@@ -1,5 +1,22 @@
 """
 Functions to index documents into Solr
+
+There are three basic types of re-indexing:
+    * Normal indexing of a document - done one document at a time and just for the
+    fields that were updated.
+
+    * Dirty indexing - a document is marked as dirty when it is changed, and clean
+    once it is indexed.  If something goes wrong, a periodic task will attempt to
+    do a full re-index on all dirty documents, to prevent intermittent errors from
+    preventing documents from being indexed correctly.  This is also used when
+    importing large amounts of documents into the system.  This is done in batches
+    for efficiency.
+
+    * Full re-index - all documents are indexed into a new Solr collection.  Once most
+    documents are in the new collection, we switch over to using the new collection
+    at which point the old collection can be deleted.  This is done when we need to
+    update our indexing options or upgrade to a new version of Solr.  This shares
+    batch logic with dirty indexing
 """
 # Django
 from django.conf import settings
@@ -46,6 +63,9 @@ def get_solr_connection(collection_name):
 
 def document_size(solr_document):
     """Size of a single solr document"""
+    # this is just the size of the data - this is done as it is faster than converting
+    # to json.  the text data should be the vast majority of the size, and we limit
+    # the size to slightly less than the real max as a buffer
     return sum(len(str(v)) for v in solr_document.values())
 
 
@@ -63,7 +83,9 @@ def update_alias(collection_name):
         },
         auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD),
     )
-    if response.status_code != 200:
+    if response.status_code == 200:
+        logger.info("[SOLR REINDEX] Succesfully created solr alias")
+    else:
         logger.error(
             "[SOLR REINDEX] Error creating solr alias: %d %s",
             response.status_code,
@@ -76,9 +98,12 @@ def update_alias(collection_name):
 
 
 def index_single(document_pk, solr_document=None, field_updates=None, index_text=False):
-    """Index a single, possibly partial document into Solr"""
+    """Index a single, possibly partial document into Solr
+
+    This is how documents are indexed when they are uploaded or updated
+    """
     logger.info(
-        "[SOLR INDEX] indexing document %d, fields %s, text %s",
+        "[SOLR INDEX] indexing document %s, fields %s, text %s",
         document_pk,
         field_updates,
         index_text,
@@ -106,8 +131,16 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
 
 
 def reindex_single(collection_name, document_pk):
-    """Re-index a single document into a new Solr collection"""
-    logger.info("[SOLR INDEX] re-indexing document %d", document_pk)
+    """Re-index a single document into a new Solr collection
+
+    This is used both for a full re-index into a new collection and for
+    indexing dirty solr documents
+    """
+    logger.info(
+        "[SOLR REINDEX] re-indexing document %d into collection %s",
+        document_pk,
+        collection_name,
+    )
     solr = get_solr_connection(collection_name)
     try:
         document = Document.objects.get(pk=document_pk)
@@ -123,12 +156,21 @@ def reindex_single(collection_name, document_pk):
 
 def index_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
+    # The solr documents for the given documents should be known to be under the
+    # size limit before calling this function.  This function will fail otherwise.
 
-    logger.info("[SOLR INDEX] index batch %s", document_pks)
+    logger.info(
+        "[SOLR INDEX] index batch %s collection %s", document_pks, collection_name
+    )
 
-    solr = get_solr_connection(collection_name)
-    documents = Document.objects.get(pk__in=document_pks)
-    # XXX preload projects here
+    if collection_name is None:
+        solr = SOLR
+    else:
+        solr = get_solr_connection(collection_name)
+
+    documents = Document.objects.filter(pk__in=document_pks).prefetch_related(
+        "projectmembership_set"
+    )
 
     # get the json txt file names for all of the documents
     file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
@@ -146,20 +188,27 @@ def index_batch(collection_name, document_pks):
     solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_texts)]
     solr.add(solr_documents)
 
+    if collection_name is None:
+        # if we are indexing into the default collection, clear the dirty flag after
+        # a succesful index
+        Document.objects.filter(pk__in=document_pks).update(solr_dirty=False)
+
 
 def index_dirty(before_timestamp=None):
     """Index dirty documents"""
     documents, after_timestamp = _dirty_prepare_documents(before_timestamp)
-    _batch_by_size(settings.SOLR_COLLECTION_NAME, documents)
+    _batch_by_size(None, documents)
     _dirty_check_remaining(after_timestamp)
 
     if before_timestamp is None:
         # on initial invocation, kick off dirty deletion
-        deleted = Document.objects.filter(status=Status.deleted).only("pk")
+        deleted = Document.objects.filter(status=Status.deleted).values_list(
+            "pk", flat=True
+        )
         deleted_count = deleted.count()
-        logger.info("Solr index dirty: %d documents to delete", deleted_count)
-        for document in deleted:
-            solr_delete.delay(document.pk)
+        logger.info("[SOLR DELETE] %d documents to delete", deleted_count)
+        for document_pk in deleted:
+            celery_app.send_task("solr_delete", args=[document_pk])
 
 
 def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
@@ -184,7 +233,6 @@ def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
 
 def _index_solr_document(solr, solr_document):
     """Index a single prepared solr document"""
-    # XXX rename
     document_pk = solr_document["id"]
     logger.info(
         "[SOLR INDEX] indexing document %s - %s",
@@ -195,11 +243,11 @@ def _index_solr_document(solr, solr_document):
     if document_size(solr_document) < settings.SOLR_REINDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
         solr.add([solr_document])
-        logger.info("[SOLR REINDEX] indexing document %s - done", document_pk)
+        logger.info("[SOLR INDEX] indexing document %s - done", document_pk)
         return
 
     # first index the non page text fields
-    logger.info("[SOLR REINDEX] indexing large document non page fields")
+    logger.info("[SOLR INDEX] indexing large document non page fields")
     non_page_document = {
         k: v for k, v in solr_document.items() if not k.startswith("page_no")
     }
@@ -211,7 +259,7 @@ def _index_solr_document(solr, solr_document):
     page_document = {}
     page_fields = {k: v for k, v in solr_document.items() if k.startswith("page_no")}
     logger.info(
-        "[SOLR REINDEX] indexing large document %s - page fields: %s",
+        "[SOLR INDEX] indexing large document %s - page fields: %s",
         document_pk,
         len(page_fields),
     )
@@ -221,7 +269,7 @@ def _index_solr_document(solr, solr_document):
         # to solr, then start building up a new document
         if size > settings.SOLR_REINDEX_MAX_SIZE:
             logger.info(
-                "[SOLR REINDEX] indexing large document %s - pages: %s",
+                "[SOLR INDEX] indexing large document %s - pages: %s",
                 document_pk,
                 len(page_document),
             )
@@ -236,7 +284,7 @@ def _index_solr_document(solr, solr_document):
 
     # index the remaining pages
     logger.info(
-        "[SOLR REINDEX] indexing large document %s - pages: %s",
+        "[SOLR INDEX] indexing large document %s - pages: %s",
         document_pk,
         len(page_document),
     )
@@ -247,11 +295,11 @@ def _index_solr_document(solr, solr_document):
 
 
 def _batch_by_size(collection_name, documents):
-    """Batch re-index a list of documents"""
+    """Groups a list of documents into batches which are below the size limit,
+    so that they can be sent to Solr together
+    """
 
-    # XXX only load pk, slug for documents
-
-    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
+    file_names = [path.json_text_path(d["pk"], d["slug"]) for d in documents]
     text_sizes = storage.async_size(file_names)
 
     docs_with_sizes = zip(documents, text_sizes)
@@ -262,17 +310,22 @@ def _batch_by_size(collection_name, documents):
     batch_size = 0
     for document, size in docs_with_sizes:
         if size > settings.SOLR_INDEX_MAX_SIZE:
+            logger.info(
+                "[SOLR INDEX] batching single document %s size %s", document["pk"], size
+            )
             celery_app.send_task(
-                "solr_reindex_single", args=[collection_name, document.pk]
+                "solr_reindex_single", args=[collection_name, document["pk"]]
             )
         elif batch_size + size > settings.SOLR_INDEX_MAX_SIZE:
+            logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
             celery_app.send_task("solr_index_batch", args=[collection_name, batch])
-            batch = [document.pk]
+            batch = [document["pk"]]
             batch_size = size
         else:
-            batch.append(document.pk)
+            batch.append(document["pk"])
             batch_size += size
 
+    logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
     celery_app.send_task("index_batch", args=[collection_name, batch])
 
 
@@ -297,9 +350,7 @@ def _reindex_prepare_documents(after_timestamp):
         settings.SOLR_REINDEX_LIMIT - 1
     ]
     full_count = documents.count()
-    documents = documents.filter(updated_at__lte=before_timestamp).prefetch_related(
-        "projectmembership_set"
-    )
+    documents = documents.filter(updated_at__lte=before_timestamp).values("pk", "slug")
     logger.info(
         "[SOLR REINDEX] reindexing %d documents now, %d documents left to "
         "re-index in total",
@@ -313,8 +364,6 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
     """Check how many documents are remaining and decide it we should continue
     reindexing
     """
-    from documentcloud.documents import tasks
-
     # check how many documents we have left to re-index
     documents_left = (
         Document.objects.exclude(status=Status.deleted)
@@ -329,7 +378,10 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
         # if there are many documents left and we are not too close to the current time
         # continue re-indexing
         logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
-        tasks.solr_reindex_all.delay(collection_name, after_timestamp, delete_timestamp)
+        celery_app.send_task(
+            "solr_reindex_all",
+            args=[collection_name, after_timestamp, delete_timestamp],
+        )
     else:
         logger.info(
             "[SOLR REINDEX] done, re-index all documents updated after %s, "
@@ -343,14 +395,14 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
         Document.objects.exclude(status=Status.deleted).filter(
             updated_at__gt=after_timestamp
         ).update(solr_dirty=True)
-        tasks.solr_index_dirty.delay()
+        celery_app.send_task("solr_index_dirt")
 
         # delete all documents from the new solr collection that were deleted since
         # we started re-indexing
         for document in DeletedDocument.objects.filter(
             created_at__gte=delete_timestamp
         ):
-            tasks.solr_delete.delay(document.pk)
+            celery_app.send_task("solr_delete", args=[document.pk])
 
 
 ## Dirty indexing
@@ -375,11 +427,9 @@ def _dirty_prepare_documents(before_timestamp):
         settings.SOLR_REINDEX_LIMIT - 1
     ]
     full_count = documents.count()
-    documents = documents.filter(updated_at__gte=after_timestamp).prefetch_related(
-        "projectmembership_set"
-    )
+    documents = documents.filter(updated_at__gte=after_timestamp).values("pk", "slug")
     logger.info(
-        "[SOLR REINDEX] reindexing %d dirty documents now, %d documents left to "
+        "[SOLR INDEX] indexing %d dirty documents now, %d documents left to "
         "re-index in total",
         len(list(documents)),
         full_count,
@@ -392,10 +442,12 @@ def _dirty_check_remaining(before_timestamp):
     # check how many documents we have left to re-index
     documents_left = (
         Document.objects.exclude(status=Status.deleted)
-        .filter(updated_at__lt=before_timestamp)
+        .filter(solr_dirty=True, updated_at__lt=before_timestamp)
         .count()
     )
     if documents_left > 0:
         # if there are any documents left continue re-indexing
-        logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
+        logger.info(
+            "[SOLR INDEX] continuing with %d dirty documents left", documents_left
+        )
         celery_app.send_task("index_dirty", args=[before_timestamp])
