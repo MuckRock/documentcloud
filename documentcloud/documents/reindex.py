@@ -219,23 +219,19 @@ def update_alias(collection_name):
         raise AliasError
 
 
-def _single(solr, document_pk):
+def _single(solr, solr_document):
     """Index a single document"""
-    logger.info("[SOLR INDEX] indexing document %d", document_pk)
-
-    try:
-        document = Document.objects.get(pk=document_pk)
-    except Document.DoesNotExist:
-        # if document no longer exists, just skip
-        logger.info("[SOLR INDEX] indexing document %d - not found", document_pk)
-        return
-
-    solr_document = document.solr(index_text=document.status == Status.success)
+    document_pk = solr_document["id"]
+    logger.info(
+        "[SOLR INDEX] indexing document %s - %s",
+        document_pk,
+        solr_document.get("title", ""),
+    )
 
     if document_size(solr_document) < settings.SOLR_REINDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
         solr.add([solr_document])
-        logger.info("[SOLR REINDEX] indexing document %d - done", document_pk)
+        logger.info("[SOLR REINDEX] indexing document %s - done", document_pk)
         return
 
     # first index the non page text fields
@@ -251,7 +247,7 @@ def _single(solr, document_pk):
     page_document = {}
     page_fields = {k: v for k, v in solr_document.items() if k.startswith("page_no")}
     logger.info(
-        "[SOLR REINDEX] indexing large document %d - page fields: %s",
+        "[SOLR REINDEX] indexing large document %s - page fields: %s",
         document_pk,
         len(page_fields),
     )
@@ -261,7 +257,7 @@ def _single(solr, document_pk):
         # to solr, then start building up a new document
         if size > settings.SOLR_REINDEX_MAX_SIZE:
             logger.info(
-                "[SOLR REINDEX] indexing large document %d - pages: %s",
+                "[SOLR REINDEX] indexing large document %s - pages: %s",
                 document_pk,
                 len(page_document),
             )
@@ -276,7 +272,7 @@ def _single(solr, document_pk):
 
     # index the remaining pages
     logger.info(
-        "[SOLR REINDEX] indexing large document %d - pages: %s",
+        "[SOLR REINDEX] indexing large document %s - pages: %s",
         document_pk,
         len(page_document),
     )
@@ -307,25 +303,54 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
             return
 
         if field_updates:
-            solr_document = document.solr(field_updates.keys(), index_text=index_text)
+            solr_document = document.solr(field_updates.keys())
         else:
             solr_document = document.solr(index_text=index_text)
 
-    reindex.single_index(solr_document, field_updates=field_updates)
+    _single(SOLR, solr_document)
 
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
 def reindex_single(collection_name, document_pk):
     """Re-index a single document into a new Solr collection"""
+    logger.info("[SOLR INDEX] re-indexing document %d", document_pk)
+    solr = get_solr_connection(collection_name)
+    try:
+        document = Document.objects.get(pk=document_pk)
+    except Document.DoesNotExist:
+        # if document no longer exists, just skip
+        return
+
+    # only index text if in a succesful state
+    solr_document = document.solr(index_text=document.status == Status.success)
+
+    _single(solr, solr_document)
 
 
-def index_batch(document_pks):
-    """Index a batch of dirty documents into Solr"""
-
-
-def reindex_batch(collection_name, document_pks):
+def index_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
+
+    logger.info("[SOLR INDEX] index batch %s", document_pks)
+
+    solr = get_solr_connection(collection_name)
+    documents = Document.objects.get(pk__in=document_pks)
+
+    # get the json txt file names for all of the documents
+    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
+    # download the files in parallel
+    page_texts_ = storage.async_download(file_names)
+
+    page_texts = []
+    for text in page_texts_:
+        try:
+            page_texts.append(json.loads(text.decode("utf8")))
+        except ValueError:
+            page_texts.append({"pages": [], "updated": None})
+
+    # generate the data to index into solr
+    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_texts)]
+    solr.add(solr_documents)
 
 
 def index_dirty(before_timestamp=None):
