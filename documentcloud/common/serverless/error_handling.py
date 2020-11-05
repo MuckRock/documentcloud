@@ -58,8 +58,7 @@ def pubsub_function(
                     utils.send_error(
                         redis,
                         None if skip_processing_check else doc_id,
-                        "Function has timed out (max retries exceeded)",
-                        True,
+                        message="Function has timed out (max retries exceeded)",
                     )
                     return "ok"
 
@@ -81,12 +80,8 @@ def pubsub_function(
                 publisher.publish(pubsub_topic, data=encode_pubsub_data(data))
             except Exception as exc:  # pylint: disable=broad-except
                 # Handle any error that comes up during function execution
-                error_message = str(exc)
                 utils.send_error(
-                    redis,
-                    None if skip_processing_check else doc_id,
-                    error_message,
-                    True,
+                    redis, None if skip_processing_check else doc_id, exc=exc
                 )
                 return f"An error has occurred: {error_message}"
 
