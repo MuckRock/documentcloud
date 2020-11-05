@@ -66,7 +66,7 @@ def process_doc(request, _context=None):
     data = get_http_data(request)
     doc_id = data["doc_id"]
     job_type = data["method"]
-    extension = data.get("extension", "pdf")
+    extension = data.get("extension", "pdf").lower()
 
     # Initialize the processing environment
     utils.initialize(REDIS, doc_id)
