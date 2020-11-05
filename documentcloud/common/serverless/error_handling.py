@@ -83,7 +83,7 @@ def pubsub_function(
                 utils.send_error(
                     redis, None if skip_processing_check else doc_id, exc=exc
                 )
-                return f"An error has occurred: {error_message}"
+                return f"An error has occurred: {exc}"
 
         return wraps(func)(wrapper)
 

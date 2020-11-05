@@ -5,7 +5,6 @@ Helper functions to perform common serverless operations.
 # Standard Library
 import json
 import logging
-import sys
 import time
 from urllib.parse import urljoin
 
