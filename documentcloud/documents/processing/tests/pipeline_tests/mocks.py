@@ -207,8 +207,8 @@ def send_complete(_, doc_id):
     complete_sent(doc_id)
 
 
-def send_error(_, doc_id, message, fatal=False):
-    error_sent(doc_id, message, fatal)
+def send_error(_, doc_id, exc=None, message=None):
+    error_sent(doc_id, exc, message)
 
 
 def patch_pipeline(func):

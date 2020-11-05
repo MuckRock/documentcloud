@@ -79,10 +79,13 @@ def send_complete(redis, doc_id):
     clean_up(redis, doc_id)
 
 
-def send_error(redis, doc_id, message, fatal=False):
+def send_error(redis, doc_id, exc=None, message=None):
     """Sends an error to the API server specified as a string message"""
     if doc_id and not still_processing(redis, doc_id):
         return
+
+    if message is None:
+        message = str(exc)
 
     # Send the error to the server
     if doc_id:
@@ -105,10 +108,7 @@ def send_error(redis, doc_id, message, fatal=False):
             pass
 
     # Log the error depending on its severity
-    if fatal:
-        logging.error(message, exc_info=sys.exc_info())
-    else:
-        logging.warning(message, exc_info=sys.exc_info())
+    logging.error(message, exc_info=exc)
 
     # Clean out Redis
     if doc_id:
