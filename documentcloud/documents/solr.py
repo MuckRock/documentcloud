@@ -240,7 +240,7 @@ def _index_solr_document(solr, solr_document):
         solr_document.get("title", ""),
     )
 
-    if document_size(solr_document) < settings.SOLR_REINDEX_MAX_SIZE:
+    if document_size(solr_document) < settings.SOLR_INDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
         solr.add([solr_document])
         logger.info("[SOLR INDEX] indexing document %s - done", document_pk)
@@ -267,7 +267,7 @@ def _index_solr_document(solr, solr_document):
         size += len(page_value)
         # if adding the next page would put us over the limit, add the current fields
         # to solr, then start building up a new document
-        if size > settings.SOLR_REINDEX_MAX_SIZE:
+        if size > settings.SOLR_INDEX_MAX_SIZE:
             logger.info(
                 "[SOLR INDEX] indexing large document %s - pages: %s",
                 document_pk,
@@ -279,7 +279,7 @@ def _index_solr_document(solr, solr_document):
             page_document = {}
 
         # continue adding pages to the document to index
-        page_document[page_field] = page_value[: settings.SOLR_REINDEX_MAX_SIZE]
+        page_document[page_field] = page_value[: settings.SOLR_INDEX_MAX_SIZE]
         field_updates[page_field] = "set"
 
     # index the remaining pages
@@ -347,7 +347,7 @@ def _reindex_prepare_documents(after_timestamp):
     # this ensures we do not miss any documents due to multiple documents
     # with equal updated_at timestamps
     before_timestamp = documents.values_list("updated_at", flat=True)[
-        settings.SOLR_REINDEX_LIMIT - 1
+        settings.SOLR_INDEX_LIMIT - 1
     ]
     full_count = documents.count()
     documents = documents.filter(updated_at__lte=before_timestamp).values("pk", "slug")
@@ -371,9 +371,9 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
         .count()
     )
     if (
-        documents_left > settings.SOLR_REINDEX_LIMIT
+        documents_left > settings.SOLR_INDEX_LIMIT
         and (timezone.now() - after_timestamp).total_seconds()
-        > settings.SOLR_REINDEX_CATCHUP_SECONDS
+        > settings.SOLR_INDEX_CATCHUP_SECONDS
     ):
         # if there are many documents left and we are not too close to the current time
         # continue re-indexing
@@ -424,7 +424,7 @@ def _dirty_prepare_documents(before_timestamp):
     # this ensures we do not miss any documents due to multiple documents
     # with equal updated_at timestamps
     after_timestamp = documents.values_list("created_at", flat=True)[
-        settings.SOLR_REINDEX_LIMIT - 1
+        settings.SOLR_INDEX_LIMIT - 1
     ]
     full_count = documents.count()
     documents = documents.filter(updated_at__gte=after_timestamp).values("pk", "slug")
