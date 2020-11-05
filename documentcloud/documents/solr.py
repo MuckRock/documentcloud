@@ -1,5 +1,5 @@
 """
-Re-index all documents to a new Solr collection
+Functions to index documents into Solr
 """
 # Django
 from django.conf import settings
@@ -13,6 +13,7 @@ import logging
 # Third Party
 import pysolr
 import requests
+from config import celery_app
 
 # DocumentCloud
 from documentcloud.common import path
@@ -48,19 +49,6 @@ def document_size(solr_document):
     return sum(len(str(v)) for v in solr_document.values())
 
 
-def documents_size(solr_documents):
-    """Sum the fields from all of the given solr documents"""
-    # This should be faster than converting the whole thing to json
-    return sum(document_size(d) for d in solr_documents)
-
-
-def remove_largest_document(solr_documents):
-    """Remove the single largest document from the list of documents"""
-    sizes = [document_size(d) for d in solr_documents]
-    large_document = solr_documents.pop(sizes.index(max(sizes)))
-    return large_document, solr_documents
-
-
 def update_alias(collection_name):
     """Point the solr alias to the newly indexed collection"""
     session = requests.Session()
@@ -87,23 +75,8 @@ def update_alias(collection_name):
 # Public functions
 
 
-def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
-    """Manage the re-index process"""
-    if cache.get("solr_reindex_cancel"):
-        logger.info("[SOLR REINDEX] solr_reindex_all cancelled")
-        return
-
-    if delete_timestamp is None:
-        # check for any document deleted after we start the full re-index
-        delete_timestamp = timezone.now()
-
-    documents, before_timestamp = prepare_documents(after_timestamp)
-    batch_index(collection_name, documents)
-    check_remaining_documents(collection_name, before_timestamp, delete_timestamp)
-
-
 def index_single(document_pk, solr_document=None, field_updates=None, index_text=False):
-    """Index single document into Solr"""
+    """Index a single, possibly partial document into Solr"""
     logger.info(
         "[SOLR INDEX] indexing document %d, fields %s, text %s",
         document_pk,
@@ -127,7 +100,7 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
         else:
             solr_document = document.solr(index_text=index_text)
 
-    _single(SOLR, solr_document)
+    _index_solr_document(SOLR, solr_document)
 
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
@@ -145,7 +118,7 @@ def reindex_single(collection_name, document_pk):
     # only index text if in a succesful state
     solr_document = document.solr(index_text=document.status == Status.success)
 
-    _single(solr, solr_document)
+    _index_solr_document(solr, solr_document)
 
 
 def index_batch(collection_name, document_pks):
@@ -155,6 +128,7 @@ def index_batch(collection_name, document_pks):
 
     solr = get_solr_connection(collection_name)
     documents = Document.objects.get(pk__in=document_pks)
+    # XXX preload projects here
 
     # get the json txt file names for all of the documents
     file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
@@ -175,10 +149,32 @@ def index_batch(collection_name, document_pks):
 
 def index_dirty(before_timestamp=None):
     """Index dirty documents"""
+    documents, after_timestamp = _dirty_prepare_documents(before_timestamp)
+    _batch_by_size(settings.SOLR_COLLECTION_NAME, documents)
+    _dirty_check_remaining(after_timestamp)
+
+    if before_timestamp is None:
+        # on initial invocation, kick off dirty deletion
+        deleted = Document.objects.filter(status=Status.deleted).only("pk")
+        deleted_count = deleted.count()
+        logger.info("Solr index dirty: %d documents to delete", deleted_count)
+        for document in deleted:
+            solr_delete.delay(document.pk)
 
 
 def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """Re-index all documents"""
+    if cache.get("solr_reindex_cancel"):
+        logger.info("[SOLR REINDEX] solr_reindex_all cancelled")
+        return
+
+    if delete_timestamp is None:
+        # check for any document deleted after we start the full re-index
+        delete_timestamp = timezone.now()
+
+    documents, before_timestamp = _reindex_prepare_documents(after_timestamp)
+    _batch_by_size(collection_name, documents)
+    _reindex_check_remaining(collection_name, before_timestamp, delete_timestamp)
 
 
 # Private functions
@@ -186,8 +182,9 @@ def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
 ## Single indexing
 
 
-def _single(solr, solr_document):
-    """Index a single document"""
+def _index_solr_document(solr, solr_document):
+    """Index a single prepared solr document"""
+    # XXX rename
     document_pk = solr_document["id"]
     logger.info(
         "[SOLR INDEX] indexing document %s - %s",
@@ -246,10 +243,43 @@ def _single(solr, solr_document):
     solr.add([page_document], fieldUpdates=field_updates)
 
 
-## Batch re-indexing
+## Batch indexing
 
 
-def prepare_documents(after_timestamp):
+def _batch_by_size(collection_name, documents):
+    """Batch re-index a list of documents"""
+
+    # XXX only load pk, slug for documents
+
+    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
+    text_sizes = storage.async_size(file_names)
+
+    docs_with_sizes = zip(documents, text_sizes)
+
+    docs_with_sizes.sort(key=lambda x: x[1], reverse=True)
+
+    batch = []
+    batch_size = 0
+    for document, size in docs_with_sizes:
+        if size > settings.SOLR_INDEX_MAX_SIZE:
+            celery_app.send_task(
+                "solr_reindex_single", args=[collection_name, document.pk]
+            )
+        elif batch_size + size > settings.SOLR_INDEX_MAX_SIZE:
+            celery_app.send_task("solr_index_batch", args=[collection_name, batch])
+            batch = [document.pk]
+            batch_size = size
+        else:
+            batch.append(document.pk)
+            batch_size += size
+
+    celery_app.send_task("index_batch", args=[collection_name, batch])
+
+
+## Re-index all
+
+
+def _reindex_prepare_documents(after_timestamp):
     """Prepare which documents we will be indexing in this batch"""
     documents = Document.objects.exclude(status=Status.deleted).order_by("updated_at")
     if after_timestamp is None:
@@ -279,98 +309,7 @@ def prepare_documents(after_timestamp):
     return documents, before_timestamp
 
 
-def batch_index(collection_name, documents):
-    """Batch re-index a list of documents"""
-    from documentcloud.documents import tasks
-
-    solr = get_solr_connection(collection_name)
-
-    # get the json txt file names for all of the documents
-    logger.info("[SOLR REINDEX] get file names...")
-    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
-    # download the files in parallel
-    logger.info("[SOLR REINDEX] get page text...")
-    page_texts_ = storage.async_download(file_names)
-    page_texts = []
-    for text in page_texts_:
-        try:
-            page_texts.append(json.loads(text.decode("utf8")))
-        except ValueError:
-            page_texts.append({"pages": [], "updated": None})
-    # generate the data to index into solr
-    logger.info("[SOLR REINDEX] get solr documents...")
-    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_texts)]
-
-    # We don't want to send too large of a payload to solr at once
-    # most documents are well, well under the size limit where it would start to be a
-    # problem, but there are a few very large documents.  If the list of documents
-    # is too large, we will remove the largest element, index it by itself, and then
-    # retry on the remanining documents.  We expect the list being too large
-    # to almost always be due to a single very large document rather than
-    # to multiple medium-large documents
-    while documents_size(solr_documents) > settings.SOLR_REINDEX_MAX_SIZE:
-        # if the solr_documents are too large to be batch indexed, remove
-        # the largest document
-        logger.info(
-            "[SOLR REINDEX] document batch too large (%s), removing largest document",
-            documents_size(solr_documents),
-        )
-        large_document, solr_documents = remove_largest_document(solr_documents)
-        logger.info(
-            "[SOLR REINDEX] removed one document of size %s, rest size %s",
-            document_size(large_document),
-            documents_size(solr_documents),
-        )
-        # XXX tasks.solr_index(large_document['id'])
-        single_index(solr, large_document)
-
-    logger.info("[SOLR REINDEX] solr add")
-    solr.add(solr_documents)
-
-
-def batch_index_(collection_name, documents):
-    """Batch re-index a list of documents"""
-
-    file_names = [path.json_text_path(d.pk, d.slug) for d in documents]
-    page_texts_ = storage.async_size(file_names)
-    page_texts = []
-    for text in page_texts_:
-        try:
-            page_texts.append(json.loads(text.decode("utf8")))
-        except ValueError:
-            page_texts.append({"pages": [], "updated": None})
-    # generate the data to index into solr
-    logger.info("[SOLR REINDEX] get solr documents...")
-    solr_documents = [d.solr(index_text=p) for d, p in zip(documents, page_texts)]
-
-    # We don't want to send too large of a payload to solr at once
-    # most documents are well, well under the size limit where it would start to be a
-    # problem, but there are a few very large documents.  If the list of documents
-    # is too large, we will remove the largest element, index it by itself, and then
-    # retry on the remanining documents.  We expect the list being too large
-    # to almost always be due to a single very large document rather than
-    # to multiple medium-large documents
-    while documents_size(solr_documents) > settings.SOLR_REINDEX_MAX_SIZE:
-        # if the solr_documents are too large to be batch indexed, remove
-        # the largest document
-        logger.info(
-            "[SOLR REINDEX] document batch too large (%s), removing largest document",
-            documents_size(solr_documents),
-        )
-        large_document, solr_documents = remove_largest_document(solr_documents)
-        logger.info(
-            "[SOLR REINDEX] removed one document of size %s, rest size %s",
-            document_size(large_document),
-            documents_size(solr_documents),
-        )
-        # XXX tasks.solr_index(large_document['id'])
-        single_index(solr, large_document)
-
-    logger.info("[SOLR REINDEX] solr add")
-    solr.add(solr_documents)
-
-
-def check_remaining_documents(collection_name, before_timestamp, delete_timestamp):
+def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp):
     """Check how many documents are remaining and decide it we should continue
     reindexing
     """
@@ -379,32 +318,30 @@ def check_remaining_documents(collection_name, before_timestamp, delete_timestam
     # check how many documents we have left to re-index
     documents_left = (
         Document.objects.exclude(status=Status.deleted)
-        .filter(updated_at__gt=before_timestamp)
+        .filter(updated_at__gt=after_timestamp)
         .count()
     )
     if (
         documents_left > settings.SOLR_REINDEX_LIMIT
-        and (timezone.now() - before_timestamp).total_seconds()
+        and (timezone.now() - after_timestamp).total_seconds()
         > settings.SOLR_REINDEX_CATCHUP_SECONDS
     ):
         # if there are many documents left and we are not too close to the current time
         # continue re-indexing
         logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
-        tasks.solr_reindex_all.delay(
-            collection_name, before_timestamp, delete_timestamp
-        )
+        tasks.solr_reindex_all.delay(collection_name, after_timestamp, delete_timestamp)
     else:
         logger.info(
             "[SOLR REINDEX] done, re-index all documents updated after %s, "
             "delete all documents after %s",
-            before_timestamp,
+            after_timestamp,
             delete_timestamp,
         )
         update_alias(collection_name)
 
         # mark all remaining documents as dirty and begin re-indexing them
         Document.objects.exclude(status=Status.deleted).filter(
-            updated_at__gt=before_timestamp
+            updated_at__gt=after_timestamp
         ).update(solr_dirty=True)
         tasks.solr_index_dirty.delay()
 
@@ -414,3 +351,51 @@ def check_remaining_documents(collection_name, before_timestamp, delete_timestam
             created_at__gte=delete_timestamp
         ):
             tasks.solr_delete.delay(document.pk)
+
+
+## Dirty indexing
+
+
+def _dirty_prepare_documents(before_timestamp):
+    """Prepare which dirty documents will be indexed in this batch"""
+    documents = (
+        Document.objects.filter(solr_dirty=True)
+        .exclude(status=Status.deleted)
+        .order_by("-created_at")
+    )
+    if before_timestamp:
+        documents = documents.filter(updated_at__lt=before_timestamp)
+
+    # we want to index about SOLR_REINDEX_LIMIT documents at a time per worker
+    # grab the timestamp from the document that many documents from the beginning
+    # then we will filter for all documents before or equal to that timestamp
+    # this ensures we do not miss any documents due to multiple documents
+    # with equal updated_at timestamps
+    after_timestamp = documents.values_list("created_at", flat=True)[
+        settings.SOLR_REINDEX_LIMIT - 1
+    ]
+    full_count = documents.count()
+    documents = documents.filter(updated_at__gte=after_timestamp).prefetch_related(
+        "projectmembership_set"
+    )
+    logger.info(
+        "[SOLR REINDEX] reindexing %d dirty documents now, %d documents left to "
+        "re-index in total",
+        len(list(documents)),
+        full_count,
+    )
+    return documents, after_timestamp
+
+
+def _dirty_check_remaining(before_timestamp):
+    """Continue indexing dirty documents if any remaining"""
+    # check how many documents we have left to re-index
+    documents_left = (
+        Document.objects.exclude(status=Status.deleted)
+        .filter(updated_at__lt=before_timestamp)
+        .count()
+    )
+    if documents_left > 0:
+        # if there are any documents left continue re-indexing
+        logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
+        celery_app.send_task("index_dirty", args=[before_timestamp])

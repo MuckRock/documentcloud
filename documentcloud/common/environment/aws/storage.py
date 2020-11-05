@@ -196,7 +196,8 @@ class AwsStorage:
                 return await asyncio.gather(*tasks, return_exceptions=True)
 
         loop = asyncio.get_event_loop()
-        return loop.run_until_complete(main())
+        sizes = loop.run_until_complete(main())
+        return [0 if isinstance(s, Exception) else s for s in sizes]
 
     def list(self, file_prefix, marker=None, limit=None):
         """List files in the given path
