@@ -1,15 +1,12 @@
 # Django
 from celery import chord
-from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
-from django.core.cache import cache
 from django.db import transaction
 
 # Standard Library
 import logging
-import sys
 
 # Third Party
 import pysolr
@@ -198,9 +195,7 @@ def finish_update_access(document_pk, status, access):
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
-def solr_index_single(
-    document_pk, solr_document=None, field_updates=None, index_text=False
-):
+def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     """Index a single, possibly partial document into Solr"""
     solr.index_single(document_pk, solr_document, field_updates, index_text)
 
