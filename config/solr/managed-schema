@@ -137,11 +137,11 @@
     <dynamicField name="data_*" type="strings" indexed="true" stored="true"/>
 
     <field name="access" type="string" uninvertible="true" indexed="true" stored="true"/>
-    <field name="created_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
+    <field name="created_at" type="pdate" uninvertible="false" indexed="true" stored="true" docValues="true" />
     <field name="description" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false" termVectors="true" termPositions="true" termOffsets="true" />
     <field name="language" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="organization" type="pint" uninvertible="true" indexed="true" stored="true"/>
-    <field name="page_count" type="pint" uninvertible="true" indexed="true" stored="true"/>
+    <field name="page_count" type="pint" uninvertible="false" indexed="true" stored="true" docValues="true" />
     <field name="projects" type="pints" uninvertible="true" indexed="true" stored="true"/>
     <field name="projects_edit_access" type="pints" uninvertible="true" indexed="true" stored="true"/>
     <field name="slug" type="string" uninvertible="false" indexed="false" stored="true"/>
@@ -151,8 +151,8 @@
     <field name="updated_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
     <field name="user" type="pint" uninvertible="true" indexed="true" stored="true"/>
 
-    <field name="title_sort" type="string" indexed="true" stored="false"/>
-    <field name="source_sort" type="string" indexed="true" stored="false"/>
+    <field name="title_sort" type="string" indexed="true" stored="false" uninvertible="false" docValues="true" />
+    <field name="source_sort" type="string" indexed="true" stored="false" uninvertible="false" docValues="true" />
     <copyField source="title" dest="title_sort" />
     <copyField source="source" dest="source_sort" />
 
