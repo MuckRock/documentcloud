@@ -63,10 +63,15 @@ def get_solr_connection(collection_name):
 
 def document_size(solr_document):
     """Size of a single solr document"""
-    # this is just the size of the data - this is done as it is faster than converting
-    # to json.  the text data should be the vast majority of the size, and we limit
-    # the size to slightly less than the real max as a buffer
-    return sum(len(str(v)) for v in solr_document.values())
+    # len("<add><doc></doc></add>") == 22
+    # len('<field name=""></field>') == 23
+    # Encode the key and value into unicode
+    # This gives a close approximation of the length of the XML document to be sent
+    # to Solr, but is much faster than doing the actual XML conversion
+    return 22 + sum(
+        23 + len(str(k).encode("utf8") + str(v).encode("utf8"))
+        for k, v in solr_document.items()
+    )
 
 
 def update_alias(collection_name):
@@ -254,7 +259,8 @@ def _index_solr_document(solr, solr_document):
     solr.add([non_page_document])
 
     # now update the pages, staying under the limit
-    size = 0
+    # size starts at 22 for <add><doc></doc></add>
+    size = 22
     field_updates = {}
     page_document = {}
     page_fields = {k: v for k, v in solr_document.items() if k.startswith("page_no")}
@@ -264,7 +270,9 @@ def _index_solr_document(solr, solr_document):
         len(page_fields),
     )
     for page_field, page_value in page_fields.items():
-        size += len(page_value)
+        # len('<field name="" update="set"></field>') == 36
+        page_size = 36 + len(page_field.encode("utf8")) + len(page_value.encode("utf8"))
+        size += page_size
         # if adding the next page would put us over the limit, add the current fields
         # to solr, then start building up a new document
         if size > settings.SOLR_INDEX_MAX_SIZE:
@@ -274,7 +282,8 @@ def _index_solr_document(solr, solr_document):
                 len(page_document),
             )
             solr.add([page_document], fieldUpdates=field_updates)
-            size = len(page_value)
+            # set the size to the initial 22 plus the size of the next page
+            size = 22 + page_size
             field_updates = {}
             page_document = {}
 
