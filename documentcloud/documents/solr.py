@@ -213,7 +213,9 @@ def index_dirty(before_timestamp=None):
         deleted_count = deleted.count()
         logger.info("[SOLR DELETE] %d documents to delete", deleted_count)
         for document_pk in deleted:
-            celery_app.send_task("solr_delete", args=[document_pk])
+            celery_app.send_task(
+                "documentcloud.documents.tasks.solr_delete", args=[document_pk]
+            )
 
 
 def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
@@ -323,11 +325,15 @@ def _batch_by_size(collection_name, documents):
                 "[SOLR INDEX] batching single document %s size %s", document["pk"], size
             )
             celery_app.send_task(
-                "solr_reindex_single", args=[collection_name, document["pk"]]
+                "documentcloud.documents.tasks.solr_reindex_single",
+                args=[collection_name, document["pk"]],
             )
         elif batch_size + size > settings.SOLR_INDEX_MAX_SIZE:
             logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
-            celery_app.send_task("solr_index_batch", args=[collection_name, batch])
+            celery_app.send_task(
+                "documentcloud.documents.tasks.solr_index_batch",
+                args=[collection_name, batch],
+            )
             batch = [document["pk"]]
             batch_size = size
         else:
@@ -335,7 +341,9 @@ def _batch_by_size(collection_name, documents):
             batch_size += size
 
     logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
-    celery_app.send_task("solr_index_batch", args=[collection_name, batch])
+    celery_app.send_task(
+        "documentcloud.documents.tasks.solr_index_batch", args=[collection_name, batch]
+    )
 
 
 ## Re-index all
@@ -388,7 +396,7 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
         # continue re-indexing
         logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
         celery_app.send_task(
-            "solr_reindex_all",
+            "documentcloud.documents.tasks.solr_reindex_all",
             args=[collection_name, after_timestamp, delete_timestamp],
         )
     else:
@@ -404,14 +412,16 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
         Document.objects.exclude(status=Status.deleted).filter(
             updated_at__gt=after_timestamp
         ).update(solr_dirty=True)
-        celery_app.send_task("solr_index_dirty")
+        celery_app.send_task("documentcloud.documents.tasks.solr_index_dirty")
 
         # delete all documents from the new solr collection that were deleted since
         # we started re-indexing
         for document in DeletedDocument.objects.filter(
             created_at__gte=delete_timestamp
         ):
-            celery_app.send_task("solr_delete", args=[document.pk])
+            celery_app.send_task(
+                "documentcloud.documents.tasks.solr_delete", args=[document.pk]
+            )
 
 
 ## Dirty indexing
@@ -423,7 +433,7 @@ def _dirty_prepare_documents(before_timestamp):
         Document.objects.filter(solr_dirty=True)
         .exclude(status=Status.deleted)
         .order_by("-created_at")
-    )
+    ).values("pk", "slug")
     if before_timestamp:
         documents = documents.filter(updated_at__lt=before_timestamp)
 
@@ -437,9 +447,7 @@ def _dirty_prepare_documents(before_timestamp):
         after_timestamp = documents.values_list("created_at", flat=True)[
             settings.SOLR_INDEX_LIMIT - 1
         ]
-        documents = documents.filter(updated_at__gte=after_timestamp).values(
-            "pk", "slug"
-        )
+        documents = documents.filter(updated_at__gte=after_timestamp)
     else:
         after_timestamp = None
     logger.info(
@@ -468,4 +476,6 @@ def _dirty_check_remaining(before_timestamp):
         logger.info(
             "[SOLR INDEX] continuing with %d dirty documents left", documents_left
         )
-        celery_app.send_task("index_dirty", args=[before_timestamp])
+        celery_app.send_task(
+            "documentcloud.documents.tasks.solr_index_dirty", args=[before_timestamp]
+        )
