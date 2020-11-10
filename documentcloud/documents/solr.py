@@ -350,7 +350,7 @@ def _reindex_prepare_documents(after_timestamp):
         logger.info("[SOLR REINDEX] continuing after: %s", after_timestamp)
         documents = documents.filter(updated_at__gt=after_timestamp)
 
-    # we want to index about SOLR_REINDEX_LIMIT documents at a time per worker
+    # we want to index about SOLR_INDEX_LIMIT documents at a time per worker
     # grab the timestamp from the document that many documents from the beginning
     # then we will filter for all documents before or equal to that timestamp
     # this ensures we do not miss any documents due to multiple documents
@@ -427,7 +427,7 @@ def _dirty_prepare_documents(before_timestamp):
     if before_timestamp:
         documents = documents.filter(updated_at__lt=before_timestamp)
 
-    # we want to index about SOLR_REINDEX_LIMIT documents at a time per worker
+    # we want to index about SOLR_INDEX_LIMIT documents at a time per worker
     # grab the timestamp from the document that many documents from the beginning
     # then we will filter for all documents before or equal to that timestamp
     # this ensures we do not miss any documents due to multiple documents
