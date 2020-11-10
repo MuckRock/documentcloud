@@ -35,8 +35,8 @@ class Command(BaseCommand):
             "Starting a full solr reindex:\n"
             f"\tInto collection: {kwargs['collection_name']}\n"
             f"\t{total} documents total\n"
-            f"\t{settings.SOLR_REINDEX_LIMIT} documents at a time "
-            "(SOLR_REINDEX_LIMIT)\n"
+            f"\t{settings.SOLR_INDEX_LIMIT} documents at a time "
+            "(SOLR_INDEX_LIMIT)\n"
         )
         if input("Continue? [y/N] ") == "y":
             self.stdout.write("Starting")
