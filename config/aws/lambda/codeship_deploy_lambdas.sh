@@ -8,6 +8,8 @@ DEPLOY_CONTEXT=$2
 deploy_lambdas=0
 tag_exists=0
 echo "got tag $1 and deploy context $2"
+# ensure we have the tags locally
+git fetch --tags --all
 if git rev-parse $TAG >/dev/null 2>&1
 then
     # The tag exists. Check diffed files and deploy if needed
