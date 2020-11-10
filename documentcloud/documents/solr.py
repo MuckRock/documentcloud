@@ -335,7 +335,7 @@ def _batch_by_size(collection_name, documents):
             batch_size += size
 
     logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
-    celery_app.send_task("index_batch", args=[collection_name, batch])
+    celery_app.send_task("solr_index_batch", args=[collection_name, batch])
 
 
 ## Re-index all
@@ -404,7 +404,7 @@ def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp)
         Document.objects.exclude(status=Status.deleted).filter(
             updated_at__gt=after_timestamp
         ).update(solr_dirty=True)
-        celery_app.send_task("solr_index_dirt")
+        celery_app.send_task("solr_index_dirty")
 
         # delete all documents from the new solr collection that were deleted since
         # we started re-indexing
