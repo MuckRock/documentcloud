@@ -84,6 +84,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
   <lib dir="${solr.install.dir:../../../..}/contrib/velocity/lib" regex=".*\.jar" />
   <lib dir="${solr.install.dir:../../../..}/dist/" regex="solr-velocity-\d.*\.jar" />
   <lib dir="${solr.install.dir:../../../..}/dist/" regex="solr-ltr-\d.*\.jar" />
+  <lib dir="${solr.install.dir:../../../..}/lib" regex=".*\.jar" />
 
   <!-- an exact 'path' can be used instead of a 'dir' to specify a
   specific jar file.  This will cause a serious error to be logged
@@ -702,7 +703,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 <str name="qf">title^10 source^10 description^5 doctext^1</str>
                 <str name="hl">true</str>		
                 <str name="hl.fl">title source description page_no_*</str>
-                <str name="hl.method">fastVector</str>		
+                <str name="hl.method">unified</str>		
                 <str name="fl">
                   id
                   access
@@ -722,6 +723,9 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 </str>
                 <str name="uf">* -projects_edit_access</str>
               </lst>
+              <arr name="last-components">
+                <str>remove-empty-highlight-fields</str>
+              </arr>
             </requestHandler>
 
 
@@ -902,6 +906,9 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
             always be executed after the "last-components"
 
             -->
+
+            <searchComponent name="remove-empty-highlight-fields" 
+              class="com.nextbrick.solr.component.RemoveEmptyHighlightFieldsComponent" />
 
             <!-- Spell Check
 
