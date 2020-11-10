@@ -311,7 +311,7 @@ def _batch_by_size(collection_name, documents):
     file_names = [path.json_text_path(d["pk"], d["slug"]) for d in documents]
     text_sizes = storage.async_size(file_names)
 
-    docs_with_sizes = zip(documents, text_sizes)
+    docs_with_sizes = list(zip(documents, text_sizes))
 
     docs_with_sizes.sort(key=lambda x: x[1], reverse=True)
 
@@ -432,11 +432,16 @@ def _dirty_prepare_documents(before_timestamp):
     # then we will filter for all documents before or equal to that timestamp
     # this ensures we do not miss any documents due to multiple documents
     # with equal updated_at timestamps
-    after_timestamp = documents.values_list("created_at", flat=True)[
-        settings.SOLR_INDEX_LIMIT - 1
-    ]
     full_count = documents.count()
-    documents = documents.filter(updated_at__gte=after_timestamp).values("pk", "slug")
+    if full_count > settings.SOLR_INDEX_LIMIT:
+        after_timestamp = documents.values_list("created_at", flat=True)[
+            settings.SOLR_INDEX_LIMIT - 1
+        ]
+        documents = documents.filter(updated_at__gte=after_timestamp).values(
+            "pk", "slug"
+        )
+    else:
+        after_timestamp = None
     logger.info(
         "[SOLR INDEX] indexing %d dirty documents now, %d documents left to "
         "re-index in total",
@@ -449,6 +454,10 @@ def _dirty_prepare_documents(before_timestamp):
 def _dirty_check_remaining(before_timestamp):
     """Continue indexing dirty documents if any remaining"""
     # check how many documents we have left to re-index
+    if before_timestamp is None:
+        # no documents left
+        return
+
     documents_left = (
         Document.objects.exclude(status=Status.deleted)
         .filter(solr_dirty=True, updated_at__lt=before_timestamp)
