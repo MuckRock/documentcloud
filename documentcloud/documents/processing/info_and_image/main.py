@@ -382,7 +382,7 @@ def process_page_cache(data, _context=None):
             # If only dirty pages are flagged, process the relevant ones in batches
             dirty = sorted(dirty)
             for i in range(0, len(dirty), IMAGE_BATCH):
-                pages = [dirty[i] for i in range(0, min(IMAGE_BATCH, len(dirty)))]
+                pages = [dirty[j] for j in range(i, min(i + IMAGE_BATCH, len(dirty)))]
                 pub(pages)
         else:
             # Otherwise, process all pages in batches
