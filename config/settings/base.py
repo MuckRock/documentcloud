@@ -328,6 +328,13 @@ CELERY_IMPORTS = []
 CELERY_REDIS_MAX_CONNECTIONS = env.int("CELERY_REDIS_MAX_CONNECTIONS", default=40)
 CELERY_BROKER_POOL_LIMIT = env.int("CELERY_BROKER_POOL_LIMIT", default=0)
 CELERY_TASK_IGNORE_RESULT = True
+CELERY_WORKER_CONCURRENCY = env.int("CELERY_WORKER_CONCURRENCY", default=8)
+CELERY_WORKER_MAX_TASKS_PER_CHILD = env.int(
+    "CELERY_WORKER_MAX_TASKS_PER_CHILD", default=100
+)
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int(
+    "CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=20 * 1024
+)
 
 # django-compressor
 # ------------------------------------------------------------------------------
