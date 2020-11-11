@@ -8,10 +8,12 @@ import json
 import logging
 import pickle
 import time
+from random import randint
 
 # Third Party
 import environ
 import redis
+from botocore.exceptions import ClientError
 from listcrunch import crunch_collection
 from PIL import Image
 
@@ -885,11 +887,29 @@ def import_document(data, _context=None):
     }
 
     # Write the json text file
-    storage.simple_upload(
-        path.json_text_path(doc_id, slug),
-        json.dumps(page_texts_json).encode("utf-8"),
-        access=access_choices.PRIVATE,
-    )
+    # Seeing occasional S3 slow down errors here
+    # do a simple retry with exponential back off
+    for retry in range(3):
+        try:
+            storage.simple_upload(
+                path.json_text_path(doc_id, slug),
+                json.dumps(page_texts_json).encode("utf-8"),
+                access=access_choices.PRIVATE,
+            )
+            break
+        except ClientError as exc:
+            # sleep 1-2 seconds, 2-4 second, 4-8 seconds between retries
+            logger.info(
+                "[UPLOAD JSON TEXT] org_id %s doc_id %s exc %s retry %s",
+                org_id,
+                doc_id,
+                exc,
+                retry,
+            )
+            time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
+    else:
+        # Did not succeed after 3 retires, just skip
+        logger.info("[UPLOAD JSON TEXT] failed - org_id %s doc_id %s", org_id, doc_id)
 
     # STEP 6: Call finish import
     publisher.publish(
