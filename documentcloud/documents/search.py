@@ -101,7 +101,7 @@ def search(user, query_params):
         "sort": sort,
         "rows": rows,
         "start": start,
-        "hl": "off",
+        "hl": settings.SOLR_USE_HL,
     }
 
     results = SOLR.search(text_query, **kwargs)

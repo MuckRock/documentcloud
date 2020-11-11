@@ -469,6 +469,7 @@ SOLR_INDEX_LIMIT = env.int("SOLR_INDEX_LIMIT", default=100)
 SOLR_INDEX_CATCHUP_SECONDS = env.int("SOLR_INDEX_CATCHUP_SECONDS", default=300)
 SOLR_INDEX_MAX_SIZE = env.int("SOLR_INDEX_MAX_SIZE", default=18 * 1024 * 1024)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
+SOLR_USE_HL = env("SOLR_USE_HL", default="off")
 
 # OEmbed
 # ------------------------------------------------------------------------------
