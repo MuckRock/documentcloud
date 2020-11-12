@@ -335,7 +335,6 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = env.int(
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int(
     "CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=20 * 1024
 )
-CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
 
 # django-compressor
 # ------------------------------------------------------------------------------

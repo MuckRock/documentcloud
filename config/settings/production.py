@@ -210,3 +210,7 @@ if env("FIXIE_URL", default=""):
     os.environ["https_proxy"] = env("FIXIE_URL")
 
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+
+# Celery
+# ------------------------------------------------------------------------------
+CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}

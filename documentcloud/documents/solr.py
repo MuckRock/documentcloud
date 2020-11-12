@@ -53,6 +53,9 @@ class AliasError(Exception):
 
 def get_solr_connection(collection_name):
     """Get a Solr connection to a custom collection name"""
+    if collection_name is None:
+        return SOLR
+
     return pysolr.Solr(
         settings.SOLR_BASE_URL + collection_name,
         auth=settings.SOLR_AUTH,
@@ -168,10 +171,7 @@ def index_batch(collection_name, document_pks):
         "[SOLR INDEX] index batch %s collection %s", document_pks, collection_name
     )
 
-    if collection_name is None:
-        solr = SOLR
-    else:
-        solr = get_solr_connection(collection_name)
+    solr = get_solr_connection(collection_name)
 
     documents = Document.objects.filter(pk__in=document_pks).prefetch_related(
         "projectmembership_set"
