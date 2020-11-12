@@ -5,6 +5,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+# Standard Library
+from urllib.parse import unquote_plus
+
 # Third Party
 from furl import furl
 
@@ -40,7 +43,7 @@ class OEmbedView(APIView):
         furl_url.query.params["embed"] = 1
         query = str(furl_url.query)
         furl_url.query = None
-        url = furl_url.url
+        url = unquote_plus(furl_url.url)
 
         for oembed in registry:
             for pattern in oembed.patterns:
