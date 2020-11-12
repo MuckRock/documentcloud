@@ -435,19 +435,19 @@ def _dirty_prepare_documents(before_timestamp):
         .order_by("-created_at")
     ).values("pk", "slug")
     if before_timestamp:
-        documents = documents.filter(updated_at__lt=before_timestamp)
+        documents = documents.filter(created_at__lt=before_timestamp)
 
     # we want to index about SOLR_INDEX_LIMIT documents at a time per worker
     # grab the timestamp from the document that many documents from the beginning
     # then we will filter for all documents before or equal to that timestamp
     # this ensures we do not miss any documents due to multiple documents
-    # with equal updated_at timestamps
+    # with equal created_at timestamps
     full_count = documents.count()
     if full_count > settings.SOLR_INDEX_LIMIT:
         after_timestamp = documents.values_list("created_at", flat=True)[
             settings.SOLR_INDEX_LIMIT - 1
         ]
-        documents = documents.filter(updated_at__gte=after_timestamp)
+        documents = documents.filter(created_at__gte=after_timestamp)
     else:
         after_timestamp = None
     logger.info(
@@ -468,7 +468,7 @@ def _dirty_check_remaining(before_timestamp):
 
     documents_left = (
         Document.objects.exclude(status=Status.deleted)
-        .filter(solr_dirty=True, updated_at__lt=before_timestamp)
+        .filter(solr_dirty=True, created_at__lt=before_timestamp)
         .count()
     )
     if documents_left > 0:
