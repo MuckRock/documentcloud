@@ -964,7 +964,7 @@ def finish_import(data, _context=None):
 
         # Write the new pagespec-enhanced CSV
         with storage.open(path.import_org_pagespec_csv(org_id), "w") as new_csv_file:
-            csvwriter = csv.writer(new_csv_file)
+            csvwriter = csv.writer(new_csv_file, quoting=csv.QUOTE_ALL)
             for row in rows:
                 csvwriter.writerow(row)
                 logger.info("[FINISH IMPORT] WRITING CSV row %s", row)
