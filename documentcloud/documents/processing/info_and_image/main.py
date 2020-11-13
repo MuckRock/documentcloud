@@ -801,8 +801,25 @@ def import_document(data, _context=None):
             cached = pdf_file.cache
 
             # Write the index file
-            write_cache(path.index_path(doc_id, slug), cached)
-    except (ValueError, AssertionError):
+            # simple retry for s3 errors
+            for retry in range(3):
+                try:
+                    write_cache(path.index_path(doc_id, slug), cached)
+                    break
+                except ClientError as exc:
+                    # sleep 1-2 seconds, 2-4 second between retries
+                    logger.info(
+                        "[WRITE CACHE] org_id %s doc_id %s exc %s retry %s",
+                        org_id,
+                        doc_id,
+                        exc,
+                        retry,
+                    )
+                    if retry == 2:
+                        raise exc
+                    else:
+                        time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
+    except (ValueError, AssertionError, ClientError):
         # document was not found
         logger.info(
             "[IMPORT DOCUMENT] DOCUMENT NOT FOUND org_id %s doc_id %s slug %s",
@@ -906,7 +923,8 @@ def import_document(data, _context=None):
                 exc,
                 retry,
             )
-            time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
+            if retry < 2:
+                time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
     else:
         # Did not succeed after 3 retires, just skip
         logger.info("[UPLOAD JSON TEXT] failed - org_id %s doc_id %s", org_id, doc_id)
