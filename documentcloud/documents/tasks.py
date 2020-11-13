@@ -194,19 +194,19 @@ def finish_update_access(document_pk, status, access):
 # new solr
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     """Index a single, possibly partial document into Solr"""
     solr.index_single(document_pk, solr_document, field_updates, index_text)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_reindex_single(collection_name, document_pk):
     """Re-index a single document into a new Solr collection"""
     solr.reindex_single(collection_name, document_pk)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_index_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
     solr.index_batch(collection_name, document_pks)
