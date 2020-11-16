@@ -201,6 +201,23 @@ def index_batch(collection_name, document_pks):
 
 def index_dirty(before_timestamp=None):
     """Index dirty documents"""
+
+    if before_timestamp is None:
+        timestamp = timezone.now().isoformat()
+        status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=None)
+        if status != timestamp:
+            logger.info(
+                "[SOLR INDEX] dirty run not starting, already in progress: %s", status
+            )
+            # a previous run is still running, do not run two in parallel
+            return
+
+    status = cache.get("solr_index_dirty_status")
+    if status == "cancel":
+        # allow for an explicit cancellation of the process
+        logger.info("[SOLR INDEX] dirty run cancelled")
+        return
+
     documents, after_timestamp = _dirty_prepare_documents(before_timestamp)
     _batch_by_size(None, documents)
     _dirty_check_remaining(after_timestamp)
@@ -479,3 +496,6 @@ def _dirty_check_remaining(before_timestamp):
         celery_app.send_task(
             "documentcloud.documents.tasks.solr_index_dirty", args=[before_timestamp]
         )
+    else:
+        logger.info("[SOLR INDEX] done with dirty indexing")
+        cache.delete("solr_index_dirty_status")
