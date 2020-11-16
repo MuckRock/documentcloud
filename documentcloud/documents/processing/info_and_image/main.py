@@ -779,7 +779,7 @@ def start_import(data, _context=None):
 
 @pubsub_function_import(REDIS, FINISH_IMPORT_TOPIC)
 def import_document(data, _context=None):
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     """All-in-one function that handles the import process for a single document."""
     data = get_pubsub_data(data)
     org_id = data["org_id"]
@@ -817,8 +817,7 @@ def import_document(data, _context=None):
                     )
                     if retry == 2:
                         raise exc
-                    else:
-                        time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
+                    time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
     except (ValueError, AssertionError, ClientError):
         # document was not found
         logger.info(
