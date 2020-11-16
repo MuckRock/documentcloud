@@ -213,12 +213,24 @@ def solr_index_batch(collection_name, document_pks):
 
 
 @periodic_task(run_every=crontab(minute=30))
-def solr_index_dirty(before_timestamp=None):
+def solr_index_dirty(timestamp=None):
     """Index dirty documents"""
-    solr.index_dirty(before_timestamp)
+    solr.index_dirty(timestamp)
+
+
+@task
+def solr_index_dirty_continue(timestamp):
+    """Continue indexing dirty documents"""
+    solr.index_dirty_continue(timestamp)
 
 
 @task
 def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """Re-index all documents"""
     solr.reindex_all(collection_name, after_timestamp, delete_timestamp)
+
+
+@task
+def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
+    """Continue re-indexing all documents"""
+    solr.reindex_continue(collection_name, after_timestamp, delete_timestamp)

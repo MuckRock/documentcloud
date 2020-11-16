@@ -19,6 +19,7 @@ There are three basic types of re-indexing:
     batch logic with dirty indexing
 """
 # Django
+from celery import chord, signature
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
@@ -199,10 +200,10 @@ def index_batch(collection_name, document_pks):
         Document.objects.filter(pk__in=document_pks).update(solr_dirty=False)
 
 
-def index_dirty(before_timestamp=None):
+def index_dirty(timestamp=None):
     """Index dirty documents"""
 
-    if before_timestamp is None:
+    if timestamp is None:
         timestamp = timezone.now().isoformat()
         status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=None)
         if status != timestamp:
@@ -218,11 +219,18 @@ def index_dirty(before_timestamp=None):
         logger.info("[SOLR INDEX] dirty run cancelled")
         return
 
-    documents, after_timestamp = _dirty_prepare_documents(before_timestamp)
-    _batch_by_size(None, documents)
-    _dirty_check_remaining(after_timestamp)
+    documents = _dirty_prepare_documents()
+    tasks = _batch_by_size(None, documents)
+    chord(
+        tasks,
+        signature(
+            "documentcloud.documents.tasks.solr_index_dirty_continue",
+            args=[timestamp],
+            immutable=True,
+        ),
+    ).delay()
 
-    if before_timestamp is None:
+    if timestamp is None:
         # on initial invocation, kick off dirty deletion
         deleted = Document.objects.filter(status=Status.deleted).values_list(
             "pk", flat=True
@@ -233,6 +241,25 @@ def index_dirty(before_timestamp=None):
             celery_app.send_task(
                 "documentcloud.documents.tasks.solr_delete", args=[document_pk]
             )
+
+
+def index_dirty_continue(timestamp):
+    """Continue indexing dirty documents if any remaining"""
+    # check how many documents we have left to re-index
+    documents_left = (
+        Document.objects.exclude(status=Status.deleted).filter(solr_dirty=True).count()
+    )
+    if documents_left > 0:
+        # if there are any documents left continue re-indexing
+        logger.info(
+            "[SOLR INDEX] continuing with %d dirty documents left", documents_left
+        )
+        celery_app.send_task(
+            "documentcloud.documents.tasks.solr_index_dirty", args=[timestamp]
+        )
+    else:
+        logger.info("[SOLR INDEX] done with dirty indexing")
+        cache.delete("solr_index_dirty_status")
 
 
 def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
@@ -246,8 +273,62 @@ def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
         delete_timestamp = timezone.now()
 
     documents, before_timestamp = _reindex_prepare_documents(after_timestamp)
-    _batch_by_size(collection_name, documents)
-    _reindex_check_remaining(collection_name, before_timestamp, delete_timestamp)
+    tasks = _batch_by_size(collection_name, documents)
+    chord(
+        tasks,
+        signature(
+            "documentcloud.documents.tasks.solr_reindex_continue",
+            args=[collection_name, before_timestamp, delete_timestamp],
+            immutable=True,
+        ),
+    ).delay()
+
+
+def reindex_continue(collection_name, after_timestamp, delete_timestamp):
+    """Check how many documents are remaining and decide it we should continue
+    reindexing
+    """
+    # check how many documents we have left to re-index
+    documents_left = (
+        Document.objects.exclude(status=Status.deleted)
+        .filter(updated_at__gt=after_timestamp)
+        .count()
+    )
+    if (
+        documents_left > settings.SOLR_INDEX_LIMIT
+        and (timezone.now() - after_timestamp).total_seconds()
+        > settings.SOLR_INDEX_CATCHUP_SECONDS
+    ):
+        # if there are many documents left and we are not too close to the current time
+        # continue re-indexing
+        logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
+        celery_app.send_task(
+            "documentcloud.documents.tasks.solr_reindex_all",
+            args=[collection_name, after_timestamp, delete_timestamp],
+        )
+    else:
+        logger.info(
+            "[SOLR REINDEX] done, re-index all documents updated after %s, "
+            "delete all documents after %s",
+            after_timestamp,
+            delete_timestamp,
+        )
+        update_alias(collection_name)
+
+        # mark all remaining documents as dirty and begin re-indexing them
+        Document.objects.exclude(status=Status.deleted).filter(
+            updated_at__gt=after_timestamp
+        ).update(solr_dirty=True)
+        celery_app.send_task("documentcloud.documents.tasks.solr_index_dirty")
+
+        # delete all documents from the new solr collection that were deleted since
+        # we started re-indexing
+        for document in DeletedDocument.objects.filter(
+            created_at__gte=delete_timestamp
+        ):
+            celery_app.send_task(
+                "documentcloud.documents.tasks.solr_delete", args=[document.pk]
+            )
 
 
 # Private functions
@@ -336,20 +417,25 @@ def _batch_by_size(collection_name, documents):
 
     batch = []
     batch_size = 0
+    tasks = []
     for document, size in docs_with_sizes:
         if size > settings.SOLR_INDEX_MAX_SIZE:
             logger.info(
                 "[SOLR INDEX] batching single document %s size %s", document["pk"], size
             )
-            celery_app.send_task(
-                "documentcloud.documents.tasks.solr_reindex_single",
-                args=[collection_name, document["pk"]],
+            tasks.append(
+                signature(
+                    "documentcloud.documents.tasks.solr_reindex_single",
+                    args=[collection_name, document["pk"]],
+                )
             )
         elif batch_size + size > settings.SOLR_INDEX_MAX_SIZE:
             logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
-            celery_app.send_task(
-                "documentcloud.documents.tasks.solr_index_batch",
-                args=[collection_name, batch],
+            tasks.append(
+                signature(
+                    "documentcloud.documents.tasks.solr_index_batch",
+                    args=[collection_name, batch],
+                )
             )
             batch = [document["pk"]]
             batch_size = size
@@ -358,9 +444,13 @@ def _batch_by_size(collection_name, documents):
             batch_size += size
 
     logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
-    celery_app.send_task(
-        "documentcloud.documents.tasks.solr_index_batch", args=[collection_name, batch]
+    tasks.append(
+        signature(
+            "documentcloud.documents.tasks.solr_index_batch",
+            args=[collection_name, batch],
+        )
     )
+    return tasks
 
 
 ## Re-index all
@@ -394,108 +484,23 @@ def _reindex_prepare_documents(after_timestamp):
     return documents, before_timestamp
 
 
-def _reindex_check_remaining(collection_name, after_timestamp, delete_timestamp):
-    """Check how many documents are remaining and decide it we should continue
-    reindexing
-    """
-    # check how many documents we have left to re-index
-    documents_left = (
-        Document.objects.exclude(status=Status.deleted)
-        .filter(updated_at__gt=after_timestamp)
-        .count()
-    )
-    if (
-        documents_left > settings.SOLR_INDEX_LIMIT
-        and (timezone.now() - after_timestamp).total_seconds()
-        > settings.SOLR_INDEX_CATCHUP_SECONDS
-    ):
-        # if there are many documents left and we are not too close to the current time
-        # continue re-indexing
-        logger.info("[SOLR REINDEX] continuing with %d documents left", documents_left)
-        celery_app.send_task(
-            "documentcloud.documents.tasks.solr_reindex_all",
-            args=[collection_name, after_timestamp, delete_timestamp],
-        )
-    else:
-        logger.info(
-            "[SOLR REINDEX] done, re-index all documents updated after %s, "
-            "delete all documents after %s",
-            after_timestamp,
-            delete_timestamp,
-        )
-        update_alias(collection_name)
-
-        # mark all remaining documents as dirty and begin re-indexing them
-        Document.objects.exclude(status=Status.deleted).filter(
-            updated_at__gt=after_timestamp
-        ).update(solr_dirty=True)
-        celery_app.send_task("documentcloud.documents.tasks.solr_index_dirty")
-
-        # delete all documents from the new solr collection that were deleted since
-        # we started re-indexing
-        for document in DeletedDocument.objects.filter(
-            created_at__gte=delete_timestamp
-        ):
-            celery_app.send_task(
-                "documentcloud.documents.tasks.solr_delete", args=[document.pk]
-            )
-
-
 ## Dirty indexing
 
 
-def _dirty_prepare_documents(before_timestamp):
+def _dirty_prepare_documents():
     """Prepare which dirty documents will be indexed in this batch"""
     documents = (
         Document.objects.filter(solr_dirty=True)
         .exclude(status=Status.deleted)
         .order_by("-created_at")
     ).values("pk", "slug")
-    if before_timestamp:
-        documents = documents.filter(created_at__lt=before_timestamp)
 
-    # we want to index about SOLR_INDEX_LIMIT documents at a time per worker
-    # grab the timestamp from the document that many documents from the beginning
-    # then we will filter for all documents before or equal to that timestamp
-    # this ensures we do not miss any documents due to multiple documents
-    # with equal created_at timestamps
     full_count = documents.count()
-    if full_count > settings.SOLR_INDEX_LIMIT:
-        after_timestamp = documents.values_list("created_at", flat=True)[
-            settings.SOLR_INDEX_LIMIT - 1
-        ]
-        documents = documents.filter(created_at__gte=after_timestamp)
-    else:
-        after_timestamp = None
+    documents = documents[: settings.SOLR_INDEX_LIMIT]
     logger.info(
         "[SOLR INDEX] indexing %d dirty documents now, %d documents left to "
         "re-index in total",
         len(list(documents)),
         full_count,
     )
-    return documents, after_timestamp
-
-
-def _dirty_check_remaining(before_timestamp):
-    """Continue indexing dirty documents if any remaining"""
-    # check how many documents we have left to re-index
-    if before_timestamp is None:
-        # no documents left
-        return
-
-    documents_left = (
-        Document.objects.exclude(status=Status.deleted)
-        .filter(solr_dirty=True, created_at__lt=before_timestamp)
-        .count()
-    )
-    if documents_left > 0:
-        # if there are any documents left continue re-indexing
-        logger.info(
-            "[SOLR INDEX] continuing with %d dirty documents left", documents_left
-        )
-        celery_app.send_task(
-            "documentcloud.documents.tasks.solr_index_dirty", args=[before_timestamp]
-        )
-    else:
-        logger.info("[SOLR INDEX] done with dirty indexing")
-        cache.delete("solr_index_dirty_status")
+    return documents
