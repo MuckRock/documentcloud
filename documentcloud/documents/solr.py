@@ -162,6 +162,11 @@ def reindex_single(collection_name, document_pk):
 
     _index_solr_document(solr, solr_document)
 
+    if collection_name is None:
+        # if we are indexing into the default collection, clear the dirty flag after
+        # a succesful index
+        Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+
 
 def index_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
