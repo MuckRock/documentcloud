@@ -113,6 +113,14 @@ http {
         <% end %>
     }
 
+    map $http_origin $cors_max_age {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "1728000";
+        <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
+          "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "1728000";
+        <% end %>
+    }
+
     server {
 
         listen <%= ENV["PORT"] %>;
@@ -127,11 +135,9 @@ http {
         add_header "Access-Control-Allow-Credentials" $cors_cred;
         add_header "Access-Control-Allow-Methods" $cors_methods;
         add_header "Access-Control-Allow-Headers" $cors_headers;
+        add_header 'Access-Control-Max-Age' $cors_max_age;
 
         if ($request_method = 'OPTIONS' ) {
-            add_header 'Access-Control-Max-Age' 1728000;
-            add_header 'Content-Type' 'text/plain charset=UTF-8';
-            add_header 'Content-Length' 0;
             return 204 no-content;
         }
 
