@@ -12,7 +12,7 @@ mypy
 pytest
 pytest-sugar
 pytest-mock
--e git://github.com/elritsch/python-sharedmock#egg=python-sharedmock
+-e git://github.com/elritsch/python-sharedmock#egg=sharedmock
 
 # Code quality
 # ------------------------------------------------------------------------------
@@ -26,7 +26,6 @@ pylint-celery
 # ------------------------------------------------------------------------------
 factory-boy
 
-django-debug-toolbar
 django-coverage-plugin
 pytest-django
 fakeredis

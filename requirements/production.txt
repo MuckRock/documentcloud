@@ -40,6 +40,7 @@ django-celery-beat==1.5.0  # via -r requirements/./base.txt
 django-choices==1.7.0     # via -r requirements/./base.txt
 django-compressor==2.3    # via -r requirements/./base.txt
 django-cors-headers==3.1.0  # via -r requirements/./base.txt
+django-debug-toolbar==3.1.1  # via -r requirements/./base.txt
 django-environ==0.4.5     # via -r requirements/./base.txt
 django-extensions==2.2.5  # via -r requirements/./base.txt
 django-filter==2.2.0      # via -r requirements/./base.txt
@@ -49,7 +50,7 @@ django-redis==4.10.0      # via -r requirements/./base.txt, python-redis-lock
 django-reversion==3.0.4   # via -r requirements/./base.txt
 django-storages[boto3]==1.7.1  # via -r requirements/production.in, collectfast
 django-timezone-field==3.0  # via -r requirements/./base.txt, django-celery-beat
-django==2.2.5             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
+django==2.2.5             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/./base.txt
 djangorestframework==3.11.0  # via -r requirements/./base.txt, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
 docutils==0.15.2          # via -r requirements/./base.txt, botocore
@@ -134,7 +135,7 @@ six==1.12.0               # via -r requirements/./base.txt, argon2-cffi, cryptog
 smart-open==1.8.4         # via -r requirements/./base.txt
 social-auth-app-django==3.1.0  # via -r requirements/./base.txt, rest-social-auth
 social-auth-core[openidconnect]==3.2.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth
-sqlparse==0.3.0           # via -r requirements/./base.txt, django
+sqlparse==0.3.0           # via -r requirements/./base.txt, django, django-debug-toolbar
 squarelet-auth==0.0.45    # via -r requirements/./base.txt
 text-unidecode==1.2       # via -r requirements/./base.txt, python-slugify
 traitlets==4.3.3          # via -r requirements/./base.txt, ipython
