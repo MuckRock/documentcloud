@@ -10,6 +10,7 @@ from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
 from documentcloud.documents.choices import Access, Status
+from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.users.models import User
 
 
@@ -18,13 +19,20 @@ class DocumentQuerySet(models.QuerySet):
 
     def get_viewable(self, user):
         if user.is_authenticated:
+
+            projects = list(user.projects.all())
             query = (
                 # you may see public documents in a viewable state
                 Q(access=Access.public, status__in=[Status.success, Status.readable])
                 # you can see documents you own
                 | Q(user=user)
                 # you may see documents in your projects
-                | Q(projects__collaborators=user, projectmembership__edit_access=True)
+                # written this way for performance
+                | Q(
+                    id__in=self.model.objects.filter(
+                        projects__in=projects, projectmembership__edit_access=True
+                    )
+                )
                 # you can see organization level documents in your
                 # organization
                 | Q(
@@ -36,7 +44,6 @@ class DocumentQuerySet(models.QuerySet):
                 self.exclude(access=Access.invisible)
                 .exclude(status=Status.deleted)
                 .filter(query)
-                .distinct()
             )
         else:
             return self.filter(
@@ -45,11 +52,25 @@ class DocumentQuerySet(models.QuerySet):
 
     def get_editable(self, user):
         if user.is_authenticated:
+            # only get the user's projects where they have edit access
+            projects = list(
+                user.projects.filter(
+                    collaboration__access__in=(
+                        CollaboratorAccess.admin,
+                        CollaboratorAccess.edit,
+                    )
+                )
+            )
             query = (
                 # you can edit documents you own
                 Q(user=user)
                 # you may edit documents in your projects shared for editing
-                | Q(projects__collaborators=user, projectmembership__edit_access=True)
+                # written this way for performance
+                | Q(
+                    id__in=self.model.objects.filter(
+                        projects__in=projects, projectmembership__edit_access=True
+                    )
+                )
                 # you can edit organization level documents in your
                 # organization
                 | Q(
