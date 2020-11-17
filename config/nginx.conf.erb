@@ -80,6 +80,31 @@ http {
     proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header   X-Forwarded-Host $server_name;
 
+    # CORs settings
+    map $http_origin $cors_origin_header {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "$http_origin";
+        "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "$http_origin";
+    }
+
+    map $http_origin $cors_cred {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "true";
+        "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "true";
+    }
+
+    map $http_origin $cors_methods {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "DELETE, GET, OPTIONS, PATCH, POST, PUT";
+        "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "DELETE, GET, OPTIONS, PATCH, POST, PUT";
+    }
+
+    map $http_origin $cors_headers {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with";
+        "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with";
+    }
+
     server {
 
         listen <%= ENV["PORT"] %>;
@@ -88,6 +113,18 @@ http {
         limit_req zone=one burst=20 nodelay;
         if ($http_host ~ "\.$" ){
             rewrite ^(.*) $scheme://$host$1 permanent;
+        }
+
+        add_header "Access-Control-Allow-Origin" $cors_origin_header always;
+        add_header "Access-Control-Allow-Credentials" $cors_cred;
+        add_header "Access-Control-Allow-Methods" $cors_methods;
+        add_header "Access-Control-Allow-Headers" $cors_headers;
+
+        if ($request_method = 'OPTIONS' ) {
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 204 no-content;
         }
 
         location / {

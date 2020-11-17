@@ -8,10 +8,12 @@ import json
 import logging
 import pickle
 import time
+from random import randint
 
 # Third Party
 import environ
 import redis
+from botocore.exceptions import ClientError
 from listcrunch import crunch_collection
 from PIL import Image
 
@@ -382,7 +384,7 @@ def process_page_cache(data, _context=None):
             # If only dirty pages are flagged, process the relevant ones in batches
             dirty = sorted(dirty)
             for i in range(0, len(dirty), IMAGE_BATCH):
-                pages = [dirty[i] for i in range(0, min(IMAGE_BATCH, len(dirty)))]
+                pages = [dirty[j] for j in range(i, min(i + IMAGE_BATCH, len(dirty)))]
                 pub(pages)
         else:
             # Otherwise, process all pages in batches
@@ -777,7 +779,7 @@ def start_import(data, _context=None):
 
 @pubsub_function_import(REDIS, FINISH_IMPORT_TOPIC)
 def import_document(data, _context=None):
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     """All-in-one function that handles the import process for a single document."""
     data = get_pubsub_data(data)
     org_id = data["org_id"]
@@ -799,8 +801,24 @@ def import_document(data, _context=None):
             cached = pdf_file.cache
 
             # Write the index file
-            write_cache(path.index_path(doc_id, slug), cached)
-    except (ValueError, AssertionError):
+            # simple retry for s3 errors
+            for retry in range(3):
+                try:
+                    write_cache(path.index_path(doc_id, slug), cached)
+                    break
+                except ClientError as exc:
+                    # sleep 1-2 seconds, 2-4 second between retries
+                    logger.info(
+                        "[WRITE CACHE] org_id %s doc_id %s exc %s retry %s",
+                        org_id,
+                        doc_id,
+                        exc,
+                        retry,
+                    )
+                    if retry == 2:
+                        raise exc
+                    time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
+    except (ValueError, AssertionError, ClientError):
         # document was not found
         logger.info(
             "[IMPORT DOCUMENT] DOCUMENT NOT FOUND org_id %s doc_id %s slug %s",
@@ -885,11 +903,30 @@ def import_document(data, _context=None):
     }
 
     # Write the json text file
-    storage.simple_upload(
-        path.json_text_path(doc_id, slug),
-        json.dumps(page_texts_json).encode("utf-8"),
-        access=access_choices.PRIVATE,
-    )
+    # Seeing occasional S3 slow down errors here
+    # do a simple retry with exponential back off
+    for retry in range(3):
+        try:
+            storage.simple_upload(
+                path.json_text_path(doc_id, slug),
+                json.dumps(page_texts_json).encode("utf-8"),
+                access=access_choices.PRIVATE,
+            )
+            break
+        except ClientError as exc:
+            # sleep 1-2 seconds, 2-4 second, 4-8 seconds between retries
+            logger.info(
+                "[UPLOAD JSON TEXT] org_id %s doc_id %s exc %s retry %s",
+                org_id,
+                doc_id,
+                exc,
+                retry,
+            )
+            if retry < 2:
+                time.sleep(randint(2 ** retry, 2 ** (retry + 1)))
+    else:
+        # Did not succeed after 3 retires, just skip
+        logger.info("[UPLOAD JSON TEXT] failed - org_id %s doc_id %s", org_id, doc_id)
 
     # STEP 6: Call finish import
     publisher.publish(
@@ -944,7 +981,7 @@ def finish_import(data, _context=None):
 
         # Write the new pagespec-enhanced CSV
         with storage.open(path.import_org_pagespec_csv(org_id), "w") as new_csv_file:
-            csvwriter = csv.writer(new_csv_file)
+            csvwriter = csv.writer(new_csv_file, quoting=csv.QUOTE_ALL)
             for row in rows:
                 csvwriter.writerow(row)
                 logger.info("[FINISH IMPORT] WRITING CSV row %s", row)

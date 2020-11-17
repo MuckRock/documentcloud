@@ -729,7 +729,9 @@ class Command(BaseCommand):
                     )
                 )
 
-            ProjectMembership.objects.bulk_create(create_pms, batch_size=1000)
+            ProjectMembership.objects.bulk_create(
+                create_pms, batch_size=1000, ignore_conflicts=True
+            )
 
         self.stdout.write("End Project Memberships Import {}".format(timezone.now()))
 

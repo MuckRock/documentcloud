@@ -382,7 +382,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         query = request.query_params.get("q", "*:*")
         try:
             results = SOLR.search(
-                query, fq=f"id:{pk}", **{"hl.snippets": settings.SOLR_HL_SNIPPETS}
+                query,
+                fq=f"id:{pk}",
+                **{"hl.snippets": settings.SOLR_HL_SNIPPETS, "hl.fl": "page_no_*"},
             )
         except pysolr.SolrError as exc:
             logger.error(

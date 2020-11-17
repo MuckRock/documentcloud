@@ -335,7 +335,6 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = env.int(
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int(
     "CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=20 * 1024
 )
-CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
 
 # django-compressor
 # ------------------------------------------------------------------------------
@@ -396,6 +395,7 @@ CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org
 
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
+# Configure nginx.conf.erb if you change this
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL, DOCCLOUD_EMBED_URL]
 # This enables cookies
 CORS_ALLOW_CREDENTIALS = True
@@ -468,6 +468,7 @@ else:
 SOLR_INDEX_LIMIT = env.int("SOLR_INDEX_LIMIT", default=100)
 SOLR_INDEX_CATCHUP_SECONDS = env.int("SOLR_INDEX_CATCHUP_SECONDS", default=300)
 SOLR_INDEX_MAX_SIZE = env.int("SOLR_INDEX_MAX_SIZE", default=18 * 1024 * 1024)
+SOLR_RETRY_BACKOFF = env.int("SOLR_RETRY_BACKOFF", default=300)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
 SOLR_USE_HL = env("SOLR_USE_HL", default="off")
 

@@ -194,31 +194,43 @@ def finish_update_access(document_pk, status, access):
 # new solr
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     """Index a single, possibly partial document into Solr"""
     solr.index_single(document_pk, solr_document, field_updates, index_text)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_reindex_single(collection_name, document_pk):
     """Re-index a single document into a new Solr collection"""
     solr.reindex_single(collection_name, document_pk)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_index_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
     solr.index_batch(collection_name, document_pks)
 
 
 @periodic_task(run_every=crontab(minute=30))
-def solr_index_dirty(before_timestamp=None):
+def solr_index_dirty(timestamp=None):
     """Index dirty documents"""
-    solr.index_dirty(before_timestamp)
+    solr.index_dirty(timestamp)
+
+
+@task
+def solr_index_dirty_continue(timestamp):
+    """Continue indexing dirty documents"""
+    solr.index_dirty_continue(timestamp)
 
 
 @task
 def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """Re-index all documents"""
     solr.reindex_all(collection_name, after_timestamp, delete_timestamp)
+
+
+@task
+def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
+    """Continue re-indexing all documents"""
+    solr.reindex_continue(collection_name, after_timestamp, delete_timestamp)

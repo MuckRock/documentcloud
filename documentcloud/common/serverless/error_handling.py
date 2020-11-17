@@ -12,6 +12,7 @@ from functools import wraps
 # Third Party
 import environ
 from pebble import concurrent
+from pebble.common import ProcessExpired
 
 # Local
 from .. import redis_fields
@@ -108,8 +109,10 @@ def pubsub_function_import(redis, finish_pubsub_topic):
             try:
                 # Run the function as originally intended
                 return future.result()
-            except futures.TimeoutError:
-                # if we timeout, skip to finish import
+            except (futures.TimeoutError, ProcessExpired, MemoryError):
+                # if we timeout or have, skip to finish import
+                # sometimes we have odd ProcessExpired exceptions - just skip
+                # if the doc is too large and causes a memory error, skip
                 redis.hset(redis_fields.import_pagespecs(org_id), doc_id, "")
                 publisher.publish(
                     finish_pubsub_topic,

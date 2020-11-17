@@ -3,7 +3,8 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.http.response import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import View
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
 
 # Standard Library
 from urllib.parse import urlencode
@@ -13,7 +14,9 @@ from documentcloud.common.environment import storage
 from documentcloud.documents.models import Document
 
 
-class FileServer(View):
+class FileServer(APIView):
+    permission_classes = (AllowAny,)
+
     def get(self, request, *args, **kwargs):
         # pylint: disable=unused-argument
         document = get_object_or_404(
