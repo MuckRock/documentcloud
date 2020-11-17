@@ -96,6 +96,11 @@ urlpatterns = [
     path("pages/", include("django.contrib.flatpages.urls")),
 ]
 
+if "debug_toolbar" in settings.INSTALLED_APPS:
+    import debug_toolbar
+
+    urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
+
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
     # these url in browser to see how these error pages look like.
@@ -117,7 +122,3 @@ if settings.DEBUG:
         ),
         path("500/", default_views.server_error),
     ]
-    if "debug_toolbar" in settings.INSTALLED_APPS:
-        import debug_toolbar
-
-        urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
