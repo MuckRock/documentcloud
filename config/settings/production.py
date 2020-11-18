@@ -197,6 +197,7 @@ sentry_logging = LoggingIntegration(
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[sentry_logging, DjangoIntegration(), CeleryIntegration()],
+    send_default_pii=True,
 )
 
 # django-debug-toolbar
