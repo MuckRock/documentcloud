@@ -134,7 +134,7 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
         else:
             solr_document = document.solr(index_text=index_text)
 
-    _index_solr_document(SOLR, solr_document)
+    _index_solr_document(SOLR, solr_document, field_updates)
 
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
@@ -341,20 +341,34 @@ def reindex_continue(collection_name, after_timestamp, delete_timestamp):
 ## Single indexing
 
 
-def _index_solr_document(solr, solr_document):
+def _index_solr_document(solr, solr_document, field_updates=None):
     """Index a single prepared solr document"""
     document_pk = solr_document["id"]
     logger.info(
-        "[SOLR INDEX] indexing document %s - %s",
+        "[SOLR INDEX] indexing document %s - %s - %s",
         document_pk,
         solr_document.get("title", ""),
+        field_updates,
     )
 
+    # This code assumes that if field_updates is set, the document will
+    # be less than the max size - this is because field updates is only set
+    # when updating a subset of the metadata fields, and the document
+    # should only ever be over the max size when doing a full text index
     if document_size(solr_document) < settings.SOLR_INDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
-        solr.add([solr_document])
+        solr.add([solr_document], fieldUpdates=field_updates)
         logger.info("[SOLR INDEX] indexing document %s - done", document_pk)
         return
+
+    if field_updates is not None:
+        logger.error(
+            "[SOLR INDEX] large solr document with field_update set - "
+            "document_pk: %s field_updates: %s document_size: %s",
+            document_pk,
+            field_updates,
+            document_size(solr_document),
+        )
 
     # first index the non page text fields
     logger.info("[SOLR INDEX] indexing large document non page fields")
