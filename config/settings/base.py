@@ -439,7 +439,8 @@ UPDATE_ACCESS_CHUNK_SIZE = env.int("UPDATE_ACCESS_CHUNK_SIZE", default=500)
 
 # Solr
 # ------------------------------------------------------------------------------
-SOLR_BASE_URL = env("SOLR_BASE_URL", default="http://documentcloud_solr:8983/solr/")
+SOLR_HOST_URL = env("SOLR_HOST_URL", default="http://documentcloud_solr:8983/")
+SOLR_BASE_URL = SOLR_HOST_URL + "solr/"
 SOLR_COLLECTION_NAME = env("SOLR_COLLECTION_NAME", default="documentcloud")
 SOLR_URL = SOLR_BASE_URL + SOLR_COLLECTION_NAME
 
