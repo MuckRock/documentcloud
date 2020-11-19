@@ -140,6 +140,8 @@
     <field name="created_at" type="pdate" uninvertible="false" indexed="true" stored="true" docValues="true" />
     <field name="description" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false" termVectors="true" storeOffsetsWithPositions="true" />
     <field name="language" type="string" uninvertible="true" indexed="true" stored="true"/>
+    <field name="original_extension" type="string" uninvertible="true" indexed="true" stored="true"/>
+    <field name="file_hash" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="organization" type="pint" uninvertible="true" indexed="true" stored="true"/>
     <field name="page_count" type="pint" uninvertible="false" indexed="true" stored="true" docValues="true" />
     <field name="projects" type="pints" uninvertible="true" indexed="true" stored="true"/>

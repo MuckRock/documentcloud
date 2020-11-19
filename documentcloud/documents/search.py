@@ -17,6 +17,7 @@ from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
+from documentcloud.documents.models import Document
 from documentcloud.documents.search_escape import escape
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
@@ -105,7 +106,7 @@ def search(user, query_params):
     }
 
     results = SOLR.search(text_query, **kwargs)
-    response = _format_response(results, query_params, page, rows, escaped)
+    response = _format_response(results, query_params, user, page, rows, escaped)
 
     if settings.DEBUG:
         response["debug"] = {"text_query": text_query, **kwargs}
@@ -417,7 +418,7 @@ def _paginate(query_params):
     return rows, start, page
 
 
-def _format_response(results, query_params, page, per_page, escaped):
+def _format_response(results, query_params, user, page, per_page, escaped):
     """Emulate the Django Rest Framework response format"""
     base_url = settings.DOCCLOUD_API_URL + reverse("document-search")
     query_params = query_params.copy()
@@ -438,7 +439,9 @@ def _format_response(results, query_params, page, per_page, escaped):
     expands = query_params.get("expand", "").split(",")
     count = results.hits
 
-    results = _add_asset_url(_format_data(_format_highlights(results)))
+    results = _add_edit_access(
+        user, _add_asset_url(_format_data(_format_highlights(results)))
+    )
     if "user" in expands:
         results = _expand_users(results)
     if "organization" in expands:
@@ -493,6 +496,22 @@ def _add_asset_url(results):
             result["asset_url"] = settings.PUBLIC_ASSET_URL
         else:
             result["asset_url"] = settings.PRIVATE_ASSET_URL
+    return results
+
+
+def _add_edit_access(user, results):
+    """Add edit_access to results"""
+    ids = [r["id"] for r in results]
+    editable_documents = [
+        str(id_)
+        for id_ in Document.objects.get_editable(user)
+        .filter(id__in=ids)
+        .values_list("id", flat=True)
+    ]
+    for result in results:
+        # access and status should always be available, re-index if they are not
+        result["edit_access"] = result["id"] in editable_documents
+
     return results
 
 

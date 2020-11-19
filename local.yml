@@ -72,6 +72,7 @@ services:
     volumes:
       - local_solr_data:/var/solr
       - ./config/solr:/config
+      - ./config/solr/lib:/opt/solr-8.3.0/lib
     command:
       - solr-precreate
       - documentcloud
@@ -84,6 +85,7 @@ services:
     volumes:
       - local_solr_test_data:/var/solr
       - ./config/solr:/config
+      - ./config/solr/lib:/opt/solr-8.3.0/lib
     command:
       - solr-precreate
       - documentcloud_test
