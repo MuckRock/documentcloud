@@ -83,8 +83,13 @@ def _solr_admin_request(method, url, data, name):
     session = requests.Session()
     session.verify = settings.SOLR_VERIFY
     data["wt"] = "json"
+    if method == "post":
+        # post using json
+        kwargs = {"json": data}
+    else:
+        kwargs = {"data": data}
     response = getattr(session, method)(
-        url, data=data, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD)
+        url, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD), **kwargs
     )
     if response.status_code == 200:
         logger.info("[SOLR REINDEX] %s: success", name)
