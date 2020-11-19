@@ -1706,13 +1706,15 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 <str name="hl.offsetSource">POSTINGS_WITH_TERM_VECTORS</str>
                 <str name="hl.method">unified</str>		
                 <str name="fl">
-                  id
                   access
                   created_at
                   data_*
                   description
+                  file_hash
+                  id
                   language
                   organization
+                  original_extension
                   page_count
                   projects
                   slug

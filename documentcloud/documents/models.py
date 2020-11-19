@@ -359,6 +359,8 @@ class Document(models.Model):
             "page_count": self.page_count,
             "projects": project_ids,
             "projects_edit_access": project_edit_access_ids,
+            "original_extension": self.original_extension,
+            "file_hash": self.file_hash,
             **pages,
             **data,
         }

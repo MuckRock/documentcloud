@@ -12,7 +12,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+lib/*
 lib64/
 parts/
 sdist/
@@ -294,3 +294,7 @@ awsbin/
 template.yaml
 packaged.yaml
 *.traineddata
+
+# solr
+!config/solr/lib/*
+
