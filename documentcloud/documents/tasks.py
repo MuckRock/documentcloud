@@ -1,15 +1,12 @@
 # Django
 from celery import chord
-from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
-from django.core.cache import cache
 from django.db import transaction
 
 # Standard Library
 import logging
-import sys
 
 # Third Party
 import pysolr
@@ -18,6 +15,7 @@ from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
+from documentcloud.documents import solr
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import SOLR
@@ -193,132 +191,46 @@ def finish_update_access(document_pk, status, access):
         )
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+# new solr
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
-    """Index a document into solr"""
-    logger.info(
-        "indexing document %d, fields %s, text %s",
-        document_pk,
-        field_updates,
-        index_text,
-    )
-    if field_updates is not None and "data" in field_updates:
-        # update all fields if data was updated to ensure we remove any data keys
-        # from solr which were removed from the document
-        field_updates = None
-    if solr_document is None:
-        try:
-            document = Document.objects.get(pk=document_pk)
-        except Document.DoesNotExist:
-            # if document no longer exists, just skip
-            return
-
-        if index_text and document.page_count > settings.SOLR_PAGE_INDEX_LIMIT:
-            # if we are indexing text for a large document, we will break it up into
-            # chunks to send to solr, so we do not time out
-            logger.info(
-                "indexing: document %d too large (%d pages), chunking",
-                document_pk,
-                document.page_count,
-            )
-            tasks = []
-            for i in range(1, document.page_count + 1, settings.SOLR_PAGE_INDEX_LIMIT):
-                tasks.append(solr_index_pages.s(document_pk, i))
-            chord(tasks, finish_solr_index_pages.si(document_pk)).delay()
-            # we will index the non-page fields here
-            solr_document = document.solr(index_text=False)
-            SOLR.add([solr_document])
-            # do not mark solr_dirty as False into all pages have been indexed
-            return
-
-        if field_updates:
-            solr_document = document.solr(field_updates.keys(), index_text=index_text)
-        else:
-            solr_document = document.solr(index_text=index_text)
-
-    SOLR.add([solr_document], fieldUpdates=field_updates)
-
-    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+    """Index a single, possibly partial document into Solr"""
+    solr.index_single(document_pk, solr_document, field_updates, index_text)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
-def solr_index_pages(document_pk, first_page):
-    """Index a chunk of pages for a document"""
-
-    logger.info("indexing document %d, starting at page %d", document_pk, first_page)
-
-    try:
-        document = Document.objects.get(pk=document_pk)
-    except Document.DoesNotExist:
-        # if document no longer exists, just skip
-        return
-
-    # only update the chunk of pages for this task, leave other fields as is
-    field_updates = {
-        f"page_no_{i}": "set"
-        for i in range(first_page, first_page + settings.SOLR_PAGE_INDEX_LIMIT)
-    }
-    solr_document = document.solr(field_updates.keys(), index_text=True)
-    SOLR.add([solr_document], fieldUpdates=field_updates)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+def solr_reindex_single(collection_name, document_pk):
+    """Re-index a single document into a new Solr collection"""
+    solr.reindex_single(collection_name, document_pk)
 
 
-@task
-def finish_solr_index_pages(document_pk):
-    """Make document as no longer solr dirty after indexing all page chunks"""
-    logger.info("finishing indexing pages %d", document_pk)
-    Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+def solr_index_batch(collection_name, document_pks):
+    """Re-index a batch of documents into a new Solr collection"""
+    solr.index_batch(collection_name, document_pks)
 
 
 @periodic_task(run_every=crontab(minute=30))
-def solr_index_dirty():
-    """Task to try and index all dirty models periodically"""
-    # acquire a lock to ensure we do not try to run this task multiple times
-    # in parallel
-    lock = cache.lock("solr_index_dirty", expire=60, auto_renewal=True)
-    if lock.acquire(blocking=False):
-        try:
-            # check to make sure the solr server is responsive before trying to index
-            try:
-                SOLR.search("*:*")
-            except pysolr.SolrError as exc:
-                logger.error("Solr is down: %s", exc, exc_info=sys.exc_info())
-                return
+def solr_index_dirty(timestamp=None):
+    """Index dirty documents"""
+    solr.index_dirty(timestamp)
 
-            # get the deleted documents and delete them from Solr
-            deleted = Document.objects.filter(status=Status.deleted)
-            deleted_count = deleted.count()
-            logger.info("Solr index dirty: %d documents to delete", deleted_count)
-            deleted_documents = deleted[: settings.SOLR_DIRTY_LIMIT]
-            for document in deleted_documents:
-                solr_delete.delay(document.pk)
 
-            # get the dirty documents and index them
-            dirty = (
-                Document.objects.filter(solr_dirty=True)
-                .exclude(status=Status.deleted)
-                .order_by("-created_at")
-            )
-            dirty_count = dirty.count()
-            logger.info("Solr index dirty: %d documents to index", dirty_count)
-            dirty_documents = dirty[: settings.SOLR_DIRTY_LIMIT]
-            for document in dirty_documents.iterator():
-                logger.info("solr index dirty: reindexing %s", document.pk)
-                # only index the full text if the document is in a successful state
-                solr_index.delay(
-                    document.pk, index_text=document.status == Status.success
-                )
+@task
+def solr_index_dirty_continue(timestamp):
+    """Continue indexing dirty documents"""
+    solr.index_dirty_continue(timestamp)
 
-            # if there were more documents than the limit, continue indexing
-            # after a delay
-            if (
-                deleted_count > settings.SOLR_DIRTY_LIMIT
-                or dirty_count > settings.SOLR_DIRTY_LIMIT
-            ):
-                solr_index_dirty.apply_async(countdown=settings.SOLR_DIRTY_COUNTDOWN)
-        except SoftTimeLimitExceeded:
-            # if we take too long, just run again after a delay
-            solr_index_dirty.apply_async(countdown=settings.SOLR_DIRTY_COUNTDOWN)
-        finally:
-            lock.release()
-    else:
-        logger.info("Solr index dirty failed to acquire the lock")
+
+@task
+def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
+    """Re-index all documents"""
+    solr.reindex_all(collection_name, after_timestamp, delete_timestamp)
+
+
+@task
+def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
+    """Continue re-indexing all documents"""
+    solr.reindex_continue(collection_name, after_timestamp, delete_timestamp)

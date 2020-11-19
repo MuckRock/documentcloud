@@ -220,6 +220,7 @@ class Document(models.Model):
 
         self.status = Status.deleted
         self.save()
+        DeletedDocument.objects.create(pk=self.pk)
         transaction.on_commit(lambda: delete_document_files.delay(self.path))
         transaction.on_commit(lambda: solr_delete.delay(self.pk))
 
@@ -317,9 +318,17 @@ class Document(models.Model):
         fields is a sequence of field names to restrict indexing to
         This is useful when the document has already been indexed, and you just
         need to update a subset of fields
+
+        if index_text is True, fetch all of the page text to index
+        index_text may also be set to the page text data if it has been
+        pre-fetched
         """
-        if index_text:
+        if index_text is True:
             page_text = self.get_all_page_text()
+        elif isinstance(index_text, dict):
+            page_text = index_text
+
+        if index_text:
             pages = {
                 f"page_no_{i}": p["contents"]
                 for i, p in enumerate(page_text["pages"], start=1)
@@ -328,9 +337,10 @@ class Document(models.Model):
             # do not get page text for a partial update, as it is slow and
             # not needed
             pages = {}
-        project_ids = [p.pk for p in self.projects.all()]
+        project_memberships = self.projectmembership_set.all()
+        project_ids = [p.project_id for p in project_memberships]
         project_edit_access_ids = [
-            p.pk for p in self.projects.filter(projectmembership__edit_access=True)
+            p.project_id for p in project_memberships if p.edit_access
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
         solr_document = {
@@ -364,6 +374,27 @@ class Document(models.Model):
             solr_document = new_solr_document
 
         return solr_document
+
+
+class DeletedDocument(models.Model):
+    """If a document is deleted, keep track of it here"""
+
+    id = models.IntegerField(
+        _("id"),
+        primary_key=True,
+        help_text=_("The ID of the document that was deleted"),
+    )
+    created_at = AutoCreatedField(
+        _("created at"),
+        db_index=True,
+        help_text=_("Timestamp of when the document was deleted"),
+    )
+
+    class Meta:
+        ordering = ("created_at",)
+
+    def __str__(self):
+        return str(self.pk)
 
 
 class DocumentError(models.Model):

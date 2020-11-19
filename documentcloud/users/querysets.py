@@ -22,10 +22,15 @@ class UserQuerySet(models.QuerySet):
             # unions are much more performant than complex conditions
             return self.filter(
                 pk__in=self.filter(organizations__in=user.organizations.all())
+                .order_by()
                 .values("pk")
                 .union(
-                    self.filter(projects__in=user.projects.all()).values("pk"),
-                    self.filter(documents__access=Access.public).values("pk"),
+                    self.filter(projects__in=user.projects.all())
+                    .order_by()
+                    .values("pk"),
+                    self.filter(documents__access=Access.public)
+                    .order_by()
+                    .values("pk"),
                 )
             )
         else:

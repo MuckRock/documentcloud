@@ -197,7 +197,23 @@ sentry_logging = LoggingIntegration(
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[sentry_logging, DjangoIntegration(), CeleryIntegration()],
+    send_default_pii=True,
 )
+
+# django-debug-toolbar
+# ------------------------------------------------------------------------------
+# https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#prerequisites
+INSTALLED_APPS += ["debug_toolbar"]  # noqa F405
+# https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#middleware
+MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]  # noqa F405
+# https://django-debug-toolbar.readthedocs.io/en/latest/configuration.html#debug-toolbar-config
+DEBUG_TOOLBAR_CONFIG = {
+    "DISABLE_PANELS": ["debug_toolbar.panels.redirects.RedirectsPanel"],
+    "SHOW_TEMPLATE_CONTEXT": True,
+    "SHOW_TOOLBAR_CALLBACK": lambda request: bool(
+        request.user and request.user.username == "mitch"
+    ),
+}
 
 # Your stuff...
 # ------------------------------------------------------------------------------
@@ -210,3 +226,12 @@ if env("FIXIE_URL", default=""):
     os.environ["https_proxy"] = env("FIXIE_URL")
 
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+
+# Celery
+# ------------------------------------------------------------------------------
+CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
+
+# Scout APM
+# ------------------------------------------------------------------------------
+INSTALLED_APPS = ["scout_apm.django"] + INSTALLED_APPS  # noqa F405
+SCOUT_NAME = env("SCOUT_NAME")

@@ -80,6 +80,47 @@ http {
     proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header   X-Forwarded-Host $server_name;
 
+    # CORs settings
+    map $http_origin $cors_origin_header {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "$http_origin";
+        <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
+          "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "$http_origin";
+        <% end %>
+    }
+
+    map $http_origin $cors_cred {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "true";
+        <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
+          "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "true";
+        <% end %>
+    }
+
+    map $http_origin $cors_methods {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "DELETE, GET, OPTIONS, PATCH, POST, PUT";
+        <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
+          "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "DELETE, GET, OPTIONS, PATCH, POST, PUT";
+        <% end %>
+    }
+
+    map $http_origin $cors_headers {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with";
+        <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
+          "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with";
+        <% end %>
+    }
+
+    map $http_origin $cors_max_age {
+        default "";
+        "<%= ENV["DOCCLOUD_URL"] %>" "1728000";
+        <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
+          "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "1728000";
+        <% end %>
+    }
+
     server {
 
         listen <%= ENV["PORT"] %>;
@@ -91,6 +132,18 @@ http {
         }
 
         location / {
+
+            if ($request_method = 'OPTIONS' ) {
+                add_header "Access-Control-Allow-Origin" $cors_origin_header always;
+                add_header "Access-Control-Allow-Credentials" $cors_cred;
+                add_header "Access-Control-Allow-Methods" $cors_methods;
+                add_header "Access-Control-Allow-Headers" $cors_headers;
+                add_header 'Access-Control-Max-Age' $cors_max_age;
+                add_header Content-Length 0;
+                add_header Content-Type text/plain;
+                return 204;
+            }
+
             proxy_redirect off;
             proxy_pass http://app_server;
         }

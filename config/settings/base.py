@@ -328,6 +328,13 @@ CELERY_IMPORTS = []
 CELERY_REDIS_MAX_CONNECTIONS = env.int("CELERY_REDIS_MAX_CONNECTIONS", default=40)
 CELERY_BROKER_POOL_LIMIT = env.int("CELERY_BROKER_POOL_LIMIT", default=0)
 CELERY_TASK_IGNORE_RESULT = True
+CELERY_WORKER_CONCURRENCY = env.int("CELERY_WORKER_CONCURRENCY", default=8)
+CELERY_WORKER_MAX_TASKS_PER_CHILD = env.int(
+    "CELERY_WORKER_MAX_TASKS_PER_CHILD", default=100
+)
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int(
+    "CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=20 * 1024
+)
 
 # django-compressor
 # ------------------------------------------------------------------------------
@@ -388,6 +395,7 @@ CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org
 
 # CORS middleware
 # https://pypi.org/project/django-cors-headers/
+# Configure nginx.conf.erb if you change this
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL, DOCCLOUD_EMBED_URL]
 # This enables cookies
 CORS_ALLOW_CREDENTIALS = True
@@ -431,7 +439,10 @@ UPDATE_ACCESS_CHUNK_SIZE = env.int("UPDATE_ACCESS_CHUNK_SIZE", default=500)
 
 # Solr
 # ------------------------------------------------------------------------------
-SOLR_URL = env("SOLR_URL", default="http://documentcloud_solr:8983/solr/documentcloud")
+SOLR_BASE_URL = env("SOLR_BASE_URL", default="http://documentcloud_solr:8983/solr/")
+SOLR_COLLECTION_NAME = env("SOLR_COLLECTION_NAME", default="documentcloud")
+SOLR_URL = SOLR_BASE_URL + SOLR_COLLECTION_NAME
+
 SOLR_USERNAME = env("SOLR_USERNAME", default="")
 SOLR_PASSWORD = env("SOLR_PASSWORD", default="")
 if SOLR_USERNAME and SOLR_PASSWORD:
@@ -454,10 +465,12 @@ else:
     # otherwise set to true, which uses default certificates to verify
     SOLR_VERIFY = True
 
-SOLR_DIRTY_LIMIT = env.int("SOLR_DIRTY_LIMIT", default=200)
-SOLR_DIRTY_COUNTDOWN = env.int("SOLR_DIRTY_COUNTDOWN", default=60)
+SOLR_INDEX_LIMIT = env.int("SOLR_INDEX_LIMIT", default=100)
+SOLR_INDEX_CATCHUP_SECONDS = env.int("SOLR_INDEX_CATCHUP_SECONDS", default=300)
+SOLR_INDEX_MAX_SIZE = env.int("SOLR_INDEX_MAX_SIZE", default=18 * 1024 * 1024)
+SOLR_RETRY_BACKOFF = env.int("SOLR_RETRY_BACKOFF", default=300)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
-SOLR_PAGE_INDEX_LIMIT = env.int("SOLR_PAGE_INDEX_LIMIT", default=5000)
+SOLR_USE_HL = env("SOLR_USE_HL", default="off")
 
 # OEmbed
 # ------------------------------------------------------------------------------
