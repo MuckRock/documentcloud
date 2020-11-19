@@ -115,7 +115,7 @@ def update_alias(collection_name):
 def _set_commit(collection_name, commit, soft_commit):
     """Set the autoCommit and autoSoftCommit values of the collection"""
     _solr_admin_request(
-        "POST",
+        "post",
         f"{settings.SOLR_HOST_URL}api/collections/{collection_name}/config",
         {
             "set-property": {
