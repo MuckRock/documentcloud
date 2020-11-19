@@ -45,8 +45,8 @@ logger = logging.getLogger(__name__)
 # Exceptions
 
 
-class AliasError(Exception):
-    """An error occurred while creating the solr alias"""
+class SolrAdminError(Exception):
+    """An error occurred while using the Solr admin API"""
 
 
 # Utils
@@ -78,29 +78,71 @@ def document_size(solr_document):
     )
 
 
-def update_alias(collection_name):
-    """Point the solr alias to the newly indexed collection"""
+def _solr_admin_request(method, path, data, name):
+    """Helper function to use the Solr admin API"""
     session = requests.Session()
     session.verify = settings.SOLR_VERIFY
-    response = session.get(
-        f"{settings.SOLR_BASE_URL}admin/collections",
-        data={
-            "action": "CREATEALIAS",
-            "collections": collection_name,
-            "name": settings.SOLR_COLLECTION_NAME,
-            "wt": "json",
-        },
-        auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD),
+    data["wt"] = "json"
+    response = getattr(session, method)(
+        path, data=data, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD)
     )
     if response.status_code == 200:
-        logger.info("[SOLR REINDEX] Succesfully created solr alias")
+        logger.info("[SOLR REINDEX] %s: success", name)
     else:
         logger.error(
-            "[SOLR REINDEX] Error creating solr alias: %d %s",
+            "[SOLR REINDEX] Error %s: %d %s",
+            name,
             response.status_code,
             response.content,
         )
-        raise AliasError
+        raise SolrAdminError
+
+
+def update_alias(collection_name):
+    """Point the solr alias to the newly indexed collection"""
+    _solr_admin_request(
+        "get",
+        f"{settings.SOLR_BASE_URL}admin/collections",
+        {
+            "action": "CREATEALIAS",
+            "collections": collection_name,
+            "name": settings.SOLR_COLLECTION_NAME,
+        },
+        "Update Alias",
+    )
+
+
+def _set_commit(collection_name, commit, soft_commit):
+    """Set the autoCommit and autoSoftCommit values of the collection"""
+    _solr_admin_request(
+        "POST",
+        f"{settings.SOLR_HOST_URL}api/collections/{collection_name}/config",
+        {
+            "set-property": {
+                "updateHandler.autoCommit.maxTime": commit,
+                "updateHandler.autoSoftCommit.maxTime": soft_commit,
+            }
+        },
+        "Set commit values",
+    )
+    _solr_admin_request(
+        "get",
+        f"{settings.SOLR_BASE_URL}admin/collections",
+        {"action": "RELOAD", "name": collection_name},
+        "Reload config",
+    )
+
+
+def set_commit_indexing(collection_name):
+    """Set the commit values for indexing"""
+    # hard commit once per minute and disable soft cauto commit
+    _set_commit(collection_name, 60000, -1)
+
+
+def reset_commit(collection_name):
+    """Set the commit values for normal usage"""
+    # hard commit once per 15 seconds and soft commit once per 2 seconds
+    _set_commit(collection_name, 15000, 2000)
 
 
 # Public functions
@@ -134,7 +176,7 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
         else:
             solr_document = document.solr(index_text=index_text)
 
-    _index_solr_document(SOLR, solr_document)
+    _index_solr_document(SOLR, solr_document, field_updates)
 
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
@@ -276,6 +318,8 @@ def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     if delete_timestamp is None:
         # check for any document deleted after we start the full re-index
         delete_timestamp = timezone.now()
+        # set the commit values for indexing when we first begin the full re-index
+        set_commit_indexing(collection_name)
 
     documents, before_timestamp = _reindex_prepare_documents(after_timestamp)
     tasks = _batch_by_size(collection_name, documents)
@@ -318,6 +362,8 @@ def reindex_continue(collection_name, after_timestamp, delete_timestamp):
             after_timestamp,
             delete_timestamp,
         )
+        # reset the commit values for normal usage before updating the alias
+        reset_commit(collection_name)
         update_alias(collection_name)
 
         # mark all remaining documents as dirty and begin re-indexing them
@@ -341,20 +387,34 @@ def reindex_continue(collection_name, after_timestamp, delete_timestamp):
 ## Single indexing
 
 
-def _index_solr_document(solr, solr_document):
+def _index_solr_document(solr, solr_document, field_updates=None):
     """Index a single prepared solr document"""
     document_pk = solr_document["id"]
     logger.info(
-        "[SOLR INDEX] indexing document %s - %s",
+        "[SOLR INDEX] indexing document %s - %s - %s",
         document_pk,
         solr_document.get("title", ""),
+        field_updates,
     )
 
+    # This code assumes that if field_updates is set, the document will
+    # be less than the max size - this is because field updates is only set
+    # when updating a subset of the metadata fields, and the document
+    # should only ever be over the max size when doing a full text index
     if document_size(solr_document) < settings.SOLR_INDEX_MAX_SIZE:
         # if the document is within the size limit on its own, just index it
-        solr.add([solr_document])
+        solr.add([solr_document], fieldUpdates=field_updates)
         logger.info("[SOLR INDEX] indexing document %s - done", document_pk)
         return
+
+    if field_updates is not None:
+        logger.error(
+            "[SOLR INDEX] large solr document with field_update set - "
+            "document_pk: %s field_updates: %s document_size: %s",
+            document_pk,
+            field_updates,
+            document_size(solr_document),
+        )
 
     # first index the non page text fields
     logger.info("[SOLR INDEX] indexing large document non page fields")

@@ -30,6 +30,7 @@ django-premailer
 rules
 squarelet-auth
 dogslow
+django-debug-toolbar
 
 # Django REST Framework
 djangorestframework
