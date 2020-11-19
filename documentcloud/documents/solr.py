@@ -83,9 +83,13 @@ def _solr_admin_request(method, url, data, name):
     """Helper function to use the Solr admin API"""
     session = requests.Session()
     session.verify = settings.SOLR_VERIFY
-    data["wt"] = "json"
+    if method == "post":
+        # post using json
+        kwargs = {"json": data}
+    else:
+        kwargs = {"data": data}
     response = getattr(session, method)(
-        url, data=data, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD)
+        url, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD), **kwargs
     )
     if response.status_code == 200:
         logger.info("[SOLR REINDEX] %s: success", name)
@@ -108,6 +112,7 @@ def update_alias(collection_name):
             "action": "CREATEALIAS",
             "collections": collection_name,
             "name": settings.SOLR_COLLECTION_NAME,
+            "wt": "json",
         },
         "Update Alias",
     )
@@ -116,7 +121,7 @@ def update_alias(collection_name):
 def _set_commit(collection_name, commit, soft_commit):
     """Set the autoCommit and autoSoftCommit values of the collection"""
     _solr_admin_request(
-        "POST",
+        "post",
         f"{settings.SOLR_HOST_URL}api/collections/{collection_name}/config",
         {
             "set-property": {
@@ -129,7 +134,7 @@ def _set_commit(collection_name, commit, soft_commit):
     _solr_admin_request(
         "get",
         f"{settings.SOLR_BASE_URL}admin/collections",
-        {"action": "RELOAD", "name": collection_name},
+        {"action": "RELOAD", "name": collection_name, "wt": "json"},
         "Reload config",
     )
 
