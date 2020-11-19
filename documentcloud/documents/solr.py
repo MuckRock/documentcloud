@@ -79,13 +79,13 @@ def document_size(solr_document):
     )
 
 
-def _solr_admin_request(method, path, data, name):
+def _solr_admin_request(method, url, data, name):
     """Helper function to use the Solr admin API"""
     session = requests.Session()
     session.verify = settings.SOLR_VERIFY
     data["wt"] = "json"
     response = getattr(session, method)(
-        path, data=data, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD)
+        url, data=data, auth=(settings.SOLR_USERNAME, settings.SOLR_PASSWORD)
     )
     if response.status_code == 200:
         logger.info("[SOLR REINDEX] %s: success", name)
