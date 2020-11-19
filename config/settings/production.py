@@ -230,3 +230,8 @@ SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
 # Celery
 # ------------------------------------------------------------------------------
 CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
+
+# Scout APM
+# ------------------------------------------------------------------------------
+INSTALLED_APPS = ["scout_apm.django"] + INSTALLED_APPS  # noqa F405
+SCOUT_NAME = env("SCOUT_NAME")
