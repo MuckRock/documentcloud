@@ -4,6 +4,7 @@ gunicorn
 psycopg2 --no-binary psycopg2
 Collectfast
 sentry-sdk
+scout-apm
 
 # Django
 # ------------------------------------------------------------------------------
