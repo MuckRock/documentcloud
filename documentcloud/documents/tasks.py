@@ -1,5 +1,6 @@
 # Django
 from celery import chord
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
@@ -224,7 +225,12 @@ def solr_index_dirty_continue(timestamp):
     solr.index_dirty_continue(timestamp)
 
 
-@task
+@task(
+    time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
+    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
+    autoretry_for=(SoftTimeLimitExceeded,),
+    retry_backoff=settings.SOLR_RETRY_BACKOFF,
+)
 def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """Re-index all documents"""
     solr.reindex_all(collection_name, after_timestamp, delete_timestamp)
