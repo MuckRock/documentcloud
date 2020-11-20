@@ -2,7 +2,7 @@
 
 set -e
 
-PROCESSING_FOLDERS='(^config\/)|(^documentcloud\/documents\/processing\/)|(^documentcloud\/common\/)'
+PROCESSING_FOLDERS='(^config\/aws\/)|(^config\/languages\/)|(^documentcloud\/documents\/processing\/)|(^documentcloud\/common\/)'
 TAG=$1
 DEPLOY_CONTEXT=$2
 deploy_lambdas=0
