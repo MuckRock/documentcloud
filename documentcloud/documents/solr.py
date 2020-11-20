@@ -491,6 +491,8 @@ def _batch_by_size(collection_name, documents):
     tasks = []
     for document, size in docs_with_sizes:
         if size > settings.SOLR_INDEX_MAX_SIZE:
+            # if the isngle document is too large to index at once, index it by itself
+            # so it can be indexed in pieces
             logger.info(
                 "[SOLR INDEX] batching single document %s size %s", document["pk"], size
             )
@@ -500,7 +502,13 @@ def _batch_by_size(collection_name, documents):
                     args=[collection_name, document["pk"]],
                 )
             )
-        elif batch_size + size > settings.SOLR_INDEX_MAX_SIZE:
+        elif (
+            batch_size + size > settings.SOLR_INDEX_MAX_SIZE
+            or len(batch) >= settings.SOLR_INDEX_BATCH_LIMIT
+        ):
+            # if adding the next document would make the batch larger than the max
+            # size, or if the batch is already at the max size,
+            # then send the current batch to be indexed and start a new batch
             logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
             tasks.append(
                 signature(
@@ -511,6 +519,7 @@ def _batch_by_size(collection_name, documents):
             batch = [document["pk"]]
             batch_size = size
         else:
+            # otherwise add the current document to the current batch
             batch.append(document["pk"])
             batch_size += size
 
