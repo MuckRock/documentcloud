@@ -49,6 +49,7 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # ------------------------------------------------------------------------------
 
 # CORS middleware
+# ------------------------------------------------------------------------------
 # https://pypi.org/project/django-cors-headers/
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL]
 CORS_ALLOW_CREDENTIALS = True
