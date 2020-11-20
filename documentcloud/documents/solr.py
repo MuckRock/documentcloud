@@ -32,6 +32,7 @@ import logging
 import pysolr
 import requests
 from config import celery_app
+from dateutil.parser import parse
 
 # DocumentCloud
 from documentcloud.common import path
@@ -301,7 +302,7 @@ def reindex_continue(collection_name, after_timestamp, delete_timestamp):
     )
     if (
         documents_left > settings.SOLR_INDEX_LIMIT
-        and (timezone.now() - after_timestamp).total_seconds()
+        and (timezone.now() - parse(after_timestamp)).total_seconds()
         > settings.SOLR_INDEX_CATCHUP_SECONDS
     ):
         # if there are many documents left and we are not too close to the current time
