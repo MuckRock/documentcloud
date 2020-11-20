@@ -461,7 +461,10 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     # Resize to render smaller page sizes
     for [image_suffix, image_width] in IMAGE_WIDTHS[1:]:
         img = img_buffer.resize(
-            (image_width, round(img_buffer.height * (image_width / img_buffer.width))),
+            (
+                image_width,
+                max(round(img_buffer.height * (image_width / img_buffer.width)), 1),
+            ),
             Image.ANTIALIAS,
         )
 
