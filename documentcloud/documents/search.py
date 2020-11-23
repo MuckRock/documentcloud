@@ -398,12 +398,14 @@ def _access_filter(user):
 def _paginate(query_params):
     """Emulate the Django Rest Framework pagination style"""
 
-    def get_int(field, default, max_value=None):
+    def get_int(field, default, max_value=None, min_value=None):
         """Helper function to convert a parameter to an integer"""
         try:
             value = int(query_params.get(field, default))
             if max_value is not None:
                 value = min(value, max_value)
+            if min_value is not None:
+                value = max(value, min_value)
             return value
         except ValueError:
             return default
@@ -411,9 +413,9 @@ def _paginate(query_params):
     rows = get_int(
         PageNumberPagination.page_size_query_param,
         PageNumberPagination.page_size,
-        PageNumberPagination.max_page_size,
+        max_value=PageNumberPagination.max_page_size,
     )
-    page = get_int(PageNumberPagination.page_query_param, 1)
+    page = get_int(PageNumberPagination.page_query_param, 1, min_value=1)
     start = (page - 1) * rows
     return rows, start, page
 
