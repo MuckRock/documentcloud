@@ -20,7 +20,6 @@ class DocumentQuerySet(models.QuerySet):
     def get_viewable(self, user):
         if user.is_authenticated:
 
-            projects = list(user.projects.all())
             query = (
                 # you may see public documents in a viewable state
                 Q(access=Access.public, status__in=[Status.success, Status.readable])
@@ -30,7 +29,8 @@ class DocumentQuerySet(models.QuerySet):
                 # written this way for performance
                 | Q(
                     id__in=self.model.objects.filter(
-                        projects__in=projects, projectmembership__edit_access=True
+                        projects__in=user.projects.all(),
+                        projectmembership__edit_access=True,
                     )
                 )
                 # you can see organization level documents in your
@@ -53,12 +53,10 @@ class DocumentQuerySet(models.QuerySet):
     def get_editable(self, user):
         if user.is_authenticated:
             # only get the user's projects where they have edit access
-            projects = list(
-                user.projects.filter(
-                    collaboration__access__in=(
-                        CollaboratorAccess.admin,
-                        CollaboratorAccess.edit,
-                    )
+            projects = user.projects.filter(
+                collaboration__access__in=(
+                    CollaboratorAccess.admin,
+                    CollaboratorAccess.edit,
                 )
             )
             query = (
