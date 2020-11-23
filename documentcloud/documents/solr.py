@@ -324,6 +324,7 @@ def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     if delete_timestamp is None:
         # check for any document deleted after we start the full re-index
         delete_timestamp = timezone.now()
+        logger.info("[SOLR REINDEX] delete_timestamp %s", delete_timestamp)
         # set the commit values for indexing when we first begin the full re-index
         set_commit_indexing(collection_name)
 
