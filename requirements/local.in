@@ -29,7 +29,6 @@ factory-boy
 django-coverage-plugin
 pytest-django
 fakeredis
-django-cprofile-middleware
 
 # Processing
 # ------------------------------------------------------------------------------
