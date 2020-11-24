@@ -258,7 +258,8 @@ def index_dirty(timestamp=None):
 
     if timestamp is None:
         timestamp = timezone.now().isoformat()
-        status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=None)
+        status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=7200)
+        cache.touch("solr_index_dirty_status", timeout=7200)
         if status != timestamp:
             logger.info(
                 "[SOLR INDEX] dirty run not starting, already in progress: %s", status
