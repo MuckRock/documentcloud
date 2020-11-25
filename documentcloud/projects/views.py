@@ -109,8 +109,10 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        return project.projectmembership_set.get_viewable(self.request.user).preload(
-            self.request.user, self.request.query_params.get("expand", "")
+        return (
+            project.projectmembership_set.get_viewable(self.request.user)
+            .preload(self.request.user, self.request.query_params.get("expand", ""))
+            .order_by("-document__created_at")
         )
 
     @lru_cache()
