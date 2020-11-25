@@ -135,7 +135,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         ]
         extra_kwargs = {
             "created_at": {"read_only": True},
-            "description": {"required": False},
+            "description": {"required": False, "max_length": 4000},
             "file_hash": {"read_only": True},
             "language": {"default": Language.english},
             "organization": {"read_only": True},
@@ -340,7 +340,8 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
             "organization": {"read_only": True},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
-            "content": {"required": False},
+            "content": {"required": False, "max_length": 2000},
+            "title": {"max_length": 500},
         }
         expandable_fields = {
             "user": ("documentcloud.users.UserSerializer", {}),
@@ -390,6 +391,7 @@ class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Section
         fields = ["id", "page_number", "title"]
+        extra_kwargs = {"title": {"max_length": 200}}
 
     def validate_page_number(self, value):
         value = super().validate_page_number(value)
