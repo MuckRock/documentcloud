@@ -1,6 +1,7 @@
 # Django
 from django.db import transaction
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
@@ -14,6 +15,10 @@ from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
+from documentcloud.documents.decorators import (
+    anonymous_cache_control,
+    conditional_cache_control,
+)
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_index
 from documentcloud.documents.views import DocumentViewSet
@@ -94,6 +99,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+@method_decorator(anonymous_cache_control, name="list")
 class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     serializer_class = ProjectMembershipSerializer
     queryset = ProjectMembership.objects.none()
