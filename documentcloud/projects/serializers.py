@@ -36,7 +36,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "created_at": {"read_only": True},
-            "description": {"required": False},
+            "description": {"required": False, "max_length": 1000},
             "private": {"required": False},
             "slug": {"read_only": True},
             "updated_at": {"read_only": True},
