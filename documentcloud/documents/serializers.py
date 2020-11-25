@@ -271,6 +271,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_remaining(self, obj):
         """Get the progress data from the serverless function"""
+        # XXX remove this
         try:
             response = httpsub.post(
                 settings.PROGRESS_URL,
@@ -278,7 +279,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 timeout=settings.PROGRESS_TIMEOUT,
             )
             response.raise_for_status()
-            return response.json()
+            return response.json()[0]
         except RequestException as exc:
             logger.warning(
                 "Error getting progress for document %d, exception %s",
