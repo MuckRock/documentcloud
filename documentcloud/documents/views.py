@@ -4,7 +4,6 @@ from django.db import transaction
 from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
-from django.views.decorators.vary import vary_on_cookie
 from rest_framework import mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -33,7 +32,10 @@ from documentcloud.core.permissions import (
 )
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
-from documentcloud.documents.decorators import conditional_cache_control
+from documentcloud.documents.decorators import (
+    anonymous_cache_control,
+    conditional_cache_control,
+)
 from documentcloud.documents.models import (
     Document,
     DocumentError,
@@ -78,6 +80,7 @@ logger = logging.getLogger(__name__)
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+@method_decorator(anonymous_cache_control, name="retrieve")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     permit_list_expands = [
@@ -117,18 +120,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def filter_update_queryset(self, queryset):
         return queryset.get_editable(self.request.user)
-
-    @vary_on_cookie
-    def retrieve(self, request, *args, **kwargs):
-        response = super().retrieve(request, *args, **kwargs)
-        has_auth_token = hasattr(request, "auth") and request.auth is not None
-        if has_auth_token or request.user.is_authenticated:
-            patch_cache_control(response, private=True, no_cache=True)
-        else:
-            patch_cache_control(
-                response, public=True, max_age=settings.CACHE_CONTROL_MAX_AGE
-            )
-        return response
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -467,6 +458,8 @@ class DocumentErrorViewSet(
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+@method_decorator(anonymous_cache_control, name="retrieve")
+@method_decorator(anonymous_cache_control, name="list")
 class NoteViewSet(FlexFieldsModelViewSet):
     serializer_class = NoteSerializer
     permit_list_expands = ["user", "organization"]
