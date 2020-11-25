@@ -1,6 +1,7 @@
 # Standard Library
 import logging
 import sys
+from itertools import zip_longest
 
 # Third Party
 import environ
@@ -91,22 +92,43 @@ def process_doc(request, _context=None):
     return encode_response("Ok")
 
 
+def grouper(iterable, num, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * num
+    return zip_longest(*args, fillvalue=fillvalue)
+
+
 @processing_auth
 def get_progress(request, _context=None):
     """Get progress information from redis"""
     data = get_http_data(request)
-    doc_id = data["doc_id"]
+    doc_id = data.get("doc_id")
+    doc_ids = data.get("doc_ids")
+
+    if not doc_ids:
+        doc_ids = [doc_id]
+
+    response = []
 
     try:
         with REDIS.pipeline() as pipeline:
-            pipeline.get(redis_fields.images_remaining(doc_id))
-            pipeline.get(redis_fields.texts_remaining(doc_id))
-            images, texts = [int(i) if i is not None else i for i in pipeline.execute()]
+            for doc_id in doc_ids:
+                pipeline.get(redis_fields.images_remaining(doc_id))
+                pipeline.get(redis_fields.texts_remaining(doc_id))
+            data = grouper(
+                (int(i) if i is not None else i for i in pipeline.execute()), 2
+            )
+            for doc_id, images, texts in zip(doc_ids, data):
+                # XXX would a dictionary keyed by doc_id be easier for the frontend?
+                response.append({"doc_id": doc_id, "images": images, "texts": texts})
     except RedisError as exc:
         logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
-        images, texts = (None, None)
+        response = [
+            {"doc_id": doc_id, "images": None, "texts": None} for doc_id in doc_ids
+        ]
 
-    return encode_response({"images": images, "texts": texts})
+    return encode_response(response)
 
 
 @processing_auth
