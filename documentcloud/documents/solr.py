@@ -258,7 +258,8 @@ def index_dirty(timestamp=None):
 
     if timestamp is None:
         timestamp = timezone.now().isoformat()
-        status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=None)
+        status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=7200)
+        cache.touch("solr_index_dirty_status", timeout=7200)
         if status != timestamp:
             logger.info(
                 "[SOLR INDEX] dirty run not starting, already in progress: %s", status
@@ -324,6 +325,7 @@ def reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     if delete_timestamp is None:
         # check for any document deleted after we start the full re-index
         delete_timestamp = timezone.now()
+        logger.info("[SOLR REINDEX] delete_timestamp %s", delete_timestamp)
         # set the commit values for indexing when we first begin the full re-index
         set_commit_indexing(collection_name)
 

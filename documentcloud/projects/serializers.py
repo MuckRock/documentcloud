@@ -61,7 +61,10 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
         update_lookup_field = "document"
         fields = ["document", "edit_access"]
         extra_kwargs = {
-            "document": {"queryset": Document.objects.none()},
+            "document": {
+                "queryset": Document.objects.none(),
+                "style": {"base_template": "input.html"},
+            },
             "edit_access": {"default": None},
         }
         expandable_fields = {

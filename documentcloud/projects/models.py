@@ -83,6 +83,10 @@ class Project(models.Model):
     def __str__(self):
         return self.title if self.title else "-Untitled-"
 
+    def get_absolute_url(self):
+        # Opposite order of doc url (for legacy reasons)
+        return f"/projects/{self.slug}-{self.pk}/"
+
 
 class ProjectMembership(models.Model):
     """A document belonging to a project"""

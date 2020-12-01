@@ -33,7 +33,7 @@ class UserViewSet(
     def get_object(self):
         """Allow one to lookup themselves by specifying `me` as the pk"""
         if self.kwargs["pk"] == "me" and self.request.user.is_authenticated:
-            return self.request.user
+            return self.get_queryset().get(pk=self.request.user.pk)
         else:
             return super().get_object()
 
