@@ -22,7 +22,8 @@ class ProjectOEmbed(RichOEmbed):
         ),
         # api url
         re.compile(
-            rf"^{settings.DOCCLOUD_API_URL}/api/projects/[\w-]*?(?P<proj_pk>[0-9]+)(/|\?|$)$"
+            rf"^{settings.DOCCLOUD_API_URL}/api/projects/"
+            rf"[\w-]*?(?P<proj_pk>[0-9]+)(/|\?|$)$"
         ),
     ]
     width = 500
