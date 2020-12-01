@@ -399,10 +399,11 @@ def _index_solr_document(solr, solr_document, field_updates=None):
     """Index a single prepared solr document"""
     document_pk = solr_document["id"]
     logger.info(
-        "[SOLR INDEX] indexing document %s - %s - %s",
+        "[SOLR INDEX] indexing document %s - %s - %s - %.200s",
         document_pk,
         solr_document.get("title", ""),
         field_updates,
+        solr_document,
     )
 
     # This code assumes that if field_updates is set, the document will
