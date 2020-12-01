@@ -4,6 +4,7 @@
 #
 #    pip-compile requirements/base.in
 #
+-e git+git://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr  # via -r requirements/base.in
 aioboto3==6.5.0           # via -r requirements/base.in
 aiobotocore[boto3]==0.11.1  # via aioboto3
 aiohttp==3.6.2            # via aiobotocore
@@ -105,7 +106,6 @@ pycparser==2.19           # via cffi
 pygments==2.5.2           # via ipython
 pyjwt==1.7.1              # via djangorestframework-simplejwt, social-auth-core
 pyparsing==2.4.2          # via packaging
-pysolr==3.8.1             # via -r requirements/base.in
 python-crontab==2.3.8     # via django-celery-beat
 python-dateutil==2.8.0    # via botocore, python-crontab
 python-jose==3.0.1        # via social-auth-core
