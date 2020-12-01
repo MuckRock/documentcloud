@@ -394,6 +394,11 @@ class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
     def validate_page_number(self, value):
         value = super().validate_page_number(value)
 
+        if self.instance and self.instance.page_number == value:
+            # if we are updating an existing section, it should not conflict
+            # with itself
+            return value
+
         view = self.context.get("view")
         document = Document.objects.get(pk=view.kwargs["document_pk"])
         if document.sections.filter(page_number=value).exists():

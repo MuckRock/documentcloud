@@ -1130,6 +1130,20 @@ class TestSectionAPI:
         section.refresh_from_db()
         assert section.title == title
 
+    def test_update_put(self, client, section):
+        """Test updating a section
+        A section should not conflict with its own page number
+        """
+        client.force_authenticate(user=section.document.user)
+        title = "New Title"
+        response = client.put(
+            f"/api/documents/{section.document.pk}/sections/{section.pk}/",
+            {"title": title, "page_number": section.page_number},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        section.refresh_from_db()
+        assert section.title == title
+
     def test_update_bad(self, client, user, section):
         """You may not update a section on a document you do not have edit access to"""
         client.force_authenticate(user=user)
