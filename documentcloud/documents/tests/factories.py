@@ -1,5 +1,5 @@
 # Standard Library
-from random import random
+from random import randint, random
 
 # Third Party
 import factory
@@ -64,9 +64,9 @@ class NoteFactory(factory.django.DjangoModelFactory):
 
 class SectionFactory(factory.django.DjangoModelFactory):
     document = factory.SubFactory(
-        "documentcloud.documents.tests.factories.DocumentFactory"
+        "documentcloud.documents.tests.factories.DocumentFactory", page_count=100
     )
-    page_number = factory.Sequence(lambda n: n)
+    page_number = factory.Iterator(range(100))
     title = factory.Sequence(lambda n: f"Section #{n}")
 
     class Meta:
