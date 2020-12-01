@@ -7,9 +7,9 @@ from rest_framework.generics import get_object_or_404
 import re
 
 # DocumentCloud
-from documentcloud.projects.models import Project
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
+from documentcloud.projects.models import Project
 
 
 @register
