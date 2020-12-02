@@ -1,5 +1,5 @@
 # Standard Library
-from random import randint, random
+from random import random
 
 # Third Party
 import factory
