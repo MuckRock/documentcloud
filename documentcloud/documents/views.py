@@ -1,7 +1,6 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import mixins, parsers, serializers, status, viewsets
