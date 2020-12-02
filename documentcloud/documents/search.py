@@ -108,8 +108,8 @@ def search(user, query_params):
     results = SOLR.search(text_query, **kwargs)
     response = _format_response(results, query_params, user, page, rows, escaped)
 
-    if settings.DEBUG:
-        response["debug"] = {"text_query": text_query, **kwargs}
+    if settings.DEBUG or user.is_staff:
+        response["debug"] = {"text_query": text_query, "qtime": results.qtime, **kwargs}
     return response
 
 
