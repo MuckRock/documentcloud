@@ -3,9 +3,13 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.http.request import QueryDict
 
+# Standard Library
+from datetime import datetime
+
 # Third Party
 import pysolr
 import pytest
+import pytz
 from luqum.parser import parser
 
 # DocumentCloud
@@ -233,6 +237,24 @@ class TestSearch:
             response["results"], test=lambda d: d["id"] in PROJECTS[0]["documents"]
         )
         assert response["count"] == 1
+
+    def test_search_project_invalid(self):
+        """Test searching for an invalid project - should not crash"""
+        self.search("project=--1")
+
+    def test_search_created_at(self):
+        """Test searching by created_at date"""
+
+        response = self.search("created_at=2011-01-01T00:00:00Z")
+        self.assert_documents(
+            response["results"],
+            test=lambda d: d["created_at"] == datetime(2011, 1, 1, tzinfo=pytz.utc),
+        )
+        assert response["count"] == 1
+
+    def test_search_created_at_invalid(self):
+        """Test searching for an invalid project"""
+        self.search("created_at=foo")
 
     def test_search_id(self):
         """Test searching for a document by id"""
