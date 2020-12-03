@@ -95,10 +95,7 @@ def _solr_admin_request(method, url, data, name):
         logger.info("[SOLR REINDEX] %s: success", name)
     else:
         logger.error(
-            "[SOLR REINDEX] Error %s: %d %s",
-            name,
-            response.status_code,
-            response.content,
+            "[SOLR REINDEX] Error %s: %d %s", name, response.status_code, response.text
         )
         raise SolrAdminError
 
