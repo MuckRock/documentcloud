@@ -212,6 +212,10 @@ class TestSearch:
         )
         assert response["count"] == 1
 
+    def test_search_access_blank(self):
+        """Test searching for a blank access - should not crash"""
+        self.search("access=", user=1)
+
     def test_search_status(self):
         """Test searching for a status"""
 
