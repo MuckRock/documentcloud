@@ -1,5 +1,6 @@
 # Django
 from celery import chord
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
@@ -127,9 +128,11 @@ def process_cancel(document_pk):
     )
 
 
-@task
+@task(autoretry_for=(SoftTimeLimitExceeded,))
 def delete_document_files(path):
-    # delete files from storage
+    """Delete all of the files from storage for the given path"""
+    # For AWS, can delete 1000 files at a time - if we hit the time limit,
+    # just retry - it will continue deleting files from the path where it left off
     storage.delete(path)
 
 
