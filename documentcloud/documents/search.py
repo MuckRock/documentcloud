@@ -362,8 +362,19 @@ def _handle_params(query_params, fields, dynamic_fields):
     items = items + [(f"-{p}", f"-{f}") for p, f in items]
     for param, field in items:
         if param in query_params:
+            # pylint: disable=protected-access
             # joining with whitespace will default to OR
-            values = " ".join(query_params.getlist(param))
+            values = query_params.getlist(param)
+            if field in NUMERIC_FIELDS:
+                values = [v for v in values if NumberValidator()._validate(v)]
+            if field in DATE_FIELDS:
+                # validate date fields and escape colons
+                values = [
+                    v.replace(":", "\\:")
+                    for v in values
+                    if DateValidator()._validate(v)
+                ]
+            values = " ".join(values)
             if values:
                 return_list.append(f"{field}:({values})")
 
