@@ -364,7 +364,8 @@ def _handle_params(query_params, fields, dynamic_fields):
         if param in query_params:
             # joining with whitespace will default to OR
             values = " ".join(query_params.getlist(param))
-            return_list.append(f"{field}:({values})")
+            if values:
+                return_list.append(f"{field}:({values})")
 
     for pattern in dynamic_fields:
         # allow for negated dynamic fields
