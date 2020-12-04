@@ -112,16 +112,16 @@ def get_progress(request, _context=None):
     response = []
 
     try:
-        with REDIS.pipeline() as pipeline:
-            for doc_id in doc_ids:
-                pipeline.get(redis_fields.images_remaining(doc_id))
-                pipeline.get(redis_fields.texts_remaining(doc_id))
-            data = grouper(
-                (int(i) if i is not None else i for i in pipeline.execute()), 2
-            )
-            for doc_id, images, texts in zip(doc_ids, data):
-                # XXX would a dictionary keyed by doc_id be easier for the frontend?
-                response.append({"doc_id": doc_id, "images": images, "texts": texts})
+        redis_progress_fields = []
+        for doc_id in doc_ids:
+            redis_progress_fields.append(redis_fields.images_remaining(doc_id))
+            redis_progress_fields.append(redis_fields.texts_remaining(doc_id))
+        data = grouper(
+            (int(i) if i is not None else i for i in REDIS.mget(redis_progress_fields)),
+            2,
+        )
+        for doc_id, (images, texts) in zip(doc_ids, data):
+            response.append({"doc_id": doc_id, "images": images, "texts": texts})
     except RedisError as exc:
         logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
         response = [
