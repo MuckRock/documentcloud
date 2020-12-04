@@ -271,7 +271,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_remaining(self, obj):
         """Get the progress data from the serverless function"""
-        # XXX remove this
+        # remove this
         try:
             response = httpsub.post(
                 settings.PROGRESS_URL,
