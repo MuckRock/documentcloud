@@ -18,10 +18,11 @@ from functools import lru_cache
 import django_filters
 import environ
 import pysolr
+from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
-from documentcloud.common.environment import storage
+from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
@@ -390,6 +391,26 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             )
         else:
             return Response(results.highlighting.get(pk, {}))
+
+    @action(detail=False, methods=["get"])
+    def pending(self, request):
+        """Get the progress status on all of the current users pending documents"""
+        pending_documents = list(
+            self.queryset.filter(status=Status.pending).values_list("id", flat=True)
+        )
+        try:
+            response = httpsub.post(
+                settings.PROGRESS_URL,
+                json={"doc_ids": pending_documents},
+                timeout=settings.PROGRESS_TIMEOUT,
+            )
+            response.raise_for_status()
+            return Response(response.json())
+        except RequestException as exc:
+            logger.warning(
+                "Error getting progress exception %s", exc, exc_info=sys.exc_info()
+            )
+            return Response([])
 
     class Filter(django_filters.FilterSet):
         ordering = django_filters.OrderingFilter(
