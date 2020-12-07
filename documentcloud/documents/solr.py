@@ -254,15 +254,18 @@ def index_dirty(timestamp=None):
     """Index dirty documents"""
 
     if timestamp is None:
+        # starting a new dirty index process
         timestamp = timezone.now().isoformat()
         status = cache.get_or_set("solr_index_dirty_status", timestamp, timeout=7200)
-        cache.touch("solr_index_dirty_status", timeout=7200)
         if status != timestamp:
             logger.info(
                 "[SOLR INDEX] dirty run not starting, already in progress: %s", status
             )
             # a previous run is still running, do not run two in parallel
             return
+    else:
+        # continuing a dirty indexing process, keep the cache alive
+        cache.touch("solr_index_dirty_status", timeout=7200)
 
     status = cache.get("solr_index_dirty_status")
     if status == "cancel":
