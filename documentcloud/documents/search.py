@@ -103,6 +103,8 @@ def search(user, query_params):
         "rows": rows,
         "start": start,
         "hl": settings.SOLR_USE_HL,
+        "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
+        "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
 
     results = SOLR.search(text_query, **kwargs)
