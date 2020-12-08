@@ -33,6 +33,7 @@ cpuprofile==1.0.1         # via -r requirements/./base.txt
 cryptography==2.8         # via -r requirements/./base.txt, pyopenssl, urllib3
 cssselect==1.1.0          # via -r requirements/./base.txt, premailer
 cssutils==1.0.2           # via -r requirements/./base.txt, premailer
+dataclasses==0.8          # via -r requirements/./base.txt, libcst
 decorator==4.4.0          # via -r requirements/./base.txt, gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via -r requirements/./base.txt, python3-openid, social-auth-core
 django-anymail[mailgun]==6.1.0  # via -r requirements/production.in
@@ -66,13 +67,14 @@ fsspec==0.5.2             # via -r requirements/./base.txt, gcsfs
 furl==2.1.0               # via -r requirements/./base.txt
 future==0.17.1            # via -r requirements/./base.txt, python-jose
 gcsfs==0.3.1              # via -r requirements/./base.txt
-google-api-core[grpc]==1.14.3  # via -r requirements/./base.txt, google-cloud-pubsub
+google-api-core[grpc]==1.23.0  # via -r requirements/./base.txt, google-cloud-language, google-cloud-pubsub
 google-auth-oauthlib==0.4.1  # via -r requirements/./base.txt, gcsfs
-google-auth==1.6.3        # via -r requirements/./base.txt, gcsfs, google-api-core, google-auth-oauthlib
+google-auth==1.23.0       # via -r requirements/./base.txt, gcsfs, google-api-core, google-auth-oauthlib
+google-cloud-language==2.0.0  # via -r requirements/./base.txt
 google-cloud-pubsub==1.0.2  # via -r requirements/./base.txt
 googleapis-common-protos[grpc]==1.6.0  # via -r requirements/./base.txt, google-api-core, grpc-google-iam-v1
 grpc-google-iam-v1==0.12.3  # via -r requirements/./base.txt, google-cloud-pubsub
-grpcio==1.24.1            # via -r requirements/./base.txt, google-api-core, googleapis-common-protos, grpc-google-iam-v1
+grpcio==1.34.0            # via -r requirements/./base.txt, google-api-core, googleapis-common-protos, grpc-google-iam-v1
 gunicorn==19.9.0          # via -r requirements/production.in
 html2text==2020.1.16      # via -r requirements/./base.txt
 idna-ssl==1.1.0           # via -r requirements/./base.txt, aiohttp
@@ -86,6 +88,7 @@ jedi==0.16.0              # via -r requirements/./base.txt, ipython
 jinja2==2.10.1            # via -r requirements/./base.txt, coreschema
 jmespath==0.9.4           # via -r requirements/./base.txt, boto3, botocore
 kombu==4.6.8              # via -r requirements/./base.txt, celery
+libcst==0.3.15            # via -r requirements/./base.txt, google-cloud-language
 listcrunch==1.0.0         # via -r requirements/./base.txt
 luqum==0.8.1              # via -r requirements/./base.txt
 lxml==4.5.1               # via -r requirements/./base.txt, premailer
@@ -93,6 +96,7 @@ markdown==3.2.2           # via -r requirements/./base.txt
 markupsafe==1.1.1         # via -r requirements/./base.txt, jinja2
 more-itertools==7.2.0     # via -r requirements/./base.txt, zipp
 multidict==4.7.5          # via -r requirements/./base.txt, aiohttp, yarl
+mypy-extensions==0.4.3    # via -r requirements/./base.txt, typing-inspect
 numpy==1.17.3             # via -r requirements/./base.txt
 oauthlib==3.1.0           # via -r requirements/./base.txt, requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via -r requirements/./base.txt, furl
@@ -105,7 +109,8 @@ pillow==6.1.0             # via -r requirements/./base.txt
 ply==3.11                 # via -r requirements/./base.txt, luqum
 premailer==3.0.0          # via -r requirements/./base.txt, django-premailer
 prompt-toolkit==3.0.3     # via -r requirements/./base.txt, ipython
-protobuf==3.10.0          # via -r requirements/./base.txt, google-api-core, googleapis-common-protos
+proto-plus==1.13.0        # via -r requirements/./base.txt, google-cloud-language
+protobuf==3.14.0          # via -r requirements/./base.txt, google-api-core, googleapis-common-protos, proto-plus
 psutil==5.7.3             # via scout-apm
 psycopg2==2.8.3           # via -r requirements/production.in
 ptyprocess==0.6.0         # via -r requirements/./base.txt, pexpect
@@ -123,6 +128,7 @@ python-redis-lock[django]==3.3.1  # via -r requirements/./base.txt
 python-slugify==3.0.3     # via -r requirements/./base.txt
 python3-openid==3.1.0     # via -r requirements/./base.txt, social-auth-core
 pytz==2019.2              # via -r requirements/./base.txt, celery, django, django-timezone-field, google-api-core
+pyyaml==5.3.1             # via -r requirements/./base.txt, libcst
 rcssmin==1.0.6            # via -r requirements/./base.txt, django-compressor
 redis==3.4.1              # via -r requirements/./base.txt, django-redis, python-redis-lock
 requests-oauthlib==1.2.0  # via -r requirements/./base.txt, google-auth-oauthlib, social-auth-core
@@ -136,7 +142,7 @@ rules==2.1                # via -r requirements/./base.txt
 s3transfer==0.2.1         # via -r requirements/./base.txt, boto3
 scout-apm==2.17.0         # via -r requirements/production.in
 sentry-sdk==0.11.2        # via -r requirements/production.in
-six==1.12.0               # via -r requirements/./base.txt, argon2-cffi, cryptography, django-anymail, django-appconf, django-extensions, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, social-auth-core, traitlets
+six==1.15.0               # via -r requirements/./base.txt, argon2-cffi, cryptography, django-anymail, django-appconf, django-extensions, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, social-auth-core, traitlets
 smart-open==1.8.4         # via -r requirements/./base.txt
 social-auth-app-django==3.1.0  # via -r requirements/./base.txt, rest-social-auth
 social-auth-core[openidconnect]==3.2.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth
@@ -144,7 +150,8 @@ sqlparse==0.3.0           # via -r requirements/./base.txt, django, django-debug
 squarelet-auth==0.0.45    # via -r requirements/./base.txt
 text-unidecode==1.2       # via -r requirements/./base.txt, python-slugify
 traitlets==4.3.3          # via -r requirements/./base.txt, ipython
-typing-extensions==3.7.4  # via -r requirements/./base.txt, aiohttp, collectfast
+typing-extensions==3.7.4.3  # via -r requirements/./base.txt, aiohttp, collectfast, libcst, typing-inspect
+typing-inspect==0.6.0     # via -r requirements/./base.txt, libcst
 typing==3.7.4.1           # via collectfast
 unidecode==1.1.1          # via -r requirements/./base.txt
 uritemplate==3.0.0        # via -r requirements/./base.txt, coreapi, drf-yasg
