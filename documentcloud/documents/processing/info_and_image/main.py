@@ -743,8 +743,8 @@ def start_import(data, _context=None):
 
         doc_ids = []
         for row in itertools.islice(csvreader, offset, offset + IMPORT_DOCS_BATCH):
-            # Pull the doc id (1st column) and slug (7th column)
-            doc_ids.append((row[0], row[6]))
+            # Pull the doc id (1st column), slug (7th column), and access (4th column)
+            doc_ids.append((row[0], row[6], row[3]))
 
     # Initialize Redis on first invocation
     if offset == 0:
@@ -757,11 +757,19 @@ def start_import(data, _context=None):
             num_docs = sum(1 for _ in csvreader)
         REDIS.set(redis_fields.import_docs_remaining(org_id), num_docs)
 
-    for doc_id, slug in doc_ids:
+    for doc_id, slug, access in doc_ids:
         logger.info("[START IMPORT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
         publisher.publish(
             IMPORT_DOCUMENT_TOPIC,
-            encode_pubsub_data({"org_id": org_id, "doc_id": doc_id, "slug": slug}),
+            encode_pubsub_data(
+                {
+                    "org_id": org_id,
+                    "doc_id": doc_id,
+                    "slug": slug,
+                    # 4 is public, 8,9 are pre/post moderated which act as public
+                    "public": access in ("4", "8", "9"),
+                }
+            ),
         )
 
     if offset + IMPORT_DOCS_BATCH < num_docs:
@@ -788,8 +796,15 @@ def import_document(data, _context=None):
     org_id = data["org_id"]
     doc_id = data["doc_id"]
     slug = data["slug"]
+    public = data.get("public")
 
-    logger.info("[IMPORT DOCUMENT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
+    logger.info(
+        "[IMPORT DOCUMENT] org_id %s doc_id %s slug %s public %s",
+        org_id,
+        doc_id,
+        slug,
+        public,
+    )
 
     # STEP 1: Grab page count and write index file for caching PDF memory accesses
     logger.info("[PAGE COUNT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)
@@ -913,7 +928,7 @@ def import_document(data, _context=None):
             storage.simple_upload(
                 path.json_text_path(doc_id, slug),
                 json.dumps(page_texts_json).encode("utf-8"),
-                access=access_choices.PRIVATE,
+                access=access_choices.PUBLIC if public else access_choices.PRIVATE,
             )
             break
         except ClientError as exc:
