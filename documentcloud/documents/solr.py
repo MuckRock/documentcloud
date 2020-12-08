@@ -27,6 +27,7 @@ from django.utils import timezone
 # Standard Library
 import json
 import logging
+import time
 
 # Third Party
 import pysolr
@@ -79,7 +80,7 @@ def document_size(solr_document):
     )
 
 
-def _solr_admin_request(method, url, data, name):
+def _solr_admin_request(method, url, data, name, retry=0):
     """Helper function to use the Solr admin API"""
     session = requests.Session()
     session.verify = settings.SOLR_VERIFY
@@ -97,7 +98,11 @@ def _solr_admin_request(method, url, data, name):
         logger.error(
             "[SOLR REINDEX] Error %s: %d %s", name, response.status_code, response.text
         )
-        raise SolrAdminError
+        if retry < 3:
+            time.sleep(0.5)
+            _solr_admin_request(method, url, data, name, retry + 1)
+        else:
+            raise SolrAdminError
 
 
 def update_alias(collection_name):
