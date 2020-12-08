@@ -29,6 +29,7 @@ cpuprofile==1.0.1         # via -r requirements/base.in
 cryptography==2.8         # via -r requirements/base.in
 cssselect==1.1.0          # via premailer
 cssutils==1.0.2           # via premailer
+dataclasses==0.8          # via libcst
 decorator==4.4.0          # via gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 django-appconf==1.0.3     # via django-compressor
@@ -60,13 +61,14 @@ fsspec==0.5.2             # via gcsfs
 furl==2.1.0               # via -r requirements/base.in
 future==0.17.1            # via python-jose
 gcsfs==0.3.1              # via -r requirements/base.in
-google-api-core[grpc]==1.14.3  # via google-cloud-pubsub
+google-api-core[grpc]==1.23.0  # via google-cloud-language, google-cloud-pubsub
 google-auth-oauthlib==0.4.1  # via gcsfs
-google-auth==1.6.3        # via gcsfs, google-api-core, google-auth-oauthlib
+google-auth==1.23.0       # via gcsfs, google-api-core, google-auth-oauthlib
+google-cloud-language==2.0.0  # via -r requirements/base.in
 google-cloud-pubsub==1.0.2  # via -r requirements/base.in
 googleapis-common-protos[grpc]==1.6.0  # via google-api-core, grpc-google-iam-v1
 grpc-google-iam-v1==0.12.3  # via google-cloud-pubsub
-grpcio==1.24.1            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
+grpcio==1.34.0            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 html2text==2020.1.16      # via -r requirements/base.in
 idna-ssl==1.1.0           # via aiohttp
 idna==2.8                 # via idna-ssl, requests, yarl
@@ -79,6 +81,7 @@ jedi==0.16.0              # via ipython
 jinja2==2.10.1            # via coreschema
 jmespath==0.9.4           # via boto3, botocore
 kombu==4.6.8              # via celery
+libcst==0.3.15            # via google-cloud-language
 listcrunch==1.0.0         # via -r requirements/base.in
 luqum==0.8.1              # via -r requirements/base.in
 lxml==4.5.1               # via premailer
@@ -86,6 +89,7 @@ markdown==3.2.2           # via -r requirements/base.in
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via aiohttp, yarl
+mypy-extensions==0.4.3    # via typing-inspect
 numpy==1.17.3             # via -r requirements/base.in
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via furl
@@ -98,7 +102,8 @@ pillow==6.1.0             # via -r requirements/base.in
 ply==3.11                 # via luqum
 premailer==3.0.0          # via django-premailer
 prompt-toolkit==3.0.3     # via ipython
-protobuf==3.10.0          # via google-api-core, googleapis-common-protos
+proto-plus==1.13.0        # via google-cloud-language
+protobuf==3.14.0          # via google-api-core, googleapis-common-protos, proto-plus
 ptyprocess==0.6.0         # via pexpect
 pyasn1-modules==0.2.7     # via google-auth
 pyasn1==0.4.7             # via pyasn1-modules, rsa
@@ -113,6 +118,7 @@ python-redis-lock[django]==3.3.1  # via -r requirements/base.in
 python-slugify==3.0.3     # via -r requirements/base.in
 python3-openid==3.1.0     # via social-auth-core
 pytz==2019.2              # via -r requirements/base.in, celery, django, django-timezone-field, google-api-core
+pyyaml==5.3.1             # via libcst
 rcssmin==1.0.6            # via -r requirements/base.in, django-compressor
 redis==3.4.1              # via -r requirements/base.in, django-redis, python-redis-lock
 requests-oauthlib==1.2.0  # via google-auth-oauthlib, social-auth-core
@@ -124,7 +130,7 @@ ruamel.yaml.clib==0.1.2   # via ruamel.yaml
 ruamel.yaml==0.16.5       # via drf-yasg
 rules==2.1                # via -r requirements/base.in
 s3transfer==0.2.1         # via boto3
-six==1.12.0               # via argon2-cffi, cryptography, django-appconf, django-extensions, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core, traitlets
+six==1.15.0               # via argon2-cffi, cryptography, django-appconf, django-extensions, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core, traitlets
 smart-open==1.8.4         # via -r requirements/base.in
 social-auth-app-django==3.1.0  # via rest-social-auth
 social-auth-core[openidconnect]==3.2.0  # via -r requirements/base.in, rest-social-auth, social-auth-app-django, squarelet-auth
@@ -132,7 +138,8 @@ sqlparse==0.3.0           # via django, django-debug-toolbar
 squarelet-auth==0.0.45    # via -r requirements/base.in
 text-unidecode==1.2       # via python-slugify
 traitlets==4.3.3          # via ipython
-typing-extensions==3.7.4  # via -r requirements/base.in, aiohttp
+typing-extensions==3.7.4.3  # via -r requirements/base.in, aiohttp, libcst, typing-inspect
+typing-inspect==0.6.0     # via libcst
 unidecode==1.1.1          # via -r requirements/base.in
 uritemplate==3.0.0        # via coreapi, drf-yasg
 urllib3==1.25.3           # via botocore, requests
