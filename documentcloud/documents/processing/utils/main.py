@@ -106,7 +106,8 @@ def get_progress(request, _context=None):
     doc_id = data.get("doc_id")
     doc_ids = data.get("doc_ids")
 
-    if not doc_ids:
+    # doc_ids could still be specified as empty list, so check for None
+    if doc_ids is None:
         doc_ids = [doc_id]
 
     response = []
