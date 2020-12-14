@@ -29,7 +29,13 @@ from unidecode import unidecode
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.mail import send_mail
 from documentcloud.documents.choices import Access, Status
-from documentcloud.documents.models import Document, Entity, EntityDate, Note, Section
+from documentcloud.documents.models import (
+    Document,
+    EntityDate,
+    LegacyEntity,
+    Note,
+    Section,
+)
 from documentcloud.documents.tasks import solr_index_dirty
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.choices import CollaboratorAccess
@@ -612,7 +618,7 @@ class Command(BaseCommand):
                 if i % 100000 == 0:
                     self.stdout.write(f"Entity {i:,}...")
                 create_entities.append(
-                    Entity(
+                    LegacyEntity(
                         document_id=fields[3],
                         kind=fields[5],
                         value=fields[6],
@@ -622,11 +628,11 @@ class Command(BaseCommand):
                     )
                 )
                 if i % 1000 == 999:
-                    Entity.objects.bulk_create(create_entities, batch_size=1000)
+                    LegacyEntity.objects.bulk_create(create_entities, batch_size=1000)
                     del create_entities
                     create_entities = []
 
-            Entity.objects.bulk_create(create_entities, batch_size=1000)
+            LegacyEntity.objects.bulk_create(create_entities, batch_size=1000)
 
         self.stdout.write("End Entities Import {}".format(timezone.now()))
 

@@ -73,7 +73,7 @@ class SectionFactory(factory.django.DjangoModelFactory):
         model = "documents.Section"
 
 
-class EntityFactory(factory.django.DjangoModelFactory):
+class LegacyEntityFactory(factory.django.DjangoModelFactory):
     document = factory.SubFactory(
         "documentcloud.documents.tests.factories.DocumentFactory"
     )
@@ -94,7 +94,7 @@ class EntityFactory(factory.django.DjangoModelFactory):
     relevance = factory.LazyFunction(random)
 
     class Meta:
-        model = "documents.Entity"
+        model = "documents.LegacyEntity"
 
 
 class EntityDateFactory(factory.django.DjangoModelFactory):
