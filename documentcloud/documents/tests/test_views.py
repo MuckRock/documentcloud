@@ -19,7 +19,7 @@ from documentcloud.documents.tests.factories import (
     DocumentErrorFactory,
     DocumentFactory,
     EntityDateFactory,
-    EntityFactory,
+    LegacyEntityFactory,
     NoteFactory,
     SectionFactory,
 )
@@ -1173,11 +1173,11 @@ class TestSectionAPI:
 
 
 @pytest.mark.django_db()
-class TestEntityAPI:
+class TestLegacyEntityAPI:
     def test_list(self, client, document):
         """List the entities of a document"""
         size = 10
-        EntityFactory.create_batch(size, document=document)
+        LegacyEntityFactory.create_batch(size, document=document)
         response = client.get(f"/api/documents/{document.pk}/entities/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
