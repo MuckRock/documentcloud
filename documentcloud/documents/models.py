@@ -572,14 +572,14 @@ class Section(models.Model):
         return self.title
 
 
-class Entity(models.Model):
-    """An entity within a document"""
+class LegacyEntity(models.Model):
+    """An entity within a document imported from Legacy DocumentCloud"""
 
     document = models.ForeignKey(
         verbose_name=_("document"),
         to="documents.Document",
         on_delete=models.CASCADE,
-        related_name="entities",
+        related_name="legacy_entities",
         # This is set to false so we can import entities
         # which are attached to documents which haven't been imported yet
         # Once migration from old DocumentCloud is complete, this should
