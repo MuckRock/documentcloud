@@ -23,8 +23,8 @@ from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import (
     Document,
     DocumentError,
-    Entity,
     EntityDate,
+    LegacyEntity,
     Note,
     Section,
 )
@@ -421,9 +421,9 @@ class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
         return attrs
 
 
-class EntitySerializer(serializers.ModelSerializer):
+class LegacyEntitySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Entity
+        model = LegacyEntity
         fields = ["kind", "value", "relevance", "occurrences"]
 
 

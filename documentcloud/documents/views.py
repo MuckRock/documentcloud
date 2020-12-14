@@ -38,8 +38,8 @@ from documentcloud.documents.decorators import (
 from documentcloud.documents.models import (
     Document,
     DocumentError,
-    Entity,
     EntityDate,
+    LegacyEntity,
     Note,
     Section,
 )
@@ -50,7 +50,7 @@ from documentcloud.documents.serializers import (
     DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
-    EntitySerializer,
+    LegacyEntitySerializer,
     NoteSerializer,
     ProcessDocumentSerializer,
     RedactionSerializer,
@@ -504,9 +504,9 @@ class SectionViewSet(viewsets.ModelViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    serializer_class = EntitySerializer
-    queryset = Entity.objects.none()
+class LegacyEntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = LegacyEntitySerializer
+    queryset = LegacyEntity.objects.none()
 
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
@@ -514,7 +514,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        return document.entities.all()
+        return document.legacy_entities.all()
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
