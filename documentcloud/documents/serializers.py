@@ -23,7 +23,9 @@ from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import (
     Document,
     DocumentError,
+    Entity,
     EntityDate,
+    EntityOccurence,
     LegacyEntity,
     Note,
     Section,
@@ -484,3 +486,17 @@ class ProcessDocumentSerializer(serializers.Serializer):
 
     class Meta:
         list_serializer_class = BulkListSerializer
+
+
+class EntitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Entity
+        fields = ["name", "kind", "metadata"]
+
+
+class EntityOccurenceSerializer(serializers.ModelSerializer):
+    entity = EntitySerializer()
+
+    class Meta:
+        model = EntityOccurence
+        fields = ["entity", "relevance", "occurences"]

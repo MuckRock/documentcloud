@@ -19,7 +19,7 @@ from documentcloud.common.environment import storage
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.utils import slugify
-from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.choices import Access, EntityKind, Status
 from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
 
 logger = logging.getLogger(__name__)
@@ -685,7 +685,7 @@ class EntityOccurence(models.Model):
         verbose_name=_("entity"),
         to="documents.Entity",
         on_delete=models.CASCADE,
-        related_name="*",
+        related_name="+",
         help_text=_("The entity which appears in the document"),
     )
 
