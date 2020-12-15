@@ -650,3 +650,51 @@ class EntityDate(models.Model):
     class Meta:
         ordering = ("document", "date")
         unique_together = (("document", "date"),)
+
+
+class Entity(models.Model):
+    """An entity which can be referenced within a document"""
+
+    name = models.CharField(
+        _("name"), max_length=255, help_text=_("The name of this entity")
+    )
+    kind = models.IntegerField(
+        _("kind"),
+        choices=EntityKind.choices,
+        help_text=_("Categorization of this entity"),
+    )
+    metadata = JSONField(
+        _("metadata"),
+        default=dict,
+        help_text=_("Extra data asociated with this entity"),
+    )
+
+
+class EntityOccurence(models.Model):
+    """Where a given entitiy appears in a given document"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="entities",
+        help_text=_("The document this entity belongs to"),
+    )
+
+    entity = models.ForeignKey(
+        verbose_name=_("entity"),
+        to="documents.Entity",
+        on_delete=models.CASCADE,
+        related_name="*",
+        help_text=_("The entity which appears in the document"),
+    )
+
+    relevance = models.FloatField(
+        _("relevance"), default=0.0, help_text=_("The relevance of this entity")
+    )
+
+    occurences = JSONField(
+        _("occurences"),
+        default=dict,
+        help_text=_("Extra data asociated with this entity"),
+    )

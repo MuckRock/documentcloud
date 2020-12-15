@@ -33,3 +33,20 @@ class Status(DjangoChoices):
     nofile = ChoiceItem(4, _("No file"), api=True)
     # The file is deleted
     deleted = ChoiceItem(5, _("Deleted"), api=False)
+
+
+class EntityKind(DjangoChoices):
+    # pylint: disable=no-init
+    unknown = ChoiceItem(0, _("Unknown"))
+    person = ChoiceItem(1, _("Person"))
+    location = ChoiceItem(2, _("Location"))
+    organization = ChoiceItem(3, _("Organization"))
+    event = ChoiceItem(4, _("Event"))
+    work_of_art = ChoiceItem(5, _("Work_Of_Art"))
+    consumer_good = ChoiceItem(6, _("Consumer_Good"))
+    other = ChoiceItem(7, _("Other"))
+    phone_number = ChoiceItem(9, _("Phone_Number"))
+    address = ChoiceItem(10, _("Address"))
+    date = ChoiceItem(11, _("Date"))
+    number = ChoiceItem(12, _("Number"))
+    price = ChoiceItem(13, _("Price"))
