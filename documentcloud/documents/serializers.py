@@ -8,14 +8,12 @@ from rest_framework.relations import ManyRelatedField
 # Standard Library
 import logging
 import re
-import sys
 
 # Third Party
-from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
-from documentcloud.common.environment import httpsub, storage
+from documentcloud.common.environment import storage
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
@@ -74,14 +72,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         Status, read_only=True, help_text=Document._meta.get_field("status").help_text
     )
 
-    remaining = serializers.SerializerMethodField(
-        label=_("Text and image pages remaining"),
-        read_only=True,
-        help_text=_(
-            "How many pages are left to be processed - only present during processing"
-        ),
-    )
-
     edit_access = serializers.SerializerMethodField(
         label=_("Edit Access"),
         read_only=True,
@@ -124,7 +114,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "presigned_url",
             "projects",
             "related_article",
-            "remaining",
             "published_url",
             "slug",
             "source",
@@ -171,12 +160,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if view and view.action in ("bulk_update", "bulk_partial_update"):
             # ID is not read only for bulk updates
             self.fields["id"].read_only = False
-
-        if not request or (
-            "remaining" not in request.GET and "remaining" in self.fields
-        ):
-            # only show remaining field if it was requested
-            del self.fields["remaining"]
 
         if (
             request
@@ -268,26 +251,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
         return storage.presign_url(obj.original_path, "put_object")
-
-    def get_remaining(self, obj):
-        """Get the progress data from the serverless function"""
-        # remove this
-        try:
-            response = httpsub.post(
-                settings.PROGRESS_URL,
-                json={"doc_id": obj.pk},
-                timeout=settings.PROGRESS_TIMEOUT,
-            )
-            response.raise_for_status()
-            return response.json()[0]
-        except RequestException as exc:
-            logger.warning(
-                "Error getting progress for document %d, exception %s",
-                obj.pk,
-                exc,
-                exc_info=sys.exc_info(),
-            )
-            return {"texts": None, "images": None}
 
     def get_edit_access(self, obj):
         request = self.context.get("request")
