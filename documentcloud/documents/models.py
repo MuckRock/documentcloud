@@ -672,6 +672,7 @@ class Entity(models.Model):
     """An entity which can be referenced within a document"""
 
     # XXX work out how these should be unique
+    # by name, mid, wikipedia url etc
 
     name = models.CharField(
         _("name"), max_length=255, help_text=_("The name of this entity")
@@ -687,11 +688,14 @@ class Entity(models.Model):
         help_text=_("Extra data asociated with this entity"),
     )
 
+    def __str__(self):
+        return self.name
+
 
 class EntityOccurence(models.Model):
     """Where a given entitiy appears in a given document"""
 
-    # XXX unique together document / entity
+    # XXX unique together document / entity ? collapase ?
 
     document = models.ForeignKey(
         verbose_name=_("document"),
@@ -718,3 +722,6 @@ class EntityOccurence(models.Model):
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
+
+    def __str__(self):
+        return self.entity.name
