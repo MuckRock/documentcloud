@@ -15,12 +15,10 @@ async-timeout==3.0.1      # via aiohttp
 attrs==19.3.0             # via aiohttp
 backcall==0.1.0           # via ipython
 billiard==3.6.3.0         # via celery
-blis==0.7.4               # via spacy, thinc
 boto3==1.10.14            # via -r requirements/base.in, aiobotocore, smart-open
 boto==2.49.0              # via smart-open
 botocore==1.13.14         # via aiobotocore, boto3, s3transfer
 cachetools==3.1.1         # via google-auth
-catalogue==1.0.0          # via spacy, thinc
 celery==4.4.2             # via -r requirements/base.in, squarelet-auth
 certifi==2019.6.16        # via requests
 cffi==1.12.3              # via argon2-cffi, cryptography
@@ -31,7 +29,6 @@ cpuprofile==1.0.1         # via -r requirements/base.in
 cryptography==2.8         # via -r requirements/base.in
 cssselect==1.1.0          # via premailer
 cssutils==1.0.2           # via premailer
-cymem==2.0.5              # via preshed, spacy, thinc
 dataclasses==0.8          # via libcst
 decorator==4.4.0          # via gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via python3-openid, social-auth-core
@@ -60,7 +57,6 @@ drf-flex-fields==0.6.1    # via -r requirements/base.in
 drf-nested-routers==0.91  # via -r requirements/base.in
 drf-yasg==1.17.0          # via -r requirements/base.in
 ecdsa==0.13.2             # via python-jose
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.3.1/en_core_web_sm-2.3.1.tar.gz#egg=en_core_web_sm  # via -r requirements/base.in
 fsspec==0.5.2             # via gcsfs
 furl==2.1.0               # via -r requirements/base.in
 future==0.17.1            # via python-jose
@@ -76,7 +72,7 @@ grpcio==1.34.0            # via google-api-core, googleapis-common-protos, grpc-
 html2text==2020.1.16      # via -r requirements/base.in
 idna-ssl==1.1.0           # via aiohttp
 idna==2.8                 # via idna-ssl, requests, yarl
-importlib-metadata==0.21  # via catalogue, kombu, markdown
+importlib-metadata==0.21  # via kombu, markdown
 inflection==0.3.1         # via drf-yasg
 ipython-genutils==0.2.0   # via traitlets
 ipython==7.11.1           # via -r requirements/base.in
@@ -93,9 +89,8 @@ markdown==3.2.2           # via -r requirements/base.in
 markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via aiohttp, yarl
-murmurhash==1.0.5         # via preshed, spacy, thinc
 mypy-extensions==0.4.3    # via typing-inspect
-numpy==1.17.3             # via -r requirements/base.in, blis, spacy, thinc
+numpy==1.17.3             # via -r requirements/base.in
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via furl
 packaging==19.2           # via drf-yasg
@@ -104,10 +99,8 @@ pebble==4.5.0             # via -r requirements/base.in
 pexpect==4.8.0            # via ipython
 pickleshare==0.7.5        # via ipython
 pillow==6.1.0             # via -r requirements/base.in
-plac==1.1.3               # via spacy, thinc
 ply==3.11                 # via luqum
 premailer==3.0.0          # via django-premailer
-preshed==3.0.5            # via spacy, thinc
 prompt-toolkit==3.0.3     # via ipython
 proto-plus==1.13.0        # via google-cloud-language
 protobuf==3.14.0          # via google-api-core, googleapis-common-protos, proto-plus
@@ -129,7 +122,7 @@ pyyaml==5.3.1             # via libcst
 rcssmin==1.0.6            # via -r requirements/base.in, django-compressor
 redis==3.4.1              # via -r requirements/base.in, django-redis, python-redis-lock
 requests-oauthlib==1.2.0  # via google-auth-oauthlib, social-auth-core
-requests==2.22.0          # via coreapi, gcsfs, google-api-core, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, spacy, squarelet-auth
+requests==2.22.0          # via coreapi, gcsfs, google-api-core, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
 rest-social-auth==2.2.0   # via -r requirements/base.in
 rjsmin==1.1.0             # via django-compressor
 rsa==4.0                  # via google-auth, python-jose
@@ -141,13 +134,9 @@ six==1.15.0               # via argon2-cffi, cryptography, django-appconf, djang
 smart-open==1.8.4         # via -r requirements/base.in
 social-auth-app-django==3.1.0  # via rest-social-auth
 social-auth-core[openidconnect]==3.2.0  # via -r requirements/base.in, rest-social-auth, social-auth-app-django, squarelet-auth
-spacy==2.3.4              # via -r requirements/base.in, en-core-web-sm
 sqlparse==0.3.0           # via django, django-debug-toolbar
 squarelet-auth==0.0.45    # via -r requirements/base.in
-srsly==1.0.5              # via spacy, thinc
 text-unidecode==1.2       # via python-slugify
-thinc==7.4.4              # via spacy
-tqdm==4.54.1              # via spacy, thinc
 traitlets==4.3.3          # via ipython
 typing-extensions==3.7.4.3  # via -r requirements/base.in, aiohttp, libcst, typing-inspect
 typing-inspect==0.6.0     # via libcst
@@ -155,7 +144,6 @@ unidecode==1.1.1          # via -r requirements/base.in
 uritemplate==3.0.0        # via coreapi, drf-yasg
 urllib3==1.25.3           # via botocore, requests
 vine==1.3.0               # via amqp, celery
-wasabi==0.8.0             # via spacy, thinc
 wcwidth==0.1.8            # via prompt-toolkit
 wrapt==1.11.2             # via -r requirements/base.in, aiobotocore
 yarl==1.4.2               # via aiohttp
