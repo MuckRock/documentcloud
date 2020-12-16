@@ -3,6 +3,7 @@ Base settings to build other settings files upon.
 """
 
 # Standard Library
+import os
 from tempfile import NamedTemporaryFile
 
 # Third Party
@@ -507,3 +508,14 @@ DOGSLOW_STACK_VARS = True
 
 DOGSLOW_EMAIL_TO = env("DOGSLOW_EMAIL_TO", default="mitch@muckrock.com")
 DOGSLOW_EMAIL_FROM = env("DOGSLOW_EMAIL_FROM", default="info@muckrock.com")
+
+# Google Language
+# ------------------------------------------------------------------------------
+# The credentials need to be in a file
+GOOGLE_APPLICATION_CREDENTIALS = env.str("GOOGLE_APPLICATION_CREDENTIALS", default="")
+# put the contents into a named temp file
+# and set the var to the name of the file
+gac = NamedTemporaryFile(delete=False)
+gac.write(GOOGLE_APPLICATION_CREDENTIALS.encode("ascii"))
+gac.close()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac.name
