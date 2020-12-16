@@ -1,4 +1,5 @@
 # Django
+from django import forms
 from django.db import transaction
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -267,6 +268,10 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         _solr_remove(instance)
 
     class Filter(django_filters.FilterSet):
+        document_id = django_filters.ChoiceFilter(
+            field_name="document_id", lookup_expr="in", widget=forms.TextInput
+        )
+
         class Meta:
             model = ProjectMembership
             fields = {"document_id": ["in"]}
