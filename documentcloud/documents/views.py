@@ -40,6 +40,7 @@ from documentcloud.documents.models import (
     Document,
     DocumentError,
     EntityDate,
+    EntityOccurence,
     LegacyEntity,
     Note,
     Section,
@@ -51,6 +52,7 @@ from documentcloud.documents.serializers import (
     DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
+    EntityOccurenceSerializer,
     LegacyEntitySerializer,
     NoteSerializer,
     ProcessDocumentSerializer,
@@ -58,6 +60,7 @@ from documentcloud.documents.serializers import (
     SectionSerializer,
 )
 from documentcloud.documents.tasks import (
+    extract_entities,
     fetch_file_url,
     process,
     process_cancel,
@@ -678,3 +681,24 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             serializer.data,
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+class EntityViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+):
+    serializer_class = EntityOccurenceSerializer
+    queryset = EntityOccurence.objects.none()
+
+    @lru_cache()
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        self.document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return self.document.entities.all()
+
+    def create(self, request, *args, **kwargs):
+        extract_entities.delay(self.document.pk)
+        return Response("OK")
