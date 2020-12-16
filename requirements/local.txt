@@ -42,7 +42,6 @@ cpuprofile==1.0.1         # via -r requirements/./base.txt
 cryptography==2.8         # via -r requirements/./base.txt
 cssselect==1.1.0          # via -r requirements/./base.txt, premailer
 cssutils==1.0.2           # via -r requirements/./base.txt, premailer
-cymem==2.0.5              # via -r requirements/./base.txt, preshed, spacy, thinc
 dataclasses==0.8          # via -r requirements/./base.txt, libcst
 decorator==4.4.0          # via -r requirements/./base.txt, gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via -r requirements/./base.txt, python3-openid, social-auth-core
@@ -115,7 +114,6 @@ markupsafe==1.1.1         # via -r requirements/./base.txt, jinja2
 mccabe==0.6.1             # via flake8, pylint
 more-itertools==7.2.0     # via -r requirements/./base.txt, pytest, zipp
 multidict==4.7.5          # via -r requirements/./base.txt, aiohttp, yarl
-murmurhash==1.0.5         # via -r requirements/./base.txt, preshed, spacy, thinc
 mypy-extensions==0.4.3    # via -r requirements/./base.txt, mypy, typing-inspect
 mypy==0.720               # via -r requirements/local.in
 numpy==1.17.3             # via -r requirements/./base.txt, blis, opencv-python, spacy, thinc

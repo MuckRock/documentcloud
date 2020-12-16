@@ -100,9 +100,8 @@ markdown==3.2.2           # via -r requirements/./base.txt
 markupsafe==1.1.1         # via -r requirements/./base.txt, jinja2
 more-itertools==7.2.0     # via -r requirements/./base.txt, zipp
 multidict==4.7.5          # via -r requirements/./base.txt, aiohttp, yarl
-murmurhash==1.0.5         # via -r requirements/./base.txt, preshed, spacy, thinc
 mypy-extensions==0.4.3    # via -r requirements/./base.txt, typing-inspect
-numpy==1.17.3             # via -r requirements/./base.txt, blis, spacy, thinc
+numpy==1.17.3             # via -r requirements/./base.txt
 oauthlib==3.1.0           # via -r requirements/./base.txt, requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via -r requirements/./base.txt, furl
 packaging==19.2           # via -r requirements/./base.txt, drf-yasg
