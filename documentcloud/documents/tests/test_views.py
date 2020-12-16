@@ -1178,7 +1178,7 @@ class TestLegacyEntityAPI:
         """List the entities of a document"""
         size = 10
         LegacyEntityFactory.create_batch(size, document=document)
-        response = client.get(f"/api/documents/{document.pk}/entities/")
+        response = client.get(f"/api/documents/{document.pk}/legacy_entities/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
@@ -1453,3 +1453,30 @@ class TestRedactionAPI:
             f"/api/documents/{document.pk}/redactions/", data, format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db()
+class TestEntityAPI:
+    def test_create(self, client, mocker):
+        """Create the entities"""
+        document = DocumentFactory(access=Access.private)
+        extract_entities = mocker.patch(
+            "documentcloud.documents.views.extract_entities.delay"
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(f"/api/documents/{document.pk}/entities/")
+        assert response.status_code == status.HTTP_200_OK
+        extract_entities.assert_called_once_with(document.pk)
+
+    def test_create_404(self, client, user):
+        """Return a 404 if the user cannot view the document"""
+        document = DocumentFactory(access=Access.private)
+        client.force_authenticate(user=user)
+        response = client.post(f"/api/documents/{document.pk}/entities/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_create_403(self, client, document, user):
+        """Return a 403 if the user cannot edit the document"""
+        client.force_authenticate(user=user)
+        response = client.post(f"/api/documents/{document.pk}/entities/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
