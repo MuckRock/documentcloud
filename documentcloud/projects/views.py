@@ -268,13 +268,13 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         _solr_remove(instance)
 
     class Filter(django_filters.FilterSet):
-        document_id = django_filters.ChoiceFilter(
-            field_name="document_id", lookup_expr="in", widget=forms.TextInput
+        document_id__in = ModelMultipleChoiceFilter(
+            model=Document, field_name="document"
         )
 
         class Meta:
             model = ProjectMembership
-            fields = {"document_id": ["in"]}
+            fields = ["document_id__in"]
 
     filterset_class = Filter
 
