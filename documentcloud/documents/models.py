@@ -296,6 +296,22 @@ class Document(models.Model):
             )
             return ""
 
+    def get_text(self):
+        try:
+            return (
+                storage.open(path.text_path(self.pk, self.slug), "rb")
+                .read()
+                .decode("utf8")
+            )
+        except ValueError as exc:
+            logger.error(
+                "Error getting text: Document: %d Exception: %s",
+                self.pk,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+            return ""
+
     def get_all_page_text(self):
         try:
             return json.loads(
@@ -655,6 +671,8 @@ class EntityDate(models.Model):
 class Entity(models.Model):
     """An entity which can be referenced within a document"""
 
+    # XXX work out how these should be unique
+
     name = models.CharField(
         _("name"), max_length=255, help_text=_("The name of this entity")
     )
@@ -672,6 +690,8 @@ class Entity(models.Model):
 
 class EntityOccurence(models.Model):
     """Where a given entitiy appears in a given document"""
+
+    # XXX unique together document / entity
 
     document = models.ForeignKey(
         verbose_name=_("document"),
