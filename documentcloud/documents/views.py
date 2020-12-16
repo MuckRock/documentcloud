@@ -1,9 +1,10 @@
 # Django
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import mixins, parsers, serializers, status, viewsets
+from rest_framework import exceptions, mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -15,9 +16,9 @@ import sys
 from functools import lru_cache
 
 # Third Party
-import django_filters
 import environ
 import pysolr
+from django_filters import rest_framework as django_filters
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 
@@ -30,7 +31,7 @@ from documentcloud.core.permissions import (
     DocumentErrorTokenPermissions,
     DocumentTokenPermissions,
 )
-from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.choices import Access, EntityKind, OccurenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
     anonymous_cache_control,
@@ -700,5 +701,42 @@ class EntityViewSet(
         return self.document.entities.all()
 
     def create(self, request, *args, **kwargs):
-        extract_entities.delay(self.document.pk)
-        return Response("OK")
+        if request.user.has_perm("documents.change_document", self.document):
+            extract_entities.delay(self.document.pk)
+            return Response("OK")
+        else:
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit this document"
+            )
+
+    class Filter(django_filters.FilterSet):
+        kind = ChoicesFilter(field_name="entity__kind", choices=EntityKind)
+        occurences = ChoicesFilter(method="occurence_filter", choices=OccurenceKind)
+        mid = django_filters.BooleanFilter(
+            field_name="entity__metadata__mid",
+            lookup_expr="isnull",
+            label="MID is null",
+        )
+        wikipedia_url = django_filters.BooleanFilter(
+            field_name="entity__metadata__wikipedia_url",
+            lookup_expr="isnull",
+            label="Wikipedia URL is null",
+        )
+
+        def occurence_filter(self, queryset, name, values):
+            query = Q()
+            for value in values:
+                query |= Q(occurences__contains=[{"type_": value}])
+            return queryset.filter(query)
+
+        class Meta:
+            model = EntityOccurence
+            fields = {
+                "kind": ["exact"],
+                "occurences": ["exact"],
+                "relevance": ["gt"],
+                "mid": ["inull"],
+                "wikipedia_url": ["inull"],
+            }
+
+    filterset_class = Filter
