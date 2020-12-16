@@ -117,9 +117,11 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             pk=self.kwargs["project_pk"],
         )
         return (
+            # adding ID to the order by here helps postgres pick an appropriate
+            # execution plan and drastically reduces run time in certain cases
             project.projectmembership_set.get_viewable(self.request.user)
             .preload(self.request.user, self.request.query_params.get("expand", ""))
-            .order_by("-document__created_at")
+            .order_by("-document__created_at", "id")
         )
 
     @lru_cache()
