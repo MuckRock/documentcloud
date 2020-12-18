@@ -243,7 +243,10 @@ def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
 # entity extraction
 
 
-@task
+@task(
+    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
+    time_limit=settings.CELERY_TASK_TIME_LIMIT,
+)
 def extract_entities(document_pk):
     try:
         document = Document.objects.get(pk=document_pk)
