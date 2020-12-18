@@ -105,7 +105,8 @@ class EntityExtractor:
                 # send the current chunk of text to be analyzed
                 logger.info("Extracting to page %d", page["page"])
                 self._extract_entities_text(document, "".join(texts))
-                texts = []
+                texts = [page["contents"]]
+                total_len = page_len
             else:
                 # otherwise append the current page and accumulate the length
                 texts.append(page["contents"])
@@ -114,3 +115,5 @@ class EntityExtractor:
         # analyze the remaining text
         logger.info("Extracting to end")
         self._extract_entities_text(document, "".join(texts))
+
+        logger.info("Extracting entities for %s finished", document)
