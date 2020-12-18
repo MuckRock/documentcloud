@@ -12,7 +12,7 @@ from google.cloud.language_v1.types.language_service import AnalyzeEntitiesRespo
 # DocumentCloud
 from documentcloud.documents.models import Entity, EntityOccurence
 
-TEXT_LIMIT = 1000000
+BYTE_LIMIT = 1000000
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class EntityExtractor:
         self.client = language_v1.LanguageServiceClient()
         self.page_map = []
 
-    def _transform_mentions(self, mentions):
+    def _transform_mentions(self, mentions, character_offset):
         """Format mentions how we want to store them in our database
         Rename and flatten some fields and calculate page and page offset
         """
@@ -32,7 +32,7 @@ class EntityExtractor:
             occurence["content"] = mention["text"]["content"]
             occurence["kind"] = mention["type_"]
 
-            offset = mention["text"]["begin_offset"]
+            offset = mention["text"]["begin_offset"] + character_offset
             page = bisect(self.page_map, offset) - 1
             page_offset = offset - self.page_map[page]
 
@@ -43,7 +43,7 @@ class EntityExtractor:
             occurences.append(occurence)
         return occurences
 
-    def _extract_entities_text(self, document, text):
+    def _extract_entities_text(self, document, text, character_offset):
         """Extract the entities from a given chunk of text from the document"""
         language_document = language_v1.Document(
             content=text, type_=language_v1.Document.Type.PLAIN_TEXT
@@ -56,12 +56,14 @@ class EntityExtractor:
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
         occurence_objs = []
         logger.info("Creating %d entities", len(entities))
+        # XXX collapase occurences of the same entity?
         for entity in entities:
+            # XXX optimize by trying to get all, then mapping in python
             entity_obj, _created = Entity.objects.get_or_create(
                 name=entity["name"],
                 defaults={"kind": entity["type_"], "metadata": entity["metadata"]},
             )
-            occurences = self._transform_mentions(entity["mentions"])
+            occurences = self._transform_mentions(entity["mentions"], character_offset)
             occurence_objs.append(
                 EntityOccurence(
                     document=document,
@@ -79,41 +81,49 @@ class EntityExtractor:
         # XXX should document be readable/pending while extracting?
         # XXX what to do about redactions/page edits post entity extraction?
 
-        page_text = document.get_all_page_text()
+        all_page_text = document.get_all_page_text()
         texts = []
-        total_len = 0
+        total_bytes = 0
         self.page_map = [0]
+        character_offset = 0
+        total_characters = 0
 
         logger.info(
-            "Extracting entities for %s, %d pages", document, len(page_text["pages"])
+            "Extracting entities for %s, %d pages",
+            document,
+            len(all_page_text["pages"]),
         )
 
-        for page in page_text["pages"]:
+        for page in all_page_text["pages"]:
             # page map is stored in unicode characters
             # we add the current page's length in characters to the beginning of the
             # last page, to get the start character of the next page
-            self.page_map.append(self.page_map[-1] + len(page["contents"]))
+            page_chars = len(page["contents"])
+            self.page_map.append(self.page_map[-1] + page_chars)
             # the API limit is based on byte size, so we use the length of the
             # content encoded into utf8
-            page_len = len(page["contents"].encode("utf8"))
-            if page_len > TEXT_LIMIT:
+            page_bytes = len(page["contents"].encode("utf8"))
+            if page_bytes > BYTE_LIMIT:
                 logger.error("Single page too long for entity extraction")
                 return
 
-            if total_len + page_len > TEXT_LIMIT:
+            if total_bytes + page_bytes > BYTE_LIMIT:
                 # if adding another page would put us over the limit,
                 # send the current chunk of text to be analyzed
                 logger.info("Extracting to page %d", page["page"])
-                self._extract_entities_text(document, "".join(texts))
+                self._extract_entities_text(document, "".join(texts), character_offset)
+                character_offset = total_characters
                 texts = [page["contents"]]
-                total_len = page_len
+                total_bytes = page_bytes
+                total_characters += page_chars
             else:
                 # otherwise append the current page and accumulate the length
                 texts.append(page["contents"])
-                total_len += page_len
+                total_bytes += page_bytes
+                total_characters += page_chars
 
         # analyze the remaining text
         logger.info("Extracting to end")
-        self._extract_entities_text(document, "".join(texts))
+        self._extract_entities_text(document, "".join(texts), character_offset)
 
         logger.info("Extracting entities for %s finished", document)
