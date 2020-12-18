@@ -726,7 +726,7 @@ class EntityViewSet(
         def occurence_filter(self, queryset, name, values):
             query = Q()
             for value in values:
-                query |= Q(occurences__contains=[{"type_": value}])
+                query |= Q(occurences__contains=[{"kind": value}])
             return queryset.filter(query)
 
         class Meta:
