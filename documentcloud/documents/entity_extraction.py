@@ -1,3 +1,6 @@
+# Django
+from django.db import transaction
+
 # Standard Library
 import logging
 from bisect import bisect
@@ -49,19 +52,25 @@ class EntityExtractor:
             document=language_document, encoding_type="UTF32"
         )
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
+        occurence_objs = []
+        logger.info("Creating %d entities", len(entities))
         for entity in entities:
             entity_obj, _created = Entity.objects.get_or_create(
                 name=entity["name"],
                 defaults={"kind": entity["type_"], "metadata": entity["metadata"]},
             )
             occurences = self._transform_mentions(entity["mentions"])
-            EntityOccurence.objects.create(
-                document=document,
-                entity=entity_obj,
-                relevance=entity["salience"],
-                occurences=occurences,
+            occurence_objs.append(
+                EntityOccurence(
+                    document=document,
+                    entity=entity_obj,
+                    relevance=entity["salience"],
+                    occurences=occurences,
+                )
             )
+        EntityOccurence.objects.bulk_create(occurence_objs)
 
+    @transaction.atomic
     def extract_entities(self, document):
         """Extract the entities from a document"""
         # XXX ensure no entities yet? or clear existing?
@@ -72,6 +81,8 @@ class EntityExtractor:
         texts = []
         total_len = 0
         self.page_map = [0]
+
+        logger.info("Extracting entities for %s, %d pages", document, len(page_text))
 
         for page in page_text["pages"]:
             # page map is stored in unicode characters
@@ -88,6 +99,7 @@ class EntityExtractor:
             if total_len + page_len > TEXT_LIMIT:
                 # if adding another page would put us over the limit,
                 # send the current chunk of text to be analyzed
+                logger.info("Extracting to page %d", page["page"])
                 self._extract_entities_text(document, "".join(texts))
                 texts = []
             else:
@@ -96,4 +108,5 @@ class EntityExtractor:
                 total_len += page_len
 
         # analyze the remaining text
+        logger.info("Extracting to page %d", page["page"])
         self._extract_entities_text(document, "".join(texts))
