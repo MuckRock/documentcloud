@@ -48,9 +48,11 @@ class EntityExtractor:
         language_document = language_v1.Document(
             content=text, type_=language_v1.Document.Type.PLAIN_TEXT
         )
+        logger.info("Calling entity extraction API")
         response = self.client.analyze_entities(
             document=language_document, encoding_type="UTF32"
         )
+        logger.info("Converting response to dictionary representation")
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
         occurence_objs = []
         logger.info("Creating %d entities", len(entities))
@@ -82,7 +84,9 @@ class EntityExtractor:
         total_len = 0
         self.page_map = [0]
 
-        logger.info("Extracting entities for %s, %d pages", document, len(page_text))
+        logger.info(
+            "Extracting entities for %s, %d pages", document, len(page_text["pages"])
+        )
 
         for page in page_text["pages"]:
             # page map is stored in unicode characters
@@ -108,5 +112,5 @@ class EntityExtractor:
                 total_len += page_len
 
         # analyze the remaining text
-        logger.info("Extracting to page %d", page["page"])
+        logger.info("Extracting to end")
         self._extract_entities_text(document, "".join(texts))
