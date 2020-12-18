@@ -11,10 +11,10 @@ from documentcloud.documents.models import Entity, EntityOccurence
 TEXT_LIMIT = 1000000
 
 logger = logging.getLogger(__name__)
-client = language_v1.LanguageServiceClient()
 
 
 def _extract_entities_text(document, text):
+    client = language_v1.LanguageServiceClient()
     language_document = language_v1.Document(
         content=text, type_=language_v1.Document.Type.PLAIN_TEXT
     )
