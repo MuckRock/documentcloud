@@ -57,12 +57,23 @@ class EntityExtractor:
         occurence_objs = []
         logger.info("Creating %d entities", len(entities))
         # XXX collapase occurences of the same entity?
+        names = [e["name"] for e in entities]
+        entities = Entity.objects.filter(name__in=names)
+        entity_map = {e["name"]: e for e in entities}
+        entity_objs = []
         for entity in entities:
-            # XXX optimize by trying to get all, then mapping in python
-            entity_obj, _created = Entity.objects.get_or_create(
-                name=entity["name"],
-                defaults={"kind": entity["type_"], "metadata": entity["metadata"]},
-            )
+            if entity["name"] not in entity_map:
+                entity_obj = Entity(
+                    name=entity["name"],
+                    kind=entity["type_"],
+                    metadata=entity["metadata"],
+                )
+                entity_map[entity["name"]] = entity_obj
+                entity_objs.append(entity_obj)
+        Entity.objects.bulk_create(entity_objs)
+
+        for entity in entities:
+            entity_obj = entity_map[entity["name"]]
             occurences = self._transform_mentions(entity["mentions"], character_offset)
             occurence_objs.append(
                 EntityOccurence(
