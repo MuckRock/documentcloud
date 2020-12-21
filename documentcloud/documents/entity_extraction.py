@@ -58,9 +58,9 @@ class EntityExtractor:
         logger.info("Creating %d entities", len(entities))
         # XXX collapase occurences of the same entity?
         names = [e["name"] for e in entities]
-        entities = Entity.objects.filter(name__in=names)
-        entity_map = {e["name"]: e for e in entities}
+        entity_map = {e.name: e for e in Entity.objects.filter(name__in=names)}
         entity_objs = []
+        logger.info("Create entity objects")
         for entity in entities:
             if entity["name"] not in entity_map:
                 entity_obj = Entity(
@@ -70,8 +70,10 @@ class EntityExtractor:
                 )
                 entity_map[entity["name"]] = entity_obj
                 entity_objs.append(entity_obj)
+        logger.info("Insert entities into the database")
         Entity.objects.bulk_create(entity_objs)
 
+        logger.info("Create entity occurrence objects")
         for entity in entities:
             entity_obj = entity_map[entity["name"]]
             occurences = self._transform_mentions(entity["mentions"], character_offset)
@@ -83,6 +85,7 @@ class EntityExtractor:
                     occurences=occurences,
                 )
             )
+        logger.info("Insert entity occurences into the database")
         EntityOccurence.objects.bulk_create(occurence_objs)
 
     @transaction.atomic
