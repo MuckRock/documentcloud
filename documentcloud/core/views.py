@@ -30,7 +30,7 @@ class FileServer(APIView):
                 f"{settings.PUBLIC_ASSET_URL}documents/{kwargs['pk']}/{kwargs['path']}"
             )
 
-        if request.is_ajax():
+        if request.META.get("HTTP_ACCEPT", "").startswith("application/json"):
             return JsonResponse({"location": url})
         else:
             return HttpResponseRedirect(url)
