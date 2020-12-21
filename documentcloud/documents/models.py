@@ -682,11 +682,25 @@ class Entity(models.Model):
         choices=EntityKind.choices,
         help_text=_("Categorization of this entity"),
     )
+    mid = models.CharField(
+        _("knowledge graph id"),
+        max_length=20,
+        blank=True,
+        help_text=_("The Google Knowledge Graph ID for this entity"),
+    )
+    wikipedia_url = models.URLField(
+        _("wikipedia url"),
+        blank=True,
+        help_text=_("The URL to the Wikipedia entry for this entity"),
+    )
     metadata = JSONField(
         _("metadata"),
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
+
+    class Meta:
+        unique_together = (("mid", "name"), ("name", "kind"))
 
     def __str__(self):
         return self.name

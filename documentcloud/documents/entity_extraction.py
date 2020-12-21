@@ -6,6 +6,7 @@ import logging
 from bisect import bisect
 
 # Third Party
+import requests
 from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
 
@@ -15,6 +16,15 @@ from documentcloud.documents.models import Entity, EntityOccurence
 BYTE_LIMIT = 1000000
 
 logger = logging.getLogger(__name__)
+
+
+def get_name_from_mid(mid):
+    """Use the Google Knowledge Graph API to get the name for the mid"""
+    service_url = "https://kgsearch.googleapis.com/v1/entities:search"
+    params = {"limit": 1, "key": settings.GOOGLE_API_KEY, "ids": mid}
+    response = requests.get(service_url, params=params)
+    # XXX error checking
+    return response.json()["itemListElement"][0]["result"]["name"]
 
 
 class EntityExtractor:
@@ -57,12 +67,25 @@ class EntityExtractor:
         occurence_objs = []
         logger.info("Creating %d entities", len(entities))
         # XXX collapase occurences of the same entity?
+        names = [e["name"] for e in entities]
+        entity_map = {e.name: e for e in Entity.objects.filter(name__in=names)}
+        entity_objs = []
+        logger.info("Create entity objects")
         for entity in entities:
-            # XXX optimize by trying to get all, then mapping in python
-            entity_obj, _created = Entity.objects.get_or_create(
-                name=entity["name"],
-                defaults={"kind": entity["type_"], "metadata": entity["metadata"]},
-            )
+            if entity["name"] not in entity_map:
+                entity_obj = Entity(
+                    name=entity["name"],
+                    kind=entity["type_"],
+                    metadata=entity["metadata"],
+                )
+                entity_map[entity["name"]] = entity_obj
+                entity_objs.append(entity_obj)
+        logger.info("Insert entities into the database")
+        Entity.objects.bulk_create(entity_objs)
+
+        logger.info("Create entity occurrence objects")
+        for entity in entities:
+            entity_obj = entity_map[entity["name"]]
             occurences = self._transform_mentions(entity["mentions"], character_offset)
             occurence_objs.append(
                 EntityOccurence(
@@ -72,6 +95,7 @@ class EntityExtractor:
                     occurences=occurences,
                 )
             )
+        logger.info("Insert entity occurences into the database")
         EntityOccurence.objects.bulk_create(occurence_objs)
 
     @transaction.atomic
