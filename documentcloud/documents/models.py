@@ -672,7 +672,13 @@ class Entity(models.Model):
     """An entity which can be referenced within a document"""
 
     # XXX work out how these should be unique
-    # by name, mid, wikipedia url etc
+    # wikipedia url unique if present
+    #
+    # if mid:
+    #   unique by mid
+    #   correct kind by kg api?
+    # if no mid:
+    #   unique by (name, kind) (or metadata?)
 
     name = models.CharField(
         _("name"), max_length=255, help_text=_("The name of this entity")
@@ -684,7 +690,7 @@ class Entity(models.Model):
     )
     mid = models.CharField(
         _("knowledge graph id"),
-        max_length=20,
+        max_length=13,
         blank=True,
         help_text=_("The Google Knowledge Graph ID for this entity"),
     )
@@ -698,9 +704,6 @@ class Entity(models.Model):
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
-
-    class Meta:
-        unique_together = (("mid", "name"), ("name", "kind"))
 
     def __str__(self):
         return self.name

@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.db import transaction
 
 # Standard Library
@@ -23,8 +24,10 @@ def get_name_from_mid(mid):
     service_url = "https://kgsearch.googleapis.com/v1/entities:search"
     params = {"limit": 1, "key": settings.GOOGLE_API_KEY, "ids": mid}
     response = requests.get(service_url, params=params)
-    # XXX error checking
-    return response.json()["itemListElement"][0]["result"]["name"]
+    try:
+        return response.json()["itemListElement"][0]["result"]["name"]
+    except (IndexError, KeyError):
+        return None
 
 
 class EntityExtractor:
@@ -66,16 +69,28 @@ class EntityExtractor:
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
         occurence_objs = []
         logger.info("Creating %d entities", len(entities))
+
         # XXX collapase occurences of the same entity?
+
+        for entity in entities:
+            if "mid" in entity["metadata"]:
+                name = get_name_from_mid(entity["metadata"]["mid"])
+                if name is not None:
+                    entity["name"] = name
+
         names = [e["name"] for e in entities]
         entity_map = {e.name: e for e in Entity.objects.filter(name__in=names)}
         entity_objs = []
         logger.info("Create entity objects")
         for entity in entities:
             if entity["name"] not in entity_map:
+                mid = entity["metadata"].pop("mid", "")
+                wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
                 entity_obj = Entity(
                     name=entity["name"],
                     kind=entity["type_"],
+                    mid=mid,
+                    wikipedia_url=wikipedia_url,
                     metadata=entity["metadata"],
                 )
                 entity_map[entity["name"]] = entity_obj
