@@ -456,7 +456,7 @@ class EntitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Entity
-        fields = ["name", "kind", "metadata"]
+        fields = ["name", "kind", "mid", "wikipedia_url", "metadata"]
 
 
 class EntityOccurenceSerializer(serializers.ModelSerializer):

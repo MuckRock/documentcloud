@@ -713,14 +713,12 @@ class EntityViewSet(
         kind = ChoicesFilter(field_name="entity__kind", choices=EntityKind)
         occurences = ChoicesFilter(method="occurence_filter", choices=OccurenceKind)
         mid = django_filters.BooleanFilter(
-            field_name="entity__metadata__mid",
-            lookup_expr="isnull",
-            label="MID is null",
+            method="value_exists", field_name="entity__mid", label="Has MID"
         )
         wikipedia_url = django_filters.BooleanFilter(
-            field_name="entity__metadata__wikipedia_url",
-            lookup_expr="isnull",
-            label="Wikipedia URL is null",
+            method="value_exists",
+            field_name="entity__wikipedia_url",
+            label="Has Wikipedia URL",
         )
 
         def occurence_filter(self, queryset, name, values):
@@ -729,14 +727,22 @@ class EntityViewSet(
                 query |= Q(occurences__contains=[{"kind": value}])
             return queryset.filter(query)
 
+        def value_exists(self, queryset, name, value):
+            if value is True:
+                return queryset.exclude(**{name: ""})
+            elif value is False:
+                return queryset.filter(**{name: ""})
+            else:
+                return queryset
+
         class Meta:
             model = EntityOccurence
             fields = {
                 "kind": ["exact"],
                 "occurences": ["exact"],
                 "relevance": ["gt"],
-                "mid": ["inull"],
-                "wikipedia_url": ["inull"],
+                "mid": ["exact"],
+                "wikipedia_url": ["exact"],
             }
 
     filterset_class = Filter
