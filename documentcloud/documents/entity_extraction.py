@@ -6,6 +6,7 @@ import logging
 from bisect import bisect
 
 # Third Party
+import requests
 from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
 
@@ -15,6 +16,15 @@ from documentcloud.documents.models import Entity, EntityOccurence
 BYTE_LIMIT = 1000000
 
 logger = logging.getLogger(__name__)
+
+
+def get_name_from_mid(mid):
+    """Use the Google Knowledge Graph API to get the name for the mid"""
+    service_url = "https://kgsearch.googleapis.com/v1/entities:search"
+    params = {"limit": 1, "key": settings.GOOGLE_API_KEY, "ids": mid}
+    response = requests.get(service_url, params=params)
+    # XXX error checking
+    return response.json()["itemListElement"][0]["result"]["name"]
 
 
 class EntityExtractor:
