@@ -686,7 +686,10 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class EntityViewSet(
-    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
 ):
     serializer_class = EntityOccurenceSerializer
     queryset = EntityOccurence.objects.none()
@@ -701,9 +704,20 @@ class EntityViewSet(
         return self.document.entities.all()
 
     def create(self, request, *args, **kwargs):
+        """Initiate asyncrhonous creation of entities"""
         if request.user.has_perm("documents.change_document", self.document):
             extract_entities.delay(self.document.pk)
             return Response("OK")
+        else:
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit this document"
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete all entities for the document"""
+        if request.user.has_perm("documents.change_document", self.document):
+            self.document.entities.all().delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             raise exceptions.PermissionDenied(
                 "You do not have permission to edit this document"
