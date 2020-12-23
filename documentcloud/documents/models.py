@@ -726,8 +726,6 @@ class Entity(models.Model):
 class EntityOccurrence(models.Model):
     """Where a given entitiy appears in a given document"""
 
-    # XXX unique together document / entity ? collapase ?
-
     document = models.ForeignKey(
         verbose_name=_("document"),
         to="documents.Document",

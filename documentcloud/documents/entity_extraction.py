@@ -113,7 +113,7 @@ def get_or_create_entities(entities):
 
 
 class EntityExtractor:
-    # XXX remove class
+    # XXX remove class/refactor
     def __init__(self):
         self.client = language_v1.LanguageServiceClient()
         self.page_map = []
@@ -151,12 +151,12 @@ class EntityExtractor:
         logger.info("Converting response to dictionary representation")
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
         occurrence_objs = []
-        logger.info("Creating %d entities", len(entities))
 
         # remove "number" entities
         entities = [e for e in entities if e["type_"] != EntityKind.number]
 
-        # get name/desc? from knowldge graph
+        # get name/desc from knowldge graph
+        logger.info("Getting data from the knowledge graph")
         mids = [e["metadata"]["mid"] for e in entities if "mid" in e["metadata"]]
         mid_info = get_mid_info(mids)
         for entity in entities:
@@ -167,6 +167,7 @@ class EntityExtractor:
                 if description:
                     entity["description"] = description
 
+        logger.info("Creating %d entities", len(entities))
         entity_map = get_or_create_entities(entities)
 
         logger.info("Collapse entity occurrences")
@@ -256,7 +257,7 @@ class EntityExtractor:
             self._extract_entities_text(document, "".join(texts), character_offset)
 
         finally:
-            # XXX this doesnt work
+            # XXX test this works
             document.status = Status.success
             document.save()
             transaction.on_commit(
