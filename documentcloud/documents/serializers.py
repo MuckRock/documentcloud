@@ -15,7 +15,7 @@ from rest_flex_fields import FlexFieldsModelSerializer
 # DocumentCloud
 from documentcloud.common.environment import storage
 from documentcloud.core.choices import Language
-from documentcloud.documents.choices import Access, EntityKind, OccurenceKind, Status
+from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import (
@@ -23,7 +23,7 @@ from documentcloud.documents.models import (
     DocumentError,
     Entity,
     EntityDate,
-    EntityOccurence,
+    EntityOccurrence,
     LegacyEntity,
     Note,
     Section,
@@ -459,21 +459,21 @@ class EntitySerializer(serializers.ModelSerializer):
         fields = ["name", "kind", "mid", "wikipedia_url", "metadata"]
 
 
-class EntityOccurenceSerializer(serializers.ModelSerializer):
+class EntityOccurrenceSerializer(serializers.ModelSerializer):
     entity = EntitySerializer()
-    occurences = serializers.SerializerMethodField(
-        label=_("Occurences"),
-        help_text=EntityOccurence._meta.get_field("occurences").help_text,
+    occurrences = serializers.SerializerMethodField(
+        label=_("Occurrences"),
+        help_text=EntityOccurrence._meta.get_field("occurrences").help_text,
     )
 
-    def get_occurences(self, obj):
+    def get_occurrences(self, obj):
         def fix(entity):
             value = entity.pop("kind", 0)
-            entity["kind"] = OccurenceKind.attributes.get(value, value)
+            entity["kind"] = OccurrenceKind.attributes.get(value, value)
             return entity
 
-        return [fix(e) for e in obj.occurences]
+        return [fix(e) for e in obj.occurrences]
 
     class Meta:
-        model = EntityOccurence
-        fields = ["entity", "relevance", "occurences"]
+        model = EntityOccurrence
+        fields = ["entity", "relevance", "occurrences"]

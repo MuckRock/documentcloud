@@ -12,7 +12,7 @@ from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
 
 # DocumentCloud
-from documentcloud.documents.models import Entity, EntityOccurence
+from documentcloud.documents.models import Entity, EntityOccurrence
 
 BYTE_LIMIT = 1000000
 
@@ -39,22 +39,22 @@ class EntityExtractor:
         """Format mentions how we want to store them in our database
         Rename and flatten some fields and calculate page and page offset
         """
-        occurences = []
+        occurrences = []
         for mention in mentions:
-            occurence = {}
-            occurence["content"] = mention["text"]["content"]
-            occurence["kind"] = mention["type_"]
+            occurrence = {}
+            occurrence["content"] = mention["text"]["content"]
+            occurrence["kind"] = mention["type_"]
 
             offset = mention["text"]["begin_offset"] + character_offset
             page = bisect(self.page_map, offset) - 1
             page_offset = offset - self.page_map[page]
 
-            occurence["offset"] = offset
-            occurence["page"] = page
-            occurence["page_offset"] = page_offset
+            occurrence["offset"] = offset
+            occurrence["page"] = page
+            occurrence["page_offset"] = page_offset
 
-            occurences.append(occurence)
-        return occurences
+            occurrences.append(occurrence)
+        return occurrences
 
     def _extract_entities_text(self, document, text, character_offset):
         """Extract the entities from a given chunk of text from the document"""
@@ -67,10 +67,10 @@ class EntityExtractor:
         )
         logger.info("Converting response to dictionary representation")
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
-        occurence_objs = []
+        occurrence_objs = []
         logger.info("Creating %d entities", len(entities))
 
-        # XXX collapase occurences of the same entity?
+        # XXX collapase occurrences of the same entity?
 
         for entity in entities:
             if "mid" in entity["metadata"]:
@@ -101,17 +101,17 @@ class EntityExtractor:
         logger.info("Create entity occurrence objects")
         for entity in entities:
             entity_obj = entity_map[entity["name"]]
-            occurences = self._transform_mentions(entity["mentions"], character_offset)
-            occurence_objs.append(
-                EntityOccurence(
+            occurrences = self._transform_mentions(entity["mentions"], character_offset)
+            occurrence_objs.append(
+                EntityOccurrence(
                     document=document,
                     entity=entity_obj,
                     relevance=entity["salience"],
-                    occurences=occurences,
+                    occurrences=occurrences,
                 )
             )
-        logger.info("Insert entity occurences into the database")
-        EntityOccurence.objects.bulk_create(occurence_objs)
+        logger.info("Insert entity occurrences into the database")
+        EntityOccurrence.objects.bulk_create(occurrence_objs)
 
     @transaction.atomic
     def extract_entities(self, document):

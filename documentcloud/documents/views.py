@@ -31,7 +31,7 @@ from documentcloud.core.permissions import (
     DocumentErrorTokenPermissions,
     DocumentTokenPermissions,
 )
-from documentcloud.documents.choices import Access, EntityKind, OccurenceKind, Status
+from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
     anonymous_cache_control,
@@ -41,7 +41,7 @@ from documentcloud.documents.models import (
     Document,
     DocumentError,
     EntityDate,
-    EntityOccurence,
+    EntityOccurrence,
     LegacyEntity,
     Note,
     Section,
@@ -53,7 +53,7 @@ from documentcloud.documents.serializers import (
     DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
-    EntityOccurenceSerializer,
+    EntityOccurrenceSerializer,
     LegacyEntitySerializer,
     NoteSerializer,
     ProcessDocumentSerializer,
@@ -691,8 +691,8 @@ class EntityViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    serializer_class = EntityOccurenceSerializer
-    queryset = EntityOccurence.objects.none()
+    serializer_class = EntityOccurrenceSerializer
+    queryset = EntityOccurrence.objects.none()
 
     @lru_cache()
     def get_queryset(self):
@@ -725,7 +725,7 @@ class EntityViewSet(
 
     class Filter(django_filters.FilterSet):
         kind = ChoicesFilter(field_name="entity__kind", choices=EntityKind)
-        occurences = ChoicesFilter(method="occurence_filter", choices=OccurenceKind)
+        occurrences = ChoicesFilter(method="occurrence_filter", choices=OccurrenceKind)
         mid = django_filters.BooleanFilter(
             method="value_exists", field_name="entity__mid", label="Has MID"
         )
@@ -735,10 +735,10 @@ class EntityViewSet(
             label="Has Wikipedia URL",
         )
 
-        def occurence_filter(self, queryset, name, values):
+        def occurrence_filter(self, queryset, name, values):
             query = Q()
             for value in values:
-                query |= Q(occurences__contains=[{"kind": value}])
+                query |= Q(occurrences__contains=[{"kind": value}])
             return queryset.filter(query)
 
         def value_exists(self, queryset, name, value):
@@ -750,10 +750,10 @@ class EntityViewSet(
                 return queryset
 
         class Meta:
-            model = EntityOccurence
+            model = EntityOccurrence
             fields = {
                 "kind": ["exact"],
-                "occurences": ["exact"],
+                "occurrences": ["exact"],
                 "relevance": ["gt"],
                 "mid": ["exact"],
                 "wikipedia_url": ["exact"],
