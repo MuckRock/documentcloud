@@ -709,7 +709,7 @@ class Entity(models.Model):
         return self.name
 
 
-class EntityOccurence(models.Model):
+class EntityOccurrence(models.Model):
     """Where a given entitiy appears in a given document"""
 
     # XXX unique together document / entity ? collapase ?
@@ -734,8 +734,8 @@ class EntityOccurence(models.Model):
         _("relevance"), default=0.0, help_text=_("The relevance of this entity")
     )
 
-    occurences = JSONField(
-        _("occurences"),
+    occurrences = JSONField(
+        _("occurrences"),
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
