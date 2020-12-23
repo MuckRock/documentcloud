@@ -6,7 +6,7 @@ import factory
 
 # DocumentCloud
 from documentcloud.core.choices import Language
-from documentcloud.documents.choices import Access, Status
+from documentcloud.documents.choices import Access, EntityKind, Status
 
 
 class DocumentFactory(factory.django.DjangoModelFactory):
@@ -105,3 +105,21 @@ class EntityDateFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "documents.EntityDate"
+
+
+class EntityFactory(factory.django.DjangoModelFactory):
+    name = factory.Sequence(lambda n: f"Entity #{n}")
+    kind = factory.Iterator(i[0] for i in EntityKind.choices)
+
+    class Meta:
+        model = "documents.Entity"
+
+
+class EntityOccurrenceFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    entity = factory.SubFactory("documentcloud.documents.tests.factories.EntityFactory")
+
+    class Meta:
+        model = "documents.EntityOccurrence"
