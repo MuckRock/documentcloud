@@ -19,6 +19,7 @@ from documentcloud.documents.tests.factories import (
     DocumentErrorFactory,
     DocumentFactory,
     EntityDateFactory,
+    EntityOccurrenceFactory,
     LegacyEntityFactory,
     NoteFactory,
     SectionFactory,
@@ -1480,3 +1481,12 @@ class TestEntityAPI:
         client.force_authenticate(user=user)
         response = client.post(f"/api/documents/{document.pk}/entities/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_delete(self, client):
+        document = DocumentFactory(access=Access.private)
+        EntityOccurrenceFactory(document=document)
+        client.force_authenticate(user=document.user)
+        assert document.entities.count() == 1
+        response = client.delete(f"/api/documents/{document.pk}/entities/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert document.entities.count() == 0

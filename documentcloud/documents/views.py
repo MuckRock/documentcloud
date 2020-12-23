@@ -685,12 +685,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class EntityViewSet(
-    mixins.CreateModelMixin,
-    mixins.ListModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet,
-):
+class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = EntityOccurrenceSerializer
     queryset = EntityOccurrence.objects.none()
 
@@ -713,7 +708,7 @@ class EntityViewSet(
                 "You do not have permission to edit this document"
             )
 
-    def destroy(self, request, *args, **kwargs):
+    def bulk_destroy(self, request, *args, **kwargs):
         """Delete all entities for the document"""
         if request.user.has_perm("documents.change_document", self.document):
             self.document.entities.all().delete()
