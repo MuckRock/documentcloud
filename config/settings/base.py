@@ -519,3 +519,4 @@ gac = NamedTemporaryFile(delete=False)
 gac.write(GOOGLE_APPLICATION_CREDENTIALS.encode("ascii"))
 gac.close()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac.name
+GOOGLE_API_KEY = env.str("GOOGLE_API_KEY", default="")

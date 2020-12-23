@@ -1,23 +1,119 @@
 # Django
+from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 
 # Standard Library
 import logging
+import operator
 from bisect import bisect
+from functools import reduce
+from itertools import zip_longest
 
 # Third Party
+import requests
 from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
 
 # DocumentCloud
-from documentcloud.documents.models import Entity, EntityOccurence
+from documentcloud.documents.choices import EntityKind, Status
+from documentcloud.documents.models import Entity, EntityOccurrence
 
 BYTE_LIMIT = 1000000
 
 logger = logging.getLogger(__name__)
 
 
+def grouper(iterable, num, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * num
+    return zip_longest(*args, fillvalue=fillvalue)
+
+
+def get_mid_info(mids):
+    """Use the Google Knowledge Graph API to get the name and description for
+    all of the given mids"""
+    service_url = "https://kgsearch.googleapis.com/v1/entities:search"
+    info = {}
+    # do 100 mids at a time
+    for group in grouper(mids, 100):
+        params = {"limit": len(group), "key": settings.GOOGLE_API_KEY, "ids": group}
+        response = requests.get(service_url, params=params)
+        info.update(
+            {
+                i["result"]["@id"][3:]: (
+                    i["result"].get("name"),
+                    i["result"]
+                    .get("detailedDescription", {})
+                    .get("articleBody", i["result"].get("description")),
+                )
+                for i in response.json()["itemListElement"]
+            }
+        )
+    return info
+
+
+def get_or_create_entities(entities):
+    """Get or create the API entities from the database"""
+    # XXX dedupe this code
+    mid_entities = [e for e in entities if "mid" in e["metadata"]]
+    name_kind_entities = [e for e in entities if "mid" not in e["metadata"]]
+
+    mids = [e["metadata"]["mid"] for e in mid_entities]
+    name_kinds = [(e["name"], e["type_"]) for e in name_kind_entities]
+
+    entity_map = {e.mid: e for e in Entity.objects.filter(mid__in=mids)}
+    entity_map.update(
+        {
+            (e.name, e.kind): e
+            for e in Entity.objects.filter(
+                reduce(
+                    operator.or_, (Q(name=name, kind=kind) for name, kind in name_kinds)
+                )
+            )
+        }
+    )
+
+    entity_objs = []
+    logger.info("Create mid entity objects")
+
+    for entity in mid_entities:
+        if entity["metadata"]["mid"] not in entity_map:
+            mid = entity["metadata"]["mid"]
+            wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
+            entity_obj = Entity(
+                name=entity["name"],
+                kind=entity["type_"],
+                description=entity.get("description", ""),
+                mid=mid,
+                wikipedia_url=wikipedia_url,
+                metadata=entity["metadata"],
+            )
+            entity_map[entity["metadata"]["mid"]] = entity_obj
+            entity_objs.append(entity_obj)
+
+    for entity in name_kind_entities:
+        if (entity["name"], entity["type_"]) not in entity_map:
+            wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
+            entity_obj = Entity(
+                name=entity["name"],
+                kind=entity["type_"],
+                description=entity.get("description", ""),
+                wikipedia_url=wikipedia_url,
+                metadata=entity["metadata"],
+            )
+            entity_map[(entity["name"], entity["type_"])] = entity_obj
+            entity_objs.append(entity_obj)
+
+    logger.info("Insert entities into the database")
+    # XXX race condition if created between checking and creating
+    Entity.objects.bulk_create(entity_objs)
+    return entity_map
+
+
 class EntityExtractor:
+    # XXX remove class/refactor
     def __init__(self):
         self.client = language_v1.LanguageServiceClient()
         self.page_map = []
@@ -26,22 +122,22 @@ class EntityExtractor:
         """Format mentions how we want to store them in our database
         Rename and flatten some fields and calculate page and page offset
         """
-        occurences = []
+        occurrences = []
         for mention in mentions:
-            occurence = {}
-            occurence["content"] = mention["text"]["content"]
-            occurence["kind"] = mention["type_"]
+            occurrence = {}
+            occurrence["content"] = mention["text"]["content"]
+            occurrence["kind"] = mention["type_"]
 
             offset = mention["text"]["begin_offset"] + character_offset
             page = bisect(self.page_map, offset) - 1
             page_offset = offset - self.page_map[page]
 
-            occurence["offset"] = offset
-            occurence["page"] = page
-            occurence["page_offset"] = page_offset
+            occurrence["offset"] = offset
+            occurrence["page"] = page
+            occurrence["page_offset"] = page_offset
 
-            occurences.append(occurence)
-        return occurences
+            occurrences.append(occurrence)
+        return occurrences
 
     def _extract_entities_text(self, document, text, character_offset):
         """Extract the entities from a given chunk of text from the document"""
@@ -54,90 +150,117 @@ class EntityExtractor:
         )
         logger.info("Converting response to dictionary representation")
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
-        occurence_objs = []
-        logger.info("Creating %d entities", len(entities))
-        # XXX collapase occurences of the same entity?
-        names = [e["name"] for e in entities]
-        entity_map = {e.name: e for e in Entity.objects.filter(name__in=names)}
-        entity_objs = []
-        logger.info("Create entity objects")
+        occurrence_objs = []
+
+        # remove "number" entities
+        entities = [e for e in entities if e["type_"] != EntityKind.number]
+
+        # get name/desc from knowldge graph
+        logger.info("Getting data from the knowledge graph")
+        mids = [e["metadata"]["mid"] for e in entities if "mid" in e["metadata"]]
+        mid_info = get_mid_info(mids)
         for entity in entities:
-            if entity["name"] not in entity_map:
-                entity_obj = Entity(
-                    name=entity["name"],
-                    kind=entity["type_"],
-                    metadata=entity["metadata"],
-                )
-                entity_map[entity["name"]] = entity_obj
-                entity_objs.append(entity_obj)
-        logger.info("Insert entities into the database")
-        Entity.objects.bulk_create(entity_objs)
+            if "mid" in entity["metadata"]:
+                name, description = mid_info.get(entity["metadata"]["mid"], ("", ""))
+                if name:
+                    entity["name"] = name
+                if description:
+                    entity["description"] = description
+
+        logger.info("Creating %d entities", len(entities))
+        entity_map = get_or_create_entities(entities)
+
+        logger.info("Collapse entity occurrences")
+        collapsed_entities = {}
+        for entity in entities:
+            if "mid" in entity["metadata"]:
+                entity_obj = entity_map[entity["metadata"]["mid"]]
+            else:
+                entity_obj = entity_map[(entity["name"], entity["type_"])]
+            if entity_obj.pk in collapsed_entities:
+                collapsed_entities[entity_obj.pk]["mentions"].extend(entity["mentions"])
+            else:
+                collapsed_entities[entity_obj.pk] = entity
 
         logger.info("Create entity occurrence objects")
-        for entity in entities:
-            entity_obj = entity_map[entity["name"]]
-            occurences = self._transform_mentions(entity["mentions"], character_offset)
-            occurence_objs.append(
-                EntityOccurence(
+        for entity in collapsed_entities.values():
+            if "mid" in entity["metadata"]:
+                entity_obj = entity_map[entity["metadata"]["mid"]]
+            else:
+                entity_obj = entity_map[(entity["name"], entity["type_"])]
+            occurrences = self._transform_mentions(entity["mentions"], character_offset)
+            occurrence_objs.append(
+                EntityOccurrence(
                     document=document,
                     entity=entity_obj,
                     relevance=entity["salience"],
-                    occurences=occurences,
+                    occurrences=occurrences,
                 )
             )
-        logger.info("Insert entity occurences into the database")
-        EntityOccurence.objects.bulk_create(occurence_objs)
+        logger.info("Insert entity occurrences into the database")
+        EntityOccurrence.objects.bulk_create(occurrence_objs)
 
     @transaction.atomic
     def extract_entities(self, document):
         """Extract the entities from a document"""
-        # XXX ensure no entities yet? or clear existing?
-        # XXX should document be readable/pending while extracting?
         # XXX what to do about redactions/page edits post entity extraction?
+        # delete all entities prior to any destructive edits
 
-        all_page_text = document.get_all_page_text()
-        texts = []
-        total_bytes = 0
-        self.page_map = [0]
-        character_offset = 0
-        total_characters = 0
+        try:
+            from documentcloud.documents.tasks import solr_index
 
-        logger.info(
-            "Extracting entities for %s, %d pages",
-            document,
-            len(all_page_text["pages"]),
-        )
+            all_page_text = document.get_all_page_text()
+            texts = []
+            total_bytes = 0
+            self.page_map = [0]
+            character_offset = 0
+            total_characters = 0
 
-        for page in all_page_text["pages"]:
-            # page map is stored in unicode characters
-            # we add the current page's length in characters to the beginning of the
-            # last page, to get the start character of the next page
-            page_chars = len(page["contents"])
-            self.page_map.append(self.page_map[-1] + page_chars)
-            # the API limit is based on byte size, so we use the length of the
-            # content encoded into utf8
-            page_bytes = len(page["contents"].encode("utf8"))
-            if page_bytes > BYTE_LIMIT:
-                logger.error("Single page too long for entity extraction")
-                return
+            logger.info(
+                "Extracting entities for %s, %d pages",
+                document,
+                len(all_page_text["pages"]),
+            )
 
-            if total_bytes + page_bytes > BYTE_LIMIT:
-                # if adding another page would put us over the limit,
-                # send the current chunk of text to be analyzed
-                logger.info("Extracting to page %d", page["page"])
-                self._extract_entities_text(document, "".join(texts), character_offset)
-                character_offset = total_characters
-                texts = [page["contents"]]
-                total_bytes = page_bytes
-                total_characters += page_chars
-            else:
-                # otherwise append the current page and accumulate the length
-                texts.append(page["contents"])
-                total_bytes += page_bytes
-                total_characters += page_chars
+            for page in all_page_text["pages"]:
+                # page map is stored in unicode characters
+                # we add the current page's length in characters to the beginning of the
+                # last page, to get the start character of the next page
+                page_chars = len(page["contents"])
+                self.page_map.append(self.page_map[-1] + page_chars)
+                # the API limit is based on byte size, so we use the length of the
+                # content encoded into utf8
+                page_bytes = len(page["contents"].encode("utf8"))
+                if page_bytes > BYTE_LIMIT:
+                    logger.error("Single page too long for entity extraction")
+                    return
 
-        # analyze the remaining text
-        logger.info("Extracting to end")
-        self._extract_entities_text(document, "".join(texts), character_offset)
+                if total_bytes + page_bytes > BYTE_LIMIT:
+                    # if adding another page would put us over the limit,
+                    # send the current chunk of text to be analyzed
+                    logger.info("Extracting to page %d", page["page"])
+                    self._extract_entities_text(
+                        document, "".join(texts), character_offset
+                    )
+                    character_offset = total_characters
+                    texts = [page["contents"]]
+                    total_bytes = page_bytes
+                    total_characters += page_chars
+                else:
+                    # otherwise append the current page and accumulate the length
+                    texts.append(page["contents"])
+                    total_bytes += page_bytes
+                    total_characters += page_chars
 
-        logger.info("Extracting entities for %s finished", document)
+            # analyze the remaining text
+            logger.info("Extracting to end")
+            self._extract_entities_text(document, "".join(texts), character_offset)
+
+        finally:
+            # XXX test this works
+            document.status = Status.success
+            document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+            )
+            logger.info("Extracting entities for %s finished", document)

@@ -31,7 +31,7 @@ from documentcloud.core.permissions import (
     DocumentErrorTokenPermissions,
     DocumentTokenPermissions,
 )
-from documentcloud.documents.choices import Access, EntityKind, OccurenceKind, Status
+from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
     anonymous_cache_control,
@@ -41,7 +41,7 @@ from documentcloud.documents.models import (
     Document,
     DocumentError,
     EntityDate,
-    EntityOccurence,
+    EntityOccurrence,
     LegacyEntity,
     Note,
     Section,
@@ -53,7 +53,7 @@ from documentcloud.documents.serializers import (
     DocumentErrorSerializer,
     DocumentSerializer,
     EntityDateSerializer,
-    EntityOccurenceSerializer,
+    EntityOccurrenceSerializer,
     LegacyEntitySerializer,
     NoteSerializer,
     ProcessDocumentSerializer,
@@ -685,11 +685,9 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class EntityViewSet(
-    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
-):
-    serializer_class = EntityOccurenceSerializer
-    queryset = EntityOccurence.objects.none()
+class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = EntityOccurrenceSerializer
+    queryset = EntityOccurrence.objects.none()
 
     @lru_cache()
     def get_queryset(self):
@@ -701,9 +699,40 @@ class EntityViewSet(
         return self.document.entities.all()
 
     def create(self, request, *args, **kwargs):
+        """Initiate asyncrhonous creation of entities"""
+        if not request.user.has_perm("documents.change_document", self.document):
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit this document"
+            )
+
+        if self.document.processing:
+            return Response(
+                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if self.document.entities.exists():
+            return Response(
+                {"error": "Entities already created"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            self.document.status = Status.readable
+            self.document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    self.document.pk, field_updates={"status": "set"}
+                )
+            )
+
+        extract_entities.delay(self.document.pk)
+        return Response("OK")
+
+    def bulk_destroy(self, request, *args, **kwargs):
+        """Delete all entities for the document"""
         if request.user.has_perm("documents.change_document", self.document):
-            extract_entities.delay(self.document.pk)
-            return Response("OK")
+            self.document.entities.all().delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             raise exceptions.PermissionDenied(
                 "You do not have permission to edit this document"
@@ -711,32 +740,38 @@ class EntityViewSet(
 
     class Filter(django_filters.FilterSet):
         kind = ChoicesFilter(field_name="entity__kind", choices=EntityKind)
-        occurences = ChoicesFilter(method="occurence_filter", choices=OccurenceKind)
+        occurrences = ChoicesFilter(method="occurrence_filter", choices=OccurrenceKind)
         mid = django_filters.BooleanFilter(
-            field_name="entity__metadata__mid",
-            lookup_expr="isnull",
-            label="MID is null",
+            method="value_exists", field_name="entity__mid", label="Has MID"
         )
         wikipedia_url = django_filters.BooleanFilter(
-            field_name="entity__metadata__wikipedia_url",
-            lookup_expr="isnull",
-            label="Wikipedia URL is null",
+            method="value_exists",
+            field_name="entity__wikipedia_url",
+            label="Has Wikipedia URL",
         )
 
-        def occurence_filter(self, queryset, name, values):
+        def occurrence_filter(self, queryset, name, values):
             query = Q()
             for value in values:
-                query |= Q(occurences__contains=[{"kind": value}])
+                query |= Q(occurrences__contains=[{"kind": value}])
             return queryset.filter(query)
 
+        def value_exists(self, queryset, name, value):
+            if value is True:
+                return queryset.exclude(**{name: ""})
+            elif value is False:
+                return queryset.filter(**{name: ""})
+            else:
+                return queryset
+
         class Meta:
-            model = EntityOccurence
+            model = EntityOccurrence
             fields = {
                 "kind": ["exact"],
-                "occurences": ["exact"],
+                "occurrences": ["exact"],
                 "relevance": ["gt"],
-                "mid": ["inull"],
-                "wikipedia_url": ["inull"],
+                "mid": ["exact"],
+                "wikipedia_url": ["exact"],
             }
 
     filterset_class = Filter

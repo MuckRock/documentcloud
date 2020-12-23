@@ -52,7 +52,7 @@ class EntityKind(DjangoChoices):
     price = ChoiceItem(13, _("Price"), api=True)
 
 
-class OccurenceKind(DjangoChoices):
+class OccurrenceKind(DjangoChoices):
     # pylint: disable=no-init
     unknown = ChoiceItem(0, _("Unknown"), api=True)
     proper = ChoiceItem(1, _("Proper"), api=True)

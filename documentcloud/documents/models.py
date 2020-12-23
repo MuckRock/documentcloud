@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
+from django.db.models import Q, UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
 # Standard Library
@@ -672,7 +673,13 @@ class Entity(models.Model):
     """An entity which can be referenced within a document"""
 
     # XXX work out how these should be unique
-    # by name, mid, wikipedia url etc
+    # wikipedia url unique if present
+    #
+    # if mid:
+    #   unique by mid
+    #   correct kind by kg api?
+    # if no mid:
+    #   unique by (name, kind) (or metadata?)
 
     name = models.CharField(
         _("name"), max_length=255, help_text=_("The name of this entity")
@@ -682,20 +689,42 @@ class Entity(models.Model):
         choices=EntityKind.choices,
         help_text=_("Categorization of this entity"),
     )
+    mid = models.CharField(
+        _("knowledge graph id"),
+        max_length=13,
+        blank=True,
+        help_text=_("The Google Knowledge Graph ID for this entity"),
+    )
+    description = models.TextField(
+        _("description"),
+        blank=True,
+        help_text=_("Detailed description from Google Knowledge Graph"),
+    )
+    wikipedia_url = models.URLField(
+        _("wikipedia url"),
+        blank=True,
+        help_text=_("The URL to the Wikipedia entry for this entity"),
+    )
     metadata = JSONField(
         _("metadata"),
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["mid"], name="unique_mid", condition=~Q(mid="")),
+            UniqueConstraint(
+                fields=["name", "kind"], name="unique_name_kind", condition=Q(mid="")
+            ),
+        ]
+
     def __str__(self):
         return self.name
 
 
-class EntityOccurence(models.Model):
+class EntityOccurrence(models.Model):
     """Where a given entitiy appears in a given document"""
-
-    # XXX unique together document / entity ? collapase ?
 
     document = models.ForeignKey(
         verbose_name=_("document"),
@@ -717,11 +746,14 @@ class EntityOccurence(models.Model):
         _("relevance"), default=0.0, help_text=_("The relevance of this entity")
     )
 
-    occurences = JSONField(
-        _("occurences"),
+    occurrences = JSONField(
+        _("occurrences"),
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
+
+    class Meta:
+        unique_together = [("document", "entity")]
 
     def __str__(self):
         return self.entity.name

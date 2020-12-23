@@ -57,7 +57,7 @@ router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
 router.register("users", UserViewSet)
 
-documents_router = NestedDefaultRouter(router, "documents", lookup="document")
+documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityViewSet)
