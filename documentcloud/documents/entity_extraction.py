@@ -12,6 +12,7 @@ from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
 
 # DocumentCloud
+from documentcloud.documents.choices import EntityKind
 from documentcloud.documents.models import Entity, EntityOccurrence
 
 BYTE_LIMIT = 1000000
@@ -71,6 +72,9 @@ class EntityExtractor:
         logger.info("Creating %d entities", len(entities))
 
         # XXX collapase occurrences of the same entity?
+
+        # remove "number" entities
+        entities = [e for e in entities if e["type_"] != EntityKind.number]
 
         for entity in entities:
             if "mid" in entity["metadata"]:
