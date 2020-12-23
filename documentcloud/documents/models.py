@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
+from django.db.models import Q, UniqueConstraint
 from django.utils.translation import ugettext_lazy as _
 
 # Standard Library
@@ -704,6 +705,14 @@ class Entity(models.Model):
         default=dict,
         help_text=_("Extra data asociated with this entity"),
     )
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["mid"], name="unique_mid", condition=~Q(mid="")),
+            UniqueConstraint(
+                fields=["name", "kind"], name="unique_name_kind", condition=Q(mid="")
+            ),
+        ]
 
     def __str__(self):
         return self.name

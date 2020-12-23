@@ -1,10 +1,13 @@
 # Django
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 
 # Standard Library
 import logging
+import operator
 from bisect import bisect
+from functools import reduce
 
 # Third Party
 import requests
@@ -22,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 def get_name_from_mid(mid):
     """Use the Google Knowledge Graph API to get the name for the mid"""
+    # XXX get detailed description also?
     service_url = "https://kgsearch.googleapis.com/v1/entities:search"
     params = {"limit": 1, "key": settings.GOOGLE_API_KEY, "ids": mid}
     response = requests.get(service_url, params=params)
@@ -31,7 +35,64 @@ def get_name_from_mid(mid):
         return None
 
 
+def get_or_create_entities(entities):
+    """Get or create the API entities from the database"""
+    # XXX dedupe this code
+    mid_entities = [e for e in entities if "mid" in e["metadata"]]
+    name_kind_entities = [e for e in entities if "mid" not in e["metadata"]]
+
+    mids = [e["metadata"]["mid"] for e in mid_entities]
+    name_kinds = [(e["name"], e["type_"]) for e in name_kind_entities]
+
+    entity_map = {e.mid: e for e in Entity.objects.filter(mid__in=mids)}
+    entity_map.update(
+        {
+            (e.name, e.kind): e
+            for e in Entity.objects.filter(
+                reduce(
+                    operator.or_, (Q(name=name, kind=kind) for name, kind in name_kinds)
+                )
+            )
+        }
+    )
+
+    entity_objs = []
+    logger.info("Create mid entity objects")
+
+    for entity in mid_entities:
+        if entity["metadata"]["mid"] not in entity_map:
+            mid = entity["metadata"]["mid"]
+            wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
+            entity_obj = Entity(
+                name=entity["name"],
+                kind=entity["type_"],
+                mid=mid,
+                wikipedia_url=wikipedia_url,
+                metadata=entity["metadata"],
+            )
+            entity_map[entity["mid"]] = entity_obj
+            entity_objs.append(entity_obj)
+
+    for entity in name_kind_entities:
+        if (entity["name"], entity["type_"]) not in entity_map:
+            wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
+            entity_obj = Entity(
+                name=entity["name"],
+                kind=entity["type_"],
+                wikipedia_url=wikipedia_url,
+                metadata=entity["metadata"],
+            )
+            entity_map[(entity["name"], entity["type_"])] = entity_obj
+            entity_objs.append(entity_obj)
+
+    logger.info("Insert entities into the database")
+    # XXX race condition if created between checking and creating
+    Entity.objects.bulk_create(entity_objs)
+    return entity_map
+
+
 class EntityExtractor:
+    # XXX remove class
     def __init__(self):
         self.client = language_v1.LanguageServiceClient()
         self.page_map = []
@@ -71,40 +132,27 @@ class EntityExtractor:
         occurrence_objs = []
         logger.info("Creating %d entities", len(entities))
 
-        # XXX collapase occurrences of the same entity?
-
         # remove "number" entities
         entities = [e for e in entities if e["type_"] != EntityKind.number]
 
+        # get name/desc? from knowldge graph
         for entity in entities:
             if "mid" in entity["metadata"]:
+                # XXX bulk these
                 name = get_name_from_mid(entity["metadata"]["mid"])
                 if name is not None:
                     entity["name"] = name
 
-        names = [e["name"] for e in entities]
-        entity_map = {e.name: e for e in Entity.objects.filter(name__in=names)}
-        entity_objs = []
-        logger.info("Create entity objects")
-        for entity in entities:
-            if entity["name"] not in entity_map:
-                mid = entity["metadata"].pop("mid", "")
-                wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
-                entity_obj = Entity(
-                    name=entity["name"],
-                    kind=entity["type_"],
-                    mid=mid,
-                    wikipedia_url=wikipedia_url,
-                    metadata=entity["metadata"],
-                )
-                entity_map[entity["name"]] = entity_obj
-                entity_objs.append(entity_obj)
-        logger.info("Insert entities into the database")
-        Entity.objects.bulk_create(entity_objs)
+        entity_map = get_or_create_entities(entities)
 
+        # create occurrences
+        # XXX collapase occurrences of the same entity
         logger.info("Create entity occurrence objects")
         for entity in entities:
-            entity_obj = entity_map[entity["name"]]
+            if "mid" in entity["metadata"]:
+                entity_obj = entity_map[entity["metadata"]["mid"]]
+            else:
+                entity_obj = entity_map[(entity["name"], entity["type_"])]
             occurrences = self._transform_mentions(entity["mentions"], character_offset)
             occurrence_objs.append(
                 EntityOccurrence(
@@ -121,6 +169,7 @@ class EntityExtractor:
     def extract_entities(self, document):
         """Extract the entities from a document"""
         # XXX what to do about redactions/page edits post entity extraction?
+        # delete all entities prior to any destructive edits
         from documentcloud.documents.tasks import solr_index
 
         all_page_text = document.get_all_page_text()
