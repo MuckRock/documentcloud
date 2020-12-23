@@ -12,7 +12,7 @@ from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
 
 # DocumentCloud
-from documentcloud.documents.choices import EntityKind
+from documentcloud.documents.choices import EntityKind, Status
 from documentcloud.documents.models import Entity, EntityOccurrence
 
 BYTE_LIMIT = 1000000
@@ -120,9 +120,8 @@ class EntityExtractor:
     @transaction.atomic
     def extract_entities(self, document):
         """Extract the entities from a document"""
-        # XXX ensure no entities yet? or clear existing?
-        # XXX should document be readable/pending while extracting?
         # XXX what to do about redactions/page edits post entity extraction?
+        from documentcloud.documents.tasks import solr_index
 
         all_page_text = document.get_all_page_text()
         texts = []
@@ -169,4 +168,9 @@ class EntityExtractor:
         logger.info("Extracting to end")
         self._extract_entities_text(document, "".join(texts), character_offset)
 
+        document.status = Status.success
+        document.save()
+        transaction.on_commit(
+            lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+        )
         logger.info("Extracting entities for %s finished", document)

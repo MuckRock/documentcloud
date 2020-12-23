@@ -700,13 +700,33 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """Initiate asyncrhonous creation of entities"""
-        if request.user.has_perm("documents.change_document", self.document):
-            extract_entities.delay(self.document.pk)
-            return Response("OK")
-        else:
+        if not request.user.has_perm("documents.change_document", self.document):
             raise exceptions.PermissionDenied(
                 "You do not have permission to edit this document"
             )
+
+        if self.document.processing:
+            return Response(
+                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if self.document.entities.exists():
+            return Response(
+                {"error": "Entities already created"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            self.document.status = Status.readable
+            self.document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(
+                    self.document.pk, field_updates={"status": "set"}
+                )
+            )
+
+        extract_entities.delay(self.document.pk)
+        return Response("OK")
 
     def bulk_destroy(self, request, *args, **kwargs):
         """Delete all entities for the document"""
