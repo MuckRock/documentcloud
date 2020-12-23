@@ -169,10 +169,20 @@ class EntityExtractor:
 
         entity_map = get_or_create_entities(entities)
 
-        # create occurrences
-        # XXX collapase occurrences of the same entity
-        logger.info("Create entity occurrence objects")
+        logger.info("Collapse entity occurrences")
+        collapsed_entities = {}
         for entity in entities:
+            if "mid" in entity["metadata"]:
+                entity_obj = entity_map[entity["metadata"]["mid"]]
+            else:
+                entity_obj = entity_map[(entity["name"], entity["type_"])]
+            if entity_obj.pk in collapsed_entities:
+                collapsed_entities[entity_obj.pk]["mentions"].extend(entity["mentions"])
+            else:
+                collapsed_entities[entity_obj.pk] = entity
+
+        logger.info("Create entity occurrence objects")
+        for entity in collapsed_entities.values():
             if "mid" in entity["metadata"]:
                 entity_obj = entity_map[entity["metadata"]["mid"]]
             else:
@@ -246,6 +256,7 @@ class EntityExtractor:
             self._extract_entities_text(document, "".join(texts), character_offset)
 
         finally:
+            # XXX this doesnt work
             document.status = Status.success
             document.save()
             transaction.on_commit(

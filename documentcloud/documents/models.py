@@ -754,5 +754,8 @@ class EntityOccurrence(models.Model):
         help_text=_("Extra data asociated with this entity"),
     )
 
+    class Meta:
+        unique_together = [("document", "entity")]
+
     def __str__(self):
         return self.entity.name
