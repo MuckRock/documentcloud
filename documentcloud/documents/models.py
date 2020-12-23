@@ -695,6 +695,11 @@ class Entity(models.Model):
         blank=True,
         help_text=_("The Google Knowledge Graph ID for this entity"),
     )
+    description = models.TextField(
+        _("description"),
+        blank=True,
+        help_text=_("Detailed description from Google Knowledge Graph"),
+    )
     wikipedia_url = models.URLField(
         _("wikipedia url"),
         blank=True,

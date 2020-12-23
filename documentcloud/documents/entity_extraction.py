@@ -8,6 +8,7 @@ import logging
 import operator
 from bisect import bisect
 from functools import reduce
+from itertools import zip_longest
 
 # Third Party
 import requests
@@ -23,16 +24,34 @@ BYTE_LIMIT = 1000000
 logger = logging.getLogger(__name__)
 
 
-def get_name_from_mid(mid):
-    """Use the Google Knowledge Graph API to get the name for the mid"""
-    # XXX get detailed description also?
+def grouper(iterable, num, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * num
+    return zip_longest(*args, fillvalue=fillvalue)
+
+
+def get_mid_info(mids):
+    """Use the Google Knowledge Graph API to get the name and description for
+    all of the given mids"""
     service_url = "https://kgsearch.googleapis.com/v1/entities:search"
-    params = {"limit": 1, "key": settings.GOOGLE_API_KEY, "ids": mid}
-    response = requests.get(service_url, params=params)
-    try:
-        return response.json()["itemListElement"][0]["result"]["name"]
-    except (IndexError, KeyError):
-        return None
+    info = {}
+    # do 100 mids at a time
+    for group in grouper(mids, 100):
+        params = {"limit": len(group), "key": settings.GOOGLE_API_KEY, "ids": group}
+        response = requests.get(service_url, params=params)
+        info.update(
+            {
+                i["result"]["@id"][3:]: (
+                    i["result"].get("name"),
+                    i["result"]
+                    .get("detailedDescription", {})
+                    .get("articleBody", i["result"].get("description")),
+                )
+                for i in response.json()["itemListElement"]
+            }
+        )
+    return info
 
 
 def get_or_create_entities(entities):
@@ -66,11 +85,12 @@ def get_or_create_entities(entities):
             entity_obj = Entity(
                 name=entity["name"],
                 kind=entity["type_"],
+                description=entity.get("description", ""),
                 mid=mid,
                 wikipedia_url=wikipedia_url,
                 metadata=entity["metadata"],
             )
-            entity_map[entity["mid"]] = entity_obj
+            entity_map[entity["metadata"]["mid"]] = entity_obj
             entity_objs.append(entity_obj)
 
     for entity in name_kind_entities:
@@ -79,6 +99,7 @@ def get_or_create_entities(entities):
             entity_obj = Entity(
                 name=entity["name"],
                 kind=entity["type_"],
+                description=entity.get("description", ""),
                 wikipedia_url=wikipedia_url,
                 metadata=entity["metadata"],
             )
@@ -136,12 +157,15 @@ class EntityExtractor:
         entities = [e for e in entities if e["type_"] != EntityKind.number]
 
         # get name/desc? from knowldge graph
+        mids = [e["metadata"]["mid"] for e in entities if "mid" in e["metadata"]]
+        mid_info = get_mid_info(mids)
         for entity in entities:
             if "mid" in entity["metadata"]:
-                # XXX bulk these
-                name = get_name_from_mid(entity["metadata"]["mid"])
-                if name is not None:
+                name, description = mid_info.get(entity["metadata"]["mid"], ("", ""))
+                if name:
                     entity["name"] = name
+                if description:
+                    entity["description"] = description
 
         entity_map = get_or_create_entities(entities)
 
@@ -170,56 +194,61 @@ class EntityExtractor:
         """Extract the entities from a document"""
         # XXX what to do about redactions/page edits post entity extraction?
         # delete all entities prior to any destructive edits
-        from documentcloud.documents.tasks import solr_index
 
-        all_page_text = document.get_all_page_text()
-        texts = []
-        total_bytes = 0
-        self.page_map = [0]
-        character_offset = 0
-        total_characters = 0
+        try:
+            from documentcloud.documents.tasks import solr_index
 
-        logger.info(
-            "Extracting entities for %s, %d pages",
-            document,
-            len(all_page_text["pages"]),
-        )
+            all_page_text = document.get_all_page_text()
+            texts = []
+            total_bytes = 0
+            self.page_map = [0]
+            character_offset = 0
+            total_characters = 0
 
-        for page in all_page_text["pages"]:
-            # page map is stored in unicode characters
-            # we add the current page's length in characters to the beginning of the
-            # last page, to get the start character of the next page
-            page_chars = len(page["contents"])
-            self.page_map.append(self.page_map[-1] + page_chars)
-            # the API limit is based on byte size, so we use the length of the
-            # content encoded into utf8
-            page_bytes = len(page["contents"].encode("utf8"))
-            if page_bytes > BYTE_LIMIT:
-                logger.error("Single page too long for entity extraction")
-                return
+            logger.info(
+                "Extracting entities for %s, %d pages",
+                document,
+                len(all_page_text["pages"]),
+            )
 
-            if total_bytes + page_bytes > BYTE_LIMIT:
-                # if adding another page would put us over the limit,
-                # send the current chunk of text to be analyzed
-                logger.info("Extracting to page %d", page["page"])
-                self._extract_entities_text(document, "".join(texts), character_offset)
-                character_offset = total_characters
-                texts = [page["contents"]]
-                total_bytes = page_bytes
-                total_characters += page_chars
-            else:
-                # otherwise append the current page and accumulate the length
-                texts.append(page["contents"])
-                total_bytes += page_bytes
-                total_characters += page_chars
+            for page in all_page_text["pages"]:
+                # page map is stored in unicode characters
+                # we add the current page's length in characters to the beginning of the
+                # last page, to get the start character of the next page
+                page_chars = len(page["contents"])
+                self.page_map.append(self.page_map[-1] + page_chars)
+                # the API limit is based on byte size, so we use the length of the
+                # content encoded into utf8
+                page_bytes = len(page["contents"].encode("utf8"))
+                if page_bytes > BYTE_LIMIT:
+                    logger.error("Single page too long for entity extraction")
+                    return
 
-        # analyze the remaining text
-        logger.info("Extracting to end")
-        self._extract_entities_text(document, "".join(texts), character_offset)
+                if total_bytes + page_bytes > BYTE_LIMIT:
+                    # if adding another page would put us over the limit,
+                    # send the current chunk of text to be analyzed
+                    logger.info("Extracting to page %d", page["page"])
+                    self._extract_entities_text(
+                        document, "".join(texts), character_offset
+                    )
+                    character_offset = total_characters
+                    texts = [page["contents"]]
+                    total_bytes = page_bytes
+                    total_characters += page_chars
+                else:
+                    # otherwise append the current page and accumulate the length
+                    texts.append(page["contents"])
+                    total_bytes += page_bytes
+                    total_characters += page_chars
 
-        document.status = Status.success
-        document.save()
-        transaction.on_commit(
-            lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-        )
-        logger.info("Extracting entities for %s finished", document)
+            # analyze the remaining text
+            logger.info("Extracting to end")
+            self._extract_entities_text(document, "".join(texts), character_offset)
+
+        finally:
+            document.status = Status.success
+            document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+            )
+            logger.info("Extracting entities for %s finished", document)
