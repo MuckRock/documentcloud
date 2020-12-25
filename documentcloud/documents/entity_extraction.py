@@ -118,7 +118,7 @@ class EntityExtractor:
         self.client = language_v1.LanguageServiceClient()
         self.page_map = []
 
-    def _transform_mentions(self, mentions, character_offset):
+    def _transform_mentions(self, mentions):
         """Format mentions how we want to store them in our database
         Rename and flatten some fields and calculate page and page offset
         """
@@ -128,7 +128,7 @@ class EntityExtractor:
             occurrence["content"] = mention["text"]["content"]
             occurrence["kind"] = mention["type_"]
 
-            offset = mention["text"]["begin_offset"] + character_offset
+            offset = mention["text"]["begin_offset"]
             page = bisect(self.page_map, offset) - 1
             page_offset = offset - self.page_map[page]
 
@@ -139,7 +139,7 @@ class EntityExtractor:
             occurrences.append(occurrence)
         return occurrences
 
-    def _extract_entities_text(self, document, text, character_offset):
+    def _extract_entities_text(self, text, character_offset):
         """Extract the entities from a given chunk of text from the document"""
         language_document = language_v1.Document(
             content=text, type_=language_v1.Document.Type.PLAIN_TEXT
@@ -150,11 +150,18 @@ class EntityExtractor:
         )
         logger.info("Converting response to dictionary representation")
         entities = AnalyzeEntitiesResponse.to_dict(response)["entities"]
-        occurrence_objs = []
 
         # remove "number" entities
         entities = [e for e in entities if e["type_"] != EntityKind.number]
 
+        # adjust for character offset
+        for entity in entities:
+            for mention in entity["mentions"]:
+                mention["text"]["begin_offset"] += character_offset
+
+        return entities
+
+    def _create_entities(self, entities, document):
         # get name/desc from knowldge graph
         logger.info("Getting data from the knowledge graph")
         mids = [e["metadata"]["mid"] for e in entities if "mid" in e["metadata"]]
@@ -183,12 +190,13 @@ class EntityExtractor:
                 collapsed_entities[entity_obj.pk] = entity
 
         logger.info("Create entity occurrence objects")
+        occurrence_objs = []
         for entity in collapsed_entities.values():
             if "mid" in entity["metadata"]:
                 entity_obj = entity_map[entity["metadata"]["mid"]]
             else:
                 entity_obj = entity_map[(entity["name"], entity["type_"])]
-            occurrences = self._transform_mentions(entity["mentions"], character_offset)
+            occurrences = self._transform_mentions(entity["mentions"])
             occurrence_objs.append(
                 EntityOccurrence(
                     document=document,
@@ -200,67 +208,77 @@ class EntityExtractor:
         logger.info("Insert entity occurrences into the database")
         EntityOccurrence.objects.bulk_create(occurrence_objs)
 
-    @transaction.atomic
     def extract_entities(self, document):
         """Extract the entities from a document"""
         # XXX what to do about redactions/page edits post entity extraction?
         # delete all entities prior to any destructive edits
+        from documentcloud.documents.tasks import solr_index
 
         try:
-            from documentcloud.documents.tasks import solr_index
-
-            all_page_text = document.get_all_page_text()
-            texts = []
-            total_bytes = 0
-            self.page_map = [0]
-            character_offset = 0
-            total_characters = 0
-
-            logger.info(
-                "Extracting entities for %s, %d pages",
-                document,
-                len(all_page_text["pages"]),
-            )
-
-            for page in all_page_text["pages"]:
-                # page map is stored in unicode characters
-                # we add the current page's length in characters to the beginning of the
-                # last page, to get the start character of the next page
-                page_chars = len(page["contents"])
-                self.page_map.append(self.page_map[-1] + page_chars)
-                # the API limit is based on byte size, so we use the length of the
-                # content encoded into utf8
-                page_bytes = len(page["contents"].encode("utf8"))
-                if page_bytes > BYTE_LIMIT:
-                    logger.error("Single page too long for entity extraction")
-                    return
-
-                if total_bytes + page_bytes > BYTE_LIMIT:
-                    # if adding another page would put us over the limit,
-                    # send the current chunk of text to be analyzed
-                    logger.info("Extracting to page %d", page["page"])
-                    self._extract_entities_text(
-                        document, "".join(texts), character_offset
-                    )
-                    character_offset = total_characters
-                    texts = [page["contents"]]
-                    total_bytes = page_bytes
-                    total_characters += page_chars
-                else:
-                    # otherwise append the current page and accumulate the length
-                    texts.append(page["contents"])
-                    total_bytes += page_bytes
-                    total_characters += page_chars
-
-            # analyze the remaining text
-            logger.info("Extracting to end")
-            self._extract_entities_text(document, "".join(texts), character_offset)
-
+            self._extract_entities(document)
         finally:
             # XXX test this works
-            document.status = Status.success
-            document.save()
-            transaction.on_commit(
-                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-            )
+            with transaction.atomic():
+                document.status = Status.success
+                document.save()
+                transaction.on_commit(
+                    lambda: solr_index.delay(
+                        document.pk, field_updates={"status": "set"}
+                    )
+                )
             logger.info("Extracting entities for %s finished", document)
+
+    @transaction.atomic
+    def _extract_entities(self, document):
+        all_page_text = document.get_all_page_text()
+        texts = []
+        total_bytes = 0
+        self.page_map = [0]
+        character_offset = 0
+        total_characters = 0
+        entities = []
+
+        logger.info(
+            "Extracting entities for %s, %d pages",
+            document,
+            len(all_page_text["pages"]),
+        )
+
+        for page in all_page_text["pages"]:
+            # page map is stored in unicode characters
+            # we add the current page's length in characters to the beginning of the
+            # last page, to get the start character of the next page
+            page_chars = len(page["contents"])
+            self.page_map.append(self.page_map[-1] + page_chars)
+            # the API limit is based on byte size, so we use the length of the
+            # content encoded into utf8
+            page_bytes = len(page["contents"].encode("utf8"))
+            if page_bytes > BYTE_LIMIT:
+                logger.error("Single page too long for entity extraction")
+                return
+
+            if total_bytes + page_bytes > BYTE_LIMIT:
+                # if adding another page would put us over the limit,
+                # send the current chunk of text to be analyzed
+                logger.info("Extracting to page %d", page["page"])
+                entities.extend(
+                    # XXX call the api in parallel
+                    # possibly with overlap
+                    # check size of entities to pass through redis (use compression)
+                    self._extract_entities_text("".join(texts), character_offset)
+                )
+                character_offset = total_characters
+                texts = [page["contents"]]
+                total_bytes = page_bytes
+                total_characters += page_chars
+            else:
+                # otherwise append the current page and accumulate the length
+                texts.append(page["contents"])
+                total_bytes += page_bytes
+                total_characters += page_chars
+
+        # analyze the remaining text
+        logger.info("Extracting to end")
+        entities.extend(self._extract_entities_text("".join(texts), character_offset))
+
+        self._create_entities(entities, document)
