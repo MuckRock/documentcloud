@@ -706,6 +706,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             )
 
         if self.document.processing:
+            # XXX race condition here
             return Response(
                 {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
             )
