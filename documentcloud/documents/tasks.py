@@ -16,9 +16,8 @@ from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
-from documentcloud.documents import solr
+from documentcloud.documents import entity_extraction, solr
 from documentcloud.documents.choices import Access, Status
-from documentcloud.documents.entity_extraction import EntityExtractor
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import SOLR
 
@@ -253,4 +252,4 @@ def extract_entities(document_pk):
     except Document.DoesNotExist:
         return
 
-    EntityExtractor().extract_entities(document)
+    entity_extraction.extract_entities(document)
