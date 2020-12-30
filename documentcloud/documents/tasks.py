@@ -253,5 +253,4 @@ def extract_entities(document_pk):
     except Document.DoesNotExist:
         return
 
-    # XXX catch exceptions to reset status
     EntityExtractor().extract_entities(document)
