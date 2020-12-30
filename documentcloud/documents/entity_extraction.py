@@ -197,6 +197,7 @@ def _get_mid_info(mids):
     """Use the Google Knowledge Graph API to get the name and description for
     all of the given mids"""
     # XXX error handling / retry
+    # XXX store date mid info was fetched to periodically update
     service_url = "https://kgsearch.googleapis.com/v1/entities:search"
     info = {}
     # do 100 mids at a time
