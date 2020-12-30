@@ -8,6 +8,7 @@ from rest_framework import status
 import pytest
 
 # DocumentCloud
+from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError, Note, Section
 from documentcloud.documents.serializers import (
@@ -1395,8 +1396,8 @@ class TestRedactionAPI:
         """You cannot create redactions if you are not logged in"""
         document = DocumentFactory(page_count=2)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 1},
+            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page_number": 0},
+            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -1408,8 +1409,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2, access=Access.private)
         client.force_authenticate(user=user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 1},
+            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page_number": 0},
+            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -1421,8 +1422,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 1},
+            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page_number": 0},
+            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -1434,8 +1435,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         data = [
-            {"top": 10, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
-            {"top": 30, "left": 30, "bottom": 40, "right": 40, "page_number": 2},
+            {"y1": 0.1, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page_number": 0},
+            {"y1": 0.3, "x1": 0.3, "x2": 0.4, "y2": 0.4, "page_number": 2},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -1447,8 +1448,8 @@ class TestRedactionAPI:
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         data = [
-            {"top": 30, "left": 10, "bottom": 20, "right": 20, "page_number": 0},
-            {"top": 30, "left": 50, "bottom": 40, "right": 40, "page_number": 1},
+            {"y1": 0.3, "x1": 0.1, "x2": 0.2, "y2": 0.2, "page_number": 0},
+            {"y1": 0.3, "x1": 0.5, "x2": 0.4, "y2": 0.4, "page_number": 1},
         ]
         response = client.post(
             f"/api/documents/{document.pk}/redactions/", data, format="json"
@@ -1466,6 +1467,7 @@ class TestEntityAPI:
         )
         client.force_authenticate(user=document.user)
         response = client.post(f"/api/documents/{document.pk}/entities/")
+        run_commit_hooks()
         assert response.status_code == status.HTTP_200_OK
         extract_entities.assert_called_once_with(document.pk)
 

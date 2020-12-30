@@ -152,11 +152,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                     )
                 )
 
+    @transaction.atomic
     @action(detail=True, methods=["post"])
     def process(self, request, pk=None):
         """Process a document after you have uploaded the file"""
         # pylint: disable=unused-argument
         document = self.get_object()
+        document = Document.objects.select_for_update().get(pk=document.pk)
         error = self._check_process(document)
         if error:
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
@@ -166,6 +168,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._process(document, serializer.validated_data["force_ocr"])
             return Response("OK", status=status.HTTP_200_OK)
 
+    @transaction.atomic
     @action(detail=False, url_path="process", methods=["post"])
     def bulk_process(self, request):
         """Bulk process documents"""
@@ -178,7 +181,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
 
-        documents = Document.objects.filter(
+        documents = Document.objects.select_for_update().filter(
             pk__in=[d["id"] for d in serializer.validated_data]
         )
         if len(documents) != len(serializer.validated_data):
@@ -215,7 +218,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         return None
 
-    @transaction.atomic
     def _process(self, document, force_ocr):
         """Process a document after you have uploaded the file"""
         document.status = Status.pending
@@ -650,7 +652,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def get_object(self):
         document = get_object_or_404(
-            Document.objects.get_viewable(self.request.user),
+            Document.objects.get_viewable(self.request.user).select_for_update(),
             pk=self.kwargs["document_pk"],
         )
         if not self.request.user.has_perm("documents.change_document", document):
@@ -658,16 +660,18 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return document
 
     def create(self, request, *args, **kwargs):
-        document = self.get_object()
-        serializer = self.get_serializer(data=request.data, many=True)
-        serializer.is_valid(raise_exception=True)
-
-        if document.processing:
-            return Response(
-                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
         with transaction.atomic():
+
+            document = self.get_object()
+
+            serializer = self.get_serializer(data=request.data, many=True)
+            serializer.is_valid(raise_exception=True)
+
+            if document.processing:
+                return Response(
+                    {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
             document.status = Status.pending
             document.save()
             transaction.on_commit(
@@ -705,28 +709,32 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                 "You do not have permission to edit this document"
             )
 
-        if self.document.processing:
-            # XXX race condition here
-            return Response(
-                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if self.document.entities.exists():
-            return Response(
-                {"error": "Entities already created"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         with transaction.atomic():
-            self.document.status = Status.readable
-            self.document.save()
-            transaction.on_commit(
-                lambda: solr_index.delay(
-                    self.document.pk, field_updates={"status": "set"}
+            # We select for update here to lock the document between checking if it is
+            # processing and starting the entity extraction to ensure another
+            # thread does not start processing this document before we mark it as
+            # processing
+            document = Document.objects.select_for_update().get(pk=self.document.pk)
+
+            if document.processing:
+                return Response(
+                    {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
                 )
+
+            if document.entities.exists():
+                return Response(
+                    {"error": "Entities already created"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            document.status = Status.readable
+            document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
-        extract_entities.delay(self.document.pk)
+            transaction.on_commit(lambda: extract_entities.delay(self.document.pk))
+
         return Response("OK")
 
     def bulk_destroy(self, request, *args, **kwargs):
