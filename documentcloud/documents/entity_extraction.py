@@ -217,7 +217,6 @@ class EntityExtractor:
         try:
             self._extract_entities(document)
         finally:
-            # XXX test this works
             with transaction.atomic():
                 document.status = Status.success
                 document.save()
