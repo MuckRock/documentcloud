@@ -54,57 +54,60 @@ def get_mid_info(mids):
     return info
 
 
-def get_or_create_entities(entities):
-    """Get or create the API entities from the database"""
-    # XXX dedupe this code
-    mid_entities = [e for e in entities if "mid" in e["metadata"]]
-    name_kind_entities = [e for e in entities if "mid" not in e["metadata"]]
+def _get_or_create_entities(entities, entity_filter, keyer, mapper):
+    """Generic code to generate entities for both those with or without an mid"""
 
-    mids = [e["metadata"]["mid"] for e in mid_entities]
-    name_kinds = [(e["name"], e["type_"]) for e in name_kind_entities]
-
-    entity_map = {e.mid: e for e in Entity.objects.filter(mid__in=mids)}
-    entity_map.update(
-        {
-            (e.name, e.kind): e
-            for e in Entity.objects.filter(
-                reduce(
-                    operator.or_, (Q(name=name, kind=kind) for name, kind in name_kinds)
-                )
-            )
-        }
-    )
+    entities = [e for e in entities if entity_filter(e)]
+    keys = [keyer(e) for e in entities]
+    entity_map = mapper(keys)
 
     entity_objs = []
-    logger.info("Create mid entity objects")
+    logger.info("Create entity objects")
 
-    for entity in mid_entities:
-        if entity["metadata"]["mid"] not in entity_map:
-            mid = entity["metadata"]["mid"]
-            wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
+    for entity in entities:
+        key = keyer(entity)
+        if key not in entity_map:
+            metadata = entity["metadata"].copy()
+            mid = metadata.pop("mid", "")
+            wikipedia_url = metadata.pop("wikipedia_url", "")
             entity_obj = Entity(
                 name=entity["name"],
                 kind=entity["type_"],
                 description=entity.get("description", ""),
                 mid=mid,
                 wikipedia_url=wikipedia_url,
-                metadata=entity["metadata"],
+                metadata=metadata,
             )
-            entity_map[entity["metadata"]["mid"]] = entity_obj
+            entity_map[key] = entity_obj
             entity_objs.append(entity_obj)
 
-    for entity in name_kind_entities:
-        if (entity["name"], entity["type_"]) not in entity_map:
-            wikipedia_url = entity["metadata"].pop("wikipedia_url", "")
-            entity_obj = Entity(
-                name=entity["name"],
-                kind=entity["type_"],
-                description=entity.get("description", ""),
-                wikipedia_url=wikipedia_url,
-                metadata=entity["metadata"],
+    return entity_objs, entity_map
+
+
+def get_or_create_entities(entities):
+    """Get or create the API entities from the database"""
+
+    entity_objs, entity_map = _get_or_create_entities(
+        entities,
+        lambda e: "mid" in e["metadata"],
+        lambda e: e["metadata"]["mid"],
+        lambda mids: {e.mid: e for e in Entity.objects.filter(mid__in=mids)},
+    )
+    entity_objs_, entity_map_ = _get_or_create_entities(
+        entities,
+        lambda e: "mid" not in e["metadata"],
+        lambda e: (e["name"], e["type_"]),
+        lambda name_kinds: {
+            (e.name, e.kind): e
+            for e in Entity.objects.filter(
+                reduce(
+                    operator.or_, (Q(name=name, kind=kind) for name, kind in name_kinds)
+                )
             )
-            entity_map[(entity["name"], entity["type_"])] = entity_obj
-            entity_objs.append(entity_obj)
+        },
+    )
+    entity_objs.extend(entity_objs_)
+    entity_map.update(entity_map_)
 
     logger.info("Insert entities into the database")
     # XXX race condition if created between checking and creating
