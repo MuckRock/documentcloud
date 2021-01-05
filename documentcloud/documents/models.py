@@ -672,15 +672,6 @@ class EntityDate(models.Model):
 class Entity(models.Model):
     """An entity which can be referenced within a document"""
 
-    # XXX work out how these should be unique
-    # wikipedia url unique if present
-    #
-    # if mid:
-    #   unique by mid
-    #   correct kind by kg api?
-    # if no mid:
-    #   unique by (name, kind) (or metadata?)
-
     name = models.CharField(
         _("name"), max_length=255, help_text=_("The name of this entity")
     )
