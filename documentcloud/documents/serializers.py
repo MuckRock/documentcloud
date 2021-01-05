@@ -46,6 +46,36 @@ class PageNumberValidationMixin:
         return value
 
 
+class PageSpecValidationMixin:
+    def validate_page(self, value):
+        parts = value.split(",")
+        result = []
+        for part in parts:
+            if "-" in part:
+                subparts = part.split("-")
+                if len(subparts) != 2:
+                    raise serializers.ValidationError(
+                        f"Page spec has too many parts ({subparts})"
+                    )
+                try:
+                    page1 = int(subparts[0])
+                    page2 = int(subparts[1])
+                except ValueError:
+                    raise serializers.ValidationError(
+                        "Page spec range must have integer parts"
+                    )
+                result.append(f"{page1}-{page2}")
+            else:
+                try:
+                    page = int(part)
+                except ValueError:
+                    raise serializers.ValidationError(
+                        "Page spec page must be an integer"
+                    )
+                result.append(f"{page}")
+        return ",".join(result)
+
+
 class DocumentSerializer(FlexFieldsModelSerializer):
 
     presigned_url = serializers.SerializerMethodField(
@@ -461,6 +491,38 @@ class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
         if attrs["y1"] >= attrs["y2"]:
             raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
+
+
+class ModificationSerializer(serializers.Serializer):
+    type_ = serializers.ChoiceField([("rotate", "rotate")])
+    angle = serializers.ChoiceField(
+        choices=["cc", "cc", "ccw", "ccw", "hw", "hw"], required=False
+    )
+
+    def get_fields(self):
+        result = super().get_fields()
+        # Rename `type_` to `type`
+        type_ = result.pop("type_")
+        result["type"] = type_
+        return result
+
+    def validate(self, attrs):
+        if attrs["type"] == "rotate":
+            if attrs["angle"] == "":
+                raise serializers.ValidationError(
+                    "Angle must be specified for rotation modifications"
+                )
+
+        return attrs
+
+
+class ModificationSpecItemSerializer(PageSpecValidationMixin, serializers.Serializer):
+    page = serializers.CharField()
+    modifications = ModificationSerializer(required=False, many=True)
+
+
+class ModificationSpecSerializer(serializers.Serializer):
+    data = ModificationSpecItemSerializer(many=True)
 
 
 class ProcessDocumentSerializer(serializers.Serializer):
