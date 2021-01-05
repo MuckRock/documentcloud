@@ -1,6 +1,6 @@
 # Django
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 # Standard Library
@@ -14,6 +14,8 @@ from itertools import zip_longest
 import requests
 from google.cloud import language_v1
 from google.cloud.language_v1.types.language_service import AnalyzeEntitiesResponse
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # DocumentCloud
 from documentcloud.documents.choices import EntityKind, Status
@@ -23,10 +25,6 @@ BYTE_LIMIT = 1000000
 
 logger = logging.getLogger(__name__)
 
-# XXX what to do about redactions/page edits post entity extraction?
-# delete all entities prior to any destructive edits
-
-
 # Utility Functions
 
 
@@ -35,6 +33,26 @@ def grouper(iterable, num, fillvalue=None):
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
     args = [iter(iterable)] * num
     return zip_longest(*args, fillvalue=fillvalue)
+
+
+def requests_retry_session(
+    retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None
+):
+    """Automatic retries for HTTP requests
+    See: https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+    """
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
 
 
 # Public Functions
@@ -96,12 +114,7 @@ def _extract_entities(document):
             # if adding another page would put us over the limit,
             # send the current chunk of text to be analyzed
             logger.info("Extracting to page %d", page["page"])
-            entities.extend(
-                # XXX call the api in parallel
-                # possibly with overlap
-                # check size of entities to pass through redis (use compression)
-                _extract_entities_text("".join(texts), character_offset)
-            )
+            entities.extend(_extract_entities_text("".join(texts), character_offset))
             character_offset = total_characters
             texts = [page["contents"]]
             total_bytes = page_bytes
@@ -196,29 +209,28 @@ def _create_entity_occurrences(entities, document, page_map):
 def _get_mid_info(mids):
     """Use the Google Knowledge Graph API to get the name and description for
     all of the given mids"""
-    # XXX error handling / retry
-    # XXX store date mid info was fetched to periodically update
     service_url = "https://kgsearch.googleapis.com/v1/entities:search"
     info = {}
     # do 100 mids at a time
     for group in grouper(mids, 100):
         params = {"limit": len(group), "key": settings.GOOGLE_API_KEY, "ids": group}
-        response = requests.get(service_url, params=params)
-        info.update(
-            {
-                i["result"]["@id"][3:]: (
-                    i["result"].get("name"),
-                    i["result"]
-                    .get("detailedDescription", {})
-                    .get("articleBody", i["result"].get("description")),
-                )
-                for i in response.json()["itemListElement"]
-            }
-        )
+        response = requests_retry_session().get(service_url, params=params)
+        if response.status_code == 200:
+            info.update(
+                {
+                    i["result"]["@id"][3:]: (
+                        i["result"].get("name"),
+                        i["result"]
+                        .get("detailedDescription", {})
+                        .get("articleBody", i["result"].get("description")),
+                    )
+                    for i in response.json()["itemListElement"]
+                }
+            )
     return info
 
 
-def _get_or_create_entities(entities):
+def _get_or_create_entities(entities, retries=2):
     """Get or create the entities returned from the API in the database"""
 
     entity_objs, entity_map = _get_entity_type(
@@ -244,8 +256,18 @@ def _get_or_create_entities(entities):
     entity_map.update(entity_map_)
 
     logger.info("Insert entities into the database")
-    # XXX race condition if created between checking and creating
-    Entity.objects.bulk_create(entity_objs)
+    try:
+        Entity.objects.bulk_create(entity_objs)
+    except IntegrityError:
+        # It is possible the entity was created between when we check for its existence
+        # and when we try to bulk create it here.  Since we are creating in bulk, we
+        # do not know which instance caused the error.  Retrying should fix the error
+        # in most cases, but we limit the number of retries in order to prevent an
+        # infinite loop in the case something else has gone wrong at the DB level.
+        if retries > 0:
+            return _get_or_create_entities(entities, retries=retries - 1)
+        else:
+            raise
     return entity_map
 
 
