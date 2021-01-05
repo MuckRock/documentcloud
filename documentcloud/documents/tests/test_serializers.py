@@ -2,7 +2,10 @@
 import pytest
 
 # DocumentCloud
-from documentcloud.documents.serializers import DocumentSerializer
+from documentcloud.documents.serializers import (
+    DocumentSerializer,
+    ModificationSpecSerializer,
+)
 
 
 class TestDocumentSerializer:
@@ -27,4 +30,40 @@ class TestDocumentSerializer:
         serializer = DocumentSerializer(data={"description": "a"}, partial=True)
         assert serializer.is_valid()
         serializer = DocumentSerializer(data={"description": "a" * 4001}, partial=True)
+        assert not serializer.is_valid()
+
+
+class TestModificationSerializer:
+    def test_good_data_empty(self):
+        serializer = ModificationSpecSerializer(data={"data": []})
+        assert serializer.is_valid()
+
+    def test_good_data_simple(self):
+        serializer = ModificationSpecSerializer(data={"data": [{"page": "1-500"}]})
+        assert serializer.is_valid()
+
+    def test_good_data_complex(self):
+        serializer = ModificationSpecSerializer(
+            data={
+                "data": [
+                    {"page": "2,0"},
+                    {
+                        "page": "1-3",
+                        "modifications": [{"type": "rotate", "angle": "cc"}],
+                    },
+                    {
+                        "page": "1",
+                        "modifications": [
+                            {"type": "rotate", "angle": "cc"},
+                            {"type": "rotate", "angle": "hw"},
+                            {"type": "rotate", "angle": "ccw"},
+                        ],
+                    },
+                ]
+            }
+        )
+        assert serializer.is_valid()
+
+    def test_bad_data_page(self):
+        serializer = ModificationSpecSerializer(data={"data": [{"page": "a-3"}]})
         assert not serializer.is_valid()
