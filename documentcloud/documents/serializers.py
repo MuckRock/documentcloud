@@ -42,7 +42,18 @@ class PageNumberValidationMixin:
 
 
 class PageSpecValidationMixin:
-    def validate_page(self, value):
+    def validate(self, attrs):
+        view = self.context.get("view")
+        document_pk = attrs.get("id") or view.kwargs["document_pk"]
+        document = Document.objects.get(pk=document_pk)
+
+        def assert_valid_page_number(page_number):
+            if page_number >= document.page_count or page_number < 0:
+                raise serializers.ValidationError(
+                    f"Must be a valid page for the document: {page_number} {document.page_count} {document}"
+                )
+
+        value = attrs["page"]
         parts = value.split(",")
         result = []
         for part in parts:
@@ -59,7 +70,9 @@ class PageSpecValidationMixin:
                     raise serializers.ValidationError(
                         "Page spec range must have integer parts"
                     )
-                result.append(f"{page1}-{page2}")
+                assert_valid_page_number(page1)
+                assert_valid_page_number(page2)
+                result.append((page1, page2))
             else:
                 try:
                     page = int(part)
@@ -67,8 +80,12 @@ class PageSpecValidationMixin:
                     raise serializers.ValidationError(
                         "Page spec page must be an integer"
                     )
-                result.append(f"{page}")
-        return ",".join(result)
+                assert_valid_page_number(page)
+                result.append(page)
+
+        # Put transformed page spec data into a new attribute
+        attrs["page_spec"] = result
+        return attrs
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):
@@ -483,6 +500,7 @@ class ModificationSerializer(serializers.Serializer):
 
 class ModificationSpecItemSerializer(PageSpecValidationMixin, serializers.Serializer):
     page = serializers.CharField()
+    id = serializers.IntegerField(required=False)
     modifications = ModificationSerializer(required=False, many=True)
 
 
