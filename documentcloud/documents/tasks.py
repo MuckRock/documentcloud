@@ -227,7 +227,12 @@ def solr_index_dirty_continue(timestamp):
     solr.index_dirty_continue(timestamp)
 
 
-@task
+@task(
+    time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
+    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
+    autoretry_for=(SoftTimeLimitExceeded,),
+    retry_backoff=settings.SOLR_RETRY_BACKOFF,
+)
 def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=None):
     """Re-index all documents"""
     solr.reindex_all(collection_name, after_timestamp, delete_timestamp)
@@ -242,10 +247,8 @@ def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
 # entity extraction
 
 
-@task(
-    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
-    time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
-)
+# This could take a while for long documents
+@task(soft_time_limit=60 * 30, time_limit=60 * 32)
 def extract_entities(document_pk):
     try:
         document = Document.objects.get(pk=document_pk)
