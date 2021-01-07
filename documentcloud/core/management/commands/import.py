@@ -95,8 +95,9 @@ class Command(BaseCommand):
                 self.import_documents()
             self.import_notes()
             self.import_sections()
-            self.import_entities()
-            self.import_entity_dates()
+            # disable entities for now as they are causing the import to time out
+            # self.import_entities()
+            # self.import_entity_dates()
             self.import_projects()
             self.import_collaborations()
             self.import_project_memberships()
