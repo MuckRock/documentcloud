@@ -46,53 +46,6 @@ class PageNumberValidationMixin:
         return value
 
 
-class PageSpecValidationMixin:
-    def validate(self, attrs):
-        view = self.context.get("view")
-        document_pk = attrs.get("id") or view.kwargs["document_pk"]
-        document = Document.objects.get(pk=document_pk)
-
-        def assert_valid_page_number(page_number):
-            if page_number >= document.page_count or page_number < 0:
-                raise serializers.ValidationError(
-                    f"Must be a valid page for the document: {page_number} {document.page_count} {document}"
-                )
-
-        value = attrs["page"]
-        parts = value.split(",")
-        result = []
-        for part in parts:
-            if "-" in part:
-                subparts = part.split("-")
-                if len(subparts) != 2:
-                    raise serializers.ValidationError(
-                        f"Page spec has too many parts ({subparts})"
-                    )
-                try:
-                    page1 = int(subparts[0])
-                    page2 = int(subparts[1])
-                except ValueError:
-                    raise serializers.ValidationError(
-                        "Page spec range must have integer parts"
-                    )
-                assert_valid_page_number(page1)
-                assert_valid_page_number(page2)
-                result.append((page1, page2))
-            else:
-                try:
-                    page = int(part)
-                except ValueError:
-                    raise serializers.ValidationError(
-                        "Page spec page must be an integer"
-                    )
-                assert_valid_page_number(page)
-                result.append(page)
-
-        # Put transformed page spec data into a new attribute
-        attrs["page_spec"] = result
-        return attrs
-
-
 class DocumentSerializer(FlexFieldsModelSerializer):
 
     presigned_url = serializers.SerializerMethodField(
@@ -511,32 +464,86 @@ class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
 
 
 class ModificationSerializer(serializers.Serializer):
-    type_ = serializers.ChoiceField([("rotate", "rotate")])
+    type = serializers.ChoiceField([("rotate", "rotate")])
     angle = serializers.ChoiceField(
-        choices=["cc", "cc", "ccw", "ccw", "hw", "hw"], required=False
+        choices=[("cc", "cc"), ("ccw", "ccw"), ("hw", "hw")], required=False
     )
 
-    def get_fields(self):
-        result = super().get_fields()
-        # Rename `type_` to `type`
-        type_ = result.pop("type_")
-        result["type"] = type_
-        return result
-
     def validate(self, attrs):
-        if attrs["type"] == "rotate":
-            if attrs["angle"] == "":
-                raise serializers.ValidationError(
-                    "Angle must be specified for rotation modifications"
-                )
+        if attrs["type"] == "rotate" and "angle" not in attrs:
+            raise serializers.ValidationError(
+                "Angle must be specified for rotation modifications"
+            )
 
         return attrs
 
 
-class ModificationSpecItemSerializer(PageSpecValidationMixin, serializers.Serializer):
+class ModificationSpecItemSerializer(serializers.Serializer):
     page = serializers.CharField()
-    id = serializers.IntegerField(required=False)
+    id = serializers.PrimaryKeyRelatedField(
+        required=False, queryset=Document.objects.all()
+    )
     modifications = ModificationSerializer(required=False, many=True)
+
+    def validate_modifications(self, modifications):
+        rotation_count = sum(
+            1 for modification in modifications if modification["type"] == "rotate"
+        )
+
+        if rotation_count > 1:
+            raise serializers.ValidationError(
+                "Invalid to specify more than one rotation modification per item"
+            )
+
+    def validate(self, attrs):
+        view = self.context.get("view")
+        request = self.context.get("request")
+
+        # Use the current document by default, overridden by setting id
+        document = attrs.get("id", Document.objects.get(pk=view.kwargs["document_pk"]))
+
+        # Check permissions
+        if not request.user.has_perm("documents.change_document", document):
+            raise exceptions.PermissionDenied(
+                "You may only create modify documents you can change"
+            )
+
+        # Subroutine to ensure page numbers passed in spec match constraints
+        def validate_page_number(page_number):
+            try:
+                page_number = int(page_number)
+            except ValueError:
+                raise serializers.ValidationError(
+                    "Page spec must have integer page numbers"
+                )
+            if page_number >= document.page_count or page_number < 0:
+                raise serializers.ValidationError(
+                    f"Must be a valid page for the document {document.pk}: {page_number} (page count: {document.page_count})"
+                )
+            return page_number
+
+        value = attrs["page"]
+        parts = value.split(",")
+        result = []
+        for part in parts:
+            if "-" in part:
+                subparts = part.split("-")
+                if len(subparts) != 2:
+                    raise serializers.ValidationError(
+                        f"Page spec has too many parts ({subparts})"
+                    )
+                page1 = validate_page_number(subparts[0])
+                page2 = validate_page_number(subparts[1])
+                if page1 >= page2:
+                    raise serializers.ValidationError("Page range must be ascending")
+                result.append((page1, page2))
+            else:
+                page = validate_page_number(part)
+                result.append(page)
+
+        # Put transformed page spec data into a new attribute
+        attrs["page_spec"] = result
+        return attrs
 
 
 class ModificationSpecSerializer(serializers.Serializer):
