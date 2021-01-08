@@ -55,6 +55,7 @@ from documentcloud.documents.serializers import (
     EntityDateSerializer,
     EntityOccurrenceSerializer,
     LegacyEntitySerializer,
+    ModificationSpecSerializer,
     NoteSerializer,
     ProcessDocumentSerializer,
     RedactionSerializer,
