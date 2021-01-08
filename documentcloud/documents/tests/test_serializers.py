@@ -1,4 +1,7 @@
 # Third Party
+# Standard Library
+from unittest.mock import MagicMock
+
 import pytest
 
 # DocumentCloud
@@ -39,14 +42,16 @@ class TestModificationSerializer:
     def get_modification_serializer(self, data, page_count):
         document = DocumentFactory(page_count=page_count)
 
-        class AttributeDict(dict):
-            __slots__ = ()
-            __getattr__ = dict.__getitem__
-            __setattr__ = dict.__setitem__
+        # Mock the view and request
+        mock_request = MagicMock()
+        mock_request.user.has_perm = lambda _perm, _doc: True
+
+        mock_view = MagicMock()
+        mock_view.kwargs = {"document_pk": document.pk}
+        mock_view.context = {"request": mock_request}
 
         return ModificationSpecSerializer(
-            data={"data": data},
-            context={"view": AttributeDict({"kwargs": {"document_pk": document.pk}})},
+            data={"data": data}, context={"view": mock_view, "request": mock_request}
         )
 
     def test_good_data_empty(self):
@@ -68,18 +73,28 @@ class TestModificationSerializer:
             [
                 {"page": "2,0"},
                 {"page": "1-3", "modifications": [{"type": "rotate", "angle": "cc"}]},
+                {"page": "1", "modifications": [{"type": "rotate", "angle": "cc"}]},
+            ],
+            4,
+        )
+        assert serializer.is_valid()
+
+    def test_bad_multiple_rotations(self):
+        serializer = self.get_modification_serializer(
+            [
+                {"page": "2,0"},
+                {"page": "1-3", "modifications": [{"type": "rotate", "angle": "cc"}]},
                 {
                     "page": "1",
                     "modifications": [
                         {"type": "rotate", "angle": "cc"},
                         {"type": "rotate", "angle": "hw"},
-                        {"type": "rotate", "angle": "ccw"},
                     ],
                 },
             ],
             4,
         )
-        assert serializer.is_valid()
+        assert not serializer.is_valid()
 
     def test_bad_data_page(self):
         serializer = self.get_modification_serializer([{"page": "a-3"}], 100)
@@ -95,6 +110,6 @@ class TestModificationSerializer:
     def test_other_doc_id_too_short(self):
         short_doc = DocumentFactory(page_count=20)
         serializer = self.get_modification_serializer(
-            [{"page": "0-49", "id": short_doc.pk}], 10
+            [{"page": "0-49", "id": short_doc.pk}], 100
         )
         assert not serializer.is_valid()
