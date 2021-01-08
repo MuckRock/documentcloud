@@ -52,11 +52,11 @@ from documentcloud.documents.serializers import (
     DocumentSerializer,
     EntityDateSerializer,
     EntitySerializer,
+    ModificationSpecSerializer,
     NoteSerializer,
     ProcessDocumentSerializer,
     RedactionSerializer,
     SectionSerializer,
-    ModificationSpecSerializer,
 )
 from documentcloud.documents.tasks import (
     fetch_file_url,
