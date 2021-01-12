@@ -704,6 +704,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """Initiate asyncrhonous creation of entities"""
+        # pylint: disable=unused-argument
         if not request.user.has_perm("documents.change_document", self.document):
             raise exceptions.PermissionDenied(
                 "You do not have permission to edit this document"
@@ -739,6 +740,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def bulk_destroy(self, request, *args, **kwargs):
         """Delete all entities for the document"""
+        # pylint: disable=unused-argument
         if request.user.has_perm("documents.change_document", self.document):
             self.document.entities.all().delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -760,6 +762,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         )
 
         def occurrence_filter(self, queryset, name, values):
+            # pylint: disable=unused-argument
             query = Q()
             for value in values:
                 query |= Q(occurrences__contains=[{"kind": value}])
