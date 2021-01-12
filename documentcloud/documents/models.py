@@ -141,10 +141,11 @@ class Document(models.Model):
         help_text=_("SHA1 digest of the file contents"),
     )
 
-    # legacy fields
-
-    calais_id = models.CharField(
-        _("calais id"), max_length=40, blank=True, help_text=_("Open Calais identifier")
+    original_extension = models.CharField(
+        _("original extension"),
+        default="pdf",
+        max_length=255,
+        help_text=_("The original extension of the underlying file"),
     )
 
     publication_date = models.DateField(
@@ -157,8 +158,16 @@ class Document(models.Model):
         _("publish at"),
         blank=True,
         null=True,
+        db_index=True,
         help_text=_("Scheduled time to make document public"),
     )
+
+    # legacy fields
+
+    calais_id = models.CharField(
+        _("calais id"), max_length=40, blank=True, help_text=_("Open Calais identifier")
+    )
+
     text_changed = models.BooleanField(
         _("text changed"), default=False, help_text=_("User manually changed the text")
     )
@@ -179,12 +188,6 @@ class Document(models.Model):
         _("character count"),
         default=0,
         help_text=_("The number of characters in the document"),
-    )
-    original_extension = models.CharField(
-        _("original extension"),
-        default="pdf",
-        max_length=255,
-        help_text=_("The original extension of the underlying file"),
     )
 
     class Meta:
