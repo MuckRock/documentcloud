@@ -5,6 +5,8 @@ from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
 from django.db import transaction
+from django.db.utils import DatabaseError
+from django.utils import timezone
 
 # Standard Library
 import logging
@@ -256,3 +258,28 @@ def extract_entities(document_pk):
         return
 
     entity_extraction.extract_entities(document)
+
+
+@transaction.atomic
+@periodic_task(run_every=600)
+def publish_scheduled_documents():
+    """Make documents public based on publish_at field"""
+    try:
+        documents = (
+            Document.objects.filter(
+                publish_at__lt=timezone.now(), status=Status.success
+            )
+            .exclude(access__in=(Access.public, Access.invisible))
+            .select_for_update(nowait=True)
+        )
+    except DatabaseError:
+        logger.info("Lock contention for publishign scheduled documents")
+    logger.info("Publishing %d scheduled documents", len(documents))
+    # mark documents as processing while we update the file access on s3
+    documents.update(status=Status.readable)
+    for document in documents:
+        # update all files to be public
+        transaction.on_commit(
+            lambda d=document: update_access.delay(d.pk, Status.success, Access.public)
+        )
+        # update solr
