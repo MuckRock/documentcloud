@@ -10,6 +10,7 @@ from django.utils import timezone
 
 # Standard Library
 import logging
+from datetime import date
 
 # Third Party
 import pysolr
@@ -189,6 +190,8 @@ def finish_update_access(document_pk, status, access):
             # if we were switching to public, update the access now
             kwargs["access"] = Access.public
             field_updates["access"] = "set"
+            # also set the pulbication date
+            kwargs["publication_date"] = date.today()
 
         Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
         transaction.on_commit(
@@ -260,12 +263,12 @@ def extract_entities(document_pk):
     entity_extraction.extract_entities(document)
 
 
-@transaction.atomic
 @periodic_task(run_every=600)
+@transaction.atomic
 def publish_scheduled_documents():
     """Make documents public based on publish_at field"""
     try:
-        documents = (
+        documents = list(
             Document.objects.filter(
                 publish_at__lt=timezone.now(), status=Status.success
             )
@@ -274,12 +277,19 @@ def publish_scheduled_documents():
         )
     except DatabaseError:
         logger.info("Lock contention for publishign scheduled documents")
+        return
+
     logger.info("Publishing %d scheduled documents", len(documents))
     # mark documents as processing while we update the file access on s3
-    documents.update(status=Status.readable)
+    Document.objects.filter(pk__in=[d.pk for d in documents]).update(
+        status=Status.readable
+    )
     for document in documents:
         # update all files to be public
         transaction.on_commit(
             lambda d=document: update_access.delay(d.pk, Status.success, Access.public)
         )
         # update solr
+        transaction.on_commit(
+            lambda d=document: solr_index.delay(d.pk, field_updates={"status": "set"})
+        )

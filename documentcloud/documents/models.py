@@ -158,6 +158,7 @@ class Document(models.Model):
         _("publish at"),
         blank=True,
         null=True,
+        db_index=True,
         help_text=_("Scheduled time to make document public"),
     )
 
