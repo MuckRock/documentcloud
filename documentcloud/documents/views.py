@@ -165,6 +165,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             serializer = ProcessDocumentSerializer(document, data=request.data)
             serializer.is_valid(raise_exception=True)
+            document.status = Status.pending
+            document.save()
             self._process(document, serializer.validated_data["force_ocr"])
             return Response("OK", status=status.HTTP_200_OK)
 
@@ -181,9 +183,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
 
-        documents = Document.objects.select_for_update().filter(
-            pk__in=[d["id"] for d in serializer.validated_data]
-        )
+        documents = Document.objects.filter(
+            pk__in=[d["id"] for d in serializer.validated_data],
+            status__in=(Status.success, Status.error, Status.nofile),
+        ).get_editable(request.user)
+        # cannot combine distinct (from get editable) with select_for_update
+        documents = Document.objects.filter(
+            pk__in=[d.pk for d in documents]
+        ).select_for_update()
         if len(documents) != len(serializer.validated_data):
             raise serializers.ValidationError(
                 "Could not find all documents to process."
@@ -192,16 +199,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             d["id"]: d.get("force_ocr", False) for d in serializer.validated_data
         }
 
-        errors = []
-        for document in documents:
-            error = self._check_process(document)
-            if error:
-                errors.append(error)
-        if errors:
-            return Response({"error": errors}, status=status.HTTP_400_BAD_REQUEST)
-
         for document in documents:
             self._process(document, force_ocr[document.pk])
+        documents.update(status=Status.pending)
         return Response("OK", status=status.HTTP_200_OK)
 
     def _check_process(self, document):
@@ -210,9 +210,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not self.request.user.has_perm("documents.change_document", document):
             return f"You do not have permission to edit document {document.pk}"
 
-        if not storage.exists(document.original_path):
-            return f"No File: {document.pk}"
-
         if document.processing:
             return f"Already processing: {document.pk}"
 
@@ -220,8 +217,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _process(self, document, force_ocr):
         """Process a document after you have uploaded the file"""
-        document.status = Status.pending
-        document.save()
         transaction.on_commit(
             lambda: process.delay(
                 document.pk,
@@ -686,6 +681,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             serializer.data,
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+<<<<<<< HEAD
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
@@ -784,3 +780,107 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             }
 
     filterset_class = Filter
+||||||| merged common ancestors
+=======
+
+
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = EntityOccurrenceSerializer
+    queryset = EntityOccurrence.objects.none()
+
+    @lru_cache()
+    def get_queryset(self):
+        """Only fetch documents viewable to this user"""
+        self.document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        return self.document.entities.all()
+
+    def create(self, request, *args, **kwargs):
+        """Initiate asyncrhonous creation of entities"""
+        # pylint: disable=unused-argument
+        if not request.user.has_perm("documents.change_document", self.document):
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit this document"
+            )
+
+        with transaction.atomic():
+            # We select for update here to lock the document between checking if it is
+            # processing and starting the entity extraction to ensure another
+            # thread does not start processing this document before we mark it as
+            # processing
+            document = Document.objects.select_for_update().get(pk=self.document.pk)
+
+            if document.processing:
+                return Response(
+                    {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if document.entities.exists():
+                return Response(
+                    {"error": "Entities already created"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            document.status = Status.readable
+            document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+            )
+
+            transaction.on_commit(lambda: extract_entities.delay(self.document.pk))
+
+        return Response("OK")
+
+    def bulk_destroy(self, request, *args, **kwargs):
+        """Delete all entities for the document"""
+        # pylint: disable=unused-argument
+        if request.user.has_perm("documents.change_document", self.document):
+            self.document.entities.all().delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit this document"
+            )
+
+    class Filter(django_filters.FilterSet):
+        kind = ChoicesFilter(field_name="entity__kind", choices=EntityKind)
+        occurrences = ChoicesFilter(method="occurrence_filter", choices=OccurrenceKind)
+        mid = django_filters.BooleanFilter(
+            method="value_exists", field_name="entity__mid", label="Has MID"
+        )
+        wikipedia_url = django_filters.BooleanFilter(
+            method="value_exists",
+            field_name="entity__wikipedia_url",
+            label="Has Wikipedia URL",
+        )
+
+        def occurrence_filter(self, queryset, name, values):
+            # pylint: disable=unused-argument
+            query = Q()
+            for value in values:
+                query |= Q(occurrences__contains=[{"kind": value}])
+            return queryset.filter(query)
+
+        def value_exists(self, queryset, name, value):
+            if value is True:
+                return queryset.exclude(**{name: ""})
+            elif value is False:
+                return queryset.filter(**{name: ""})
+            else:
+                return queryset
+
+        class Meta:
+            model = EntityOccurrence
+            fields = {
+                "kind": ["exact"],
+                "occurrences": ["exact"],
+                "relevance": ["gt"],
+                "mid": ["exact"],
+                "wikipedia_url": ["exact"],
+            }
+
+    filterset_class = Filter
+>>>>>>> efficient-bulk-views
