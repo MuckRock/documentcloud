@@ -296,9 +296,14 @@ LOGGING = {
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
-if DEBUG:
+if 1 or DEBUG:
     LOGGING["loggers"] = {
-        "rules": {"handlers": ["console"], "level": "DEBUG", "propagate": False}
+        "rules": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
+        "django.db.backends": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propogate": False,
+        },
     }
 
 # Celery

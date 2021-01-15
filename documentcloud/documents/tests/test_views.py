@@ -238,12 +238,15 @@ class TestDocumentAPI:
         # this check is currently disabled
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_bulk_create(self, client, user):
+    def test_bulk_create(self, client, user, django_assert_num_queries):
         """Create multiple documents"""
         client.force_authenticate(user=user)
-        response = client.post(
-            "/api/documents/", [{"title": "Test 1"}, {"title": "Test 2"}], format="json"
-        )
+        with django_assert_num_queries(9):
+            response = client.post(
+                "/api/documents/",
+                [{"title": "Test 1"}, {"title": "Test 2"}, {"title": "Test 3"}],
+                format="json",
+            )
         assert response.status_code == status.HTTP_201_CREATED
         assert (
             Document.objects.filter(pk__in=[d["id"] for d in response.json()]).count()
