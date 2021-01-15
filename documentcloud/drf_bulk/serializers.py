@@ -23,6 +23,8 @@ class BulkListSerializer(serializers.ListSerializer):
             for field in m2m_fields:
                 # m2m fields must be set after the instance is created
                 m2m_values[-1][field] = attrs.pop(field, None)
+            if hasattr(self.child, "bulk_create_attrs"):
+                attrs = self.child.bulk_create_attrs(attrs)
             instances.append(ModelClass(**attrs))
 
         # create the instances in bulk for efficiency

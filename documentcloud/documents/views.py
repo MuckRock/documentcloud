@@ -184,12 +184,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         documents = Document.objects.filter(
-            pk__in=[d["id"] for d in serializer.validated_data],
-            status__in=(Status.success, Status.error, Status.nofile),
+            pk__in=[d["id"] for d in serializer.validated_data]
         ).get_editable(request.user)
         # cannot combine distinct (from get editable) with select_for_update
         documents = Document.objects.filter(
-            pk__in=[d.pk for d in documents]
+            pk__in=[d.pk for d in documents],
+            status__in=(Status.success, Status.error, Status.nofile),
         ).select_for_update()
         if len(documents) != len(serializer.validated_data):
             raise serializers.ValidationError(
