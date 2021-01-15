@@ -250,7 +250,7 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert (
             Document.objects.filter(pk__in=[d["id"] for d in response.json()]).count()
-            == 2
+            == 3
         )
 
     def test_bulk_create_excess(self, client, user):
@@ -620,16 +620,6 @@ class TestDocumentAPI:
         response = client.post(f"/api/documents/{document.pk}/process/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_process_no_file(self, client, document, mocker):
-        """Test processing a document without a file"""
-        # pretend the file does not exist
-        mocker.patch(
-            "documentcloud.common.environment.storage.exists", return_value=False
-        )
-        client.force_authenticate(user=document.user)
-        response = client.post(f"/api/documents/{document.pk}/process/")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
     def test_process_bad_status(self, client, mocker):
         """Test processing a document thats already processing"""
         document = DocumentFactory(status=Status.pending)
@@ -641,7 +631,7 @@ class TestDocumentAPI:
         response = client.post(f"/api/documents/{document.pk}/process/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_bulk_process(self, client, user, mocker):
+    def test_bulk_process(self, client, user, mocker, django_assert_num_queries):
         """Test processing multiple documents"""
         # pretend the files exists
         mocker.patch(
@@ -649,9 +639,12 @@ class TestDocumentAPI:
         )
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
-        response = client.post(
-            "/api/documents/process/", [{"id": d.pk} for d in documents], format="json"
-        )
+        with django_assert_num_queries(0):
+            response = client.post(
+                "/api/documents/process/",
+                [{"id": d.pk} for d in documents],
+                format="json",
+            )
         assert response.status_code == status.HTTP_200_OK
         for document in documents:
             document.refresh_from_db()

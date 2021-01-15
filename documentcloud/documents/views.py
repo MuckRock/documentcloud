@@ -165,6 +165,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             serializer = ProcessDocumentSerializer(document, data=request.data)
             serializer.is_valid(raise_exception=True)
+            document.status = Status.pending
+            document.save()
             self._process(document, serializer.validated_data["force_ocr"])
             return Response("OK", status=status.HTTP_200_OK)
 
@@ -181,9 +183,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
 
-        documents = Document.objects.select_for_update().filter(
-            pk__in=[d["id"] for d in serializer.validated_data]
-        )
+        documents = Document.objects.filter(
+            pk__in=[d["id"] for d in serializer.validated_data],
+            status__in=(Status.success, Status.error, Status.nofile),
+        ).get_editable(request.user)
+        # cannot combine distinct (from get editable) with select_for_update
+        documents = Document.objects.filter(
+            pk__in=[d.pk for d in documents]
+        ).select_for_update()
         if len(documents) != len(serializer.validated_data):
             raise serializers.ValidationError(
                 "Could not find all documents to process."
@@ -192,16 +199,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             d["id"]: d.get("force_ocr", False) for d in serializer.validated_data
         }
 
-        errors = []
-        for document in documents:
-            error = self._check_process(document)
-            if error:
-                errors.append(error)
-        if errors:
-            return Response({"error": errors}, status=status.HTTP_400_BAD_REQUEST)
-
         for document in documents:
             self._process(document, force_ocr[document.pk])
+        documents.update(status=Status.pending)
         return Response("OK", status=status.HTTP_200_OK)
 
     def _check_process(self, document):
@@ -210,9 +210,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not self.request.user.has_perm("documents.change_document", document):
             return f"You do not have permission to edit document {document.pk}"
 
-        if not storage.exists(document.original_path):
-            return f"No File: {document.pk}"
-
         if document.processing:
             return f"Already processing: {document.pk}"
 
@@ -220,8 +217,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _process(self, document, force_ocr):
         """Process a document after you have uploaded the file"""
-        document.status = Status.pending
-        document.save()
         transaction.on_commit(
             lambda: process.delay(
                 document.pk,
