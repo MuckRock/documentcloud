@@ -184,6 +184,8 @@ LOGGING = {
         },
     },
 }
+if env.bool("LOG_SQL", default=False):
+    LOGGING["loggers"]["django.db.backends"]["level"] = "DEBUG"
 
 # Sentry
 # ------------------------------------------------------------------------------
