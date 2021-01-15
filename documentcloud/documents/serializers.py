@@ -15,6 +15,7 @@ from rest_flex_fields import FlexFieldsModelSerializer
 # DocumentCloud
 from documentcloud.common.environment import storage
 from documentcloud.core.choices import Language
+from documentcloud.core.utils import slugify
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.fields import ChoiceField
@@ -262,6 +263,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def get_canonical_url(self, obj):
         return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}"
+
+    def bulk_create_attrs(self, attrs):
+        """Set the slug on bulk creation"""
+        attrs["slug"] = slugify(attrs["title"])
+        return attrs
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
