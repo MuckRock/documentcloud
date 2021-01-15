@@ -639,7 +639,7 @@ class TestDocumentAPI:
         )
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
-        with django_assert_num_queries(0):
+        with django_assert_num_queries(9):
             response = client.post(
                 "/api/documents/process/",
                 [{"id": d.pk} for d in documents],
