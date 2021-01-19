@@ -23,7 +23,7 @@ from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
-from documentcloud.common.environment import httpsub, storage
+from documentcloud.common.environment import httpsub
 from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
