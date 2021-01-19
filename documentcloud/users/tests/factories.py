@@ -16,6 +16,7 @@ class UserFactory(factory.django.DjangoModelFactory):
         "user",
         organization__individual=True,
         organization__uuid=factory.SelfAttribute("..user.uuid"),
+        organization__verified_journalist=True,
     )
 
     @factory.post_generation
