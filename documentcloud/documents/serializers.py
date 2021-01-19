@@ -176,6 +176,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 "projects"
             ].child_relation.queryset = Project.objects.get_editable(request.user)
 
+        if (
+            request
+            and request.user
+            and request.user.is_authenticated
+            and not request.user.verified_journalist
+        ):
+            # non-verified journalists may not make documents public
+            self.fields["access"].choices.pop(Access.public)
+            self.fields["access"].choice_map.pop("public")
+
         is_create = self.instance is None
         is_list = isinstance(self.instance, (list, QuerySet))
         is_document = isinstance(self.instance, Document)
