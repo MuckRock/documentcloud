@@ -19,6 +19,9 @@ class UserSerializer(FlexFieldsModelSerializer):
             "organiations they are a member of"
         ),
     )
+    verified_journalist = serializers.SerializerMethodField(
+        source="verified_organizations"
+    )
 
     class Meta:
         model = User
@@ -31,6 +34,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             "organizations",
             "username",
             "uuid",
+            "verified_journalist",
         ]
         extra_kwargs = {
             "avatar_url": {"read_only": True},
@@ -61,3 +65,13 @@ class UserSerializer(FlexFieldsModelSerializer):
         except ValueError as exc:
             raise serializers.ValidationError(exc.args[0])
         return instance
+
+    def get_verified_journalist(self, obj):
+        """Is this user a member of a verified journalist organization?"""
+        # If doing a list of users, we preload the verified organizations
+        # in order to avoid n+1 queries.  If the preloaded organizations are not
+        # present, use the property on user to make the query
+        if hasattr(obj, "verified_organizations"):
+            return bool(obj.verified_organizations)
+        else:
+            return obj.verified_journalist

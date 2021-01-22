@@ -9,6 +9,7 @@ from squarelet_auth.organizations.models import Membership
 
 # DocumentCloud
 from documentcloud.documents.choices import Access
+from documentcloud.organizations.models import Organization
 
 
 class UserQuerySet(models.QuerySet):
@@ -46,6 +47,11 @@ class UserQuerySet(models.QuerySet):
                     "organization"
                 ),
                 to_attr="active_memberships",
+            ),
+            Prefetch(
+                "organizations",
+                queryset=Organization.objects.filter(verified_journalist=True),
+                to_attr="verified_organizations",
             ),
         )
 
