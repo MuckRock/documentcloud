@@ -23,7 +23,7 @@ from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 
 # DocumentCloud
-from documentcloud.common.environment import httpsub, storage
+from documentcloud.common.environment import httpsub
 from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
@@ -506,6 +506,13 @@ class NoteViewSet(FlexFieldsModelViewSet):
             user=self.request.user,
             organization=self.request.user.organization,
         )
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = Note
+            fields = ["page_number"]
+
+    filterset_class = Filter
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")

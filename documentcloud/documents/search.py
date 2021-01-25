@@ -97,12 +97,14 @@ def search(user, query_params):
     )
     rows, start, page = _paginate(query_params)
 
+    highlight = "on" if query_params.get("highlight") == "true" else "off"
+
     kwargs = {
         "fq": filter_queries,
         "sort": sort,
         "rows": rows,
         "start": start,
-        "hl": settings.SOLR_USE_HL,
+        "hl": highlight,
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
@@ -436,7 +438,7 @@ def _paginate(query_params):
 
 def _format_response(results, query_params, user, page, per_page, escaped):
     """Emulate the Django Rest Framework response format"""
-    base_url = settings.DOCCLOUD_API_URL + reverse("document-search")
+    base_url = f"{settings.DOCCLOUD_API_URL}/api/documents/search/"
     query_params = query_params.copy()
 
     max_page = math.ceil(results.hits / per_page)

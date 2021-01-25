@@ -11,7 +11,7 @@ class BulkListSerializer(serializers.ListSerializer):
     def create(self, validated_data):
         """Create instances in bulk efficiently"""
 
-        ModelClass = self.child.Meta.model
+        ModelClass = self.child.Meta.model  # pylint: disable=invalid-name
 
         info = model_meta.get_field_info(ModelClass)
         m2m_fields = [f for f, i in info.relations.items() if i.to_many]
