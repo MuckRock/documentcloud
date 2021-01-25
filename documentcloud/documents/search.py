@@ -97,12 +97,14 @@ def search(user, query_params):
     )
     rows, start, page = _paginate(query_params)
 
+    highlight = "on" if query_params.get("highlight") == "true" else "off"
+
     kwargs = {
         "fq": filter_queries,
         "sort": sort,
         "rows": rows,
         "start": start,
-        "hl": settings.SOLR_USE_HL,
+        "hl": highlight,
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
