@@ -185,6 +185,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             # non-verified journalists may not make documents public
             self.fields["access"].choices.pop(Access.public)
             self.fields["access"].choice_map.pop("public")
+            self.fields["publish_at"].read_only = True
 
         is_create = self.instance is None
         is_list = isinstance(self.instance, (list, QuerySet))
