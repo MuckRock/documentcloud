@@ -1717,6 +1717,9 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   original_extension
                   page_count
                   projects
+                  publish_at
+                  published_url
+                  related_article
                   slug
                   source
                   status
