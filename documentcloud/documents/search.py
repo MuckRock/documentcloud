@@ -1,7 +1,6 @@
 # Django
 from django.conf import settings
 from django.http.request import QueryDict
-from django.urls import reverse
 
 # Standard Library
 import math
