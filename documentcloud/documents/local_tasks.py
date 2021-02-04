@@ -13,6 +13,7 @@ from documentcloud.documents.processing.info_and_image.main import (
     process_page_cache,
     process_pdf,
     redact_doc,
+    modify_doc,
     start_import,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
@@ -55,6 +56,11 @@ def assemble_text(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def redact_document(data):
     redact_doc(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def modify_document(data):
+    modify_doc(data, None)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)

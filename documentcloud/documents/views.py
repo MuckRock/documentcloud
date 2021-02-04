@@ -64,6 +64,7 @@ from documentcloud.documents.serializers import (
 from documentcloud.documents.tasks import (
     extract_entities,
     fetch_file_url,
+    modify,
     process,
     process_cancel,
     redact,
