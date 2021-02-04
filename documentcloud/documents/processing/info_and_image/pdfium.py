@@ -143,9 +143,10 @@ class Bitmap:
 
 
 class Document:
-    def __init__(self, workspace, doc):
+    def __init__(self, workspace, doc, size=None):
         self.workspace = workspace
         self.doc = doc
+        self.size = size  # File size, passed in in some cases
         self.loaded_fonts = []
 
         self._serif = None
@@ -272,6 +273,19 @@ class Document:
         if result != 1:
             error = self.workspace.pdfium.FPDF_GetLastError()
             assert False, f"ERROR ({result}) {error}: unable to import pages"
+
+    def rotate_clockwise(self, page):
+        self.set_page_rotation(page, page.rotation + 1)
+
+    def rotate_counterclockwise(self, page):
+        self.set_page_rotation(page, page.rotation + 3)
+
+    def rotate_halfway(self, page):
+        self.set_page_rotation(page, page.rotation + 2)
+
+    def set_page_rotation(self, page, rotation):
+        rotation = rotation % 4
+        self.workspace.fpdf_page_rotate(page.page, rotation)
 
     @property
     def serif_font(self):
@@ -536,6 +550,9 @@ class Workspace:
         prototype = CFUNCTYPE(c_int, c_void_p, c_void_p, c_char_p, c_int)
         self.fpdf_import_pages = prototype(("FPDF_ImportPages", self.pdfium))
 
+        prototype = CFUNCTYPE(None, c_void_p, c_int)
+        self.fpdf_page_rotate = prototype(("FPDFPage_SetRotation", self.pdfium))
+
         # Text object
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_float)
         self.fpdf_page_obj_create_text_obj = prototype(
@@ -625,7 +642,7 @@ class Workspace:
             error = self.pdfium.FPDF_GetLastError()
             assert False, f"ERROR {error}: unable to load '{handler.filename}'"
 
-        return Document(self, document)
+        return Document(self, document, handler.size)
 
     def new_document(self):
         doc = self.fpdf_create_new_document()

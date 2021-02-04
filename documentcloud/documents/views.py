@@ -65,6 +65,7 @@ from documentcloud.documents.tasks import (
     extract_entities,
     fetch_file_url,
     invalidate_cache,
+    modify,
     process,
     process_cancel,
     redact,
