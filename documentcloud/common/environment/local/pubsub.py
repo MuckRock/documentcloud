@@ -87,6 +87,12 @@ def redact_doc_task(data):
     return redact_document.delay(data)
 
 
+def modify_doc_task(data):
+    from documentcloud.documents.tasks import modify_document
+
+    return modify_document.delay(data)
+
+
 def start_import_task(data):
     from documentcloud.documents.tasks import start_import_process
 
@@ -131,6 +137,9 @@ publisher.register_internal_callback(
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("REDACT_TOPIC", default="redact-doc")), redact_doc_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")), modify_doc_task
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")),
