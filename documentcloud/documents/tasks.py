@@ -33,6 +33,7 @@ if settings.ENVIRONMENT.startswith("local"):
         ocr_pages,
         assemble_text,
         redact_document,
+        modify_document,
         start_import_process,
         import_doc,
         finish_import_process,
@@ -113,6 +114,23 @@ def redact(document_pk, slug, access, ocr_code, redactions):
             "access": access,
             "ocr_code": ocr_code,
             "redactions": redactions,
+        },
+    )
+
+
+@task(
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+)
+def modify(document_pk, slug, access, modifications):
+    """Start the modification job"""
+    httpsub.post(
+        settings.DOC_PROCESSING_URL,
+        json={
+            "method": "modify_doc",
+            "doc_id": document_pk,
+            "slug": slug,
+            "access": access,
+            "modifications": modifications,
         },
     )
 

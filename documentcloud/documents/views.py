@@ -63,6 +63,7 @@ from documentcloud.documents.tasks import (
     process,
     process_cancel,
     redact,
+    modify,
     solr_index,
     update_access,
 )
@@ -697,7 +698,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         document = self.get_object()
-        serializer = self.get_serializer(data=request.data, many=True)
+        serializer = self.get_serializer(data={"data": request.data})
         serializer.is_valid(raise_exception=True)
 
         if document.processing:
@@ -712,11 +713,5 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
-        modify.delay(
-            document.pk,
-            document.slug,
-            document.access,
-            Language.get_choice(document.language).ocr_code,
-            serializer.data,
-        )
+        modify.delay(document.pk, document.slug, document.access, serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -111,6 +111,32 @@ class AwsStorage:
         for chunk in key_chunks:
             bucket.delete_objects(Delete={"Objects": chunk})
 
+    def async_cp_directory(self, src_directory, dst_directory):
+        """Copy one directory to another asynchronously"""
+        # import aioboto3 locally to avoid needing it installed on lambda
+        import aioboto3
+
+        # Get file keys
+        bucket, prefix = self.bucket_key(src_directory)
+        bucket = self.s3_resource.Bucket(bucket)
+        keys = bucket.objects.filter(Prefix=prefix)
+
+        async def main():
+            # pylint: disable=not-async-context-manager
+            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+                tasks = []
+                for key in keys:
+                    tasks.append(
+                        bucket.copy(
+                            {"Bucket": key.bucket_name, "Key": key.key},
+                            dst_directory + key.key[len(prefix) :],
+                        )
+                    )
+                await asyncio.gather(*tasks)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+
     def set_access_path(self, file_prefix, access):
         """Set access for all keys with a given prefix"""
         if self.minio:

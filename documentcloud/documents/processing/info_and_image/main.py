@@ -7,6 +7,7 @@ import itertools
 import json
 import logging
 import pickle
+import sys
 import time
 from random import randint
 
@@ -119,6 +120,13 @@ ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
+MODIFY_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")
+)
+FINISH_MODIFY_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("FINISH_MODIFY_TOPIC", default="finish-modify-doc")
+)
+
 # All OCR topics
 OCR_TOPICS = env.list("OCR_TOPICS", default=["ocr-eng-extraction-dev"])
 OCR_TOPIC_MAP = {}
@@ -136,6 +144,8 @@ IMPORT_DOCUMENT_TOPIC = publisher.topic_path(
 FINISH_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")
 )
+
+ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "cw": 3}
 
 
 class PdfSizeError(Exception):
@@ -338,6 +348,7 @@ def process_page_cache(data, _context=None):
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
     org_id = data.get("org_id", "")
+    page_modification = data.get("page_modification", None)
 
     logger.info("[PROCESS PAGE CACHE] doc_id %s", doc_id)
 
@@ -375,6 +386,7 @@ def process_page_cache(data, _context=None):
                             "force_ocr": force_ocr,
                             "page_count": page_count,
                             "org_id": org_id,
+                            "page_modification": page_modification,
                         }
                     ),
                 )
@@ -403,6 +415,7 @@ def process_pdf(data, _context=None):
     access = data.get("access", access_choices.PRIVATE)
     force_ocr = data.get("force_ocr", False)
     ocr_code = data.get("ocr_code", "eng")
+    page_modification = data.get("page_modification", None)
 
     logger.info("[PROCESS PDF] doc_id %s", doc_id)
 
@@ -435,6 +448,7 @@ def process_pdf(data, _context=None):
                 "access": access,
                 "ocr_code": ocr_code,
                 "force_ocr": force_ocr,
+                "page_modification": page_modification,
             }
         ),
     )
@@ -500,6 +514,7 @@ def extract_image(data, _context=None):
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
+    page_modification = data.get("page_modification", None)
 
     logger.info(
         "[EXTRACT IMAGE] doc_id %s pages %s", doc_id, ",".join(map(str, page_numbers))
@@ -581,7 +596,16 @@ def extract_image(data, _context=None):
 
             if not utils.page_ocrd(REDIS, doc_id, page_number):
                 # Extract page text if possible
-                if force_ocr:
+                if page_modification is not None:
+                    # In page modification mode, extract page text from the
+                    # consolidated json file
+                    # TODO: investigate storing text in Redis for faster experience?
+                    with storage.open(
+                        path.json_text_path(doc_id, slug), "rb"
+                    ) as json_file:
+                        json_text = json.loads(json_file.read())
+                        text = json_text["pages"][page_number]
+                elif force_ocr:
                     text = None
                 else:
                     if page is None:
@@ -601,18 +625,34 @@ def extract_image(data, _context=None):
                         REDIS, doc_id, page_number
                     )
                     if texts_finished:
-                        publisher.publish(
-                            ASSEMBLE_TEXT_TOPIC,
-                            encode_pubsub_data(
-                                {
-                                    "doc_id": doc_id,
-                                    "slug": slug,
-                                    "access": access,
-                                    "partial": partial,
-                                }
-                            ),
-                        )
-                        return "Ok"
+                        if page_modification is not None:
+                            # Normally, processing entails assembling text once
+                            # finished. In page modification mode, the consolidated
+                            # json has already been created, so now we defer to
+                            # finishing steps.
+                            publisher.publish(
+                                FINISH_MODIFY_TOPIC,
+                                encode_pubsub_data(
+                                    {
+                                        "doc_id": doc_id,
+                                        "slug": slug,
+                                        "page_modification": page_modification,
+                                    }
+                                ),
+                            )
+                        else:
+                            publisher.publish(
+                                ASSEMBLE_TEXT_TOPIC,
+                                encode_pubsub_data(
+                                    {
+                                        "doc_id": doc_id,
+                                        "slug": slug,
+                                        "access": access,
+                                        "partial": partial,
+                                    }
+                                ),
+                            )
+                            return "Ok"
                 else:
                     # Prepare the image to be OCRd.
                     ocr_image_path = path.page_image_path(
@@ -723,6 +763,187 @@ def redact_doc(data, _context=None):
     )
 
     return "Ok"
+
+
+@pubsub_function(REDIS, MODIFY_TOPIC)
+def modify_doc(data, _context=None):
+    """Applies page modifications to a document."""
+    data = get_pubsub_data(data)
+
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    access = data.get("access", access_choices.PRIVATE)
+    modifications = data["modifications"]["data"]
+
+    logger.info(
+        "[MODIFY DOC] doc_id %s modifications %s", doc_id, json.dumps(modifications)
+    )
+
+    # Construct modified pdf
+    loaded_docs = {}  # Cache doc handles so docs are never loaded twice
+    current_page_index = 0
+    page_text_json = []
+    page_text_todo = []
+    page_text_download_urls = set()
+    page_text_download_files = []
+
+    def close_all_docs():
+        for doc in loaded_docs.values():
+            doc.__exit__(*sys.exc_info())
+
+    with Workspace() as workspace:
+        new_doc = workspace.new_document()
+        for modification in modifications:
+            page_range = modification["page"]
+            page_length = modification["page_length"]
+            page_spec = modification["page_spec"]
+
+            # Grab import document (from cache if possible)
+            import_doc_id = modification.get("id", doc_id)
+            import_doc_slug = modification.get("slug", slug)
+            import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
+            import_doc = loaded_docs.get(
+                import_pdf_file,
+                workspace.load_document_entirely(storage, import_pdf_file).__enter__(),
+            )
+            # Add to loaded docs cache
+            loaded_docs[import_pdf_file] = import_doc
+
+            # Import the actual PDF pages
+            new_doc.import_pages(import_doc, page_range, current_page_index)
+
+            # Extract the page text for the imported pages
+            for i in range(page_length):
+                # Get the page number (TODO: refactor into method)
+                first_spec_part = page_spec[0]
+                if isinstance(first_spec_part, list):
+                    # Dealing with a page range.
+                    # Grab the first page and increment the range
+                    page = first_spec_part[0]
+                    end_page = first_spec_part[1]
+                    if page == end_page:
+                        # Pop out page range if at end
+                        page_spec = page_spec[1:]
+                    else:
+                        page_spec[0] = [page + 1, end_page]
+                else:
+                    page = first_spec_part
+                    page_spec = page_spec[1:]
+
+                # Now, grab the json text paths of the affected document and
+                # plan downloading the json text files in parallel
+                json_file_path = path.json_text_path(import_doc_id, import_doc_slug)
+                page_text_download_urls.add(json_file_path)
+                page_text_todo.append(
+                    {
+                        "file_path": json_file_path,
+                        "page": page,
+                        "new_page": current_page_index + i,
+                    }
+                )
+
+            current_page_index += page_length
+
+        # Close all open handles
+        close_all_docs()
+
+        # Download all the page text in parallel
+        page_text_urls = list(page_text_download_urls)
+        page_text_download_files = [
+            json.loads(contents) for contents in storage.async_download(page_text_urls)
+        ]
+        page_text_json_map = dict(zip(page_text_urls, page_text_download_files))
+
+        for page_text_item in page_text_todo:
+            # Construct the page text json from the downloaded page text
+            page_text_json_file = page_text_json_map[page_text_item["file_path"]]
+            page_text = page_text_json_file["pages"][page_text_item["page"]]
+            page_text["page"] = page_text_item["new_page"]
+            page_text_json.append(page_text)
+
+        # Assemble full json structure and write to file in new temporary directory
+        full_page_text_json = {
+            "updated": int(round(time.time() * 1000)),  # TODO: make millis() method
+            "pages": page_text_json,
+        }
+        temp_doc_id = path.temp(doc_id)
+        page_text_json_path = path.json_text_path(temp_doc_id, slug)
+        storage.simple_upload(
+            page_text_json_path,
+            json.dumps(full_page_text_json).encode("utf-8"),
+            access=access,
+        )
+
+        # Run a second pass through all modifications to perform rotations.
+        # Now that all pages are imported, this just requires keeping track
+        # of the length of each modification and rotating pages as needed.
+        current_page_index = 0
+        for modification in modifications:
+            page_length = modification["page_length"]
+            modifiers = modification.get("modifications", [])
+
+            # Check if rotation
+            for modifier in modifiers:
+                if modifier["type"] == "rotate":
+                    # Grab the 90-degree angle multiplier by which to rotate
+                    rotation_amount = ANGLE_TABLE.get(modifier.get("angle", ""), 0)
+                    if rotation_amount != 0:
+                        # Rotate all affected pages
+                        for i in range(
+                            current_page_index, current_page_index + page_length
+                        ):
+                            page = new_doc.load_page(i)
+                            new_doc.set_page_rotation(
+                                page, page.rotation + rotation_amount
+                            )
+
+            current_page_index += page_length
+
+        # Write new PDF file in temporary directory
+        doc_path = path.doc_path(temp_doc_id, slug)
+        new_doc.save(storage, doc_path, access)
+
+        # Kick off processing tasks to
+        #  * extract new index file for PDF and ensure PDF file is within size limits
+        #  * reextract all image files and derive page spec
+        #  * create text files from consolidated page text json
+        #  * copy temporary directory into original directory
+        publisher.publish(
+            PDF_PROCESS_TOPIC,
+            data=encode_pubsub_data(
+                {
+                    "doc_id": temp_doc_id,
+                    "slug": slug,
+                    "access": access,
+                    "page_modification": {
+                        "original_doc_id": doc_id,
+                        "page_text_json_file": page_text_json_path,
+                    },
+                }
+            ),
+        )
+
+    return "Ok"
+
+
+@pubsub_function(REDIS, FINISH_MODIFY_TOPIC)
+def finish_modify_doc(data, _context=None):
+    """Applies final touches to page modification."""
+    data = get_pubsub_data(data)
+
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    page_modification = data["page_modification"]
+    original_doc_id = page_modification["original_doc_id"]
+    original_directory = path.path(original_doc_id)
+    temp_directory = path.path(doc_id)
+
+    # Move the temporary directory into the original
+    storage.delete(original_directory)
+    storage.async_cp_directory(temp_directory, original_directory)
+    storage.delete(temp_directory)
+
+    utils.send_complete(REDIS, original_doc_id)
 
 
 @pubsub_function(REDIS, START_IMPORT_TOPIC)

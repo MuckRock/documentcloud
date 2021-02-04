@@ -448,6 +448,9 @@ class ModificationSpecItemSerializer(serializers.Serializer):
     id = serializers.PrimaryKeyRelatedField(
         required=False, queryset=Document.objects.all()
     )
+    slug = serializers.CharField(required=False, read_only=True)
+    page_spec = serializers.ListField(required=False, read_only=True)
+    page_length = serializers.IntegerField(required=False, read_only=True)
     modifications = ModificationSerializer(required=False, many=True)
 
     def validate_modifications(self, modifications):
@@ -460,17 +463,20 @@ class ModificationSpecItemSerializer(serializers.Serializer):
                 "Invalid to specify more than one rotation modification per item"
             )
 
+        return modifications
+
     def validate(self, attrs):
         view = self.context.get("view")
         request = self.context.get("request")
 
         # Use the current document by default, overridden by setting id
         document = attrs.get("id", Document.objects.get(pk=view.kwargs["document_pk"]))
+        slug = document.slug
 
         # Check permissions
-        if not request.user.has_perm("documents.change_document", document):
+        if not request.user.has_perm("documents.view_document", document):
             raise exceptions.PermissionDenied(
-                "You may only create modify documents you can change"
+                "You may only import pages from documents you can view"
             )
 
         # Subroutine to ensure page numbers passed in spec match constraints
@@ -490,6 +496,8 @@ class ModificationSpecItemSerializer(serializers.Serializer):
         value = attrs["page"]
         parts = value.split(",")
         result = []
+        incremented_pages = []
+        page_length = 0
         for part in parts:
             if "-" in part:
                 subparts = part.split("-")
@@ -501,13 +509,28 @@ class ModificationSpecItemSerializer(serializers.Serializer):
                 page2 = validate_page_number(subparts[1])
                 if page1 >= page2:
                     raise serializers.ValidationError("Page range must be ascending")
-                result.append((page1, page2))
+                if page1 == page2:
+                    # Consolidate to a single page
+                    result.append(page1)
+                    incremented_pages.append(f"{page1 + 1}")
+                    page_length += 1
+                else:
+                    result.append((page1, page2))
+                    incremented_pages.append(f"{page1 + 1}-{page2 + 1}")
+                    page_length += page2 - page1 + 1
             else:
                 page = validate_page_number(part)
                 result.append(page)
+                incremented_pages.append(f"{page + 1}")
+                page_length += 1
 
         # Put transformed page spec data into a new attribute
         attrs["page_spec"] = result
+        # Increment page ranges for compatibility with pdfium
+        attrs["page"] = ",".join(incremented_pages)
+        # Store length of page range
+        attrs["page_length"] = page_length
+        attrs["slug"] = slug
         return attrs
 
 
