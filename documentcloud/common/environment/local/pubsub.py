@@ -93,6 +93,12 @@ def modify_doc_task(data):
     return modify_document.delay(data)
 
 
+def finish_modify_doc_task(data):
+    from documentcloud.documents.tasks import finish_modify_document
+
+    return finish_modify_document.delay(data)
+
+
 def start_import_task(data):
     from documentcloud.documents.tasks import start_import_process
 
@@ -140,6 +146,10 @@ publisher.register_internal_callback(
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")), modify_doc_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("FINISH_MODIFY_TOPIC", default="finish-modify-doc")),
+    finish_modify_doc_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")),
