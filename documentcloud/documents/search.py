@@ -244,6 +244,7 @@ class FilterExtractor(LuceneTreeTransformer):
                 raise
 
     def visit_search_field(self, node, parents):
+        # substitute any aliases
         if node.name in FILTER_FIELDS:
             filter_name = FILTER_FIELDS[node.name]
             # update the node name to what it aliases to,
@@ -253,10 +254,14 @@ class FilterExtractor(LuceneTreeTransformer):
             filter_name = node.name
         else:
             filter_name = None
+
+        # remove slugs from ID fields
+        if filter_name in ID_FIELDS:
+            # remove the slug if its an ID field
+            node.expr = SlugRemover().visit(node.expr)
+
+        # extract the filters
         if filter_name and not self.sort_only:
-            if filter_name in ID_FIELDS:
-                # remove the slug if its an ID field
-                node.expr = SlugRemover().visit(node.expr)
 
             # validate fields and do not add to filters if they fail
             if filter_name in NUMERIC_FIELDS and not all(
