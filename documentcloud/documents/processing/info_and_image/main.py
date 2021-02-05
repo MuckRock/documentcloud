@@ -604,7 +604,7 @@ def extract_image(data, _context=None):
                         path.json_text_path(doc_id, slug), "rb"
                     ) as json_file:
                         json_text = json.loads(json_file.read())
-                        text = json_text["pages"][page_number]
+                        text = json_text["pages"][page_number]["contents"]
                 elif force_ocr:
                     text = None
                 else:
@@ -618,7 +618,8 @@ def extract_image(data, _context=None):
 
                     # Page already has text inside
                     write_text_file(text_path, text, access)
-                    utils.write_page_text(REDIS, doc_id, page_number, text, None)
+                    if page_modification is None:
+                        utils.write_page_text(REDIS, doc_id, page_number, text, None)
 
                     # Decrement the texts remaining, sending complete if done.
                     texts_finished = utils.register_page_ocrd(
@@ -938,12 +939,18 @@ def finish_modify_doc(data, _context=None):
     original_directory = path.path(original_doc_id)
     temp_directory = path.path(doc_id)
 
+    logger.info(
+        "[FINISH MODIFY DOC] doc_id %s original_doc_id %s", doc_id, original_doc_id
+    )
+
     # Move the temporary directory into the original
     storage.delete(original_directory)
     storage.async_cp_directory(temp_directory, original_directory)
     storage.delete(temp_directory)
 
     utils.send_complete(REDIS, original_doc_id)
+
+    return "Ok"
 
 
 @pubsub_function(REDIS, START_IMPORT_TOPIC)
