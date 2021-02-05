@@ -117,22 +117,28 @@ class AwsStorage:
         import aioboto3
 
         # Get file keys
-        bucket, prefix = self.bucket_key(src_directory)
-        bucket = self.s3_resource.Bucket(bucket)
-        keys = bucket.objects.filter(Prefix=prefix)
+        src_bucket_raw, src_prefix = self.bucket_key(src_directory)
+        src_bucket = self.s3_resource.Bucket(src_bucket_raw)
+        dst_bucket_raw, dst_prefix = self.bucket_key(dst_directory)
+        dst_bucket = self.s3_resource.Bucket(dst_bucket_raw)
+        keys = src_bucket.objects.filter(Prefix=src_prefix)
+        BATCH_SIZE = 5  # TODO: refactor as env variable
 
         async def main():
             # pylint: disable=not-async-context-manager
-            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
-                tasks = []
-                for key in keys:
-                    tasks.append(
-                        bucket.copy(
-                            {"Bucket": key.bucket_name, "Key": key.key},
-                            dst_directory + key.key[len(prefix) :],
+            for i in range(0, len(keys), BATCH_SIZE):
+                # Iterate through files in batches, copying files asynchronously
+                async with aioboto3.client("s3", **self.resource_kwargs) as as3_client:
+                    tasks = []
+                    for key in keys[i : i + BATCH_SIZE]:
+                        tasks.append(
+                            await as3_client.copy(
+                                {"Bucket": src_bucket_raw, "Key": key.key},
+                                dst_bucket_raw,
+                                dst_prefix + key.key[len(src_prefix) :],
+                            )
                         )
-                    )
-                await asyncio.gather(*tasks)
+                    await asyncio.gather(*tasks)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
@@ -172,7 +178,7 @@ class AwsStorage:
                 tasks = []
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)
-                    object_acl = as3_resource.ObjectAcl(bucket, key)
+                    object_acl = await as3_resource.ObjectAcl(bucket, key)
                     tasks.append(object_acl.put(ACL=ACLS[access]))
                 await asyncio.gather(*tasks)
 
@@ -192,7 +198,7 @@ class AwsStorage:
                 tasks = []
                 for file_name, datum in zip(file_names, data):
                     bucket, key = self.bucket_key(file_name)
-                    object_ = as3_resource.Object(bucket, key)
+                    object_ = await as3_resource.Object(bucket, key)
                     tasks.append(object_.download_fileobj(datum))
                 await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -216,7 +222,7 @@ class AwsStorage:
                 tasks = []
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)
-                    object_ = as3_resource.Object(bucket, key)
+                    object_ = await as3_resource.Object(bucket, key)
                     tasks.append(object_.content_length)
                 return await asyncio.gather(*tasks, return_exceptions=True)
 

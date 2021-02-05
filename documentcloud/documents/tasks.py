@@ -37,6 +37,7 @@ if settings.ENVIRONMENT.startswith("local"):
         assemble_text,
         redact_document,
         modify_document,
+        finish_modify_document,
         start_import_process,
         import_doc,
         finish_import_process,
