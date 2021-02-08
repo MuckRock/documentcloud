@@ -237,3 +237,13 @@ CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = ["scout_apm.django"] + INSTALLED_APPS  # noqa F405
 SCOUT_NAME = env("SCOUT_NAME")
+
+# Moesif
+# ------------------------------------------------------------------------------
+MIDDLEWARE += ["moesifdjango.middleware.moesif_middleware"]
+INSTALLED_APPS += ["moesifdjango"]
+MOESIF_MIDDLEWARE = {
+    "APPLICATION_ID": env("MOESIF_ID"),
+    "LOG_BODY": True,
+    "USE_CELERY": True,
+}
