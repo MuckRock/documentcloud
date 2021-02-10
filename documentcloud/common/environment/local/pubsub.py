@@ -66,7 +66,7 @@ def page_cache_task(data):
 def extract_image_task(data):
     from documentcloud.documents.tasks import extract_images
 
-    return extract_images(data)
+    return extract_images.delay(data)
 
 
 def ocr_page_task(data):
