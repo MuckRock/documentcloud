@@ -25,6 +25,13 @@ ACLS = {
 AWS_RETRIES_MAX_ATTEMPTS = env.int("AWS_RETRIES_MAX_ATTEMPTS", default=10)
 
 
+def grouper(iterable, num, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * num
+    return zip_longest(*args, fillvalue=fillvalue)
+
+
 class AwsStorage:
     def __init__(self, resource_kwargs=None, minio=False):
 
@@ -126,6 +133,18 @@ class AwsStorage:
         src_bucket = self.s3_resource.Bucket(src_bucket_raw)
         dst_bucket_raw, dst_prefix = self.bucket_key(dst_directory)
         keys = src_bucket.objects.filter(Prefix=src_prefix)
+        batch = env("S3_CP_BATCH", 3000)
+
+        for keys_batch in grouper(keys, batch):
+            keys_batch = [k for k in keys_batch if k is not None]
+            self.async_cp(
+                keys_batch, src_bucket_raw, src_prefix, dst_bucket_raw, dst_prefix
+            )
+
+    def async_cp(self, keys, src_bucket, src_prefix, dst_bucket, dst_prefix):
+        """Copy a list of keys from source to destination"""
+        # import aioboto3 locally to avoid needing it installed on lambda
+        import aioboto3
 
         async def main():
             async with aioboto3.client("s3", **self.resource_kwargs) as as3_client:
@@ -133,8 +152,8 @@ class AwsStorage:
                 for key in keys:
                     tasks.append(
                         as3_client.copy(
-                            {"Bucket": src_bucket_raw, "Key": key.key},
-                            dst_bucket_raw,
+                            {"Bucket": src_bucket, "Key": key.key},
+                            dst_bucket,
                             dst_prefix + key.key[len(src_prefix) :],
                         )
                     )
