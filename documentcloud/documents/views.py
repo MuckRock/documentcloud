@@ -791,3 +791,38 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             }
 
     filterset_class = Filter
+
+
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    serializer_class = ModificationSpecSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self):
+        document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        if not self.request.user.has_perm("documents.change_document", document):
+            self.permission_denied(self.request, "You may not edit this document")
+        return document
+
+    def create(self, request, *args, **kwargs):
+        document = self.get_object()
+        serializer = self.get_serializer(data={"data": request.data})
+        serializer.is_valid(raise_exception=True)
+
+        if document.processing:
+            return Response(
+                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            document.status = Status.pending
+            document.save()
+            transaction.on_commit(
+                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
+            )
+
+        modify.delay(document.pk, document.slug, document.access, serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
