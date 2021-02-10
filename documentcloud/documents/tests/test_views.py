@@ -238,7 +238,7 @@ class TestDocumentAPI:
     def test_bulk_create(self, client, user, django_assert_num_queries):
         """Create multiple documents"""
         client.force_authenticate(user=user)
-        with django_assert_num_queries(9):
+        with django_assert_num_queries(11):
             response = client.post(
                 "/api/documents/",
                 [{"title": "Test 1"}, {"title": "Test 2"}, {"title": "Test 3"}],
@@ -635,7 +635,7 @@ class TestDocumentAPI:
         )
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
-        with django_assert_num_queries(9):
+        with django_assert_num_queries(10):
             response = client.post(
                 "/api/documents/process/",
                 [{"id": d.pk} for d in documents],
