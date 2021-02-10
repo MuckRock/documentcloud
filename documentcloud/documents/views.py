@@ -812,12 +812,18 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(data={"data": request.data})
         serializer.is_valid(raise_exception=True)
 
-        if document.processing:
-            return Response(
-                {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
         with transaction.atomic():
+            # We select for update here to lock the document between checking if it is
+            # processing and starting the page modification to ensure another
+            # thread does not start processing this document before we mark it as
+            # processing
+            document = Document.objects.select_for_update().get(pk=document.pk)
+
+            if document.processing:
+                return Response(
+                    {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
             document.status = Status.pending
             document.save()
             transaction.on_commit(
