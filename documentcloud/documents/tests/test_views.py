@@ -440,6 +440,31 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_owner(self, client, document, user, organization):
+        """Test updating a document's owner"""
+        organization.users.add(document.user, user)
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"user": user.pk})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.user == user
+
+    def test_update_owner_bad_new(self, client, document, user):
+        """Test updating a document's owner"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"user": user.pk})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        document.refresh_from_db()
+        assert document.user != user
+
+    def test_update_owner_bad_old(self, client, document, user):
+        """Test updating a document's owner"""
+        client.force_authenticate(user=user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"user": user.pk})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.user != user
+
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)

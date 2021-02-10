@@ -31,6 +31,7 @@ from documentcloud.documents.models import (
 )
 from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.projects.models import Project
+from documentcloud.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +214,23 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             # only show presigned url if we are creating a new document without a
             # file url, or the document has not had a file uploaded yet
             del self.fields["presigned_url"]
+
+        if (
+            request
+            and request.user
+            and is_document
+            and request.user.has_perm(
+                "documents.change_ownership_document", self.instance
+            )
+        ):
+            # if this user has change ownership permissions, they may change the
+            # user and organization which own this document
+            self.fields["user"].read_only = False
+            self.fields["user"].queryset = User.objects.filter(
+                organizations__in=request.user.organizations.all()
+            )
+            self.fields["organization"].read_only = False
+            self.fields["organization"].queryset = request.user.organizations.all()
 
     def _authenticate_processing(self, request):
         """Check the requests Authorization header for our special token"""

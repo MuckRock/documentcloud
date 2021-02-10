@@ -104,8 +104,13 @@ can_view = (
     | can_change
 )
 
+can_change_ownership = default_limit & (
+    is_owner & (~has_access(Access.public) | is_organization)
+)
+
 add_perm("documents.view_document", can_view)
 add_perm("documents.add_document", is_verified)
 add_perm("documents.change_document", can_change)
 add_perm("documents.share_document", can_share)
 add_perm("documents.delete_document", can_share)
+add_perm("documents.change_ownership_document", can_change_ownership)
