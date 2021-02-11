@@ -407,6 +407,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @action(detail=False, methods=["get"])
     def pending(self, request):
         """Get the progress status on all of the current users pending documents"""
+        if not self.request.user or not self.request.user.is_authenticated:
+            return Response([])
+
         pending_documents = list(
             Document.objects.filter(
                 user=self.request.user, status=Status.pending
