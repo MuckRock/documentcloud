@@ -170,6 +170,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             request
             and request.user
             # check that projects is a field and not expanded into a serializer
+            and "projects" in self.fields
             and isinstance(self.fields["projects"], ManyRelatedField)
         ):
             self.fields[
@@ -183,9 +184,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             and not request.user.verified_journalist
         ):
             # non-verified journalists may not make documents public
-            self.fields["access"].choices.pop(Access.public)
-            self.fields["access"].choice_map.pop("public")
-            self.fields["publish_at"].read_only = True
+            if "access" in self.fields:
+                self.fields["access"].choices.pop(Access.public)
+                self.fields["access"].choice_map.pop("public")
+            if "publish_at" in self.fields:
+                self.fields["publish_at"].read_only = True
 
         is_create = self.instance is None
         is_list = isinstance(self.instance, (list, QuerySet))
@@ -201,7 +204,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             and self.initial_data.get("file_url")
         )
         has_file = is_document and self.instance.status != Status.nofile
-        if (is_create and has_file_url) or is_list or has_file or not is_owner:
+        if (
+            (is_create and has_file_url)
+            or is_list
+            or has_file
+            or not is_owner
+            and "presigned_url" in self.fields
+        ):
             # only show presigned url if we are creating a new document without a
             # file url, or the document has not had a file uploaded yet
             del self.fields["presigned_url"]
