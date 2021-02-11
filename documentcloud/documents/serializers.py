@@ -218,7 +218,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             self.fields["user"].read_only = False
             self.fields["user"].queryset = User.objects.filter(
                 organizations__in=request.user.organizations.all()
-            )
+            ).distinct()
             self.fields["organization"].read_only = False
             self.fields["organization"].queryset = request.user.organizations.all()
 
