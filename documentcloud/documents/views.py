@@ -408,9 +408,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def pending(self, request):
         """Get the progress status on all of the current users pending documents"""
         pending_documents = list(
-            self.get_queryset()
-            .filter(status=Status.pending)
-            .values_list("id", flat=True)
+            Document.objects.filter(
+                user=self.request.user, status=Status.pending
+            ).values_list("id", flat=True)
         )
         try:
             response = httpsub.post(
