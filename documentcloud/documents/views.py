@@ -299,6 +299,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         old_accesses = [i.access for i in instances]
         old_processings = [i.processing for i in instances]
+        old_data_keys = [i.data.keys() for i in instances]
         super().perform_update(serializer)
 
         # refresh from database after performing update
@@ -307,8 +308,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             instances = [serializer.instance]
 
-        for instance, validated_data, old_access, old_processing in zip(
-            instances, validated_datas, old_accesses, old_processings
+        for instance, validated_data, old_access, old_processing, old_data_key in zip(
+            instances, validated_datas, old_accesses, old_processings, old_data_keys
         ):
 
             # do update_access if access changed to or from public
@@ -344,6 +345,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 # only update the fields that were updated
                 # never try to update the id
                 validated_data.pop("id", None)
+                data = validated_data.pop("data", None)
+                if data:
+                    # we want to update all data keys if data is set directly,
+                    # including old data keys which may have been removed
+                    all_keys = old_data_key | data.keys()
+                    for key in all_keys:
+                        validated_data[f"data_{key}"] = None
                 kwargs = {"field_updates": {f: "set" for f in validated_data}}
 
             transaction.on_commit(

@@ -167,11 +167,6 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
         field_updates,
         index_text,
     )
-    if field_updates is not None and "data" in field_updates:
-        # update all fields if data was updated to ensure we remove any data keys
-        # from solr which were removed from the document
-        field_updates = None
-
     if solr_document is None:
         try:
             document = Document.objects.get(pk=document_pk)
