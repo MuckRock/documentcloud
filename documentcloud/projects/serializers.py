@@ -75,11 +75,11 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
         super().__init__(*args, **kwargs)
         request = self.context.get("request")
         view = self.context.get("view")
-        if request and request.user:
+        if request and request.user and "document" in self.fields:
             self.fields["document"].queryset = Document.objects.get_viewable(
                 request.user
             )
-        if view and "document_id" in view.kwargs:
+        if view and "document_id" in view.kwargs and "document" in self.fields:
             self.fields["document"].required = False
 
     def validate_document(self, value):
