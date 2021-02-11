@@ -312,51 +312,54 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             instances, validated_datas, old_accesses, old_processings, old_data_keys
         ):
 
-            # do update_access if access changed to or from public
-            if old_access != instance.access and Access.public in (
-                old_access,
-                instance.access,
-            ):
-                status_ = instance.status
-                instance.status = Status.readable
-                # set this so that it will be updated in solr below
-                validated_data["status"] = Status.readable
-                # if we are making public, do not switch until the access
-                # has been updated
-                access = instance.access
-                if instance.access == Access.public:
-                    instance.access = old_access
-                instance.save()
-                transaction.on_commit(
-                    lambda i=instance, s=status_, a=access: update_access.delay(
-                        i.pk, s, a
-                    )
-                )
+            self._update_access(instance, old_access, validated_data)
+            self._update_solr(instance, old_processing, old_data_key, validated_data)
 
-            # update solr index
-            if old_processing and instance.status == Status.success:
-                # if it was processed succesfully, do a full index with text
-                kwargs = {"index_text": True}
-            elif old_processing:
-                # if it is not done processing or error, we may not be indexed yet
-                # do a full index, without text since text has not been processed yet
-                kwargs = {"index_text": False}
-            else:
-                # only update the fields that were updated
-                # never try to update the id
-                validated_data.pop("id", None)
-                data = validated_data.pop("data", None)
-                if data:
-                    # we want to update all data keys if data is set directly,
-                    # including old data keys which may have been removed
-                    all_keys = old_data_key | data.keys()
-                    for key in all_keys:
-                        validated_data[f"data_{key}"] = None
-                kwargs = {"field_updates": {f: "set" for f in validated_data}}
-
+    def _update_access(self, document, old_access, validated_data):
+        """Update the access of a document after it has been updated"""
+        # do update_access if access changed to or from public
+        if old_access != document.access and Access.public in (
+            old_access,
+            document.access,
+        ):
+            status_ = document.status
+            document.status = Status.readable
+            # set this so that it will be updated in solr below
+            validated_data["status"] = Status.readable
+            # if we are making public, do not switch until the access
+            # has been updated
+            access = document.access
+            if document.access == Access.public:
+                document.access = old_access
+            document.save()
             transaction.on_commit(
-                lambda i=instance, k=kwargs: solr_index.delay(i.pk, **k)
+                lambda: update_access.delay(document.pk, status_, access)
             )
+
+    def _update_solr(self, document, old_processing, old_data_keys, validated_data):
+        """Update solr index after updating a document"""
+        # update solr index
+        if old_processing and document.status == Status.success:
+            # if it was processed succesfully, do a full index with text
+            kwargs = {"index_text": True}
+        elif old_processing:
+            # if it is not done processing or error, we may not be indexed yet
+            # do a full index, without text since text has not been processed yet
+            kwargs = {"index_text": False}
+        else:
+            # only update the fields that were updated
+            # never try to update the id
+            validated_data.pop("id", None)
+            data = validated_data.pop("data", None)
+            if data:
+                # we want to update all data keys if data is set directly,
+                # including old data keys which may have been removed
+                all_keys = old_data_keys | data.keys()
+                for key in all_keys:
+                    validated_data[f"data_{key}"] = None
+            kwargs = {"field_updates": {f: "set" for f in validated_data}}
+
+        transaction.on_commit(lambda: solr_index.delay(document.pk, **kwargs))
 
     @action(detail=False, methods=["get"])
     def search(self, request):
