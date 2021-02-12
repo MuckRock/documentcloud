@@ -72,6 +72,7 @@ SOLR = pysolr.Solr(
     auth=settings.SOLR_AUTH,
     search_handler=settings.SOLR_SEARCH_HANDLER,
     verify=settings.SOLR_VERIFY,
+    timeout=settings.SOLR_TIMEOUT,
 )
 
 

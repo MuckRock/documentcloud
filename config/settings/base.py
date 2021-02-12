@@ -482,6 +482,7 @@ SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
 SOLR_USE_HL = env("SOLR_USE_HL", default="off")
 SOLR_HL_REQUIRE_FIELD_MATCH = env("SOLR_HL_REQUIRE_FIELD_MATCH", default="true")
 SOLR_HL_MULTI_TERM = env("SOLR_HL_MULTI_TERM", default="true")
+SOLR_TIMEOUT = env.int("SOLR_TIMEOUT", default=20)
 
 # OEmbed
 # ------------------------------------------------------------------------------
