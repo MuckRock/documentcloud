@@ -363,6 +363,12 @@ class Document(models.Model):
             p.project_id for p in project_memberships if p.edit_access
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
+
+        def format_date(date):
+            if date is None:
+                return None
+            return date.replace(tzinfo=None).isoformat() + "Z"
+
         solr_document = {
             "id": self.pk,
             "user": self.user_id,
@@ -374,16 +380,15 @@ class Document(models.Model):
             "source": self.source,
             "description": self.description,
             "language": self.language,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_at": format_date(self.created_at),
+            "updated_at": format_date(self.updated_at),
             "page_count": self.page_count,
             "projects": project_ids,
             "projects_edit_access": project_edit_access_ids,
             "original_extension": self.original_extension,
             "file_hash": self.file_hash,
             "related_article": self.related_article,
-            "publish_at": self.publish_at.isoformat() if self.publish_at else None,
-            "published_url": self.published_url,
+            "publish_at": format_date(self.publish_at),
             **pages,
             **data,
         }
