@@ -1,5 +1,6 @@
 # Standard Library
 import collections
+import copy
 import csv
 import gzip
 import io
@@ -780,6 +781,7 @@ def modify_doc(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     modifications = data["modifications"]["data"]
+    backup_modifications = copy.deepcopy(modifications)
 
     logger.info(
         "[MODIFY DOC] doc_id %s modifications %s", doc_id, json.dumps(modifications)
@@ -927,7 +929,7 @@ def modify_doc(data, _context=None):
                     "page_modification": {
                         "original_doc_id": doc_id,
                         "page_text_json_file": page_text_json_path,
-                        "modifications": modifications,
+                        "modifications": backup_modifications,
                     },
                 }
             ),
@@ -952,7 +954,9 @@ def finish_modify_doc(data, _context=None):
         "[FINISH MODIFY DOC] doc_id %s original_doc_id %s", doc_id, original_doc_id
     )
 
-    utils.send_post_processing(REDIS, original_doc_id, data)
+    utils.send_post_processing(
+        REDIS, original_doc_id, page_modification["modifications"]
+    )
 
     # TODO: look into why this method is not completing
     # Move the temporary directory into the original

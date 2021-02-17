@@ -605,6 +605,40 @@ class Note(models.Model):
     class Meta:
         ordering = ("document", "page_number")
 
+    def detach(self):
+        """Turns the note into a page note and places at page 0"""
+        self.page_number = 0
+        self.x1 = None
+        self.x2 = None
+        self.y1 = None
+        self.y2 = None
+
+    def rotate(self, rotation_amount):
+        """Rotates the note by the specified amount"""
+        # rotation_amount % 4:
+        #   0 -> unchanged
+        #   1 -> counter clockwise
+        #   2 -> halfway
+        #   3 -> clockwise
+        rotation_amount = rotation_amount % 4
+        if rotation_amount == 0:
+            return  # unchanged
+
+        # If the note is a page note (no coordinates), rotation has no effect
+        x1, x2, y1, y2 = self.x1, self.x2, self.y1, self.y2
+        if x1 is None or x2 is None or y1 is None or y2 is None:
+            return
+
+        # TODO: verify correctness
+        if rotation_amount == 1:
+            x1, x2, y1, y2 = y1, y2, x1, x2
+        elif rotation_amount == 2:
+            x1, x2, y1, y2 = x2, x1, y2, y1
+        elif rotation_amount == 3:
+            x1, x2, y1, y2 = y2, y1, x2, x1
+
+        self.x1, self.x2, self.y1, self.y2 = x1, x2, y1, y2
+
     def __str__(self):
         return self.title
 
