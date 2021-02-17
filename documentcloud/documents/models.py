@@ -583,19 +583,26 @@ class Note(models.Model):
             return  # unchanged
 
         # If the note is a page note (no coordinates), rotation has no effect
-        x1, x2, y1, y2 = self.x1, self.x2, self.y1, self.y2
-        if x1 is None or x2 is None or y1 is None or y2 is None:
+        if None in (self.x1, self.x2, self.y1, self.y2):
             return
 
         # TODO: verify correctness
         if rotation_amount == 1:
-            x1, x2, y1, y2 = y1, y2, x1, x2
+            self.x1, self.x2, self.y1, self.y2 = self.y1, self.y2, self.x1, self.x2
         elif rotation_amount == 2:
-            x1, x2, y1, y2 = x2, x1, y2, y1
+            self.x1, self.x2, self.y1, self.y2 = (
+                (1 - self.x2),
+                (1 - self.x1),
+                (1 - self.y2),
+                (1 - self.y1),
+            )
         elif rotation_amount == 3:
-            x1, x2, y1, y2 = y2, y1, x2, x1
-
-        self.x1, self.x2, self.y1, self.y2 = x1, x2, y1, y2
+            self.x1, self.x2, self.y1, self.y2 = (
+                (1 - self.y2),
+                (1 - self.y1),
+                (1 - self.x2),
+                (1 - self.x1),
+            )
 
     def __str__(self):
         return self.title
