@@ -11,8 +11,11 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 
 # Standard Library
+import copy
+import itertools
 import logging
 import sys
+from collections import Counter
 from functools import lru_cache
 
 # Third Party
@@ -825,6 +828,10 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     filterset_class = Filter
 
 
+# Used to map modification rotations to note rotations
+ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "cw": 3}
+
+
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ModificationSpecSerializer
@@ -838,6 +845,17 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         if not self.request.user.has_perm("documents.change_document", document):
             self.permission_denied(self.request, "You may not edit this document")
         return document
+
+    def iterate_page_spec(page_spec):
+        ranges = []
+        for spec in page_spec:
+            if isinstance(spec, list):
+                # Page range
+                ranges.append(range(spec[0], spec[1] + 1))
+            else:
+                # Individual page
+                ranges.append(range(spec, spec + 1))
+        return itertools.chain(*ranges)
 
     def create(self, request, *args, **kwargs):
         document = self.get_object()
@@ -874,75 +892,159 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 "You do not have permission to post-process modifications"
             )
 
+        """20000494
+        {
+          'doc_id': '_20000494',
+          'slug': 'doc_3-copy-336',
+          'page_modification': {
+            'original_doc_id': 20000494,
+            'page_text_json_file': 'documents/documents/_20000494/doc_3-copy-336.txt.json',
+            'modifications': [
+              {
+                'page': '1-2',
+                'slug': 'doc_3-copy-336', 
+                'page_spec': [[1, 1]],
+                'page_length': 2,
+              },
+              {
+                'page': '3,1',
+                'slug': 'doc_3-copy-336',
+                'page_spec': [2, 0],
+                'page_length': 2,
+                'modifications': [{'type': 'rotate', 'angle': 'cc'}]
+              },
+              {
+                'page': '2-3',
+                'slug': 'doc_3-copy-336',
+                'page_spec': [[2, 2]],
+                'page_length': 2,
+              },
+            ],
+          },
+        }
+        """
+
         document = get_object_or_404(documents, pk=document_pk)
+        document_note_ids = {note.id: note for note in document.notes.all()}
         # Used to track which notes have been removed
-        current_notes = set([note.id for note in document.notes.all()])
+        erased_notes = copy.copy(document_note_ids)
+        # Track which notes have duplicate occurrences (can keep IDs same if count==1)
+        note_occurrences = Counter()
 
         # Remove entities (no matter what)
         document.entities.all().delete()
 
         # Grab annotations and sections from other document by iterating modifications
-        modifications = request.data["page_modification"]["modifications"]
+        modifications = request.data
 
-        # Get all documents from which we'll have to import data (can include self)
-        import_docs = {}
-        for modification in modifications:
-            doc_id = modification.get("id", document_pk)
-            if doc_id in import_docs:
-                continue
-
-            # Grab annotations and sections
-            import_doc = (
-                document
-                if doc_id == document_pk
-                else get_object_or_404(documents, pk=doc_id)
-            )
-            notes = import_doc.notes.all()
-            sections = import_doc.sections.all()
-            import_docs[doc_id] = {"notes": notes, "sections": sections}
+        # Cache all documents from which we'll have to pull data (can include self)
+        modify_docs = {document_pk: document}
 
         # Iterate all modifications and build up new notes/sections
-        page_number = 0
+        page_number = 0  # Increased to represent current page number of new document
         new_notes = []
         new_sections = []
         for modification in modifications:
-            doc_id = modification.get("id", document_pk)
+            # Get the modification doc in a memoized manner
+            modify_doc_id = modification.get("id", document_pk)
+            modify_doc = modify_docs.get(
+                modify_doc_id, Document.objects.get(pk=modify_doc_id)
+            )
+            modify_docs[modify_doc_id] = modify_doc  # cache document access
+
+            # Iterate the pages given in the spec
             modifiers = modification.get("modifiers", [])
-            notes = import_docs[doc_id]["notes"]
-            sections = import_docs[doc_id]["sections"]
             page_spec = modification.get("page_spec")
-            for page in iterate_page_spec(page_spec):  # XXX iterate method
+            for page in self.iterate_page_spec(page_spec):
                 # TODO: get_by_page_number, change_page_number
                 # get_by_page_number should return a copy
-                page_notes = get_by_page_number(notes, page)
-                page_sections = get_by_page_number(sections, page)
+                notes_on_page = modify_doc.notes.filter(page_number=page)
+                sections_on_page = modify_doc.sections.filter(page_number=page)
 
-                # Track which notes have been used
+                # If pulling from source doc, track removed notes / occurrences
                 if doc_id == document_pk:
                     for note in page_notes:
-                        current_notes.remove(note.id)
+                        if note.id in erased_notes:
+                            del erased_notes[note.id]
+                        note_occurrences[note.id] += 1
 
                 # Rotate notes as needed
                 rotation = 0
                 for modifier in modifiers:
                     rotation += ANGLE_TABLE.get(modifier.get("angle", ""), 0)
-                if rotation != 0:
-                    # TODO: rotate_note method, which should only apply on non-page notes
-                    page_notes = [rotate_note(rotation, note) for note in page_notes]
 
-                # Mutate page number and add to new list
-                new_notes += change_page_number(page_notes, page_number)
-                new_sections += change_page_number(page_sections, page_number)
+                # Store objects that track desired database changes
+                note_objects = [
+                    {
+                        "id": note.id,
+                        "note": note,
+                        "rotation": rotation,
+                        "page_number": page_number,
+                    }
+                    for note in notes_on_page
+                ]
+                section_objects = [
+                    {"id": section.id, "section": section, "page_number": page_number}
+                    for section in sections_on_page
+                ]
 
-                # Increment page number
+                # Store new notes/sections and increment page number
+                new_notes += note_objects
+                new_sections += section_objects
                 page_number += 1
 
-        # Remove all current notes/sections on document
-        document.notes.all().remove()
+        # page_number now represents the length of the modified document
+        document.page_count = page_number
+
+        # Notes to keep == notes on current document which appear exactly 1 time
+        # in modified document
+        notes_to_keep = [k for [k, v] in note_occurrences.items() if v == 1]
+        # Remove notes from db that are not in keep list
+        notes_to_delete = [
+            id
+            for id in document_note_ids
+            if id not in notes_to_keep and id not in erased_notes
+        ]
+        document.notes.exclude(id__in=notes_to_delete).remove()
+
+        # Remove all sections since IDs don't matter
         document.sections.all().remove()
 
-        # TODO: Set page length and add new notes and sections in
+        # Modify notes to keep and add new notes in
+        for note_obj in note_objects:
+            note = note_obj["note"]
+            if note_obj["id"] in notes_to_keep:
+                # Leave unmodified note unchanged
+                if (
+                    note_obj["rotation"] == 0
+                    and note_obj["page_number"] == note.page_number
+                ):
+                    continue
+            else:
+                # Will create a new ID on save
+                note.pk = None
+                note.id = None
 
-        # TODO: look at notes remaining in `current_notes` and add in as page notes
+            if note_obj["rotation"] != 0:
+                note.rotate(note_obj["rotation"])
+
+            if note.page_number != note_obj["page_number"]:
+                note.page_number = note_obj["page_number"]
+
+            note.save()
+
+        # Add all section objects in
+        for section_obj in section_objects:
+            section = section_obj["section"]
+            # Will create a new ID on save
+            section.pk = None
+            section.id = None
+            section.page_number = section_obj["page_number"]
+            section.save()
+
+        # Take notes that have been "erased" and change them to be page notes
+        # at beginning of document
+        for erased_note in erased_notes:
+            erased_note.detach()
 
         return Response("OK", status=status.HTTP_200_OK)
