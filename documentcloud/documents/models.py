@@ -721,7 +721,7 @@ class Entity(models.Model):
 
 
 class EntityOccurrence(models.Model):
-    """Where a given entitiy appears in a given document"""
+    """Where a given entity appears in a given document"""
 
     document = models.ForeignKey(
         verbose_name=_("document"),

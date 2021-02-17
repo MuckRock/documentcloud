@@ -49,7 +49,7 @@ def get_redis():
     return _redis.Redis(**kwargs)
 
 
-def send_update(redis, doc_id, json_):
+def send_update(redis, doc_id, json_, custom_api_url=None, post=False):
     """Sends an update to the API server specified as JSON"""
     if not still_processing(redis, doc_id):
         return
@@ -60,8 +60,10 @@ def send_update(redis, doc_id, json_):
         json_["file_hash"] = file_hash.decode("ascii")  # hex string
         redis.delete(redis_fields.file_hash(doc_id))
 
-    requests.patch(
-        urljoin(API_CALLBACK, f"documents/{doc_id}/"),
+    # Default to PATCH unless post is set to True
+    request_method = requests.post if post else requests.patch
+    request_method(
+        urljoin(API_CALLBACK, custom_api_url or f"documents/{doc_id}/"),
         json=json_,
         headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
     )
@@ -112,6 +114,19 @@ def send_error(redis, doc_id, exc=None, message=None):
     # Clean out Redis
     if doc_id:
         clean_up(redis, doc_id)
+
+
+def send_post_processing(redis, doc_id, json):
+    """Send update to trigger page modification post-processing"""
+    if not still_processing(redis, doc_id):
+        return
+
+    send_update(
+        redis, doc_id, json, f"documents/{doc_id}/modifications/post_process/", True
+    )
+
+    # Clean out Redis
+    clean_up(redis, doc_id)
 
 
 def initialize(redis, doc_id):
