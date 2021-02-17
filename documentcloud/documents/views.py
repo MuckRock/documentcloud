@@ -30,6 +30,7 @@ from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
     DocumentErrorTokenPermissions,
     DocumentTokenPermissions,
+    DocumentPostProcessPermissions,
 )
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
@@ -827,7 +828,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ModificationSpecSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated | DocumentPostProcessPermissions,)
 
     def get_object(self):
         document = get_object_or_404(
@@ -863,3 +864,85 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
         modify.delay(document.pk, document.slug, document.access, serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @transaction.atomic
+    @action(detail=False, methods=["post"])
+    def post_process(self, request, document_pk=None):
+        """Post-process after modifications are in place"""
+        if "processing" not in self.request.auth["permissions"]:
+            raise exceptions.PermissionDenied(
+                "You do not have permission to post-process modifications"
+            )
+
+        document = get_object_or_404(documents, pk=document_pk)
+        # Used to track which notes have been removed
+        current_notes = set([note.id for note in document.notes.all()])
+
+        # Remove entities (no matter what)
+        document.entities.all().delete()
+
+        # Grab annotations and sections from other document by iterating modifications
+        modifications = request.data["page_modification"]["modifications"]
+
+        # Get all documents from which we'll have to import data (can include self)
+        import_docs = {}
+        for modification in modifications:
+            doc_id = modification.get("id", document_pk)
+            if doc_id in import_docs:
+                continue
+
+            # Grab annotations and sections
+            import_doc = (
+                document
+                if doc_id == document_pk
+                else get_object_or_404(documents, pk=doc_id)
+            )
+            notes = import_doc.notes.all()
+            sections = import_doc.sections.all()
+            import_docs[doc_id] = {"notes": notes, "sections": sections}
+
+        # Iterate all modifications and build up new notes/sections
+        page_number = 0
+        new_notes = []
+        new_sections = []
+        for modification in modifications:
+            doc_id = modification.get("id", document_pk)
+            modifiers = modification.get("modifiers", [])
+            notes = import_docs[doc_id]["notes"]
+            sections = import_docs[doc_id]["sections"]
+            page_spec = modification.get("page_spec")
+            for page in iterate_page_spec(page_spec):  # XXX iterate method
+                # TODO: get_by_page_number, change_page_number
+                # get_by_page_number should return a copy
+                page_notes = get_by_page_number(notes, page)
+                page_sections = get_by_page_number(sections, page)
+
+                # Track which notes have been used
+                if doc_id == document_pk:
+                    for note in page_notes:
+                        current_notes.remove(note.id)
+
+                # Rotate notes as needed
+                rotation = 0
+                for modifier in modifiers:
+                    rotation += ANGLE_TABLE.get(modifier.get("angle", ""), 0)
+                if rotation != 0:
+                    # TODO: rotate_note method, which should only apply on non-page notes
+                    page_notes = [rotate_note(rotation, note) for note in page_notes]
+
+                # Mutate page number and add to new list
+                new_notes += change_page_number(page_notes, page_number)
+                new_sections += change_page_number(page_sections, page_number)
+
+                # Increment page number
+                page_number += 1
+
+        # Remove all current notes/sections on document
+        document.notes.all().remove()
+        document.sections.all().remove()
+
+        # TODO: Set page length and add new notes and sections in
+
+        # TODO: look at notes remaining in `current_notes` and add in as page notes
+
+        return Response("OK", status=status.HTTP_200_OK)

@@ -335,6 +335,18 @@ def get_redis_pagespec(doc_id):
     return pagespec
 
 
+def write_concatenated_text_file(doc_id, slug, access, page_jsons):
+    """Assemble and write the concatenated text file given json pages"""
+    concatenated_text = b"\n\n".join(
+        [page["contents"].encode("utf-8") for page in page_jsons]
+    )
+
+    # Write the concatenated text file
+    storage.simple_upload(
+        path.text_path(doc_id, slug), concatenated_text, access=access
+    )
+
+
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
     """Memoize the memory accesses of all the pages of a PDF in a cache."""
@@ -697,16 +709,9 @@ def assemble_page_text(data, _context=None):
         # Overwrite the original results
         results = old_results
 
-    # Compile concatenated text only outside of import mode
+    # Compile and write concatenated text only outside of import mode
     # (we don't want to overwrite the previous file)
-    concatenated_text = b"\n\n".join(
-        [page["contents"].encode("utf-8") for page in results["pages"]]
-    )
-
-    # Write the concatenated text file
-    storage.simple_upload(
-        path.text_path(doc_id, slug), concatenated_text, access=access
-    )
+    write_concatenated_text_file(doc_id, slug, access, results["pages"])
 
     # Write the json text file
     storage.simple_upload(
@@ -875,6 +880,9 @@ def modify_doc(data, _context=None):
             access=access,
         )
 
+        # Write concatenated text file as well
+        write_concatenated_text_file(temp_doc_id, slug, access, page_text_json)
+
         # Run a second pass through all modifications to perform rotations.
         # Now that all pages are imported, this just requires keeping track
         # of the length of each modification and rotating pages as needed.
@@ -919,6 +927,7 @@ def modify_doc(data, _context=None):
                     "page_modification": {
                         "original_doc_id": doc_id,
                         "page_text_json_file": page_text_json_path,
+                        "modifications": modifications,
                     },
                 }
             ),
@@ -943,12 +952,13 @@ def finish_modify_doc(data, _context=None):
         "[FINISH MODIFY DOC] doc_id %s original_doc_id %s", doc_id, original_doc_id
     )
 
+    utils.send_post_processing(REDIS, original_doc_id, data)
+
+    # TODO: look into why this method is not completing
     # Move the temporary directory into the original
     storage.delete(original_directory)
     storage.async_cp_directory(temp_directory, original_directory)
     storage.delete(temp_directory)
-
-    utils.send_complete(REDIS, original_doc_id)
 
     return "Ok"
 
