@@ -45,6 +45,7 @@ def post_process(document, modifications):
     # the first occurence of a note or section from the original document may be
     # moved instead of copied
     for source_document in documents:
+        # XXX extend these lists
         create_notes, update_notes, delete_notes = _process_page_objs(
             page_map,
             document,
@@ -63,6 +64,10 @@ def post_process(document, modifications):
 
     _commit_db(Note, create_notes, update_notes, delete_notes)
     _commit_db(Section, create_sections, update_sections, delete_sections)
+
+    # set status to success
+    # remove all entities
+    # solr index properly
 
 
 def _build_page_map(document, modifications):
@@ -151,3 +156,5 @@ Test cases:
     - copy page from another document with a note/section
     - complex text combining many modifications
 """
+
+# ensure at least one page
