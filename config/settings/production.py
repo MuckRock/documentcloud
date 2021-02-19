@@ -182,6 +182,7 @@ LOGGING = {
             "handlers": ["console"],
             "propagate": False,
         },
+        "apscheduler": {"level": "ERROR", "handlers": ["console"], "propagate": False},
     },
 }
 if env.bool("LOG_SQL", default=False):
