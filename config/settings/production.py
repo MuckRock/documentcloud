@@ -248,4 +248,8 @@ MOESIF_MIDDLEWARE = {
     "LOG_BODY": True,
     "USE_CELERY": True,
     "CELERY_BROKER_URL": CELERY_BROKER_URL,
+    "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
+        DOCCLOUD_EMBED_URL
+    )
+    or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
 }
