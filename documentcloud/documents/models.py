@@ -586,7 +586,6 @@ class Note(models.Model):
         if None in (self.x1, self.x2, self.y1, self.y2):
             return
 
-        # TODO: verify correctness
         if rotation_amount == 1:
             self.x1, self.x2, self.y1, self.y2 = self.y1, self.y2, self.x1, self.x2
         elif rotation_amount == 2:

@@ -1,11 +1,15 @@
 # Standard Library
+# Django
+from django.db import transaction
+
 from collections import defaultdict
 from copy import copy
 
 # DocumentCloud
+from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document, Note, Section
 
-ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "cw": 3}
+ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "ccw": 3}
 
 
 def iterate_page_spec(page_spec):
@@ -18,10 +22,26 @@ def iterate_page_spec(page_spec):
             yield spec
 
 
+def remove_note(note, updates, _deletes):
+    """Removed notes are detached to page notes on the first page"""
+    note.detach()
+    updates.append(note)
+
+
+def remove_section(section, _updates, deletes):
+    """Removed sections are deleted"""
+    deletes.append(section)
+
+
+@transaction.atomic
 def post_process(document, modifications):
     """Post process the notes and sections for the document as specified by
     modifications
     """
+    from documentcloud.documents.tasks import solr_index
+
+    # Remove entities (no matter what)
+    document.entities.all().delete()
 
     # (document.id, old_page) -> [(new_page, rotation), ...]
     page_map = _build_page_map(document, modifications)
@@ -32,42 +52,53 @@ def post_process(document, modifications):
         id__in=[doc_id for doc_id, _page in page_map]
     )
 
-    def remove_note(note, updates, _deletes):
-        """Removed notes are detached to page notes on the first page"""
-        note.detach()
-        updates.append(note)
-
-    def remove_section(section, _updates, deletes):
-        """Removed sections are deleted"""
-        deletes.append(section)
-
     # map all notes and sections from involved documents to their correct places
     # the first occurence of a note or section from the original document may be
     # moved instead of copied
+    create_notes, update_notes, delete_notes = [], [], []
+    create_sections, update_sections, delete_sections = [], [], []
     for source_document in documents:
-        # XXX extend these lists
-        create_notes, update_notes, delete_notes = _process_page_objs(
+        creates, updates, deletes = _process_page_objs(
             page_map,
             document,
             source_document,
             source_document.notes.all(),
             remove_note,
         )
+        create_notes.extend(creates)
+        update_notes.extend(updates)
+        delete_notes.extend(deletes)
 
-        create_sections, update_sections, delete_sections = _process_page_objs(
+        creates, updates, deletes = _process_page_objs(
             page_map,
             document,
             source_document,
             source_document.sections.all(),
             remove_section,
         )
+        create_sections.extend(creates)
+        update_sections.extend(updates)
+        delete_sections.extend(deletes)
 
-    _commit_db(Note, create_notes, update_notes, delete_notes)
-    _commit_db(Section, create_sections, update_sections, delete_sections)
+    _commit_db(
+        Note,
+        ["page_number", "x1", "y1", "x2", "y2"],
+        create_notes,
+        update_notes,
+        delete_notes,
+    )
+    _commit_db(
+        Section, ["page_number"], create_sections, update_sections, delete_sections
+    )
 
-    # set status to success
-    # remove all entities
-    # solr index properly
+    document.status = Status.success
+    document.save()
+
+    transaction.on_commit(
+        lambda: solr_index.delay(
+            document.pk, field_updates={"status": "set", "page_count": "set"}
+        )
+    )
 
 
 def _build_page_map(document, modifications):
@@ -87,7 +118,6 @@ def _build_page_map(document, modifications):
 
             rotation = 0
             for modifier in modifiers:
-                # XXX there should never be more than 1 rotation
                 rotation += ANGLE_TABLE.get(modifier.get("angle", ""), 0)
 
             page_map[(doc_id, old_page)].append((page_number, rotation))
@@ -95,7 +125,6 @@ def _build_page_map(document, modifications):
             page_number += 1
 
     document.page_count = page_number
-    document.save()
 
     return page_map
 
@@ -136,25 +165,11 @@ def _process_page_objs(page_map, original_document, source_document, objects, re
     return creates, updates, deletes
 
 
-def _commit_db(model, creates, updates, deletes):
+def _commit_db(model, fields, creates, updates, deletes):
     """Commit object changes to the database in bulk to minimize SQL calls"""
     if creates:
         model.objects.bulk_create(creates)
     if updates:
-        model.objects.bulk_update(updates)
+        model.objects.bulk_update(updates, fields)
     if deletes:
         model.objects.filter(id__in=[i.id for i in deletes]).delete()
-
-
-"""
-Test cases:
-    - insert page before/after note/section
-    - remove page before/after note/section
-    - duplicate page with note/section
-    - remove page with note/section
-    - rotate page with note/section
-    - copy page from another document with a note/section
-    - complex text combining many modifications
-"""
-
-# ensure at least one page
