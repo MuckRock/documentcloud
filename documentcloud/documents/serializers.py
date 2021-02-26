@@ -524,7 +524,8 @@ class ModificationSpecItemSerializer(serializers.Serializer):
                 )
             if page_number >= document.page_count or page_number < 0:
                 raise serializers.ValidationError(
-                    f"Must be a valid page for the document {document.pk}: {page_number} (page count: {document.page_count})"
+                    f"Must be a valid page for the document {document.pk}: "
+                    f"{page_number} (page count: {document.page_count})"
                 )
             return page_number
 
