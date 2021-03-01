@@ -2,6 +2,7 @@
 import asyncio
 import io
 import mimetypes
+from itertools import zip_longest
 
 # Third Party
 import boto3
@@ -133,7 +134,7 @@ class AwsStorage:
         src_bucket = self.s3_resource.Bucket(src_bucket_raw)
         dst_bucket_raw, dst_prefix = self.bucket_key(dst_directory)
         keys = src_bucket.objects.filter(Prefix=src_prefix)
-        batch = env("S3_CP_BATCH", 3000)
+        batch = env("S3_CP_BATCH", default=3000)
 
         for keys_batch in grouper(keys, batch):
             keys_batch = [k for k in keys_batch if k is not None]
