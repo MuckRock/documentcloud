@@ -958,7 +958,6 @@ def finish_modify_doc(data, _context=None):
         REDIS, original_doc_id, page_modification["modifications"]
     )
 
-    # TODO: look into why this method is not completing
     # Move the temporary directory into the original
     storage.delete(original_directory)
     storage.async_cp_directory(temp_directory, original_directory)
