@@ -4,29 +4,6 @@
 All APIs besides the authentication endpoints are served from
 <https://api.beta.documentcloud.org/api>.
 
-## Contents
-
-* [Overview](#overview)
-* [Authentication](#authentication)
-* [Documents](#documents)
-    * [Notes](#notes)
-    * [Sections](#sections)
-    * [Errors](#errors)
-    * [Data](#data)
-    * [Redactions](#redactions)
-* [Projects](#projects)
-    * [Documents](#project-documents)
-    * [Collaborators](#collaborators)
-* [Organizations](#organizations)
-* [Users](#users)
-* [oEmbed](#oembed)
-* [Appendix](#appendix)
-    * [Access Levels](#access-levels)
-    * [Statuses](#statuses)
-    * [Languages](#languages)
-    * [Page Spec](#page-spec)
-    * [Static Assets](#static-assets)
-
 ## Overview
 
 The API end points are generally organized as `/api/<resource>/` representing
@@ -152,33 +129,33 @@ documents](#project-documents).
 
 ### Fields
 
-| Field            | Type         | Options            | Description                                                                                                                                                                                                                  |
-| ---              | ---          | ---                | ---                                                                                                                                                                                                                          |
-| ID               | Integer      | Read Only          | The ID for the document                                                                                                                                                                                                      |
-| access           | String       | Default: `private` | The [access level](#access-levels) for the document                                                                                                                                                                          |
-| asset\_url       | String       | Read Only          | The base URL to load this document's [static assets](#static-assets) from                                                                                                                                                    |
-| canonical\_url   | URL          | Read Only          | The canonical URL to view this document                                                                                                                                                                                      |
-| created\_at      | Date Time    | Read Only          | Time stamp when this document was created                                                                                                                                                                                    |
-| data             | JSON         | Not Required       | [Custom metadata](#data)                                                                                                                                                                                                     |
-| description      | String       | Not Required       | A brief description of the document                                                                                                                                                                                          |
-| edit\_access     | Bool         | Read Only          | Does the current user have edit access to this document                                                                                                                                                                      |
-| file\_url        | URL          | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                                                                                                                          |
-| force\_ocr       | Bool         | Create Only        | Force OCR even if the PDF contains embedded text - only include if `file_url` is set, otherwise should set `force_ocr` on the call to the processing endpoint                                                                |
-| language         | String       | Default: `eng`     | The [language](#languages) the document is in                                                                                                                                                                                |
-| organization     | Integer      | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                                                                                                                       |
-| page\_count      | Integer      | Read Only          | The number of pages in this document                                                                                                                                                                                         |
-| page\_spec       | Integer      | Read Only          | [The dimensions for all pages in the document](#page-spec)                                                                                                                                                                   |
-| presigned\_url   | URL          | Read Only          | The pre-signed URL to [directly](#direct-file-upload-flow) `PUT` the PDF file to                                                                                                                                             |
-| projects         | List:Integer | Create/Read        | The IDs of the [projects](#projects) this document belongs to - this may be set on creation, but may not be updated directly.  See [project documents](#project-documents) for how to add or remove documents from a project |
-| published\_url   | URL          | Not Required       | The URL where this document is embedded                                                                                                                                                                                      |
-| related\_article | URL          | Not Required       | The URL for the article about this document                                                                                                                                                                                  |
-| remaining        | JSON         | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter                                                                                                       |
-| slug             | String       | Read Only          | The slug is a URL safe version of the title                                                                                                                                                                                  |
-| source           | String       | Not Required       | The source who produced the document                                                                                                                                                                                         |
-| status           | String       | Read Only          | The [status](#statuses) for the document                                                                                                                                                                                     |
-| title            | String       | Required           | The document's title                                                                                                                                                                                                         |
-| updated\_at      | Date Time    | Read Only          | Time stamp when the document was last updated                                                                                                                                                                                |
-| user             | ID           | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                                                                                       |
+| Field            | Type         | Options            | Description                                                                                                                                                       |
+| ---              | ---          | ---                | ---                                                                                                                                                               |
+| ID               | Integer      | Read Only          | The ID for the document                                                                                                                                           |
+| access           | String       | Default: `private` | The [access level](#access-levels) for the document                                                                                                               |
+| asset\_url       | String       | Read Only          | The base URL to load this document's [static assets](#static-assets) from                                                                                         |
+| canonical\_url   | URL          | Read Only          | The canonical URL to view this document                                                                                                                           |
+| created\_at      | Date Time    | Read Only          | Time stamp when this document was created                                                                                                                         |
+| data             | JSON         | Not Required       | [Custom metadata](#data)                                                                                                                                          |
+| description      | String       | Not Required       | A brief description of the document                                                                                                                               |
+| edit\_access     | Bool         | Read Only          | Does the current user have edit access to this document                                                                                                           |
+| file\_url        | URL          | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                                                               |
+| force\_ocr       | Bool         | Create Only        | Force OCR even if the PDF contains embedded text - only include if `file_url` is set, otherwise should set `force_ocr` on the call to the processing endpoint     |
+| language         | String       | Default: `eng`     | The [language](#languages) the document is in                                                                                                                     |
+| organization     | Integer      | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                                                            |
+| page\_count      | Integer      | Read Only          | The number of pages in this document                                                                                                                              |
+| page\_spec       | Integer      | Read Only          | [The dimensions for all pages in the document](#page-spec)                                                                                                        |
+| presigned\_url   | URL          | Read Only          | The pre-signed URL to [directly](#direct-file-upload-flow) `PUT` the PDF file to                                                                                  |
+| projects         | List:Integer | Create Only        | The IDs of the [projects](#projects) this document belongs to - this may be set on creation, but may not be updated.  See [project documents](#project-documents) |
+| related\_article | URL          | Not Required       | The URL for the article about this document                                                                                                                       |
+| remaining        | JSON         | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter                                            |
+| published\_url   | URL          | Not Required       | The URL where this document is embedded                                                                                                                           |
+| slug             | String       | Read Only          | The slug is a URL safe version of the title                                                                                                                       |
+| source           | String       | Not Required       | The source who produced the document                                                                                                                              |
+| status           | String       | Read Only          | The [status](#statuses) for the document                                                                                                                          |
+| title            | String       | Required           | The document's title                                                                                                                                              |
+| updated\_at      | Date Time    | Read Only          | Time stamp when the document was last updated                                                                                                                     |
+| user             | ID           | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                            |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
 
@@ -190,33 +167,27 @@ PDF.  We currently only support PDF documents.
 
 #### Direct File Upload Flow
 
-1. `POST /api/documents/`
-
-To initiate an upload, you will first create the document.  You may specify all
+1. `POST /api/documents/`  <br><br>
+  To initiate an upload, you will first create the document.  You may specify all
 writable document fields (besides `file_url`).  The response will contain all
 the fields for the document, with two being of note for this flow:
-`presigned_url` and `id`.
-
-If you would like to upload files in bulk, you may `POST` a list of JSON
+`presigned_url` and `id`.  <br><br>
+  If you would like to upload files in bulk, you may `POST` a list of JSON
 objects to `/api/documents/` instead of a single object.  The response will
 contain a list of document objects.
 
-2. `PUT <presigned_url>`
-
-Next, you will `PUT` the binary data for the file to the given
+2. `PUT <presigned_url>`  <br><br>
+  Next, you will `PUT` the binary data for the file to the given
 `presigned_url`.  The presigned URL is valid for 5 minutes.  You may obtain a
-new URL by issuing a `GET` request to `/api/documents/\<id\>/`
-
-If you are bulk uploading, you will still need to issue a single `PUT` to the
+new URL by issuing a `GET` request to `/api/documents/\<id\>/`.   <br><br>
+  If you are bulk uploading, you will still need to issue a single `PUT` to the
 corresponding `presigned_url` for each file.
 
-3. `POST /api/documents/<id>/process/`
-
-Finally, you will begin processing of the document.  Note that this endpoint
+3. `POST /api/documents/<id>/process/`  <br><br>
+  Finally, you will begin processing of the document.  Note that this endpoint
 accepts only one optional parameter &mdash; `force_ocr` which, if set to true,
-will OCR the document even if it contains embedded text.
-
-If you are uploading in bulk you can issue a single `POST` to
+will OCR the document even if it contains embedded text.  <br><br>
+  If you are uploading in bulk you can issue a single `POST` to
 `/api/document/process/` which will begin processing in bulk.  You should pass
 a list of objects containing the document IDs of the documents you would like
 to being processing.  You may optionally specify `force_ocr` for each document.
@@ -648,108 +619,28 @@ The status informs you to the current status of your document.
 <details>
 <summary>Language choices</summary>
 
-* afr &ndash; Afrikaans
-* amh &ndash; Amharic
 * ara &ndash; Arabic
-* asm &ndash; Assamese
-* aze &ndash; Azerbaijani
-* aze\_cyrl &ndash; Azerbaijani - Cyrillic
-* bel &ndash; Belarusian
-* ben &ndash; Bengali
-* bod &ndash; Tibetan
-* bos &ndash; Bosnian
-* bul &ndash; Bulgarian
-* cat &ndash; Catalan; Valencian
-* ceb &ndash; Cebuano
-* ces &ndash; Czech
-* zho &ndash; Chinese - Simplified
-* tra &ndash; Chinese - Traditional
-* chr &ndash; Cherokee
-* cym &ndash; Welsh
-* dan &ndash; Danish
-* deu &ndash; German
-* dzo &ndash; Dzongkha
-* ell &ndash; Greek
-* eng &ndash; English
-* enm &ndash; Middle English
-* epo &ndash; Esperanto
-* est &ndash; Estonian
-* eus &ndash; Basque
-* fas &ndash; Persian
-* fin &ndash; Finnish
-* fra &ndash; French
-* frk &ndash; German Fraktur
-* frm &ndash; Middle French
-* gle &ndash; Irish
-* glg &ndash; Galician
-* grc &ndash; Ancient Greek
-* guj &ndash; Gujarati
-* hat &ndash; Haitian; Haitian Creole
-* heb &ndash; Hebrew
-* hin &ndash; Hindi
+* zho &ndash; Chinese (Simplified)
+* tra &ndash; Chinese (Traditional)
 * hrv &ndash; Croatian
+* dan &ndash; Danish
+* nld &ndash; Dutch
+* eng &ndash; English
+* fra &ndash; French
+* deu &ndash; German
+* heb &ndash; Hebrew
 * hun &ndash; Hungarian
-* iku &ndash; Inuktitut
 * ind &ndash; Indonesian
-* isl &ndash; Icelandic
 * ita &ndash; Italian
-* ita\_old &ndash; Italian - Old
-* jav &ndash; Javanese
 * jpn &ndash; Japanese
-* kan &ndash; Kannada
-* kat &ndash; Georgian
-* kat\_old &ndash; Georgian - Old
-* kaz &ndash; Kazakh
-* khm &ndash; Central Khmer
-* kir &ndash; Kirghiz; Kyrgyz
 * kor &ndash; Korean
-* kur &ndash; Kurdish
-* lao &ndash; Lao
-* lat &ndash; Latin
-* lav &ndash; Latvian
-* lit &ndash; Lithuanian
-* mal &ndash; Malayalam
-* mar &ndash; Marathi
-* mkd &ndash; Macedonian
-* mlt &ndash; Maltese
-* msa &ndash; Malay
-* mya &ndash; Burmese
-* nep &ndash; Nepali
-* nld &ndash; Dutch; Flemish
 * nor &ndash; Norwegian
-* ori &ndash; Oriya
-* pan &ndash; Panjabi; Punjabi
-* pol &ndash; Polish
 * por &ndash; Portuguese
-* pus &ndash; Pushto; Pashto
-* ron &ndash; Romanian; Moldavian; Moldovan
+* ron &ndash; Romanian
 * rus &ndash; Russian
-* san &ndash; Sanskrit
-* sin &ndash; Sinhala; Sinhalese
-* slk &ndash; Slovak
-* slv &ndash; Slovenian
-* spa &ndash; Spanish; Castilian
-* spa\_old &ndash; Spanish; Castilian - Old
-* sqi &ndash; Albanian
-* srp &ndash; Serbian
-* srp\_latn &ndash; Serbian - Latin
-* swa &ndash; Swahili
+* spa &ndash; Spanish
 * swe &ndash; Swedish
-* syr &ndash; Syriac
-* tam &ndash; Tamil
-* tel &ndash; Telugu
-* tgk &ndash; Tajik
-* tgl &ndash; Tagalog
-* tha &ndash; Thai
-* tir &ndash; Tigrinya
-* tur &ndash; Turkish
-* uig &ndash; Uighur; Uyghur
 * ukr &ndash; Ukrainian
-* urd &ndash; Urdu
-* uzb &ndash; Uzbek
-* uzb\_cyrl &ndash; Uzbek - Cyrillic
-* vie &ndash; Vietnamese
-* yid &ndash; Yiddish
 
 </details>
 
