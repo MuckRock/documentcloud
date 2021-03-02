@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from documentcloud.users.models import User
 
 if hasattr(settings, "MOESIF_MIDDLEWARE"):
+    # pylint: disable=import-error
     from moesifapi.moesif_api_client import MoesifAPIClient
 
     api_client = MoesifAPIClient(settings.MOESIF_MIDDLEWARE["APPLICATION_ID"]).api
