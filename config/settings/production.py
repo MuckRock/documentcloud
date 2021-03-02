@@ -252,7 +252,7 @@ MOESIF_MIDDLEWARE = {
         DOCCLOUD_EMBED_URL
     )
     or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
-    "IDENTIFY_USER": lambda request, response: request.user.pk
+    "IDENTIFY_USER": lambda request, response: str(request.user.pk)
     if request.user and request.user.is_authenticated
     else None,
     "IDENTIFY_COMPANY": lambda request, response: request.user.organization.pk
