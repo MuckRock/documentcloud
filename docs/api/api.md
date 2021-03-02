@@ -393,6 +393,74 @@ created, not retrieved or edited.
 
 * `POST /api/documents/<document_id>/redactions/` - Create redaction
 
+### Entities
+
+Entities can be extracted using Google Cloud's Natural Language API.  Entity
+extraction must be initalized manually per document and entities are read-only.
+
+#### Fields
+
+Top level fields
+
+| Field      | Type    | Description                                                                        |
+| ---        | ---     | ---                                                                                |
+| entity     | Object  | Object containing information about this particular entity                         |
+| relevance  | Float   | An estimate as to how relevant this entity is to this document                     |
+| occurences | List    | A list of occurence objects specifying where in the document this entity was found |
+
+Fields for the entity object
+
+| Field          | Type   | Description                                                    |
+| ---            | ---    | ---                                                            |
+| name           | String | The name of the entity                                         |
+| kind           | String | The [kind](#kind) of entity                                    |
+| description    | String | A short description of the entity                              |
+| mid            | String | The Knowledge Graph ID                                         |
+| wikipedia\_url | URL    | The Wikipedia URL for this entity                              |
+| metadata       | Object | Additional metadata for the entity, based on its [kind](#kind) |
+
+Fields for the occurence objects
+
+| Field        | Type    | Description                                                                 |
+| ---          | ---     | ---                                                                         |
+| page         | Integer | The page of the document this occurs on                                     |
+| offset       | Integer | The character offset into the document this occurs on                       |
+| content      | String  | The content of this occurence (the occurence may not match the entity name) |
+| page\_offset | Integer | The character offset into the page this occurs on                           |
+| kind         | String  | `proper` for proper nouns, `common` for common nouns or `unknown`           |
+
+##### Kind
+
+Entity kinds include
+
+* `unknown`
+* `person`
+* `location`
+* `organization`
+* `event`
+* `work_of_art`
+* `consumer_good`
+* `other`
+* `phone_number` &mdash; metadata may include number, national\_prefix, area\_code and extension
+* `address` &mdash; metadata may include street\_number, locality, street\_name, postal\_code, country, broad\_region, narrow\_region, and sublocality
+* `date` &mdash; metadata may include year, month and day
+* `price` &mdash; metadata may include value and currency
+
+
+#### Endpoints
+
+* `GET /api/documents/<document_id>/entities/` - List entities for this document
+* `POST /api/documents/<document_id>/entities/` - Begin extracting entities for this document (POST body is empty)
+* `DELETE /api/documents/<document_id>/entities/` - Delete all entities for this document
+
+#### Filters
+
+* `kind` &mdash; Filter for entities with the given kind (may give multiple, comma seperated)
+* `occurences` &mdash; Filter for entities with the given occurence kind (`proper` or `common`)
+* `relevance__gt` &mdash; Filter for documents with the given relevance or higher
+* `mid` &mdash; Boolean filter for entities which do or do not have a MID
+* `wikipedia_url` &mdash; Boolean filter for entities which do or do not have a Wikipedia URL
+
 ## Projects
 
 Projects are collections of documents.  They can be used for organizing groups
