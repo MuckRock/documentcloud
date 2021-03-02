@@ -3,13 +3,12 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-# Third Party
-from moesifapi.moesif_api_client import MoesifAPIClient
-
 # DocumentCloud
 from documentcloud.users.models import User
 
 if hasattr(settings, "MOESIF_MIDDLEWARE"):
+    from moesifapi.moesif_api_client import MoesifAPIClient
+
     api_client = MoesifAPIClient(settings.MOESIF_MIDDLEWARE["APPLICATION_ID"]).api
 
     @receiver(
