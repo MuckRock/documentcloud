@@ -434,9 +434,7 @@ class DataAddRemoveSerializer(serializers.Serializer):
     values = serializers.ListSerializer(
         required=False, child=serializers.CharField(max_length=200)
     )
-    remove = serializers.ListSerializer(
-        required=False, child=serializers.CharField(max_length=200)
-    )
+    remove = serializers.ListSerializer(required=False, child=serializers.CharField())
 
 
 class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
