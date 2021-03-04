@@ -418,6 +418,28 @@ class TestDocumentAPI:
         assert response.json()["id"] == document.pk
         assert Document.objects.count() == 1
 
+    def test_update_data(self, client, document):
+        """Test updating a document's data directly"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"data": {"color": ["blue"]}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data["color"] == ["blue"]
+
+    def test_update_data_long(self, client, document):
+        """Test updating a document's data directly with a value that is too long"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"data": {"color": ["a" * 301]}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
@@ -1277,6 +1299,16 @@ class TestDataAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         self._compare_json(document.data, {"color": ["red", "blue"]})
+
+    def test_update_long(self, client, document):
+        """Add a new key value pair to a document that is too long"""
+        client.force_authenticate(user=document.user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["a" * 301]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_partial_update(self, client):
         """Add a new value to an existing key"""

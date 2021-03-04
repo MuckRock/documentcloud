@@ -34,6 +34,8 @@ from documentcloud.projects.models import Project
 
 logger = logging.getLogger(__name__)
 
+DATA_VALUE_LENGTH = 300
+
 
 class PageNumberValidationMixin:
     def validate_page_number(self, value):
@@ -261,6 +263,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 "of top level object properties"
             )
 
+        if not all(len(v) <= DATA_VALUE_LENGTH for v_ in value.values() for v in v_):
+            raise serializers.ValidationError(
+                "`data` JSON object must have strings for all values within the lists"
+                "of top level object properties"
+            )
+
         return value
 
     def validate(self, attrs):
@@ -426,13 +434,15 @@ class EntityDateSerializer(serializers.ModelSerializer):
 
 class DataSerializer(serializers.Serializer):
     # pylint: disable=abstract-method
-    values = serializers.ListSerializer(child=serializers.CharField(max_length=200))
+    values = serializers.ListSerializer(
+        child=serializers.CharField(max_length=DATA_VALUE_LENGTH)
+    )
 
 
 class DataAddRemoveSerializer(serializers.Serializer):
     # pylint: disable=abstract-method
     values = serializers.ListSerializer(
-        required=False, child=serializers.CharField(max_length=200)
+        required=False, child=serializers.CharField(max_length=DATA_VALUE_LENGTH)
     )
     remove = serializers.ListSerializer(required=False, child=serializers.CharField())
 
