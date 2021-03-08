@@ -63,6 +63,7 @@ from documentcloud.documents.serializers import (
 from documentcloud.documents.tasks import (
     extract_entities,
     fetch_file_url,
+    invalidate_cache,
     process,
     process_cancel,
     redact,
@@ -314,6 +315,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
             self._update_access(instance, old_access, validated_data)
             self._update_solr(instance, old_processing, old_data_key, validated_data)
+            self._update_cache(instance, old_processing)
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
@@ -360,6 +362,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             kwargs = {"field_updates": {f: "set" for f in validated_data}}
 
         transaction.on_commit(lambda: solr_index.delay(document.pk, **kwargs))
+
+    def _update_cache(self, document, old_processing):
+        """Invalidate the cache when finished processing"""
+        if old_processing and not document.processing:
+            transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
 
     @action(detail=False, methods=["get"])
     def search(self, request):

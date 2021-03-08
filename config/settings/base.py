@@ -526,3 +526,11 @@ gac.write(GOOGLE_APPLICATION_CREDENTIALS.encode("ascii"))
 gac.close()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac.name
 GOOGLE_API_KEY = env.str("GOOGLE_API_KEY", default="")
+
+# CDN Caches
+# ------------------------------------------------------------------------------
+CLOUDFRONT_DISTRIBUTION_ID = env("CLOUDFRONT_DISTRIBUTION_ID", default="")
+
+CLOUDFLARE_API_EMAIL = env("CLOUDFLARE_API_EMAIL", default="")
+CLOUDFLARE_API_KEY = env("CLOUDFLARE_API_KEY", default="")
+CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")

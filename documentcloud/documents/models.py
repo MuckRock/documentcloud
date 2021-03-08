@@ -10,8 +10,11 @@ from django.utils.translation import ugettext_lazy as _
 import json
 import logging
 import sys
+import time
 
 # Third Party
+import boto3
+import requests
 from listcrunch import uncrunch
 
 # DocumentCloud
@@ -404,6 +407,36 @@ class Document(models.Model):
             solr_document = new_solr_document
 
         return solr_document
+
+    def invalidate_cache(self):
+        """Invalidate public CDN cache for this document's underlying file"""
+        logger.info("Invalidating cache for %s", self.pk)
+        doc_path = self.doc_path[self.doc_path.index("/") :]
+        distribution_id = settings.CLOUDFRONT_DISTRIBUTION_ID
+        if distribution_id:
+            # we want the doc path without the s3 bucket name
+            cloudfront = boto3.client("cloudfront")
+            cloudfront.create_invalidation(
+                DistributionId=distribution_id,
+                InvalidationsBatch={
+                    "Paths": {"Quantity": 1, "Items": [doc_path]},
+                    "CallerReference": str(int(time.time())),
+                },
+            )
+        cloudflare_email = settings.CLOUDFLARE_API_EMAIL
+        cloudflare_key = settings.CLOUDFLARE_API_KEY
+        cloudflare_zone = settings.CLOUDFLARE_API_ZONE
+        url = settings.PUBLIC_ASSET_URL + doc_path[1:]
+        if cloudflare_zone:
+            requests.post(
+                "https://api.cloudflare.com/client/v4/zones/"
+                f"{cloudflare_zone}/purge_cache",
+                json={"files": [url]},
+                headers={
+                    "X-Auth-Email": cloudflare_email,
+                    "X-Auth-Key": cloudflare_key,
+                },
+            )
 
 
 class DeletedDocument(models.Model):
