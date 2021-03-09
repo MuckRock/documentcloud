@@ -418,7 +418,7 @@ class Document(models.Model):
             cloudfront = boto3.client("cloudfront")
             cloudfront.create_invalidation(
                 DistributionId=distribution_id,
-                InvalidationsBatch={
+                InvalidationBatch={
                     "Paths": {"Quantity": 1, "Items": [doc_path]},
                     "CallerReference": str(int(time.time())),
                 },
