@@ -1,5 +1,6 @@
 # Django
 from django.db import transaction
+from django.db.models.expressions import F
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import exceptions, serializers, viewsets
@@ -121,6 +122,12 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             # execution plan and drastically reduces run time in certain cases
             project.projectmembership_set.get_viewable(self.request.user)
             .preload(self.request.user, self.request.query_params.get("expand", ""))
+            .annotate(
+                created_at=F("document__created_at"),
+                page_count=F("document__page_count"),
+                title=F("document__title"),
+                source=F("document__source"),
+            )
             .order_by("-document__created_at", "id")
         )
 
@@ -269,6 +276,9 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         _solr_remove(instance)
 
     class Filter(django_filters.FilterSet):
+        ordering = django_filters.OrderingFilter(
+            fields=("created_at", "page_count", "title", "source")
+        )
         document_id__in = ModelMultipleChoiceFilter(
             model=Document, field_name="document"
         )
