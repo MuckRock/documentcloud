@@ -130,6 +130,9 @@ http {
         if ($http_host ~ "\.$" ){
             rewrite ^(.*) $scheme://$host$1 permanent;
         }
+		if ($host = 'api.beta.documentcloud.org') {
+			rewrite ^ https://api.www.documentcloud.org$request_uri? permanent;
+		}
 
         location / {
 
