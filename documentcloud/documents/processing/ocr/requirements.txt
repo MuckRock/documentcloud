@@ -1,6 +1,6 @@
 -r cloud-requirements.txt
 
-Pillow==6.0.0
+Pillow==7.1.0
 cpuprofile==1.0.1
 django-environ==0.4.5
 furl==2.1.0
