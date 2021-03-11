@@ -10,7 +10,7 @@ from django.utils.translation import ugettext_lazy as _
 import json
 import logging
 import sys
-import time
+import uuid
 
 # Third Party
 import boto3
@@ -420,7 +420,7 @@ class Document(models.Model):
                 DistributionId=distribution_id,
                 InvalidationBatch={
                     "Paths": {"Quantity": 1, "Items": [doc_path]},
-                    "CallerReference": str(int(time.time())),
+                    "CallerReference": str(uuid.uuid4()),
                 },
             )
         cloudflare_email = settings.CLOUDFLARE_API_EMAIL
