@@ -146,6 +146,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             documents = [documents]
 
         for document, file_url, force_ocr in zip(documents, file_urls, force_ocrs):
+            transaction.on_commit(lambda d=document: solr_index.delay(d.pk))
             if file_url is not None:
                 transaction.on_commit(
                     lambda d=document, fu=file_url, fo=force_ocr: fetch_file_url.delay(
