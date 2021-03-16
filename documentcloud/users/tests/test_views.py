@@ -11,8 +11,11 @@ import pytest
 from squarelet_auth.organizations.models import Membership
 
 # DocumentCloud
+from documentcloud.documents.choices import Access
+from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.organizations.tests.factories import OrganizationFactory
+from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
 
@@ -29,6 +32,22 @@ class TestUserAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == size
+
+    def test_list_permissions(self, client):
+        """List users you can view"""
+        # the current user, a user in the same organization, a user in the same
+        # project, a user with a public document, a user with a private document
+        users = UserFactory.create_batch(5)
+        OrganizationFactory(members=users[:2])
+        ProjectFactory(user=users[0], collaborators=[users[2]])
+        DocumentFactory(user=users[3], access=Access.public)
+        DocumentFactory(user=users[4], access=Access.private)
+        client.force_authenticate(user=users[0])
+        response = client.get("/api/users/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        # you can see all users except for the user with a private document
+        assert len(response_json["results"]) == 4
 
     @pytest.mark.parametrize("expand", ["", "~all", "organization"])
     @override_settings(DEBUG=True)

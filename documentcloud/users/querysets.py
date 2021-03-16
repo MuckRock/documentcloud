@@ -3,6 +3,7 @@
 # Django
 from django.db import models
 from django.db.models import Prefetch
+from django.db.models.expressions import Exists, OuterRef
 
 # Third Party
 from squarelet_auth.organizations.models import Membership
@@ -19,6 +20,8 @@ class UserQuerySet(models.QuerySet):
         """You may view other users in your organizations and projects,
         and anybody with a public document
         """
+        from documentcloud.documents.models import Document
+
         if user.is_authenticated:
             # unions are much more performant than complex conditions
             return self.filter(
@@ -29,13 +32,26 @@ class UserQuerySet(models.QuerySet):
                     self.filter(projects__in=user.projects.all())
                     .order_by()
                     .values("pk"),
-                    self.filter(documents__access=Access.public)
+                    self.annotate(
+                        public=Exists(
+                            Document.objects.filter(
+                                user=OuterRef("pk"), access=Access.public
+                            ).values("pk")
+                        )
+                    )
+                    .filter(public=True)
                     .order_by()
                     .values("pk"),
                 )
             )
         else:
-            return self.filter(documents__access=Access.public).distinct()
+            return self.annotate(
+                public=Exists(
+                    Document.objects.filter(
+                        user=OuterRef("pk"), access=Access.public
+                    ).values("pk")
+                )
+            ).filter(public=True)
 
     def preload(self, _user=None, _expand=""):
         """Preload relations"""
