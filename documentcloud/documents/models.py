@@ -112,7 +112,7 @@ class Document(models.Model):
 
     solr_dirty = models.BooleanField(
         _("solr dirty"),
-        default=False,
+        default=True,
         help_text=_("Tracks if the Solr Index is out of date with the SQL model"),
     )
 
