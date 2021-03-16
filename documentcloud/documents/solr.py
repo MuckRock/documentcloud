@@ -179,7 +179,7 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
         else:
             solr_document = document.solr(index_text=index_text)
             # add field updates to avoid clobbering already indexed text
-            field_updates = {f: "set" for f in solr_document}
+            field_updates = {f: "set" for f in solr_document if f != "id"}
 
     _index_solr_document(SOLR, solr_document, field_updates)
 
