@@ -365,8 +365,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         transaction.on_commit(lambda: solr_index.delay(document.pk, **kwargs))
 
     def _update_cache(self, document, old_processing):
-        """Invalidate the cache when finished processing"""
-        if old_processing and not document.processing:
+        """Invalidate the cache when finished processing a detructive operation"""
+        if old_processing and not document.processing and document.cahce_dirty:
             transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
 
     @action(detail=False, methods=["get"])
@@ -697,6 +697,8 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 )
 
             document.status = Status.pending
+            # we must invalidate the cache after a redaction
+            document.cahce_dirty = True
             document.save()
             transaction.on_commit(
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})

@@ -300,3 +300,5 @@ def invalidate_cache(document_pk):
     """Invalidate the CloudFront and CloudFlare caches"""
     document = Document.objects.get(pk=document_pk)
     document.invalidate_cache()
+    document.cache_dirty = False
+    document.save()

@@ -164,6 +164,14 @@ class Document(models.Model):
         db_index=True,
         help_text=_("Scheduled time to make document public"),
     )
+    cache_dirty = models.BooleanField(
+        _("cache dirty"),
+        default=False,
+        help_text=_(
+            "A destructive operation is taking place and the CDN cache for this "
+            "document should be invalidated when it is done processing"
+        ),
+    )
 
     # legacy fields
 
