@@ -83,7 +83,7 @@ class Document(models.Model):
 
     language = models.CharField(
         _("language"),
-        max_length=3,
+        max_length=8,
         choices=Language.choices,
         blank=True,
         help_text=_(
