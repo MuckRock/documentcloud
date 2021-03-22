@@ -486,12 +486,20 @@ class TestFilterExtractor:
 
 class TestParse:
     @pytest.mark.parametrize(
-        "query,query_params,new_query,filters,sort,escaped",
+        "query,query_params,new_query,filters,sort,escaped,use_hl",
         [
-            ("", "", "*:*", "", None, False),
-            ("user:1", "", "*:*", "user=1", None, False),
-            ("user:1 OR access:public", "", "user:1 OR access:public", "", None, False),
-            ("user:foo-1", "", "*:*", "user=1", None, False),
+            ("", "", "*:*", "", None, False, False),
+            ("user:1", "", "*:*", "user=1", None, False, True),
+            (
+                "user:1 OR access:public",
+                "",
+                "user:1 OR access:public",
+                "",
+                None,
+                False,
+                True,
+            ),
+            ("user:foo-1", "", "*:*", "user=1", None, False, True),
             (
                 "user:foo-1 OR access:public",
                 "",
@@ -499,22 +507,28 @@ class TestParse:
                 "",
                 None,
                 False,
+                True,
             ),
-            ("foo", "", "foo", "", None, False),
-            ("foo sort:title", "", "foo", "", "title", False),
-            ("foo", "title=bar", "foo title:(bar)", "", None, False),
-            ("foo", "user=1", "foo", "", None, False),
-            ("foo AND", "", 'foo "AND"', "", None, True),
-            ("foo (", "", "foo \\(", "", None, True),
+            ("foo", "", "foo", "", None, False, True),
+            ("foo sort:title", "", "foo", "", "title", False, True),
+            ("foo", "title=bar", "foo title:(bar)", "", None, False, True),
+            ("foo", "user=1", "foo", "", None, False, True),
+            ("foo AND", "", 'foo "AND"', "", None, True, True),
+            ("foo (", "", "foo \\(", "", None, True, True),
+            ("foo~1", "", "foo~1", "", None, False, False),
+            ("foo hl:false", "", "foo", "", None, False, False),
         ],
     )
-    def test_parse(self, query, query_params, new_query, filters, sort, escaped):
+    def test_parse(
+        self, query, query_params, new_query, filters, sort, escaped, use_hl
+    ):
         # pylint: disable=too-many-arguments
         assert _parse(query, QueryDict(query_params, mutable=True)) == (
             new_query,
             QueryDict(filters),
             sort,
             escaped,
+            use_hl,
         )
 
 

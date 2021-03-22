@@ -84,7 +84,9 @@ def search(user, query_params):
     """
     text_query = query_params.get("q", "")
 
-    text_query, filter_params, sort_order, escaped = _parse(text_query, query_params)
+    text_query, filter_params, sort_order, escaped, use_hl = _parse(
+        text_query, query_params
+    )
 
     filter_params.update(query_params)
     filter_queries = _filter_queries(user, filter_params)
@@ -97,12 +99,16 @@ def search(user, query_params):
     )
     rows, start, page = _paginate(query_params)
 
+    # allow explicit disabling of highlighting
+    if query_params.get("hl", "").lower() == "false":
+        use_hl = False
+
     kwargs = {
         "fq": filter_queries,
         "sort": sort,
         "rows": rows,
         "start": start,
-        "hl": settings.SOLR_USE_HL,
+        "hl": "on" if settings.SOLR_USE_HL and use_hl else "off",
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
@@ -222,6 +228,13 @@ class SearchFieldDetector(LuceneTreeVisitor):
         return [True]
 
 
+class FuzzyDetector(LuceneTreeVisitor):
+    """Validate that there are no nested search fields"""
+
+    def visit_fuzzy(self, _node, _parents=None):
+        return [True]
+
+
 class FilterExtractor(LuceneTreeTransformer):
     """Extract all of the applicable search filters from the text query
     to use as field queries
@@ -232,6 +245,7 @@ class FilterExtractor(LuceneTreeTransformer):
         super().__init__(*args, **kwargs)
         self.filters = QueryDict(mutable=True)
         self.sort = None
+        self.use_hl = True
 
     def visit(self, node, parents=None):
         try:
@@ -286,6 +300,10 @@ class FilterExtractor(LuceneTreeTransformer):
             self.sort = str(node.expr)
             self.prune_parents(parents)
             return None
+        elif node.name == "hl":
+            self.use_hl = str(node.expr).lower() != "false"
+            self.prune_parents(parents)
+            return None
         else:
             return node
 
@@ -323,18 +341,24 @@ def _parse(text_query, query_params):
         # check for boolean expressions to determine if we should pull out
         # all filters or only sort filters
         is_boolean = any(BooleanDetector().visit(tree))
+        # detect fuzzy searches to disable highlighting
+        is_fuzzy = any(FuzzyDetector().visit(tree))
         filter_extractor = FilterExtractor(sort_only=is_boolean)
         tree = filter_extractor.visit(tree)
 
         new_query = str(tree) if tree is not None else ""
         filters = filter_extractor.filters
         sort = filter_extractor.sort
+        # only use highilighting for queries with no fuzzu searches and
+        # which do not explicitly turn it off
+        use_hl = not is_fuzzy and filter_extractor.use_hl
     else:
         # special case for empty query
         new_query = ""
         filters = QueryDict(mutable=True)
         sort = None
         escaped = False
+        use_hl = False
 
     # pull text queries from the parameters into the text query
     additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
@@ -346,7 +370,7 @@ def _parse(text_query, query_params):
     if not new_query:
         new_query = "*:*"
 
-    return new_query, filters, sort, escaped
+    return new_query, filters, sort, escaped, use_hl
 
 
 def _filter_queries(user, query_params):
