@@ -259,6 +259,7 @@ class FilterExtractor(LuceneTreeTransformer):
                 raise
 
     def visit_search_field(self, node, parents):
+        # pylint: disable=too-many-return-statements
         # substitute any aliases
         if node.name in FILTER_FIELDS:
             filter_name = FILTER_FIELDS[node.name]
