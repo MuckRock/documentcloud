@@ -8,7 +8,7 @@ from django.db.models.functions import Coalesce
 from datetime import date, timedelta
 
 # DocumentCloud
-from documentcloud.documents.choices import Access
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, Note
 from documentcloud.projects.models import Project
 from documentcloud.statistics.models import Statistics
@@ -37,6 +37,24 @@ def store_statistics():
     ).count()
     kwargs["total_documents_invisible"] = Document.objects.filter(
         access=Access.invisible
+    ).count()
+    kwargs["total_documents_success"] = Document.objects.filter(
+        status=Status.success
+    ).count()
+    kwargs["total_documents_readable"] = Document.objects.filter(
+        status=Status.readable
+    ).count()
+    kwargs["total_documents_pending"] = Document.objects.filter(
+        status=Status.pending
+    ).count()
+    kwargs["total_documents_error"] = Document.objects.filter(
+        status=Status.error
+    ).count()
+    kwargs["total_documents_nofile"] = Document.objects.filter(
+        status=Status.nofile
+    ).count()
+    kwargs["total_documents_deleted"] = Document.objects.filter(
+        status=Status.deleted
     ).count()
 
     kwargs["total_pages"] = Document.objects.aggregate(

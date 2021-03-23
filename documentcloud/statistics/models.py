@@ -34,6 +34,24 @@ class Statistics(models.Model):
     total_documents_invisible = models.IntegerField(
         help_text=_("The total number of invisible documents")
     )
+    total_documents_success = models.IntegerField(
+        help_text=_("The total number of successful documents")
+    )
+    total_documents_readable = models.IntegerField(
+        help_text=_("The total number of readable documents")
+    )
+    total_documents_pending = models.IntegerField(
+        help_text=_("The total number of pending documents")
+    )
+    total_documents_error = models.IntegerField(
+        help_text=_("The total number of errored documents")
+    )
+    total_documents_nofile = models.IntegerField(
+        help_text=_("The total number of documents with no file")
+    )
+    total_documents_deleted = models.IntegerField(
+        help_text=_("The total number of deleted documents")
+    )
     total_pages = models.IntegerField(help_text=_("The total number of pages"))
     total_pages_public = models.IntegerField(
         help_text=_("The total number of public pages")
