@@ -381,8 +381,15 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 exc,
                 exc_info=sys.exc_info(),
             )
+            if "timed out" in exc.args[0]:
+                code = "time out"
+            else:
+                code = "other"
             return Response(
-                {"error": "There has been an error with your search query"},
+                {
+                    "error": "There has been an error with your search query",
+                    "code": code,
+                },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         else:
