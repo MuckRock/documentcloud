@@ -52,8 +52,8 @@ class OEmbedView(APIView):
                     oembed_response = oembed.response(
                         request,
                         query,
-                        max_width=get_int("max_width"),
-                        max_height=get_int("max_height"),
+                        max_width=get_int("maxwidth"),
+                        max_height=get_int("maxheight"),
                         **match.groupdict()
                     )
                     return Response(oembed_response)
