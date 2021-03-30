@@ -50,8 +50,8 @@ class TestOEmbedView:
             "/api/oembed/",
             {
                 "url": "https://www.example.com/1/?embed=1&option=true",
-                "max_width": 100,
-                "max_height": 200,
+                "maxwidth": 100,
+                "maxheight": 200,
             },
         )
         assert response.status_code == status.HTTP_200_OK
@@ -66,8 +66,8 @@ class TestOEmbedView:
             "/api/oembed/",
             {
                 "url": "https://www.example.com/1/",
-                "max_width": "foo",
-                "max_height": "bar",
+                "maxwidth": "foo",
+                "maxheight": "bar",
             },
         )
         assert response.status_code == status.HTTP_200_OK
