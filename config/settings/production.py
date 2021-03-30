@@ -246,6 +246,7 @@ INSTALLED_APPS += ["moesifdjango"]
 MOESIF_MIDDLEWARE = {
     "APPLICATION_ID": env("MOESIF_ID"),
     "LOG_BODY": True,
+    "LOCAL_DEBUG": env.bool("MOESIF_LOCAL_DEBUG", default=False),
     "USE_CELERY": True,
     "CELERY_BROKER_URL": CELERY_BROKER_URL,
     "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
