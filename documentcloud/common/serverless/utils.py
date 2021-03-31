@@ -67,6 +67,13 @@ def get_redis():
     return _redis.Redis(**kwargs)
 
 
+def normalize_doc_id(doc_id):
+    """Normalize doc id to not point to temporary modifications"""
+    if doc_id.startswith("_"):
+        return doc_id[1:]
+    return doc_id
+
+
 def send_update(redis, doc_id, json_):
     """Sends an update to the API server specified as JSON"""
     if not still_processing(redis, doc_id):
@@ -79,7 +86,7 @@ def send_update(redis, doc_id, json_):
         redis.delete(redis_fields.file_hash(doc_id))
 
     requests.patch(
-        urljoin(API_CALLBACK, f"documents/{doc_id}/"),
+        urljoin(API_CALLBACK, f"documents/{normalize_doc_id(doc_id)}/"),
         json=json_,
         headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
     )
@@ -125,9 +132,9 @@ def send_error(redis, doc_id, exc=None, message=None):
         clean_up(redis, doc_id)
 
 
-def send_post_processing(redis, doc_id, json_):
+def send_post_processing(redis, doc_id, temp_doc_id, json_):
     """Send update to trigger page modification post-processing"""
-    if not still_processing(redis, doc_id):
+    if not still_processing(redis, temp_doc_id):
         return
 
     requests.post(
@@ -138,6 +145,7 @@ def send_post_processing(redis, doc_id, json_):
 
     # Clean out Redis
     clean_up(redis, doc_id)
+    clean_up(redis, temp_doc_id)
 
 
 def initialize(redis, doc_id):
