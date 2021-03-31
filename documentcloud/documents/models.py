@@ -617,9 +617,9 @@ class Note(models.Model):
         """Rotates the note by the specified amount"""
         # rotation_amount % 4:
         #   0 -> unchanged
-        #   1 -> counter clockwise
+        #   1 -> clockwise
         #   2 -> halfway
-        #   3 -> clockwise
+        #   3 -> counter-clockwise
         rotation_amount = rotation_amount % 4
         if rotation_amount == 0:
             return  # unchanged

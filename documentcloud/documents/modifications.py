@@ -155,7 +155,7 @@ def _process_page_objs(page_map, original_document, source_document, objects, re
                 new_obj.id = None
                 new_obj.document = original_document
                 new_obj.page_number = new_page
-                if hasattr(obj, "rotate"):
+                if hasattr(new_obj, "rotate"):
                     new_obj.rotate(rotation)
                 creates.append(new_obj)
         elif source_document == original_document:

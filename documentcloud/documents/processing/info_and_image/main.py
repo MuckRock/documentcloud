@@ -146,7 +146,7 @@ FINISH_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")
 )
 
-ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "cw": 3}
+ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "ccw": 3}
 
 
 class PdfSizeError(Exception):
@@ -919,6 +919,12 @@ def modify_doc(data, _context=None):
         #  * reextract all image files and derive page spec
         #  * create text files from consolidated page text json
         #  * copy temporary directory into original directory
+
+        # Initialize both temp and regular doc id in redis
+        # This helps prevent any processing race conditions
+        utils.initialize(REDIS, doc_id)
+        utils.initialize(REDIS, temp_doc_id)
+
         publisher.publish(
             PDF_PROCESS_TOPIC,
             data=encode_pubsub_data(
@@ -954,14 +960,14 @@ def finish_modify_doc(data, _context=None):
         "[FINISH MODIFY DOC] doc_id %s original_doc_id %s", doc_id, original_doc_id
     )
 
-    utils.send_post_processing(
-        REDIS, original_doc_id, page_modification["modifications"]
-    )
-
     # Move the temporary directory into the original
     storage.delete(original_directory)
     storage.async_cp_directory(temp_directory, original_directory)
     storage.delete(temp_directory)
+
+    utils.send_post_processing(
+        REDIS, original_doc_id, doc_id, page_modification["modifications"]
+    )
 
     return "Ok"
 
