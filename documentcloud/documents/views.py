@@ -827,7 +827,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 
 # Used to map modification rotations to note rotations
-ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "cw": 3}
+ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "ccw": 3}
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
