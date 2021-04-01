@@ -9,12 +9,12 @@ from documentcloud.documents.processing.info_and_image.main import (
     assemble_page_text,
     extract_image,
     finish_import,
+    finish_modify_doc,
     import_document,
+    modify_doc,
     process_page_cache,
     process_pdf,
     redact_doc,
-    modify_doc,
-    finish_modify_doc,
     start_import,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
