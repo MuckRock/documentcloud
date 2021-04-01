@@ -10,8 +10,11 @@ from django.utils.translation import ugettext_lazy as _
 import json
 import logging
 import sys
+import uuid
 
 # Third Party
+import boto3
+import requests
 from listcrunch import uncrunch
 
 # DocumentCloud
@@ -80,7 +83,7 @@ class Document(models.Model):
 
     language = models.CharField(
         _("language"),
-        max_length=3,
+        max_length=8,
         choices=Language.choices,
         blank=True,
         help_text=_(
@@ -109,7 +112,7 @@ class Document(models.Model):
 
     solr_dirty = models.BooleanField(
         _("solr dirty"),
-        default=False,
+        default=True,
         help_text=_("Tracks if the Solr Index is out of date with the SQL model"),
     )
 
@@ -160,6 +163,14 @@ class Document(models.Model):
         null=True,
         db_index=True,
         help_text=_("Scheduled time to make document public"),
+    )
+    cache_dirty = models.BooleanField(
+        _("cache dirty"),
+        default=False,
+        help_text=_(
+            "A destructive operation is taking place and the CDN cache for this "
+            "document should be invalidated when it is done processing"
+        ),
     )
 
     # legacy fields
@@ -363,6 +374,12 @@ class Document(models.Model):
             p.project_id for p in project_memberships if p.edit_access
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
+
+        def format_date(date):
+            if date is None:
+                return None
+            return date.replace(tzinfo=None).isoformat() + "Z"
+
         solr_document = {
             "id": self.pk,
             "user": self.user_id,
@@ -374,8 +391,8 @@ class Document(models.Model):
             "source": self.source,
             "description": self.description,
             "language": self.language,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_at": format_date(self.created_at),
+            "updated_at": format_date(self.updated_at),
             "page_count": self.page_count,
             "projects": project_ids,
             "projects_edit_access": project_edit_access_ids,
@@ -399,6 +416,36 @@ class Document(models.Model):
             solr_document = new_solr_document
 
         return solr_document
+
+    def invalidate_cache(self):
+        """Invalidate public CDN cache for this document's underlying file"""
+        logger.info("Invalidating cache for %s", self.pk)
+        doc_path = self.doc_path[self.doc_path.index("/") :]
+        distribution_id = settings.CLOUDFRONT_DISTRIBUTION_ID
+        if distribution_id:
+            # we want the doc path without the s3 bucket name
+            cloudfront = boto3.client("cloudfront")
+            cloudfront.create_invalidation(
+                DistributionId=distribution_id,
+                InvalidationBatch={
+                    "Paths": {"Quantity": 1, "Items": [doc_path]},
+                    "CallerReference": str(uuid.uuid4()),
+                },
+            )
+        cloudflare_email = settings.CLOUDFLARE_API_EMAIL
+        cloudflare_key = settings.CLOUDFLARE_API_KEY
+        cloudflare_zone = settings.CLOUDFLARE_API_ZONE
+        url = settings.PUBLIC_ASSET_URL + doc_path[1:]
+        if cloudflare_zone:
+            requests.post(
+                "https://api.cloudflare.com/client/v4/zones/"
+                f"{cloudflare_zone}/purge_cache",
+                json={"files": [url]},
+                headers={
+                    "X-Auth-Email": cloudflare_email,
+                    "X-Auth-Key": cloudflare_key,
+                },
+            )
 
 
 class DeletedDocument(models.Model):
@@ -479,11 +526,6 @@ class Note(models.Model):
         to="documents.Document",
         on_delete=models.CASCADE,
         related_name="notes",
-        # This is set to false so we can import private notes
-        # which are attached to documents which haven't been imported yet
-        # Once migration from old DocumentCloud is complete, this should
-        # be set back to True
-        db_constraint=False,
         help_text=_("The document this note belongs to"),
     )
     user = models.ForeignKey(
@@ -575,11 +617,6 @@ class Section(models.Model):
         to="documents.Document",
         on_delete=models.CASCADE,
         related_name="sections",
-        # This is set to false so we can import sections
-        # which are attached to documents which haven't been imported yet
-        # Once migration from old DocumentCloud is complete, this should
-        # be set back to True
-        db_constraint=False,
         help_text=_("The document this section belongs to"),
     )
     page_number = models.PositiveIntegerField(

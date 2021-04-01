@@ -34,6 +34,8 @@ from documentcloud.projects.models import Project
 
 logger = logging.getLogger(__name__)
 
+DATA_VALUE_LENGTH = 300
+
 
 class PageNumberValidationMixin:
     def validate_page_number(self, value):
@@ -170,11 +172,25 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             request
             and request.user
             # check that projects is a field and not expanded into a serializer
+            and "projects" in self.fields
             and isinstance(self.fields["projects"], ManyRelatedField)
         ):
             self.fields[
                 "projects"
             ].child_relation.queryset = Project.objects.get_editable(request.user)
+
+        if (
+            request
+            and request.user
+            and request.user.is_authenticated
+            and not request.user.verified_journalist
+        ):
+            # non-verified journalists may not make documents public
+            if "access" in self.fields:
+                self.fields["access"].choices.pop(Access.public)
+                self.fields["access"].choice_map.pop("public")
+            if "publish_at" in self.fields:
+                self.fields["publish_at"].read_only = True
 
         is_create = self.instance is None
         is_list = isinstance(self.instance, (list, QuerySet))
@@ -190,7 +206,10 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             and self.initial_data.get("file_url")
         )
         has_file = is_document and self.instance.status != Status.nofile
-        if (is_create and has_file_url) or is_list or has_file or not is_owner:
+        del_presigned_url = (
+            (is_create and has_file_url) or is_list or has_file or not is_owner
+        )
+        if del_presigned_url and "presigned_url" in self.fields:
             # only show presigned url if we are creating a new document without a
             # file url, or the document has not had a file uploaded yet
             del self.fields["presigned_url"]
@@ -239,6 +258,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
 
         if not all(isinstance(v, str) for v_ in value.values() for v in v_):
+            raise serializers.ValidationError(
+                "`data` JSON object must have strings for all values within the lists"
+                "of top level object properties"
+            )
+
+        if not all(len(v) <= DATA_VALUE_LENGTH for v_ in value.values() for v in v_):
             raise serializers.ValidationError(
                 "`data` JSON object must have strings for all values within the lists"
                 "of top level object properties"
@@ -409,17 +434,17 @@ class EntityDateSerializer(serializers.ModelSerializer):
 
 class DataSerializer(serializers.Serializer):
     # pylint: disable=abstract-method
-    values = serializers.ListSerializer(child=serializers.CharField(max_length=200))
+    values = serializers.ListSerializer(
+        child=serializers.CharField(max_length=DATA_VALUE_LENGTH)
+    )
 
 
 class DataAddRemoveSerializer(serializers.Serializer):
     # pylint: disable=abstract-method
     values = serializers.ListSerializer(
-        required=False, child=serializers.CharField(max_length=200)
+        required=False, child=serializers.CharField(max_length=DATA_VALUE_LENGTH)
     )
-    remove = serializers.ListSerializer(
-        required=False, child=serializers.CharField(max_length=200)
-    )
+    remove = serializers.ListSerializer(required=False, child=serializers.CharField())
 
 
 class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):

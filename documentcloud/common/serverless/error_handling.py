@@ -32,6 +32,17 @@ def pubsub_function(
 ):
     def decorator(func):
         def wrapper(*args, **kwargs):
+            def err_handle_func(*args_, **kwargs_):
+                # We want to handle arbitrary exceptions from within the concurrent
+                # thread so that Sentry has the full traceback
+                try:
+                    return func(*args_, **kwargs_)
+                except Exception as exc:  # pylint: disable=broad-except
+                    # Handle any error that comes up during function execution
+                    utils.send_error(
+                        redis, None if skip_processing_check else doc_id, exc=exc
+                    )
+                    return f"An error has occurred: {exc}"
 
             # Get data
             data = get_pubsub_data(args[0])
@@ -65,11 +76,13 @@ def pubsub_function(
 
                 # Set up the timeout
                 timeout_seconds = timeouts[run_count]
-                concurrent_func = concurrent.process(timeout=timeout_seconds)(func)
+                concurrent_func = concurrent.process(timeout=timeout_seconds)(
+                    err_handle_func
+                )
                 future = concurrent_func(*args, **kwargs)
                 func_ = future.result
             else:
-                func_ = lambda: func(*args, **kwargs)
+                func_ = lambda: err_handle_func(*args, **kwargs)
 
             try:
                 # Run the function as originally intended
@@ -79,12 +92,6 @@ def pubsub_function(
                 logging.warning("Function timed out: retrying (run %d)", run_count + 2)
                 data[RUN_COUNT] = run_count + 1
                 publisher.publish(pubsub_topic, data=encode_pubsub_data(data))
-            except Exception as exc:  # pylint: disable=broad-except
-                # Handle any error that comes up during function execution
-                utils.send_error(
-                    redis, None if skip_processing_check else doc_id, exc=exc
-                )
-                return f"An error has occurred: {exc}"
 
         return wraps(func)(wrapper)
 

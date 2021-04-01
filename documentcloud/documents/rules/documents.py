@@ -61,6 +61,11 @@ def is_view_collaborator(user, document):
     ).exists()
 
 
+@predicate
+def is_verified(user):
+    return user.is_authenticated and user.verified_journalist
+
+
 # nobody can see invisible or deleted documents
 default_limit = (
     is_authenticated & ~has_access(Access.invisible) & ~has_status(Status.deleted)
@@ -100,7 +105,7 @@ can_view = (
 )
 
 add_perm("documents.view_document", can_view)
-add_perm("documents.add_document", is_authenticated)
+add_perm("documents.add_document", is_verified)
 add_perm("documents.change_document", can_change)
 add_perm("documents.share_document", can_share)
 add_perm("documents.delete_document", can_share)

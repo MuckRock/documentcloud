@@ -192,9 +192,8 @@ class TestDocumentAPI:
             document_id=response_json["id"], project=project, edit_access=True
         ).exists()
 
-    def test_create_public(self, client):
+    def test_create_public(self, client, user):
         """Create a public document when you are a verified journalist"""
-        user = UserFactory(membership__organization__verified_journalist=True)
         client.force_authenticate(user=user)
         response = client.post(
             "/api/documents/", {"title": "Test", "access": "public"}, format="json"
@@ -218,14 +217,12 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()["id"] != 999
 
-    def test_create_bad_public(self, client, user):
-        """Create a public document when you are not a verified journalist"""
+    def test_create_bad_public(self, client):
+        """Create a document when you are not a verified journalist"""
+        user = UserFactory(membership__organization__verified_journalist=False)
         client.force_authenticate(user=user)
-        response = client.post(
-            "/api/documents/", {"title": "Test", "access": "public"}, format="json"
-        )
-        # this check is currently disabled
-        assert response.status_code == status.HTTP_201_CREATED
+        response = client.post("/api/documents/", {"title": "Test"}, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_create_bad_data(self, client, user):
         """Data keys must be alphanumeric"""
@@ -241,7 +238,7 @@ class TestDocumentAPI:
     def test_bulk_create(self, client, user, django_assert_num_queries):
         """Create multiple documents"""
         client.force_authenticate(user=user)
-        with django_assert_num_queries(9):
+        with django_assert_num_queries(11):
             response = client.post(
                 "/api/documents/",
                 [{"title": "Test 1"}, {"title": "Test 2"}, {"title": "Test 3"}],
@@ -344,21 +341,20 @@ class TestDocumentAPI:
         assert document.title == title
         assert document.access == Access.organization
 
-    def test_update_public(self, client):
+    def test_update_public(self, client, document):
         """Test updating a document to public when you are a verified journalist"""
-        document = DocumentFactory(
-            user__membership__organization__verified_journalist=True
-        )
         client.force_authenticate(user=document.user)
         response = client.patch(f"/api/documents/{document.pk}/", {"access": "public"})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_update_bad_public(self, client, document):
+    def test_update_bad_public(self, client):
         """Test updating a document to public when you are not a verified journalist"""
+        document = DocumentFactory(
+            user__membership__organization__verified_journalist=False
+        )
         client.force_authenticate(user=document.user)
         response = client.patch(f"/api/documents/{document.pk}/", {"access": "public"})
-        # this check is currently disabled
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_bad_file_url(self, client, document):
         """You may not update the file url"""
@@ -421,6 +417,28 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["id"] == document.pk
         assert Document.objects.count() == 1
+
+    def test_update_data(self, client, document):
+        """Test updating a document's data directly"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"data": {"color": ["blue"]}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.data["color"] == ["blue"]
+
+    def test_update_data_long(self, client, document):
+        """Test updating a document's data directly with a value that is too long"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"data": {"color": ["a" * 301]}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
@@ -639,7 +657,7 @@ class TestDocumentAPI:
         )
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
-        with django_assert_num_queries(9):
+        with django_assert_num_queries(10):
             response = client.post(
                 "/api/documents/process/",
                 [{"id": d.pk} for d in documents],
@@ -1281,6 +1299,16 @@ class TestDataAPI:
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
         self._compare_json(document.data, {"color": ["red", "blue"]})
+
+    def test_update_long(self, client, document):
+        """Add a new key value pair to a document that is too long"""
+        client.force_authenticate(user=document.user)
+        response = client.put(
+            f"/api/documents/{document.pk}/data/color/",
+            {"values": ["a" * 301]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_partial_update(self, client):
         """Add a new value to an existing key"""

@@ -167,11 +167,6 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
         field_updates,
         index_text,
     )
-    if field_updates is not None and "data" in field_updates:
-        # update all fields if data was updated to ensure we remove any data keys
-        # from solr which were removed from the document
-        field_updates = None
-
     if solr_document is None:
         try:
             document = Document.objects.get(pk=document_pk)
@@ -183,6 +178,9 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
             solr_document = document.solr(field_updates.keys())
         else:
             solr_document = document.solr(index_text=index_text)
+            # add field updates to avoid clobbering already indexed text
+            if not index_text:
+                field_updates = {f: "set" for f in solr_document if f != "id"}
 
     _index_solr_document(SOLR, solr_document, field_updates)
 
@@ -404,10 +402,11 @@ def _index_solr_document(solr, solr_document, field_updates=None):
     """Index a single prepared solr document"""
     document_pk = solr_document["id"]
     logger.info(
-        "[SOLR INDEX] indexing document %s - %s - %s - %.200s",
+        "[SOLR INDEX] indexing document %s - %s - %s - %s - %.200s",
         document_pk,
         solr_document.get("title", ""),
         field_updates,
+        solr_document.keys(),
         solr_document,
     )
 

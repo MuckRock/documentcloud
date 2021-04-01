@@ -13,13 +13,15 @@ from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
 
+DOCCLOUD_URL_REGEX = r"https?://((www|beta|embed)[.])?documentcloud[.]org"
+
 
 @register
 class DocumentOEmbed(RichOEmbed):
     template = "oembed/document.html"
     patterns = [
         # viewer url
-        re.compile(rf"^{settings.DOCCLOUD_URL}/documents/(?P<pk>[0-9]+)[\w-]*/?$"),
+        re.compile(rf"^{DOCCLOUD_URL_REGEX}/documents/(?P<pk>[0-9]+)[\w.-]*/?$"),
         # api url
         re.compile(rf"^{settings.DOCCLOUD_API_URL}/api/documents/(?P<pk>[0-9]+)/?$"),
     ]
@@ -65,10 +67,16 @@ class DocumentOEmbed(RichOEmbed):
 class PageOEmbed(DocumentOEmbed):
     template = "oembed/page.html"
     patterns = [
+        # page hash
         re.compile(
-            rf"^{settings.DOCCLOUD_URL}/documents/"
-            r"(?P<pk>[0-9]+)[\w-]*/?#document/p(?P<page>[0-9]+)$"
-        )
+            rf"^{DOCCLOUD_URL_REGEX}/documents/"
+            r"(?P<pk>[0-9]+)[\w.-]*/?#document/p(?P<page>[0-9]+)$"
+        ),
+        # old url
+        re.compile(
+            rf"^{DOCCLOUD_URL_REGEX}/documents/"
+            r"(?P<pk>[0-9]+)[\w.-]*/pages/(?P<page>[0-9]+)(.html)?/?$"
+        ),
     ]
 
     def get_dimensions(self, document, max_width, max_height):
@@ -104,10 +112,21 @@ class PageOEmbed(DocumentOEmbed):
 class NoteOEmbed(RichOEmbed):
     template = "oembed/note.html"
     patterns = [
+        # note hash
         re.compile(
-            rf"^{settings.DOCCLOUD_URL}/documents/(?P<doc_pk>[0-9]+)[\w-]*/?"
+            rf"^{DOCCLOUD_URL_REGEX}/documents/(?P<doc_pk>[0-9]+)[\w.-]*/?"
             r"#document/p(?P<page>[0-9]+)/a(?P<pk>[0-9]+)$"
-        )
+        ),
+        # old url
+        re.compile(
+            rf"^{DOCCLOUD_URL_REGEX}/documents/"
+            r"(?P<doc_pk>[0-9]+)[\w.-]*/annotations/(?P<pk>[0-9]+)(.html)?/?$"
+        ),
+        # api url
+        re.compile(
+            rf"^{settings.DOCCLOUD_API_URL}/api/documents/(?P<doc_pk>[0-9]+)/"
+            r"notes/(?P<pk>[0-9]+)/?$"
+        ),
     ]
     width = 750
 

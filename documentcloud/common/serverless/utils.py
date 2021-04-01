@@ -80,6 +80,8 @@ def send_complete(redis, doc_id):
 
 def send_error(redis, doc_id, exc=None, message=None):
     """Sends an error to the API server specified as a string message"""
+    # pylint: disable=import-error
+
     if doc_id and not still_processing(redis, doc_id):
         return
 
@@ -106,12 +108,22 @@ def send_error(redis, doc_id, exc=None, message=None):
         except:
             pass
 
-    # Log the error depending on its severity
-    logging.error(message, exc_info=exc)
-
     # Clean out Redis
     if doc_id:
         clean_up(redis, doc_id)
+
+    # Log the error
+    # pylint: disable=no-else-raise
+    if env("ENVIRONMENT").startswith("local"):
+        logging.error(message, exc_info=exc)
+        raise exc
+    else:
+        from sentry_sdk import capture_exception, capture_message
+
+        if exc:
+            capture_exception(exc)
+        else:
+            capture_message(message)
 
 
 def initialize(redis, doc_id):

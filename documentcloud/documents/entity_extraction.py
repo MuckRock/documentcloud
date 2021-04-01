@@ -288,7 +288,7 @@ def _get_entity_type(entities, entity_filter, keyer, mapper):
             mid = metadata.pop("mid", "")
             wikipedia_url = metadata.pop("wikipedia_url", "")
             entity_obj = Entity(
-                name=entity["name"],
+                name=entity["name"][:255],
                 kind=entity["type_"],
                 description=entity.get("description", ""),
                 mid=mid,

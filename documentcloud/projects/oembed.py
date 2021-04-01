@@ -7,6 +7,7 @@ from rest_framework.generics import get_object_or_404
 import re
 
 # DocumentCloud
+from documentcloud.documents.oembed import DOCCLOUD_URL_REGEX
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
 from documentcloud.projects.models import Project
@@ -18,7 +19,7 @@ class ProjectOEmbed(RichOEmbed):
     patterns = [
         # manager url
         re.compile(
-            rf"^{settings.DOCCLOUD_URL}/projects/[\w-]*?(?P<proj_pk>[0-9]+)(/|\?|$)"
+            rf"^{DOCCLOUD_URL_REGEX}/projects/[\w-]*?(?P<proj_pk>[0-9]+)(/|\?|$)"
         ),
         # api url
         re.compile(

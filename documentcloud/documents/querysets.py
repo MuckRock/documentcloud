@@ -60,19 +60,22 @@ class DocumentQuerySet(models.QuerySet):
                 )
             )
             query = (
-                # you can edit documents you own
-                Q(user=user)
+                # you can edit documents you own that are not public
+                (Q(user=user) & ~Q(access=Access.public))
                 # you may edit documents in your projects shared for editing
                 # written this way for performance
-                | Q(
-                    id__in=self.model.objects.filter(
-                        projects__in=projects, projectmembership__edit_access=True
+                | (
+                    Q(
+                        id__in=self.model.objects.filter(
+                            projects__in=projects, projectmembership__edit_access=True
+                        )
                     )
+                    & ~Q(access=Access.public)
                 )
                 # you can edit organization level documents in your
                 # organization
                 | Q(
-                    access=Access.organization,
+                    access__in=(Access.organization, Access.public),
                     organization__in=user.organizations.all(),
                 )
             )

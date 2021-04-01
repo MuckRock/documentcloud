@@ -479,9 +479,10 @@ SOLR_INDEX_CATCHUP_SECONDS = env.int("SOLR_INDEX_CATCHUP_SECONDS", default=300)
 SOLR_INDEX_MAX_SIZE = env.int("SOLR_INDEX_MAX_SIZE", default=18 * 1024 * 1024)
 SOLR_RETRY_BACKOFF = env.int("SOLR_RETRY_BACKOFF", default=300)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
-SOLR_USE_HL = env("SOLR_USE_HL", default="off")
+SOLR_USE_HL = env.bool("SOLR_USE_HL", default=True)
 SOLR_HL_REQUIRE_FIELD_MATCH = env("SOLR_HL_REQUIRE_FIELD_MATCH", default="true")
 SOLR_HL_MULTI_TERM = env("SOLR_HL_MULTI_TERM", default="true")
+SOLR_TIMEOUT = env.int("SOLR_TIMEOUT", default=20)
 
 # OEmbed
 # ------------------------------------------------------------------------------
@@ -525,3 +526,11 @@ gac.write(GOOGLE_APPLICATION_CREDENTIALS.encode("ascii"))
 gac.close()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac.name
 GOOGLE_API_KEY = env.str("GOOGLE_API_KEY", default="")
+
+# CDN Caches
+# ------------------------------------------------------------------------------
+CLOUDFRONT_DISTRIBUTION_ID = env("CLOUDFRONT_DISTRIBUTION_ID", default="")
+
+CLOUDFLARE_API_EMAIL = env("CLOUDFLARE_API_EMAIL", default="")
+CLOUDFLARE_API_KEY = env("CLOUDFLARE_API_KEY", default="")
+CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")

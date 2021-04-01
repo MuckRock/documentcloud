@@ -52,14 +52,17 @@ def title_case(s):
     return s[0].upper() + s[1:]
 
 
+# Get title name for string
 def titleize(s):
     return "".join([title_case(x) for x in re.split("[^a-zA-Z0-9]+", s) if x])
 
 
+# Get topic name for string
 def topicize(s):
     return "-".join([x for x in re.split("[^a-zA-Z0-9_]+", s) if x])
 
 
+# Get file name for string
 def fnize(s):
     return "_".join([x for x in re.split("[^a-zA-Z0-9]+", s) if x])
 
