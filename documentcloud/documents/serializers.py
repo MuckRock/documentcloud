@@ -464,6 +464,7 @@ class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
 
 
 class ModificationSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
     type = serializers.ChoiceField([("rotate", "rotate")])
     angle = serializers.ChoiceField(
         choices=[("cc", "cc"), ("ccw", "ccw"), ("hw", "hw")], required=False
@@ -479,6 +480,7 @@ class ModificationSerializer(serializers.Serializer):
 
 
 class ModificationSpecItemSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
     page = serializers.CharField()
     id = serializers.PrimaryKeyRelatedField(
         required=False, queryset=Document.objects.all()
@@ -572,6 +574,7 @@ class ModificationSpecItemSerializer(serializers.Serializer):
 
 
 class ModificationSpecSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
     data = ModificationSpecItemSerializer(many=True)
 
 
