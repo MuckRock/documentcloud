@@ -149,6 +149,11 @@ FINISH_IMPORT_TOPIC = publisher.topic_path(
 ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "ccw": 3}
 
 
+def millis():
+    """Get the current time in milliseconds"""
+    return int(round(time.time() * 1000))
+
+
 class PdfSizeError(Exception):
     pass
 
@@ -612,7 +617,6 @@ def extract_image(data, _context=None):
                 if page_modification is not None:
                     # In page modification mode, extract page text from the
                     # consolidated json file
-                    # TODO: investigate storing text in Redis for faster experience?
                     with storage.open(
                         path.json_text_path(doc_id, slug), "rb"
                     ) as json_file:
@@ -871,10 +875,7 @@ def modify_doc(data, _context=None):
             page_text_json.append(page_text)
 
         # Assemble full json structure and write to file in new temporary directory
-        full_page_text_json = {
-            "updated": int(round(time.time() * 1000)),  # TODO: make millis() method
-            "pages": page_text_json,
-        }
+        full_page_text_json = {"updated": millis(), "pages": page_text_json}
         temp_doc_id = path.temp(doc_id)
         page_text_json_path = path.json_text_path(temp_doc_id, slug)
         storage.simple_upload(
@@ -951,7 +952,6 @@ def finish_modify_doc(data, _context=None):
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
-    slug = data["slug"]
     page_modification = data["page_modification"]
     original_doc_id = page_modification["original_doc_id"]
     original_directory = path.path(original_doc_id)
@@ -1151,7 +1151,7 @@ def import_document(data, _context=None):
     )
 
     # Annotate the results with the current timestamp
-    current_millis = int(round(time.time() * 1000))
+    current_millis = millis()
 
     page_texts_json_pages = [
         {
