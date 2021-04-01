@@ -25,14 +25,16 @@ if not env.str("ENVIRONMENT").startswith("local"):
     # to using pebble and multiprocessing - logging integration does
     # not work across process boundary
     # see https://github.com/getsentry/raven-python/issues/1110#issuecomment-688923571
-    from sentry_sdk import capture_exception, flush
+    from sentry_sdk import capture_exception, capture_message, flush
 else:
 
     # locally reraise the exception for debuggin purposes
     def capture_exception(exc):
         raise exc
 
+    capture_message = lambda m: None
     flush = lambda: None
+
 
 # Common environment variables
 API_CALLBACK = env.str("API_CALLBACK")
@@ -109,9 +111,13 @@ def send_error(redis, doc_id, exc=None, message=None):
             headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
         )
 
-    logging.error(message, exc_info=exc)
-    capture_exception(exc)
-    flush()
+    if exc is not None:
+        logging.error(message, exc_info=exc)
+        capture_exception(exc)
+        flush()
+    else:
+        logging.error(message)
+        capture_message(message)
 
     # Clean out Redis
     if doc_id:
