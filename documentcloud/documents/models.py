@@ -400,6 +400,7 @@ class Document(models.Model):
             "file_hash": self.file_hash,
             "related_article": self.related_article,
             "publish_at": format_date(self.publish_at),
+            "published_url": self.published_url,
             **pages,
             **data,
         }
