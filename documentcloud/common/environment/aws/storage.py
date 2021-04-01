@@ -145,7 +145,8 @@ class AwsStorage:
         import aioboto3
 
         if self.minio:
-            # Semaphore approach from https://github.com/aio-libs/aiobotocore/issues/738#issuecomment-639026068
+            # Semaphore approach from
+            # https://github.com/aio-libs/aiobotocore/issues/738#issuecomment-639026068
             upload_semaphore = asyncio.BoundedSemaphore(
                 env("S3_CP_MAX_POOL", default=10)
             )
