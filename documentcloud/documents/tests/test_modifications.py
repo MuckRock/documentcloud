@@ -24,6 +24,7 @@ tests = [
 class TestPostProcess:
     """Test the page modification post processing"""
 
+    # pylint: disable=too-many-arguments
     @pytest.mark.parametrize("factory,attr", models)
     @pytest.mark.parametrize(
         "page_spec,initial_page,final_page,count,page_count", tests
@@ -80,7 +81,7 @@ class TestPostProcess:
         modifications = [
             {
                 "page_spec": [[0, 2]],
-                "modifications": [{"type": "rotate", "angle": "ccw"}],
+                "modifications": [{"type": "rotate", "angle": "cc"}],
             }
         ]
         post_process(document, modifications)

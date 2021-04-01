@@ -475,6 +475,7 @@ class ModificationSpecItemSerializer(serializers.Serializer):
 
         return modifications
 
+    # pylint: disable=too-many-locals
     def validate(self, attrs):
         view = self.context.get("view")
         request = self.context.get("request")
