@@ -111,11 +111,13 @@ def send_error(redis, doc_id, exc=None, message=None):
     if doc_id:
         clean_up(redis, doc_id)
 
-    # Log the error depending on its severity
+    # Log the error
+    # pylint: disable=no-else-raise
     if env("ENVIRONMENT").startswith("local"):
         logging.error(message, exc_info=exc)
         raise exc
     else:
+        # pylint: disable=import-error
         from sentry_sdk import capture_exception, capture_message
 
         if exc:
