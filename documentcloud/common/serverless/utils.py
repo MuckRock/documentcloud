@@ -20,10 +20,19 @@ from .. import redis_fields
 env = environ.Env()
 
 if not env.str("ENVIRONMENT").startswith("local"):
+    # in production, log errors to sentry
+    # must capture explicitly instead of using logging integration due
+    # to using pebble and multiprocessing - logging integration does
+    # not work across process boundary
+    # see https://github.com/getsentry/raven-python/issues/1110#issuecomment-688923571
     from sentry_sdk import capture_exception, flush
 else:
-    capture_exception = lambda *a, **k: None
-    flush = lambda *a, **k: None
+
+    # locally reraise the exception for debuggin purposes
+    def capture_exception(exc):
+        raise exc
+
+    flush = lambda: None
 
 # Common environment variables
 API_CALLBACK = env.str("API_CALLBACK")
@@ -107,8 +116,6 @@ def send_error(redis, doc_id, exc=None, message=None):
     # Clean out Redis
     if doc_id:
         clean_up(redis, doc_id)
-
-    raise exc
 
 
 def initialize(redis, doc_id):
