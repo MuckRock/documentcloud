@@ -21,9 +21,9 @@ from documentcloud.documents.views import (
     EntityDateViewSet,
     EntityViewSet,
     LegacyEntityViewSet,
+    ModificationViewSet,
     NoteViewSet,
     RedactionViewSet,
-    ModificationViewSet,
     SectionViewSet,
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
