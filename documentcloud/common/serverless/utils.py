@@ -19,6 +19,23 @@ from .. import redis_fields
 
 env = environ.Env()
 
+if not env.str("ENVIRONMENT").startswith("local"):
+    # in production, log errors to sentry
+    # must capture explicitly instead of using logging integration due
+    # to using pebble and multiprocessing - logging integration does
+    # not work across process boundary
+    # see https://github.com/getsentry/raven-python/issues/1110#issuecomment-688923571
+    from sentry_sdk import capture_exception, capture_message, flush
+else:
+
+    # locally reraise the exception for debuggin purposes
+    def capture_exception(exc):
+        raise exc
+
+    capture_message = lambda m: None
+    flush = lambda: None
+
+
 # Common environment variables
 API_CALLBACK = env.str("API_CALLBACK")
 PROCESSING_TOKEN = env.str("PROCESSING_TOKEN")
@@ -80,8 +97,6 @@ def send_complete(redis, doc_id):
 
 def send_error(redis, doc_id, exc=None, message=None):
     """Sends an error to the API server specified as a string message"""
-    # pylint: disable=import-error
-
     if doc_id and not still_processing(redis, doc_id):
         return
 
@@ -96,34 +111,17 @@ def send_error(redis, doc_id, exc=None, message=None):
             headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
         )
 
-        # pylint: disable=bare-except
-        try:
-            # Try to log additional Redis information if possible
-            message += (
-                f"\n\nPage count: {redis.get(redis_fields.page_count(doc_id))}"
-                f"\nImages remaining: "
-                f"{redis.get(redis_fields.images_remaining(doc_id))}"
-                f"\nTexts remaining: {redis.get(redis_fields.texts_remaining(doc_id))}"
-            )
-        except:
-            pass
+    if exc is not None:
+        logging.error(message, exc_info=exc)
+        capture_exception(exc)
+        flush()
+    else:
+        logging.error(message)
+        capture_message(message)
 
     # Clean out Redis
     if doc_id:
         clean_up(redis, doc_id)
-
-    # Log the error
-    # pylint: disable=no-else-raise
-    if env("ENVIRONMENT").startswith("local"):
-        logging.error(message, exc_info=exc)
-        raise exc
-    else:
-        from sentry_sdk import capture_exception, capture_message
-
-        if exc:
-            capture_exception(exc)
-        else:
-            capture_message(message)
 
 
 def initialize(redis, doc_id):
