@@ -75,21 +75,21 @@ def coverage(c):
         COMPOSE_RUN_OPT_USER.format(
             opt="-e DJANGO_SETTINGS_MODULE=config.settings.test",
             service="documentcloud_django",
-            cmd=f"coverage erase",
+            cmd="coverage erase",
         )
     )
     c.run(
         COMPOSE_RUN_OPT_USER.format(
             opt="-e DJANGO_SETTINGS_MODULE=config.settings.test",
             service="documentcloud_django",
-            cmd=f"coverage run --source documentcloud -m py.test",
+            cmd='coverage run --source documentcloud -m py.test -m "not slow"',
         )
     )
     c.run(
         COMPOSE_RUN_OPT_USER.format(
             opt="-e DJANGO_SETTINGS_MODULE=config.settings.test",
             service="documentcloud_django",
-            cmd=f"coverage html",
+            cmd="coverage html",
         )
     )
 

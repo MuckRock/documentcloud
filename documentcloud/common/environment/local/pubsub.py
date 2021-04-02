@@ -66,7 +66,7 @@ def page_cache_task(data):
 def extract_image_task(data):
     from documentcloud.documents.tasks import extract_images
 
-    return extract_images(data)
+    return extract_images.delay(data)
 
 
 def ocr_page_task(data):
@@ -85,6 +85,18 @@ def redact_doc_task(data):
     from documentcloud.documents.tasks import redact_document
 
     return redact_document.delay(data)
+
+
+def modify_doc_task(data):
+    from documentcloud.documents.tasks import modify_document
+
+    return modify_document.delay(data)
+
+
+def finish_modify_doc_task(data):
+    from documentcloud.documents.tasks import finish_modify_document
+
+    return finish_modify_document.delay(data)
 
 
 def start_import_task(data):
@@ -131,6 +143,13 @@ publisher.register_internal_callback(
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("REDACT_TOPIC", default="redact-doc")), redact_doc_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")), modify_doc_task
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("FINISH_MODIFY_TOPIC", default="finish-modify-doc")),
+    finish_modify_doc_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")),

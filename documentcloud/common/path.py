@@ -17,6 +17,10 @@ TEXT_SUFFIX = "txt"
 JSON_TEXT_SUFFIX = "txt.json"
 
 
+def temp(doc_id):
+    return f"_{doc_id}"
+
+
 def path(doc_id):
     """The path where this document's files are located"""
     return f"{DOCUMENT_BUCKET}/documents/{doc_id}/"

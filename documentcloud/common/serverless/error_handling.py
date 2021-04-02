@@ -55,6 +55,7 @@ def pubsub_function(
                 doc_id
                 and not skip_processing_check
                 and not data.get("import")
+                and not data.get("page_modification")
                 and not utils.still_processing(redis, doc_id)
             ):
                 logging.warning(
