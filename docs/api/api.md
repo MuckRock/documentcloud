@@ -169,7 +169,7 @@ documents](#project-documents).
 
 There are two supported ways to upload documents &mdash; directly uploading the
 file to our storage servers or by providing a URL to a publicly available
-PDF. We currently only support PDF documents.
+PDF or other [supported file type](#supported-file-types).
 
 #### Direct File Upload Flow
 
@@ -686,6 +686,17 @@ The status informs you to the current status of your document.
 - `pending` &ndash; The document is processing and not currently readable
 - `error` &ndash; There was an [error](#errors) during processing
 - `nofile` &ndash; The document was created, but no file was uploaded yet
+
+### Supported File Types
+
+<details>
+<summary>Supported file types</summary>
+
+- PDF
+- DOCX
+- Insert all file types here
+
+</details>
 
 ### Languages
 
