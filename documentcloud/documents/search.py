@@ -100,8 +100,8 @@ def search(user, query_params):
     rows, start, page = _paginate(query_params, user)
 
     # allow explicit disabling of highlighting
-    if query_params.get("hl", "").lower() == "false":
-        use_hl = False
+    if query_params.get("hl", "").lower() == "true":
+        use_hl = True
 
     kwargs = {
         "fq": filter_queries,
@@ -245,7 +245,7 @@ class FilterExtractor(LuceneTreeTransformer):
         super().__init__(*args, **kwargs)
         self.filters = QueryDict(mutable=True)
         self.sort = None
-        self.use_hl = True
+        self.use_hl = False
 
     def visit(self, node, parents=None):
         try:
@@ -302,7 +302,7 @@ class FilterExtractor(LuceneTreeTransformer):
             self.prune_parents(parents)
             return None
         elif node.name == "hl":
-            self.use_hl = str(node.expr).lower() != "false"
+            self.use_hl = str(node.expr).lower() == "true"
             self.prune_parents(parents)
             return None
         else:
