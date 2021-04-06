@@ -134,9 +134,9 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @lru_cache()
     def check_edit_project(self):
         project = Project.objects.get(pk=self.kwargs["project_pk"])
-        if not self.request.user.has_perm("projects.change_project", project):
+        if not self.request.user.has_perm("projects.add_remove_project", project):
             raise exceptions.PermissionDenied(
-                "You do not have permission to edit this project"
+                "You do not have permission to edit documents in this project"
             )
 
     def check_permissions(self, request):

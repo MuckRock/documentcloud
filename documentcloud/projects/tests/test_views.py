@@ -222,7 +222,7 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_create_bad_collaborator(self, client, user, project, document):
+    def test_create_bad_no_collaborator(self, client, user, project, document):
         """You may not add a document to a project you are not a collaborator on"""
         client.force_authenticate(user=user)
         response = client.post(
@@ -231,6 +231,28 @@ class TestProjectMembershipAPI:
             format="json",
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_bad_view_collaborator(self, client, user, document):
+        """You may not add a document to a project you are a view collaborator on"""
+        project = ProjectFactory(collaborators=[user])
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_edit_collaborator(self, client, user, document):
+        """You may add a document to a project you are an edit collaborator on"""
+        project = ProjectFactory(edit_collaborators=[user])
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/projects/{project.pk}/documents/",
+            {"document": document.pk},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
 
     def test_create_bad_duplicate(self, client, project, document):
         """You may not add the same document to a project more than once"""
@@ -338,15 +360,37 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_update_bad_collaborator(self, client, document, user):
+    def test_update_bad_no_collaborator(self, client, document):
         """You may not update a document in a project if you are not a collaborator"""
         project = ProjectFactory(documents=[document])
-        client.force_authenticate(user=user)
+        client.force_authenticate(user=document.user)
         response = client.patch(
             f"/api/projects/{project.pk}/documents/{document.pk}/",
             {"edit_access": True},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_update_bad_view_collaborator(self, client, document):
+        """You may not update a document in a project if you are a view collaborator"""
+        project = ProjectFactory(documents=[document], collaborators=[document.user])
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/documents/{document.pk}/",
+            {"edit_access": True},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_update_edit_collaborator(self, client, document):
+        """You may update a document in a project if you are a edit collaborator"""
+        project = ProjectFactory(
+            documents=[document], edit_collaborators=[document.user]
+        )
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/documents/{document.pk}/",
+            {"edit_access": True},
+        )
+        assert response.status_code == status.HTTP_200_OK
 
     def test_partial_update_bulk(self, client, user):
         """Test updating multiple documents in a project"""
@@ -434,12 +478,30 @@ class TestProjectMembershipAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not project.documents.filter(pk=document.pk).exists()
 
-    def test_destroy_bad_collaborator(self, client, user, document):
+    def test_destroy_bad_no_collaborator(self, client, user, document):
         """You cannot remove a document from a project you are not a collaborator on"""
         project = ProjectFactory(user=document.user, documents=[document])
         client.force_authenticate(user=user)
         response = client.delete(f"/api/projects/{project.pk}/documents/{document.pk}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_destroy_bad_view_collaborator(self, client, user, document):
+        """You cannot remove a document from a project you are a view collaborator on"""
+        project = ProjectFactory(
+            user=document.user, documents=[document], collaborators=[user]
+        )
+        client.force_authenticate(user=user)
+        response = client.delete(f"/api/projects/{project.pk}/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_destroy_edit_collaborator(self, client, user, document):
+        """You can remove a document from a project you are an edit collaborator on"""
+        project = ProjectFactory(
+            user=document.user, documents=[document], edit_collaborators=[user]
+        )
+        client.force_authenticate(user=user)
+        response = client.delete(f"/api/projects/{project.pk}/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_destroy_bulk(self, client, user):
         """Test removing a document from a project"""

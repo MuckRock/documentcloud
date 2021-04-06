@@ -79,6 +79,9 @@ class Project(models.Model):
 
     class Meta:
         ordering = ("slug",)
+        permissions = (
+            ("add_remove_project", "Can add & remove documents from a project"),
+        )
 
     def __str__(self):
         return self.title if self.title else "-Untitled-"
