@@ -10,6 +10,7 @@ from django.utils import timezone
 
 # Standard Library
 import logging
+import sys
 from datetime import date
 
 # Third Party
@@ -21,7 +22,7 @@ from requests.exceptions import HTTPError, RequestException
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents import entity_extraction, solr
 from documentcloud.documents.choices import Access, Status
-from documentcloud.documents.models import Document
+from documentcloud.documents.models import Document, DocumentError
 from documentcloud.documents.search import SOLR
 
 logger = logging.getLogger(__name__)
@@ -83,14 +84,53 @@ def fetch_file_url(file_url, document_pk, force_ocr):
         )
 
 
+def _httpsub_submit(url, document_pk, json, task_):
+    """Helper to reliably submit a task to lambda via HTTP"""
+    logger.info(
+        "Submitting document %s for %s.  Retry: %d",
+        document_pk,
+        task_.name,
+        task_.request.retries,
+    )
+    try:
+        response = httpsub.post(url, json=json)
+        response.raise_for_status()
+        logger.info(
+            "Submitted document %s for %s succesfully.", document_pk, task_.name
+        )
+    except RequestException as exc:
+        if task_.request.retries >= task_.max_retries:
+            with transaction.atomic():
+                Document.objects.filter(pk=document_pk).update(status=Status.error)
+                transaction.on_commit(
+                    lambda: solr_index.delay(
+                        document_pk, field_updates={"status": "set"}
+                    )
+                )
+                DocumentError.objects.create(
+                    document_id=document_pk,
+                    message=f"Submitting for {task_.name} failed",
+                )
+            logger.error(
+                "Submitting document %s for %s failed: %s",
+                document_pk,
+                task_.name,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+        else:
+            raise
+
+
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 3}
 )
 def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
     """Start the processing"""
-    httpsub.post(
+    _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        json={
+        document_pk,
+        {
             "doc_id": document_pk,
             "slug": slug,
             "extension": extension,
@@ -99,17 +139,19 @@ def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
             "method": "process_pdf",
             "force_ocr": force_ocr,
         },
+        process,
     )
 
 
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 3}
 )
 def redact(document_pk, slug, access, ocr_code, redactions):
     """Start the redacting"""
-    httpsub.post(
+    _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        json={
+        document_pk,
+        {
             "method": "redact_doc",
             "doc_id": document_pk,
             "slug": slug,
@@ -117,17 +159,20 @@ def redact(document_pk, slug, access, ocr_code, redactions):
             "ocr_code": ocr_code,
             "redactions": redactions,
         },
+        redact,
     )
 
 
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 3}
 )
 def process_cancel(document_pk):
     """Stop the processing"""
-    httpsub.post(
+    _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        json={"method": "cancel_doc_processing", "doc_id": document_pk},
+        document_pk,
+        {"method": "cancel_doc_processing", "doc_id": document_pk},
+        process_cancel,
     )
 
 
