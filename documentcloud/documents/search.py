@@ -331,7 +331,7 @@ def _parse(text_query, query_params):
             (`fq` field)
         sort - a string from the SORT_MAP to sort on
     """
-    if text_query:
+    if text_query.strip():
         try:
             tree = parser.parse(text_query)
             escaped = False
