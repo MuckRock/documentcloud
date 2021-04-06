@@ -9,7 +9,9 @@ from documentcloud.documents.processing.info_and_image.main import (
     assemble_page_text,
     extract_image,
     finish_import,
+    finish_modify_doc,
     import_document,
+    modify_doc,
     process_page_cache,
     process_pdf,
     redact_doc,
@@ -55,6 +57,16 @@ def assemble_text(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def redact_document(data):
     redact_doc(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def modify_document(data):
+    modify_doc(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def finish_modify_document(data):
+    finish_modify_doc(data, None)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)

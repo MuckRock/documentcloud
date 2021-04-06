@@ -463,6 +463,121 @@ class RedactionSerializer(PageNumberValidationMixin, serializers.Serializer):
         return attrs
 
 
+class ModificationSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+    type = serializers.ChoiceField([("rotate", "rotate")])
+    angle = serializers.ChoiceField(
+        choices=[("cc", "cc"), ("ccw", "ccw"), ("hw", "hw")], required=False
+    )
+
+    def validate(self, attrs):
+        if attrs["type"] == "rotate" and "angle" not in attrs:
+            raise serializers.ValidationError(
+                "Angle must be specified for rotation modifications"
+            )
+
+        return attrs
+
+
+class ModificationSpecItemSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+    page = serializers.CharField()
+    id = serializers.PrimaryKeyRelatedField(
+        required=False, queryset=Document.objects.all()
+    )
+    slug = serializers.CharField(required=False, read_only=True)
+    page_spec = serializers.ListField(required=False, read_only=True)
+    page_length = serializers.IntegerField(required=False, read_only=True)
+    modifications = ModificationSerializer(required=False, many=True)
+
+    def validate_modifications(self, modifications):
+        rotation_count = sum(
+            1 for modification in modifications if modification["type"] == "rotate"
+        )
+
+        if rotation_count > 1:
+            raise serializers.ValidationError(
+                "Invalid to specify more than one rotation modification per item"
+            )
+
+        return modifications
+
+    # pylint: disable=too-many-locals
+    def validate(self, attrs):
+        view = self.context.get("view")
+        request = self.context.get("request")
+
+        # Use the current document by default, overridden by setting id
+        document = attrs.get("id", Document.objects.get(pk=view.kwargs["document_pk"]))
+        slug = document.slug
+
+        # Check permissions
+        if not request.user.has_perm("documents.view_document", document):
+            raise exceptions.PermissionDenied(
+                "You may only import pages from documents you can view"
+            )
+
+        # Subroutine to ensure page numbers passed in spec match constraints
+        def validate_page_number(page_number):
+            try:
+                page_number = int(page_number)
+            except ValueError:
+                raise serializers.ValidationError(
+                    "Page spec must have integer page numbers"
+                )
+            if page_number >= document.page_count or page_number < 0:
+                raise serializers.ValidationError(
+                    f"Must be a valid page for the document {document.pk}: "
+                    f"{page_number} (page count: {document.page_count})"
+                )
+            return page_number
+
+        value = attrs["page"]
+        parts = value.split(",")
+        result = []
+        incremented_pages = []
+        page_length = 0
+        for part in parts:
+            if "-" in part:
+                subparts = part.split("-")
+                if len(subparts) != 2:
+                    raise serializers.ValidationError(
+                        f"Page spec has too many parts ({subparts})"
+                    )
+                page1 = validate_page_number(subparts[0])
+                page2 = validate_page_number(subparts[1])
+                if page1 >= page2:
+                    raise serializers.ValidationError("Page range must be ascending")
+                if page1 == page2:
+                    # Consolidate to a single page
+                    result.append(page1)
+                    incremented_pages.append(f"{page1 + 1}")
+                    page_length += 1
+                else:
+                    result.append((page1, page2))
+                    incremented_pages.append(f"{page1 + 1}-{page2 + 1}")
+                    page_length += page2 - page1 + 1
+            else:
+                page = validate_page_number(part)
+                result.append(page)
+                incremented_pages.append(f"{page + 1}")
+                page_length += 1
+
+        # Put transformed page spec data into a new attribute
+        attrs["page_spec"] = result
+        # Increment page ranges for compatibility with pdfium
+        attrs["page"] = ",".join(incremented_pages)
+        # Store length of page range
+        attrs["page_length"] = page_length
+        attrs["slug"] = slug
+        return attrs
+
+
+class ModificationSpecSerializer(serializers.Serializer):
+    # pylint: disable=abstract-method
+    data = ModificationSpecItemSerializer(many=True)
+
+
 class ProcessDocumentSerializer(serializers.Serializer):
     # pylint: disable=abstract-method
 

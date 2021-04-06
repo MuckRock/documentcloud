@@ -21,6 +21,7 @@ from documentcloud.documents.views import (
     EntityDateViewSet,
     EntityViewSet,
     LegacyEntityViewSet,
+    ModificationViewSet,
     NoteViewSet,
     RedactionViewSet,
     SectionViewSet,
@@ -66,6 +67,9 @@ documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
 documents_router.register("data", DataViewSet, basename="data")
 documents_router.register("redactions", RedactionViewSet, basename="redactions")
+documents_router.register(
+    "modifications", ModificationViewSet, basename="modifications"
+)
 
 projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)

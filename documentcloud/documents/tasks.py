@@ -19,7 +19,7 @@ from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
-from documentcloud.documents import entity_extraction, solr
+from documentcloud.documents import entity_extraction, modifications, solr
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import SOLR
@@ -36,6 +36,8 @@ if settings.ENVIRONMENT.startswith("local"):
         ocr_pages,
         assemble_text,
         redact_document,
+        modify_document,
+        finish_modify_document,
         start_import_process,
         import_doc,
         finish_import_process,
@@ -116,6 +118,23 @@ def redact(document_pk, slug, access, ocr_code, redactions):
             "access": access,
             "ocr_code": ocr_code,
             "redactions": redactions,
+        },
+    )
+
+
+@task(
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+)
+def modify(document_pk, slug, access, modification_data):
+    """Start the modification job"""
+    httpsub.post(
+        settings.DOC_PROCESSING_URL,
+        json={
+            "method": "modify_doc",
+            "doc_id": document_pk,
+            "slug": slug,
+            "access": access,
+            "modifications": modification_data,
         },
     )
 
@@ -302,3 +321,12 @@ def invalidate_cache(document_pk):
     document.invalidate_cache()
     document.cache_dirty = False
     document.save()
+
+
+# page modifications
+
+
+@task
+def post_process(document_pk, modification_data):
+    document = Document.objects.get(pk=document_pk)
+    modifications.post_process(document, modification_data)

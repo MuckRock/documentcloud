@@ -56,6 +56,9 @@ DOCUMENT_CONVERT_TOPIC = publisher.topic_path(
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
 )
+MODIFY_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")
+)
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
 )
@@ -81,6 +84,8 @@ def process_doc(request, _context=None):
             publisher.publish(DOCUMENT_CONVERT_TOPIC, data=encode_pubsub_data(data))
     elif job_type == "redact_doc":
         publisher.publish(REDACT_TOPIC, data=encode_pubsub_data(data))
+    elif job_type == "modify_doc":
+        publisher.publish(MODIFY_TOPIC, data=encode_pubsub_data(data))
     elif job_type == "cancel_doc_processing":
         utils.clean_up(REDIS, doc_id)
     else:

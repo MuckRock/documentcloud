@@ -40,3 +40,10 @@ class DocumentErrorTokenPermissions(TokenPermissions):
 
     token_permissions = {"processing"}
     token_methods = ["POST"]
+
+
+class DocumentPostProcessPermissions(TokenPermissions):
+    """Alow the processing functions to reach post-processing routes"""
+
+    token_permissions = {"processing"}
+    token_methods = ["POST"]

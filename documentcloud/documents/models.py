@@ -605,6 +605,46 @@ class Note(models.Model):
     class Meta:
         ordering = ("document", "page_number")
 
+    def detach(self):
+        """Turns the note into a page note and places at page 0"""
+        self.page_number = 0
+        self.x1 = None
+        self.x2 = None
+        self.y1 = None
+        self.y2 = None
+
+    def rotate(self, rotation_amount):
+        """Rotates the note by the specified amount"""
+        # rotation_amount % 4:
+        #   0 -> unchanged
+        #   1 -> clockwise
+        #   2 -> halfway
+        #   3 -> counter-clockwise
+        rotation_amount = rotation_amount % 4
+        if rotation_amount == 0:
+            return  # unchanged
+
+        # If the note is a page note (no coordinates), rotation has no effect
+        if None in (self.x1, self.x2, self.y1, self.y2):
+            return
+
+        if rotation_amount == 1:
+            self.x1, self.x2, self.y1, self.y2 = self.y1, self.y2, self.x1, self.x2
+        elif rotation_amount == 2:
+            self.x1, self.x2, self.y1, self.y2 = (
+                (1 - self.x2),
+                (1 - self.x1),
+                (1 - self.y2),
+                (1 - self.y1),
+            )
+        elif rotation_amount == 3:
+            self.x1, self.x2, self.y1, self.y2 = (
+                (1 - self.y2),
+                (1 - self.y1),
+                (1 - self.x2),
+                (1 - self.x1),
+            )
+
     def __str__(self):
         return self.title
 
@@ -758,7 +798,7 @@ class Entity(models.Model):
 
 
 class EntityOccurrence(models.Model):
-    """Where a given entitiy appears in a given document"""
+    """Where a given entity appears in a given document"""
 
     document = models.ForeignKey(
         verbose_name=_("document"),
