@@ -146,6 +146,8 @@ class AwsStorage:
         # import aioboto3 locally to avoid needing it installed on lambda
         import aioboto3
 
+        aioboto3.set_stream_logger("")
+
         logger.info("async 5")
 
         if self.minio:
