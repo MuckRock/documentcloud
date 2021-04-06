@@ -114,7 +114,7 @@ def send_error(redis, doc_id, exc=None, message=None):
     # Send the error to the server
     if doc_id:
         requests.post(
-            urljoin(API_CALLBACK, f"documents/{doc_id}/errors/"),
+            urljoin(API_CALLBACK, f"documents/{normalize_doc_id(doc_id)}/errors/"),
             json={"message": message},
             headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
         )
