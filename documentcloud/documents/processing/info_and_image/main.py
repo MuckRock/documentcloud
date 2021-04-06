@@ -962,8 +962,11 @@ def finish_modify_doc(data, _context=None):
     )
 
     # Move the temporary directory into the original
+    logger.info("delete orig")
     storage.delete(original_directory)
+    logger.info("async cp")
     storage.async_cp_directory(temp_directory, original_directory)
+    logger.info("delete tmp")
     storage.delete(temp_directory)
 
     utils.send_post_processing(
