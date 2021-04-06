@@ -97,7 +97,7 @@ def search(user, query_params):
         query_params.get("sort", query_params.get("order", sort_order)),
         SORT_MAP["score"],
     )
-    rows, start, page = _paginate(query_params)
+    rows, start, page = _paginate(query_params, user)
 
     # allow explicit disabling of highlighting
     if query_params.get("hl", "").lower() == "false":
@@ -439,7 +439,7 @@ def _access_filter(user):
         return ["access:public AND status:(success readable)"]
 
 
-def _paginate(query_params):
+def _paginate(query_params, user):
     """Emulate the Django Rest Framework pagination style"""
 
     def get_int(field, default, max_value=None, min_value=None):
@@ -454,10 +454,15 @@ def _paginate(query_params):
         except ValueError:
             return default
 
+    if user.is_authenticated:
+        max_value = PageNumberPagination.max_page_size
+    else:
+        max_value = settings.SOLR_ANON_MAX_ROWS
+
     rows = get_int(
         PageNumberPagination.page_size_query_param,
         PageNumberPagination.page_size,
-        max_value=PageNumberPagination.max_page_size,
+        max_value=max_value,
     )
     page = get_int(PageNumberPagination.page_query_param, 1, min_value=1)
     start = (page - 1) * rows
