@@ -145,6 +145,7 @@ class AwsStorage:
         """Copy a list of keys from source to destination"""
         # import aioboto3 locally to avoid needing it installed on lambda
         import aioboto3
+
         logger.info("async 5")
 
         if self.minio:
@@ -155,6 +156,7 @@ class AwsStorage:
             )
 
         logger.info("async 6")
+
         async def main():
             async with aioboto3.client("s3", **self.resource_kwargs) as as3_client:
                 tasks = []
