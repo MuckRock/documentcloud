@@ -85,7 +85,7 @@ def search(user, query_params):
     text_query = query_params.get("q", "")
 
     text_query, filter_params, sort_order, escaped, use_hl = _parse(
-        text_query, query_params
+        text_query, query_params, user
     )
 
     filter_params.update(query_params)
@@ -321,7 +321,21 @@ class FilterExtractor(LuceneTreeTransformer):
             raise RemoveRootError
 
 
-def _parse(text_query, query_params):
+class AnonymousTransformer(LuceneTreeTransformer):
+    """Remove computational expesnive searches from anonymous queries"""
+
+    def visit_fuzzy(self, node, _parents):
+        """Remove fuzzy searches"""
+        return node.term
+
+    def visit_term(self, node, _parents):
+        """Escape terms which contain wildcards"""
+        if node.has_wildcard():
+            node.value = escape(node.value)
+        return node
+
+
+def _parse(text_query, query_params, user):
     """Parse the text query and pull out filters and sorts
 
     Accepts a text query
@@ -347,12 +361,15 @@ def _parse(text_query, query_params):
         filter_extractor = FilterExtractor(sort_only=is_boolean)
         tree = filter_extractor.visit(tree)
 
+        if not user.is_authenticated:
+            tree = AnonymousTransformer().visit(tree)
+
         new_query = str(tree) if tree is not None else ""
         filters = filter_extractor.filters
         sort = filter_extractor.sort
-        # only use highilighting for queries with no fuzzu searches and
+        # only use highilighting for queries with no fuzzy searches and
         # which do not explicitly turn it off
-        use_hl = not is_fuzzy and filter_extractor.use_hl
+        use_hl = not is_fuzzy and filter_extractor.use_hl and user.is_authenticated
     else:
         # special case for empty query
         new_query = ""
