@@ -26,6 +26,8 @@ ACLS = {
     access_choices.INVISIBLE: "private",
 }
 
+AWS_RETRIES_MAX_ATTEMPTS = env.int("AWS_RETRIES_MAX_ATTEMPTS", default=10)
+
 
 def grouper(iterable, num, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
@@ -39,7 +41,10 @@ class AwsStorage:
 
         self.resource_kwargs = {} if resource_kwargs is None else resource_kwargs
         if "config" not in self.resource_kwargs:
-            self.resource_kwargs["config"] = Config(signature_version="s3v4")
+            self.resource_kwargs["config"] = Config(
+                signature_version="s3v4",
+                retries={"max_attempts": AWS_RETRIES_MAX_ATTEMPTS, "mode": "standard"},
+            )
         self.s3_resource = boto3.resource("s3", **self.resource_kwargs)
         self.s3_client = boto3.client("s3", **self.resource_kwargs)
         self.minio = minio

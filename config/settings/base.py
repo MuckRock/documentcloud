@@ -189,7 +189,7 @@ MEDIA_ROOT = str(APPS_DIR("media"))
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
 MEDIA_URL = "/media/"
 
-# TEMPLATES
+# TEMPLATESgmo
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#templates
 TEMPLATES = [
@@ -483,6 +483,7 @@ SOLR_USE_HL = env.bool("SOLR_USE_HL", default=True)
 SOLR_HL_REQUIRE_FIELD_MATCH = env("SOLR_HL_REQUIRE_FIELD_MATCH", default="true")
 SOLR_HL_MULTI_TERM = env("SOLR_HL_MULTI_TERM", default="true")
 SOLR_TIMEOUT = env.int("SOLR_TIMEOUT", default=20)
+SOLR_ANON_MAX_ROWS = env.int("SOLR_ANON_MAX_ROWS", default=25)
 
 # OEmbed
 # ------------------------------------------------------------------------------

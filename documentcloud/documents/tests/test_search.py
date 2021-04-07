@@ -5,6 +5,7 @@ from django.http.request import QueryDict
 
 # Standard Library
 from datetime import datetime
+from unittest.mock import Mock
 
 # Third Party
 import pysolr
@@ -519,17 +520,36 @@ class TestParse:
             ("foo hl:false", "", "foo", "", None, False, False),
         ],
     )
-    def test_parse(
+    def test_auth_parse(
         self, query, query_params, new_query, filters, sort, escaped, use_hl
     ):
         # pylint: disable=too-many-arguments
-        assert _parse(query, QueryDict(query_params, mutable=True)) == (
+        user = Mock()
+        user.is_authenticated = True
+        assert _parse(query, QueryDict(query_params, mutable=True), user) == (
             new_query,
             QueryDict(filters),
             sort,
             escaped,
             use_hl,
         )
+
+    @pytest.mark.parametrize(
+        "query,query_params,new_query,filters,sort,escaped,use_hl",
+        [
+            ("", "", "*:*", "", None, False, False),
+            ("abc*", "", "abc\\*", "", None, False, False),
+            ("abc~2", "", "abc", "", None, False, False),
+            ("abc~ *", "", "abc \\*", "", None, False, False),
+        ],
+    )
+    def test_anon_parse(
+        self, query, query_params, new_query, filters, sort, escaped, use_hl
+    ):
+        # pylint: disable=too-many-arguments
+        assert _parse(
+            query, QueryDict(query_params, mutable=True), AnonymousUser()
+        ) == (new_query, QueryDict(filters), sort, escaped, use_hl)
 
 
 class TestEscape:
