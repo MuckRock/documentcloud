@@ -22,13 +22,18 @@ ACLS = {
     access_choices.INVISIBLE: "private",
 }
 
+AWS_RETRIES_MAX_ATTEMPTS = env.int("AWS_RETRIES_MAX_ATTEMPTS", default=10)
+
 
 class AwsStorage:
     def __init__(self, resource_kwargs=None, minio=False):
 
         self.resource_kwargs = {} if resource_kwargs is None else resource_kwargs
         if "config" not in self.resource_kwargs:
-            self.resource_kwargs["config"] = Config(signature_version="s3v4")
+            self.resource_kwargs["config"] = Config(
+                signature_version="s3v4",
+                retries={"max_attempts": AWS_RETRIES_MAX_ATTEMPTS, "mode": "standard"},
+            )
         self.s3_resource = boto3.resource("s3", **self.resource_kwargs)
         self.s3_client = boto3.client("s3", **self.resource_kwargs)
         self.minio = minio
