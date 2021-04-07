@@ -69,6 +69,7 @@ def get_redis():
 
 def normalize_doc_id(doc_id):
     """Normalize doc id to not point to temporary modifications"""
+    doc_id = str(doc_id)
     if doc_id.startswith("_"):
         return doc_id[1:]
     return doc_id
