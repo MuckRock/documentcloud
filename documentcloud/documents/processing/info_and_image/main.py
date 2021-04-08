@@ -124,9 +124,6 @@ REDACT_TOPIC = publisher.topic_path(
 MODIFY_TOPIC = publisher.topic_path(
     "documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")
 )
-FINISH_MODIFY_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("FINISH_MODIFY_TOPIC", default="finish-modify-doc")
-)
 
 # All OCR topics
 OCR_TOPICS = env.list("OCR_TOPICS", default=["ocr-eng-extraction-dev"])
@@ -648,16 +645,10 @@ def extract_image(data, _context=None):
                             # finished. In page modification mode, the consolidated
                             # json has already been created, so now we defer to
                             # finishing steps.
-                            publisher.publish(
-                                FINISH_MODIFY_TOPIC,
-                                encode_pubsub_data(
-                                    {
-                                        "doc_id": doc_id,
-                                        "slug": slug,
-                                        "page_modification": page_modification,
-                                    }
-                                ),
+                            utils.send_modification_post_processing(
+                                REDIS, doc_id, page_modification["modifications"]
                             )
+                            return "Ok"
                         else:
                             publisher.publish(
                                 ASSEMBLE_TEXT_TOPIC,
@@ -781,7 +772,6 @@ def redact_doc(data, _context=None):
 def modify_doc(data, _context=None):
     """Applies page modifications to a document."""
     data = get_pubsub_data(data)
-
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
@@ -827,7 +817,7 @@ def modify_doc(data, _context=None):
 
             # Extract the page text for the imported pages
             for i in range(page_length):
-                # Get the page number (TODO: refactor into method)
+                # Get the page number
                 first_spec_part = page_spec[0]
                 if isinstance(first_spec_part, list):
                     # Dealing with a page range.
@@ -874,19 +864,6 @@ def modify_doc(data, _context=None):
             page_text["page"] = page_text_item["new_page"]
             page_text_json.append(page_text)
 
-        # Assemble full json structure and write to file in new temporary directory
-        full_page_text_json = {"updated": millis(), "pages": page_text_json}
-        temp_doc_id = path.temp(doc_id)
-        page_text_json_path = path.json_text_path(temp_doc_id, slug)
-        storage.simple_upload(
-            page_text_json_path,
-            json.dumps(full_page_text_json).encode("utf-8"),
-            access=access,
-        )
-
-        # Write concatenated text file as well
-        write_concatenated_text_file(temp_doc_id, slug, access, page_text_json)
-
         # Run a second pass through all modifications to perform rotations.
         # Now that all pages are imported, this just requires keeping track
         # of the length of each modification and rotating pages as needed.
@@ -912,9 +889,24 @@ def modify_doc(data, _context=None):
 
             current_page_index += page_length
 
-        # Write new PDF file in temporary directory
-        doc_path = path.doc_path(temp_doc_id, slug)
+        # Overwrite PDF file with newly constructed modified PDF file
+        doc_path = path.doc_path(doc_id, slug)
         new_doc.save(storage, doc_path, access)
+
+        # Assemble full json structure and write to file
+        full_page_text_json = {"updated": millis(), "pages": page_text_json}
+        page_text_json_path = path.json_text_path(doc_id, slug)
+        storage.simple_upload(
+            page_text_json_path,
+            json.dumps(full_page_text_json).encode("utf-8"),
+            access=access,
+        )
+
+        # Write concatenated text file as well
+        write_concatenated_text_file(doc_id, slug, access, page_text_json)
+
+        # Delete old image files if new doc is shorter than old one
+        storage.delete(path.pages_path(doc_id))
 
         # Kick off processing tasks to
         #  * extract new index file for PDF and ensure PDF file is within size limits
@@ -922,53 +914,21 @@ def modify_doc(data, _context=None):
         #  * create text files from consolidated page text json
         #  * copy temporary directory into original directory
 
-        # Initialize both temp and regular doc id in redis
-        # This helps prevent any processing race conditions
         utils.initialize(REDIS, doc_id)
-        utils.initialize(REDIS, temp_doc_id)
-
         publisher.publish(
             PDF_PROCESS_TOPIC,
             data=encode_pubsub_data(
                 {
-                    "doc_id": temp_doc_id,
+                    "doc_id": doc_id,
                     "slug": slug,
                     "access": access,
                     "page_modification": {
-                        "original_doc_id": doc_id,
                         "page_text_json_file": page_text_json_path,
                         "modifications": backup_modifications,
                     },
                 }
             ),
         )
-
-    return "Ok"
-
-
-@pubsub_function(REDIS, FINISH_MODIFY_TOPIC)
-def finish_modify_doc(data, _context=None):
-    """Applies final touches to page modification."""
-    data = get_pubsub_data(data)
-
-    doc_id = data["doc_id"]
-    page_modification = data["page_modification"]
-    original_doc_id = page_modification["original_doc_id"]
-    original_directory = path.path(original_doc_id)
-    temp_directory = path.path(doc_id)
-
-    logger.info(
-        "[FINISH MODIFY DOC] doc_id %s original_doc_id %s", doc_id, original_doc_id
-    )
-
-    # Move the temporary directory into the original
-    storage.delete(original_directory)
-    storage.async_cp_directory(temp_directory, original_directory)
-    storage.delete(temp_directory)
-
-    utils.send_post_processing(
-        REDIS, original_doc_id, doc_id, page_modification["modifications"]
-    )
 
     return "Ok"
 

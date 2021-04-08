@@ -124,60 +124,6 @@ class AwsStorage:
         for chunk in key_chunks:
             bucket.delete_objects(Delete={"Objects": chunk})
 
-    def async_cp_directory(self, src_directory, dst_directory):
-        """Copy one directory to another asynchronously"""
-        # Get file keys
-        src_bucket_raw, src_prefix = self.bucket_key(src_directory)
-        src_bucket = self.s3_resource.Bucket(src_bucket_raw)
-        dst_bucket_raw, dst_prefix = self.bucket_key(dst_directory)
-        keys = src_bucket.objects.filter(Prefix=src_prefix)
-        batch = env("S3_CP_BATCH", default=3000)
-
-        for keys_batch in grouper(keys, batch):
-            keys_batch = [k for k in keys_batch if k is not None]
-            self.async_cp(
-                keys_batch, src_bucket_raw, src_prefix, dst_bucket_raw, dst_prefix
-            )
-
-    def async_cp(self, keys, src_bucket, src_prefix, dst_bucket, dst_prefix):
-        """Copy a list of keys from source to destination"""
-        # import aioboto3 locally to avoid needing it installed on lambda
-        import aioboto3
-
-        if self.minio:
-            # Semaphore approach from
-            # https://github.com/aio-libs/aiobotocore/issues/738#issuecomment-639026068
-            upload_semaphore = asyncio.BoundedSemaphore(
-                env("S3_CP_MAX_POOL", default=10)
-            )
-
-        async def main():
-            async with aioboto3.client("s3", **self.resource_kwargs) as as3_client:
-                tasks = []
-                for key in keys:
-                    if self.minio:
-                        # Use the semaphore approach for minio compatibility
-                        async with upload_semaphore:
-                            await as3_client.copy(
-                                {"Bucket": src_bucket, "Key": key.key},
-                                dst_bucket,
-                                dst_prefix + key.key[len(src_prefix) :],
-                            )
-                    else:
-                        # Use asyncio's gather mechanism
-                        tasks.append(
-                            as3_client.copy(
-                                {"Bucket": src_bucket, "Key": key.key},
-                                dst_bucket,
-                                dst_prefix + key.key[len(src_prefix) :],
-                            )
-                        )
-                if not self.minio:
-                    await asyncio.gather(*tasks)
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-
     def set_access_path(self, file_prefix, access):
         """Set access for all keys with a given prefix"""
         if self.minio:
