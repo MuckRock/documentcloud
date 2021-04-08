@@ -444,6 +444,8 @@ ENVIRONMENT = env("ENVIRONMENT")
 REST_BULK_LIMIT = env.int("REST_BULK_LIMIT", default=25)
 UPDATE_ACCESS_CHUNK_SIZE = env.int("UPDATE_ACCESS_CHUNK_SIZE", default=500)
 
+HTTPSUB_RETRY_LIMIT = env.int("HTTPSUB_RETRY_LIMIT", default=10)
+
 # Solr
 # ------------------------------------------------------------------------------
 SOLR_HOST_URL = env("SOLR_HOST_URL", default="http://documentcloud_solr:8983/")
