@@ -538,7 +538,7 @@ class TestParse:
         "query,query_params,new_query,filters,sort,escaped,use_hl",
         [
             ("", "", "*:*", "", None, False, False),
-            ("abc*", "", "abc\\*", "", None, False, False),
+            ("abc*", "", "abc\\*", "", None, False, True),
             ("abc~2", "", "abc", "", None, False, False),
             ("abc~ *", "", "abc \\*", "", None, False, False),
         ],
