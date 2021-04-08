@@ -867,7 +867,13 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
             )
 
-        modify.delay(document.pk, document.slug, document.access, serializer.data)
+        modify.delay(
+            document.pk,
+            document.page_count,
+            document.slug,
+            document.access,
+            serializer.data,
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @transaction.atomic

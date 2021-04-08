@@ -32,7 +32,6 @@ Globals:
         IMPORT_DOCUMENT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
         FINISH_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_import/topic:latest}}"
         MODIFY_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/modify_document/topic:latest}}"
-        FINISH_MODIFY_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_modify_document/topic:latest}}"
         PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
         BLOCK_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/block_size:latest}}"
         IMPORT_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_dir:latest}}"
@@ -291,21 +290,4 @@ Resources:
           Type: SNS
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/modify_document/topic:latest}}"
-      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
-
-  FinishModifyDocFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.7
-      Handler: main.finish_modify_doc
-      CodeUri: ./awsbin/info_and_image
-      # Trigger function via SNS
-      Environment:
-        Variables:
-          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_modify_document/timeout:latest}}"
-      Events:
-        ExtractImageApi:
-          Type: SNS
-          Properties:
-            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_modify_document/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
