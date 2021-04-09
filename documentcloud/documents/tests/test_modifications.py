@@ -138,3 +138,20 @@ class TestPostProcess:
         assert new_obj.document == document
         document.refresh_from_db()
         assert document.page_count == 4
+
+    def test_section_delete_and_move(self):
+        """Test deleting and moving sections obeys unique constraint
+        This can be avoided by deleting, then updating, then creating
+        """
+        document = DocumentFactory(page_count=3)
+        section1 = SectionFactory.create(document=document, page_number=1)
+        section2 = SectionFactory.create(document=document, page_number=2)
+        modifications = [{"page_spec": [2, 2, 2]}]
+        post_process(document, modifications)
+        assert document.sections.count() == 3
+        with pytest.raises(Section.DoesNotExist):
+            section1.refresh_from_db()
+        section2.refresh_from_db()
+        assert section2.page_number == 0
+        document.refresh_from_db()
+        assert document.page_count == 3

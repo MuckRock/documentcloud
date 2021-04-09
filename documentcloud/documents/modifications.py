@@ -167,9 +167,9 @@ def _process_page_objs(page_map, original_document, source_document, objects, re
 
 def _commit_db(model, fields, creates, updates, deletes):
     """Commit object changes to the database in bulk to minimize SQL calls"""
-    if creates:
-        model.objects.bulk_create(creates)
-    if updates:
-        model.objects.bulk_update(updates, fields)
     if deletes:
         model.objects.filter(id__in=[i.id for i in deletes]).delete()
+    if updates:
+        model.objects.bulk_update(updates, fields)
+    if creates:
+        model.objects.bulk_create(creates)
