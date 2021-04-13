@@ -171,6 +171,7 @@ def clean_up(redis, doc_id):
         existing_dimensions = pipeline.smembers(dimensions_field)
         if existing_dimensions is not None:
             for dimension in existing_dimensions:
+                dimension = dimension.decode("utf8")
                 pipeline.delete(redis_fields.page_dimension(doc_id, dimension))
         pipeline.delete(dimensions_field)
 
