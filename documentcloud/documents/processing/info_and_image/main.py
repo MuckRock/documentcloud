@@ -350,6 +350,99 @@ def write_concatenated_text_file(doc_id, slug, access, page_jsons):
     )
 
 
+def apply_modification(workspace, new_doc, context, modification):
+    """Insert pages specified by a modification into a new document"""
+    page_range = modification["page"]
+    page_length = modification["page_length"]
+    page_spec = modification["page_spec"]
+
+    # Grab import document (from cache if possible)
+    import_doc_id = modification.get("id", context["doc_id"])
+    import_doc_slug = modification.get("slug", context["slug"])
+    import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
+    import_doc = context["loaded_docs"].get(
+        import_pdf_file,
+        workspace.load_document_entirely(storage, import_pdf_file).__enter__(),
+    )
+    # Add to loaded docs cache
+    context["loaded_docs"][import_pdf_file] = import_doc
+
+    # Import the actual PDF pages
+    new_doc.import_pages(import_doc, page_range, context["current_page_index"])
+
+    # Extract the page text for the imported pages
+    for i in range(page_length):
+        # Get the page number
+        if isinstance(page_spec[0], list):
+            # Dealing with a page range.
+            # Grab the first page and increment the range
+            page = page_spec[0][0]
+            end_page = page_spec[0][1]
+            if page == end_page:
+                # Pop out page range if at end
+                page_spec = page_spec[1:]
+            else:
+                page_spec[0] = [page + 1, end_page]
+        else:
+            page = page_spec[0]
+            page_spec = page_spec[1:]
+
+        # Now, grab the json text paths of the affected document and
+        # plan downloading the json text files in parallel
+        json_file_path = path.json_text_path(import_doc_id, import_doc_slug)
+        context["page_text_download_urls"].add(json_file_path)
+        context["page_text_todo"].append(
+            {
+                "file_path": json_file_path,
+                "page": page,
+                "new_page": context["current_page_index"] + i,
+            }
+        )
+
+    context["current_page_index"] += page_length
+
+
+def apply_rotation_modification(new_doc, context, modification):
+    """Apply rotations to a new document based on modifications"""
+    page_length = modification["page_length"]
+    modifiers = modification.get("modifications", [])
+
+    # Check if rotation
+    for modifier in modifiers:
+        if modifier["type"] == "rotate":
+            # Grab the 90-degree angle multiplier by which to rotate
+            rotation_amount = ANGLE_TABLE.get(modifier.get("angle", ""), 0)
+            if rotation_amount != 0:
+                # Rotate all affected pages
+                for i in range(
+                    context["current_page_index"],
+                    context["current_page_index"] + page_length,
+                ):
+                    page = new_doc.load_page(i)
+                    new_doc.set_page_rotation(page, page.rotation + rotation_amount)
+
+    context["current_page_index"] += page_length
+
+
+def download_modification_page_text(context):
+    """Download necessary page text for modifications in parallel"""
+    page_text_json = []
+    page_text_urls = list(context["page_text_download_urls"])
+    page_text_download_files = [
+        json.loads(contents) for contents in storage.async_download(page_text_urls)
+    ]
+    page_text_json_map = dict(zip(page_text_urls, page_text_download_files))
+
+    for page_text_item in context["page_text_todo"]:
+        # Construct the page text json from the downloaded page text
+        page_text_json_file = page_text_json_map[page_text_item["file_path"]]
+        page_text = page_text_json_file["pages"][page_text_item["page"]]
+        page_text["page"] = page_text_item["new_page"]
+        page_text_json.append(page_text)
+
+    return page_text_json
+
+
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
     """Memoize the memory accesses of all the pages of a PDF in a cache."""
@@ -783,111 +876,35 @@ def modify_doc(data, _context=None):
     )
 
     # Construct modified pdf
-    loaded_docs = {}  # Cache doc handles so docs are never loaded twice
-    current_page_index = 0
-    page_text_json = []
-    page_text_todo = []
-    page_text_download_urls = set()
-    page_text_download_files = []
+    modify_context = {
+        "doc_id": doc_id,
+        "slug": slug,
+        "loaded_docs": {},  # Cache doc handles so docs are never loaded twice
+        "current_page_index": 0,
+        "page_text_todo": [],
+        "page_text_download_urls": set(),
+    }
 
     def close_all_docs():
-        for doc in loaded_docs.values():
+        for doc in modify_context["loaded_docs"].values():
             doc.__exit__(*sys.exc_info())
 
     with Workspace() as workspace:
         new_doc = workspace.new_document()
+        # Apply each modification to create a new document
         for modification in modifications:
-            page_range = modification["page"]
-            page_length = modification["page_length"]
-            page_spec = modification["page_spec"]
-
-            # Grab import document (from cache if possible)
-            import_doc_id = modification.get("id", doc_id)
-            import_doc_slug = modification.get("slug", slug)
-            import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
-            import_doc = loaded_docs.get(
-                import_pdf_file,
-                workspace.load_document_entirely(storage, import_pdf_file).__enter__(),
-            )
-            # Add to loaded docs cache
-            loaded_docs[import_pdf_file] = import_doc
-
-            # Import the actual PDF pages
-            new_doc.import_pages(import_doc, page_range, current_page_index)
-
-            # Extract the page text for the imported pages
-            for i in range(page_length):
-                # Get the page number
-                first_spec_part = page_spec[0]
-                if isinstance(first_spec_part, list):
-                    # Dealing with a page range.
-                    # Grab the first page and increment the range
-                    page = first_spec_part[0]
-                    end_page = first_spec_part[1]
-                    if page == end_page:
-                        # Pop out page range if at end
-                        page_spec = page_spec[1:]
-                    else:
-                        page_spec[0] = [page + 1, end_page]
-                else:
-                    page = first_spec_part
-                    page_spec = page_spec[1:]
-
-                # Now, grab the json text paths of the affected document and
-                # plan downloading the json text files in parallel
-                json_file_path = path.json_text_path(import_doc_id, import_doc_slug)
-                page_text_download_urls.add(json_file_path)
-                page_text_todo.append(
-                    {
-                        "file_path": json_file_path,
-                        "page": page,
-                        "new_page": current_page_index + i,
-                    }
-                )
-
-            current_page_index += page_length
+            apply_modification(workspace, new_doc, modify_context, modification)
 
         # Close all open handles
         close_all_docs()
 
         # Download all the page text in parallel
-        page_text_urls = list(page_text_download_urls)
-        page_text_download_files = [
-            json.loads(contents) for contents in storage.async_download(page_text_urls)
-        ]
-        page_text_json_map = dict(zip(page_text_urls, page_text_download_files))
-
-        for page_text_item in page_text_todo:
-            # Construct the page text json from the downloaded page text
-            page_text_json_file = page_text_json_map[page_text_item["file_path"]]
-            page_text = page_text_json_file["pages"][page_text_item["page"]]
-            page_text["page"] = page_text_item["new_page"]
-            page_text_json.append(page_text)
+        page_text_json = download_modification_page_text(modify_context)
 
         # Run a second pass through all modifications to perform rotations.
-        # Now that all pages are imported, this just requires keeping track
-        # of the length of each modification and rotating pages as needed.
-        current_page_index = 0
+        modify_context["current_page_index"] = 0
         for modification in modifications:
-            page_length = modification["page_length"]
-            modifiers = modification.get("modifications", [])
-
-            # Check if rotation
-            for modifier in modifiers:
-                if modifier["type"] == "rotate":
-                    # Grab the 90-degree angle multiplier by which to rotate
-                    rotation_amount = ANGLE_TABLE.get(modifier.get("angle", ""), 0)
-                    if rotation_amount != 0:
-                        # Rotate all affected pages
-                        for i in range(
-                            current_page_index, current_page_index + page_length
-                        ):
-                            page = new_doc.load_page(i)
-                            new_doc.set_page_rotation(
-                                page, page.rotation + rotation_amount
-                            )
-
-            current_page_index += page_length
+            apply_rotation_modification(new_doc, modify_context, modification)
 
         # Overwrite PDF file with newly constructed modified PDF file
         doc_path = path.doc_path(doc_id, slug)
@@ -905,7 +922,7 @@ def modify_doc(data, _context=None):
         # Write concatenated text file as well
         write_concatenated_text_file(doc_id, slug, access, page_text_json)
 
-        # Delete old image files if new doc is shorter than old one
+        # Delete old page files
         storage.delete(path.pages_path(doc_id))
 
         # Kick off processing tasks to
@@ -913,7 +930,7 @@ def modify_doc(data, _context=None):
         #  * reextract all image files and derive page spec
         #  * create text files from consolidated page text json
         #  * copy temporary directory into original directory
-
+        utils.clean_up(REDIS, doc_id)
         utils.initialize(REDIS, doc_id)
         publisher.publish(
             PDF_PROCESS_TOPIC,
