@@ -175,9 +175,10 @@ def redact(document_pk, slug, access, ocr_code, redactions):
 )
 def modify(document_pk, page_count, slug, access, modification_data):
     """Start the modification job"""
-    httpsub.post(
+    _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        json={
+        document_pk,
+        {
             "method": "modify_doc",
             "doc_id": document_pk,
             "page_count": page_count,
@@ -185,11 +186,14 @@ def modify(document_pk, page_count, slug, access, modification_data):
             "access": access,
             "modifications": modification_data,
         },
+        modify,
     )
 
 
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+    autoretry_for=(RequestException,),
+    retry_backoff=30,
+    retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
 def process_cancel(document_pk):
     """Stop the processing"""
