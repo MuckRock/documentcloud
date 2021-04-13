@@ -369,7 +369,7 @@ def _parse(text_query, query_params, user):
         sort = filter_extractor.sort
         # only use highilighting for queries with no fuzzy searches and
         # which do not explicitly turn it off
-        use_hl = not is_fuzzy and filter_extractor.use_hl and user.is_authenticated
+        use_hl = not is_fuzzy and filter_extractor.use_hl
     else:
         # special case for empty query
         new_query = ""

@@ -124,7 +124,9 @@ def _httpsub_submit(url, document_pk, json, task_):
 
 
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 3}
+    autoretry_for=(RequestException,),
+    retry_backoff=30,
+    retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
 def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
     """Start the processing"""
@@ -145,7 +147,9 @@ def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
 
 
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 3}
+    autoretry_for=(RequestException,),
+    retry_backoff=30,
+    retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
 def redact(document_pk, slug, access, ocr_code, redactions):
     """Start the redacting"""
@@ -165,7 +169,31 @@ def redact(document_pk, slug, access, ocr_code, redactions):
 
 
 @task(
-    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 3}
+    autoretry_for=(RequestException,),
+    retry_backoff=30,
+    retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
+)
+def modify(document_pk, page_count, slug, access, modification_data):
+    """Start the modification job"""
+    _httpsub_submit(
+        settings.DOC_PROCESSING_URL,
+        document_pk,
+        {
+            "method": "modify_doc",
+            "doc_id": document_pk,
+            "page_count": page_count,
+            "slug": slug,
+            "access": access,
+            "modifications": modification_data,
+        },
+        modify,
+    )
+
+
+@task(
+    autoretry_for=(RequestException,),
+    retry_backoff=30,
+    retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
 def modify(document_pk, page_count, slug, access, modification_data):
     """Start the modification job"""
