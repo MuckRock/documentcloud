@@ -67,9 +67,11 @@ permission to will return status 403.
 ### Pagination
 
 All list views accept a `per_page` parameter, which specifies how many
-resources to list per page. It is `25` by default and may be set up to `100`.
-You may view subsequent pages by using the `next` URL, or by specifying a
-`page` parameter directly.
+resources to list per page. It is `25` by default and may be set up to `100`
+for authenticated users.  For anonymous users it is restricted to `25`.  You
+may register for a free account at <https://accounts.muckrock.com/> to use the
+`100` limit.  You may view subsequent pages by using the `next` URL, or by
+specifying a `page` parameter directly.
 
 ### Sub Resources
 

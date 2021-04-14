@@ -19,9 +19,13 @@ You may specify either single words to search for, such as `document` or `report
 
 Terms can use `?` to match any single character. For example `?oat` will match both goat and boat. You may use `*` to match zero or more characters, so `J*` will match J, John, Jane or any other word beginning with a J. You may use these in any position of a term — beginning, middle or end.
 
+*Note:* This feature is only available to authenticated users.  You may register for a free account at <https://accounts.muckrock.com/> to use this feature.
+
 ### Fuzzy Searches
 
 By appending `~` to a term you can perform a fuzzy search which will match close variants of the term based on edit distance. [Edit distance][3] is the number of letter insertions, deletions, substitutions, or transpositions needed to get from one word to another. This can be useful for finding documents with misspelled words or with poor OCR. By default `~` will allow an edit distance of 2, but you can specify an edit distance of 1 by using `~1`. For example, `book~` will match book, books, and looks.
+
+*Note:* This feature is only available to authenticated users.  You may register for a free account at <https://accounts.muckrock.com/> to use this feature.
 
 ### Proximity Searches
 
@@ -164,6 +168,8 @@ You can also specify `per_page`, `page`, and `expand` as you would for `/api/doc
 ```
 
 with the addition of the `escaped` property to specify if the query had a syntax error and needed to be autoescaped. Each document will also contain a `highlights` property, which will contain relevant snippets from the document containing the given search term.
+
+*Note:* Highlights are only available to authenticated users.  You may register for a free account at <https://accounts.muckrock.com/> to use this feature.
 
 ```
 {
