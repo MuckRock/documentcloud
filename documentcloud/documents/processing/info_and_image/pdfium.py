@@ -158,11 +158,14 @@ class Document:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def close(self):
         for font in self.loaded_fonts:
             self.workspace.fpdf_font_close(font)
         self.workspace.fpdf_close_document(self.doc)
         del self.doc
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def redact_pages(self, redactions):
         """Returns a new PDF doc with the specified pages redacted.
