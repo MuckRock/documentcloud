@@ -860,7 +860,6 @@ def redact_doc(data, _context=None):
     return "Ok"
 
 
-# pylint: disable=too-many-locals,too-many-statements
 @pubsub_function(REDIS, MODIFY_TOPIC)
 def modify_doc(data, _context=None):
     """Applies page modifications to a document."""
@@ -887,7 +886,7 @@ def modify_doc(data, _context=None):
 
     def close_all_docs():
         for doc in modify_context["loaded_docs"].values():
-            doc.__exit__(*sys.exc_info())
+            doc.close()
 
     with Workspace() as workspace:
         new_doc = workspace.new_document()
