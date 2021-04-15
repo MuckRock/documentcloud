@@ -183,6 +183,7 @@ def initialize_redis_page_data(doc_id, page_count):
         # Remove any existing dimensions that may be lingering
         if existing_dimensions is not None:
             for dimension in existing_dimensions:
+                dimension = dimension.decode("utf8")
                 pipeline.delete(redis_fields.page_dimension(doc_id, dimension))
         pipeline.delete(dimensions_field)
 
