@@ -91,7 +91,12 @@ class TestPostProcess:
         # not moved
         assert note.page_number == 1
         # but is rotated
-        assert note.y1 == x1 and note.y2 == x2 and note.x1 == y1 and note.x2 == y2
+        assert (
+            note.x1 == (1 - y2)
+            and note.x2 == (1 - y1)
+            and note.y1 == x1
+            and note.y2 == x2
+        )
         document.refresh_from_db()
         assert document.page_count == 3
 
