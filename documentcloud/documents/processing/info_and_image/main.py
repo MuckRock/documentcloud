@@ -8,7 +8,6 @@ import itertools
 import json
 import logging
 import pickle
-import sys
 import time
 from random import randint
 
