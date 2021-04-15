@@ -145,12 +145,11 @@ def _process_page_objs(page_map, original_document, source_document, objects, re
             if source_document == original_document:
                 # if this is the original document, we can move the first instance
                 # of this object instead of copying it
-                new_page, rotation = new_pages[0]
+                # we take the first instance off here, but do not process it yet
+                # if we need to rotate it, we do not want it to be double
+                # rotated if it is also copied
+                move_new_page, move_rotation = new_pages[0]
                 new_pages = new_pages[1:]
-                if hasattr(obj, "rotate"):
-                    obj.rotate(rotation)
-                obj.page_number = new_page
-                updates.append(obj)
             for new_page, rotation in new_pages:
                 new_obj = copy(obj)
                 new_obj.id = None
@@ -159,6 +158,14 @@ def _process_page_objs(page_map, original_document, source_document, objects, re
                 if hasattr(new_obj, "rotate"):
                     new_obj.rotate(rotation)
                 creates.append(new_obj)
+            if source_document == original_document:
+                # if this is the original document, we can move the first instance
+                # of this object instead of copying it
+                # process it here after we have made any necessary copies
+                if hasattr(obj, "rotate"):
+                    obj.rotate(move_rotation)
+                obj.page_number = move_new_page
+                updates.append(obj)
         elif source_document == original_document:
             # handle an objects page being removed from the original document
             remove(obj, updates, deletes)
