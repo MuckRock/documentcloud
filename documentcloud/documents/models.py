@@ -629,7 +629,12 @@ class Note(models.Model):
             return
 
         if rotation_amount == 1:
-            self.x1, self.x2, self.y1, self.y2 = self.y1, self.y2, self.x1, self.x2
+            self.x1, self.x2, self.y1, self.y2 = (
+                (1 - self.y2),
+                (1 - self.y1),
+                self.x1,
+                self.x2,
+            )
         elif rotation_amount == 2:
             self.x1, self.x2, self.y1, self.y2 = (
                 (1 - self.x2),
@@ -639,8 +644,8 @@ class Note(models.Model):
             )
         elif rotation_amount == 3:
             self.x1, self.x2, self.y1, self.y2 = (
-                (1 - self.y2),
-                (1 - self.y1),
+                self.y1,
+                self.y2,
                 (1 - self.x2),
                 (1 - self.x1),
             )
