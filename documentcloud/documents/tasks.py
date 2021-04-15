@@ -191,26 +191,6 @@ def modify(document_pk, page_count, slug, access, modification_data):
 
 
 @task(
-    autoretry_for=(RequestException,),
-    retry_backoff=30,
-    retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
-)
-def modify(document_pk, page_count, slug, access, modification_data):
-    """Start the modification job"""
-    httpsub.post(
-        settings.DOC_PROCESSING_URL,
-        json={
-            "method": "modify_doc",
-            "doc_id": document_pk,
-            "page_count": page_count,
-            "slug": slug,
-            "access": access,
-            "modifications": modification_data,
-        },
-    )
-
-
-@task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
 def process_cancel(document_pk):
