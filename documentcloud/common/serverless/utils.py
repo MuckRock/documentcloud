@@ -67,16 +67,25 @@ def get_redis():
     return _redis.Redis(**kwargs)
 
 
+def pop_file_hash(redis, doc_id):
+    """Extracts the file hash and removes from redis"""
+    file_hash = redis.get(redis_fields.file_hash(doc_id))
+    if file_hash:
+        decoded_hash = file_hash.decode("ascii")  # hex string
+        redis.delete(redis_fields.file_hash(doc_id))
+        return decoded_hash
+    return None
+
+
 def send_update(redis, doc_id, json_):
     """Sends an update to the API server specified as JSON"""
     if not still_processing(redis, doc_id):
         return
 
     # Add file hash data in if present
-    file_hash = redis.get(redis_fields.file_hash(doc_id))
+    file_hash = pop_file_hash(redis, doc_id)
     if file_hash:
-        json_["file_hash"] = file_hash.decode("ascii")  # hex string
-        redis.delete(redis_fields.file_hash(doc_id))
+        json_["file_hash"] = file_hash
 
     requests.patch(
         urljoin(API_CALLBACK, f"documents/{doc_id}/"),

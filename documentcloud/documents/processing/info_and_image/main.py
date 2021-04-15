@@ -740,12 +740,14 @@ def extract_image(data, _context=None):
                             # finishing steps.
                             raw_pagespec = get_redis_pagespec(doc_id)
                             pagespec = crunch_collection(raw_pagespec)
+                            filehash = utils.pop_file_hash(REDIS, doc_id)
                             utils.send_modification_post_processing(
                                 REDIS,
                                 doc_id,
                                 {
                                     "modifications": page_modification["modifications"],
                                     "pagespec": pagespec,
+                                    "filehash": filehash,
                                 },
                             )
                             return "Ok"
