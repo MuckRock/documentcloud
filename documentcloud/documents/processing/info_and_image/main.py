@@ -698,8 +698,8 @@ def extract_image(data, _context=None):
                 )
 
                 # Write the pagespec dimensions if all images have finished and
-                # it's not a partial update.
-                if images_finished and not partial:
+                # it's not a partial update or modification.
+                if images_finished and not partial and page_modification is None:
                     update_pagespec(doc_id)
 
             if not utils.page_ocrd(REDIS, doc_id, page_number):
@@ -738,8 +738,15 @@ def extract_image(data, _context=None):
                             # finished. In page modification mode, the consolidated
                             # json has already been created, so now we defer to
                             # finishing steps.
+                            raw_pagespec = get_redis_pagespec(doc_id)
+                            pagespec = crunch_collection(raw_pagespec)
                             utils.send_modification_post_processing(
-                                REDIS, doc_id, page_modification["modifications"]
+                                REDIS,
+                                doc_id,
+                                {
+                                    "modifications": page_modification["modifications"],
+                                    "pagespec": pagespec,
+                                },
                             )
                             return "Ok"
                         else:
