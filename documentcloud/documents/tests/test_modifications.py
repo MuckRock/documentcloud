@@ -160,3 +160,30 @@ class TestPostProcess:
         assert section2.page_number == 0
         document.refresh_from_db()
         assert document.page_count == 3
+
+    def test_rotate_note_and_copy(self):
+        """Test rotating the page with a note
+        Ensure copied note is not double rotated
+        """
+        document = DocumentFactory(page_count=3)
+        note = NoteFactory.create(document=document, page_number=1)
+        x1, x2, y1, y2 = note.x1, note.x2, note.y1, note.y2
+        assert None not in (x1, x2, y1, y2)
+        modifications = [
+            {
+                "page_spec": [1, 1, 1],
+                "modifications": [{"type": "rotate", "angle": "cc"}],
+            }
+        ]
+        post_process(document, modifications)
+        # two notes
+        assert document.notes.count() == 3
+        notes = document.notes.all()
+        for note in notes:
+            # all notes should be rotated the same way
+            assert (
+                note.x1 == (1 - y2)
+                and note.x2 == (1 - y1)
+                and note.y1 == x1
+                and note.y2 == x2
+            )
