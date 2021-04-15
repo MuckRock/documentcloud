@@ -34,7 +34,7 @@ def remove_section(section, _updates, deletes):
 
 
 @transaction.atomic
-def post_process(document, modifications):
+def post_process(document, modification_data):
     """Post process the notes and sections for the document as specified by
     modifications
     """
@@ -44,7 +44,7 @@ def post_process(document, modifications):
     document.entities.all().delete()
 
     # (document.id, old_page) -> [(new_page, rotation), ...]
-    page_map = _build_page_map(document, modifications)
+    page_map = _build_page_map(document, modification_data["modifications"])
 
     # load all documents, notes and sections
     # prefetch all notes and sections
@@ -92,6 +92,7 @@ def post_process(document, modifications):
     )
 
     document.status = Status.success
+    document.page_spec = modification_data["pagespec"]
     document.save()
 
     transaction.on_commit(

@@ -10,6 +10,11 @@ from documentcloud.documents.tests.factories import (
     SectionFactory,
 )
 
+
+def send_post_process(document, modifications):
+    post_process(document, {"modifications": modifications, "pagespec": ""})
+
+
 models = [(NoteFactory, "notes"), (SectionFactory, "sections")]
 tests = [
     ([0, [0, 2]], 1, 2, 1, 4),  # insert page before, moves back a page
@@ -36,7 +41,7 @@ class TestPostProcess:
         document = DocumentFactory(page_count=3)
         obj = factory.create(document=document, page_number=initial_page)
         modifications = [{"page_spec": page_spec}]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         assert getattr(document, attr).count() == count
         obj.refresh_from_db()
         assert obj.page_number == final_page
@@ -48,7 +53,7 @@ class TestPostProcess:
         document = DocumentFactory(page_count=3)
         note = NoteFactory.create(document=document, page_number=1)
         modifications = [{"page_spec": [0, 2]}]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         # the note is moved to the first page as a page note
         assert document.notes.count() == 1
         note.refresh_from_db()
@@ -64,7 +69,7 @@ class TestPostProcess:
         document = DocumentFactory(page_count=3)
         section = SectionFactory.create(document=document, page_number=1)
         modifications = [{"page_spec": [0, 2]}]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         # the section is deleted
         assert document.sections.count() == 0
         with pytest.raises(Section.DoesNotExist):
@@ -84,7 +89,7 @@ class TestPostProcess:
                 "modifications": [{"type": "rotate", "angle": "cc"}],
             }
         ]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         # still one note
         assert document.notes.count() == 1
         note.refresh_from_db()
@@ -110,7 +115,7 @@ class TestPostProcess:
                 "modifications": [{"type": "rotate", "angle": "ccw"}],
             }
         ]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         # still one section
         assert document.sections.count() == 1
         section.refresh_from_db()
@@ -129,7 +134,7 @@ class TestPostProcess:
             {"page_spec": [[0, 2]]},
             {"id": import_document.pk, "page_spec": [0]},
         ]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         # both document and import document have one obj now
         assert getattr(document, attr).count() == 1
         assert getattr(import_document, attr).count() == 1
@@ -152,7 +157,7 @@ class TestPostProcess:
         section1 = SectionFactory.create(document=document, page_number=1)
         section2 = SectionFactory.create(document=document, page_number=2)
         modifications = [{"page_spec": [2, 2, 2]}]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         assert document.sections.count() == 3
         with pytest.raises(Section.DoesNotExist):
             section1.refresh_from_db()
