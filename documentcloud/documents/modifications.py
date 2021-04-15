@@ -93,7 +93,7 @@ def post_process(document, modification_data):
 
     document.status = Status.success
     document.page_spec = modification_data["pagespec"]
-    if modification_data["filehash"]:
+    if "filehash" in modification_data and modification_data["filehash"]:
         document.file_hash = modification_data["filehash"]
     document.save()
 
