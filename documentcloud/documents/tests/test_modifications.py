@@ -180,7 +180,7 @@ class TestPostProcess:
                 "modifications": [{"type": "rotate", "angle": "cc"}],
             }
         ]
-        post_process(document, modifications)
+        send_post_process(document, modifications)
         # two notes
         assert document.notes.count() == 3
         notes = document.notes.all()
