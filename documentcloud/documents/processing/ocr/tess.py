@@ -42,6 +42,9 @@ class Tesseract:
         lib.TessBaseAPIDelete.restype = None  # void
         lib.TessBaseAPIDelete.argtypes = (cls.TessBaseAPI,)  # handle
 
+        lib.TessDeleteResultRenderer.restype = None
+        lib.TessDeleteResultRenderer.argtypes = (ctypes.c_void_p,)
+
         lib.TessBaseAPIInit4.argtypes = (
             cls.TessBaseAPI,  # handle
             ctypes.c_char_p,  # datapath
@@ -54,6 +57,9 @@ class Tesseract:
             ctypes.c_int,  # vars size
             ctypes.c_int,
         )  # set only non debug params
+
+        lib.TessBaseAPIGetDatapath.restype = ctypes.c_char_p
+        lib.TessBaseAPIGetDatapath.argtypes = (cls.TessBaseAPI,)  # handle
 
         lib.TessBaseAPISetImage.restype = None
         lib.TessBaseAPISetImage.argtypes = (
@@ -68,10 +74,39 @@ class Tesseract:
         lib.TessBaseAPIGetUTF8Text.restype = ctypes.c_char_p
         lib.TessBaseAPIGetUTF8Text.argtypes = (cls.TessBaseAPI,)  # handle
 
+        lib.TessBaseAPIGetHOCRText.restype = ctypes.c_char_p
+        lib.TessBaseAPIGetHOCRText.argtypes = (cls.TessBaseAPI,)  # handle
+
+        lib.TessPDFRendererCreate.restype = ctypes.c_void_p  # PDF renderer
+        lib.TessPDFRendererCreate.argtypes = (
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_int,
+        )
+
+        lib.TessResultRendererBeginDocument.restype = ctypes.c_int
+        lib.TessResultRendererBeginDocument.argtypes = (
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+        )
+
+        lib.TessResultRendererEndDocument.restype = ctypes.c_int
+        lib.TessResultRendererEndDocument.argtypes = (ctypes.c_void_p,)
+
+        lib.TessBaseAPIProcessPages.argtypes = (
+            cls.TessBaseAPI,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+        )
+
     def __init__(self, language="eng", datapath=DATA_PATH, lib_path=LIB_PATH):
         if self._lib is None:
             self.setup_lib(lib_path)
+        self.pdf_renderer = None
         self._api = self._lib.TessBaseAPICreate()
+        self.datapath = datapath
         if self._lib.TessBaseAPIInit4(
             self._api,
             datapath.encode("utf-8"),
@@ -90,6 +125,8 @@ class Tesseract:
         if not self._lib or not self._api:
             return
         if not getattr(self, "closed", False):
+            if self.pdf_renderer:
+                self._lib.TessDeleteResultRenderer(self.pdf_renderer)
             self._lib.TessBaseAPIDelete(self._api)
             self.closed = True
 
@@ -115,3 +152,30 @@ class Tesseract:
         self._check_setup()
         result = self._lib.TessBaseAPIGetUTF8Text(self._api)
         return result.decode("utf-8")
+
+    def get_hocr(self):
+        self._check_setup()
+        result = self._lib.TessBaseAPIGetHOCRText(self._api)
+        return result.decode("utf-8")
+
+    def create_pdf_renderer(self, output_file_base_name):
+        self._check_setup()
+        self.pdf_renderer = self._lib.TessPDFRendererCreate(
+            os.path.abspath(output_file_base_name).encode("utf-8"),
+            self.datapath.encode("utf-8"),
+            1,
+        )
+
+    def render_pdf(self, image_path):
+        self._check_setup()
+        if not self.pdf_renderer:
+            raise TesseractError("Set up renderer")
+
+        if not self._lib.TessBaseAPIProcessPages(
+            self._api,
+            os.path.abspath(image_path).encode("utf-8"),
+            None,
+            0,
+            self.pdf_renderer,
+        ):
+            raise TesseractError("render failed")
