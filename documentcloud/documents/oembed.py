@@ -47,6 +47,7 @@ class DocumentOEmbed(RichOEmbed):
         context = self.get_context(document, query, oembed, **kwargs)
         template = get_template(self.template)
         oembed["html"] = template.render(context)
+        oembed.pop("style")
         return self.oembed(**oembed)
 
     def get_context(self, document, query, extra, **kwargs):
