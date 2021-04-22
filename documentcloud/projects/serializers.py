@@ -36,6 +36,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "created_at",
             "description",
             "edit_access",
+            "add_remove_access",
             "private",
             "slug",
             "title",
