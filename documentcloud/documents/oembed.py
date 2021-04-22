@@ -6,7 +6,6 @@ from rest_framework.generics import get_object_or_404
 # Standard Library
 import re
 import time
-from urllib.parse import parse_qs
 
 # DocumentCloud
 from documentcloud.common.path import page_image_path, page_text_path
@@ -18,14 +17,6 @@ DOCCLOUD_DEBUG_REGEX = r"(dev[.])?" if settings.DEBUG else r""
 DOCCLOUD_URL_REGEX = (
     r"https?://((www|beta|embed)[.]" + DOCCLOUD_DEBUG_REGEX + r")?documentcloud[.]org"
 )
-
-
-def truthy_param(query, param):
-    """Returns whether the query parameter has a truthy value"""
-    values = parse_qs(query).get(param, [])
-    if values:
-        return values[-1].strip() == "1"
-    return False
 
 
 @register
@@ -43,7 +34,8 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
 
-        responsive = truthy_param(query, "responsive")
+        responsive = query.params.get("responsive") == "1"
+        print(responsive, query.params)
         width, height = self.get_dimensions(document, max_width, max_height)
         style = self.get_style(responsive, max_width, max_height)
         oembed = {
