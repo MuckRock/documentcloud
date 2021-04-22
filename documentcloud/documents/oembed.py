@@ -6,7 +6,6 @@ from rest_framework.generics import get_object_or_404
 # Standard Library
 import re
 import time
-from urllib.parse import parse_qs
 
 # DocumentCloud
 from documentcloud.common.path import page_image_path, page_text_path
