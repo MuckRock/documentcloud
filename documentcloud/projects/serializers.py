@@ -20,6 +20,14 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only=True,
         help_text=_("Does the current user have edit access to this project"),
     )
+    add_remove_access = serializers.SerializerMethodField(
+        label=_("Add/Remove Access"),
+        read_only=True,
+        help_text=_(
+            "Does the current user have permissions to add and remove documents "
+            "to this project"
+        ),
+    )
 
     class Meta:
         model = Project
@@ -52,6 +60,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             return obj.is_admin
         else:
             return request.user.has_perm("projects.change_project", obj)
+
+    def get_add_remove_access(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        # check if we have precomputed is_editor for performance reasons
+        if hasattr(obj, "is_editor"):
+            return obj.is_editor
+        else:
+            return request.user.has_perm("projects.add_remove_project", obj)
 
 
 class ProjectMembershipSerializer(FlexFieldsModelSerializer):

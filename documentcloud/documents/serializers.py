@@ -31,6 +31,7 @@ from documentcloud.documents.models import (
 )
 from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.projects.models import Project
+from documentcloud.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         context = kwargs.get("context", {})
         request = context.get("request")
         view = context.get("view")
+        user = request and request.user
         if self._authenticate_processing(request):
             # If this request is from our serverless processing functions,
             # make the following fields writable
@@ -169,22 +171,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             self.fields["id"].read_only = False
 
         if (
-            request
-            and request.user
+            user
             # check that projects is a field and not expanded into a serializer
             and "projects" in self.fields
             and isinstance(self.fields["projects"], ManyRelatedField)
         ):
             self.fields[
                 "projects"
-            ].child_relation.queryset = Project.objects.get_editable(request.user)
+            ].child_relation.queryset = Project.objects.get_editable(user)
 
-        if (
-            request
-            and request.user
-            and request.user.is_authenticated
-            and not request.user.verified_journalist
-        ):
+        if user and user.is_authenticated and not user.verified_journalist:
             # non-verified journalists may not make documents public
             if "access" in self.fields:
                 self.fields["access"].choices.pop(Access.public)
@@ -196,9 +192,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         is_list = isinstance(self.instance, (list, QuerySet))
         is_document = isinstance(self.instance, Document)
 
-        is_owner = is_create or (
-            is_document and request and self.instance.user == request.user
-        )
+        is_owner = is_create or (is_document and request and self.instance.user == user)
         has_file_url = (
             not is_list
             and hasattr(self, "initial_data")
@@ -213,6 +207,20 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             # only show presigned url if we are creating a new document without a
             # file url, or the document has not had a file uploaded yet
             del self.fields["presigned_url"]
+
+        perm = "documents.change_ownership_document"
+        if user and (
+            (is_document and user.has_perm(perm, self.instance))
+            or (is_list and all(user.has_perm(perm, i) for i in self.instance))
+        ):
+            # if this user has change ownership permissions, they may change the
+            # user and organization which own this document
+            self.fields["user"].read_only = False
+            self.fields["user"].queryset = User.objects.filter(
+                organizations__in=request.user.organizations.all()
+            ).distinct()
+            self.fields["organization"].read_only = False
+            self.fields["organization"].queryset = request.user.organizations.all()
 
     def _authenticate_processing(self, request):
         """Check the requests Authorization header for our special token"""

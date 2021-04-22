@@ -213,6 +213,10 @@ class Document(models.Model):
                 "Document processor - can set `page_count`, `page_spec`, and "
                 "`status` through the API",
             ),
+            (
+                "change_ownership_document",
+                "Can change the user or organization which owns the document",
+            ),
         )
 
     def __str__(self):

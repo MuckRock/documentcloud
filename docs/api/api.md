@@ -499,17 +499,18 @@ any access they have granted to others via projects at any time.
 
 ### Fields
 
-| Field       | Type      | Options          | Description                                                |
-| ----------- | --------- | ---------------- | ---------------------------------------------------------- |
-| ID          | Integer   | Read Only        | The ID for the project                                     |
-| created_at  | Date Time | Read Only        | Time stamp when this project was created                   |
-| description | String    | Not Required     | A brief description of the project                         |
-| edit_access | Bool      | Read Only        | Does the current user have edit access to this project     |
-| private     | Bool      | Default: `false` | Private projects may only be viewed by their collaborators |
-| slug        | String    | Read Only        | The slug is a URL safe version of the title                |
-| title       | String    | Required         | Title for the project                                      |
-| updated_at  | Date Time | Read Only        | Time stamp when this project was last updated              |
-| user        | ID        | Read Only        | The ID for the [user](#users) who created this project     |
+| Field             | Type      | Options          | Description                                                                       |
+| ----------------- | --------- | ---------------- | --------------------------------------------------------------------------------- |
+| ID                | Integer   | Read Only        | The ID for the project                                                            |
+| created_at        | Date Time | Read Only        | Time stamp when this project was created                                          |
+| description       | String    | Not Required     | A brief description of the project                                                |
+| edit_access       | Bool      | Read Only        | Does the current user have edit access to this project                            |
+| add_remove_access | Bool      | Read Only        | Does the current user have permission to add and remove documents to this project |
+| private           | Bool      | Default: `false` | Private projects may only be viewed by their collaborators                        |
+| slug              | String    | Read Only        | The slug is a URL safe version of the title                                       |
+| title             | String    | Required         | Title for the project                                                             |
+| updated_at        | Date Time | Read Only        | Time stamp when this project was last updated                                     |
+| user              | ID        | Read Only        | The ID for the [user](#users) who created this project                            |
 
 ### Endpoints
 

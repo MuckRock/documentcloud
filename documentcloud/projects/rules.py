@@ -46,9 +46,12 @@ can_view = is_public | (is_authenticated & is_collaborator)
 
 can_change = is_authenticated & is_admin
 
+can_add_remove = is_authenticated & is_edit_collaborator
+
 add_perm("projects.view_project", can_view)
 add_perm("projects.add_project", is_authenticated)
 add_perm("projects.change_project", can_change)
+add_perm("projects.add_remove_project", can_add_remove)
 add_perm("projects.delete_project", can_change)
 
 
@@ -73,6 +76,12 @@ def can_change_project(user, resource):
     return can_change(user, resource.project)
 
 
+@predicate
+@skip_if_not_obj
+def can_add_remove_project(user, resource):
+    return can_add_remove(user, resource.project)
+
+
 add_perm(
     "projects.view_projectmembership",
     is_authenticated & can_view_project & can_view_document,
@@ -80,11 +89,11 @@ add_perm(
 add_perm("projects.add_projectmembership", is_authenticated)
 add_perm(
     "projects.change_projectmembership",
-    is_authenticated & can_change_project & can_view_document,
+    is_authenticated & can_add_remove_project & can_view_document,
 )
 add_perm(
     "projects.delete_projectmembership",
-    is_authenticated & can_change_project & can_view_document,
+    is_authenticated & can_add_remove_project & can_view_document,
 )
 
 add_perm("projects.view_collaboration", is_authenticated & can_change_project)

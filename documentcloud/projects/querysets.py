@@ -49,7 +49,21 @@ class ProjectQuerySet(models.QuerySet):
                         .order_by()
                     ),
                     output_field=BooleanField(),
-                )
+                ),
+                is_editor=Cast(
+                    Subquery(
+                        user.collaboration_set.filter(
+                            project_id=OuterRef("pk"),
+                            access__in=[
+                                CollaboratorAccess.admin,
+                                CollaboratorAccess.edit,
+                            ],
+                        )
+                        .values("pk")
+                        .order_by()
+                    ),
+                    output_field=BooleanField(),
+                ),
             )
         else:
             return self.annotate(is_admin=Value(False, output_field=BooleanField()))
