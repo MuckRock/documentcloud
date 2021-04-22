@@ -18,7 +18,7 @@ class TestOEmbed(OEmbed):
 
     def response(self, request, query, max_width, max_height, **kwargs):
         return {
-            "query": query,
+            "query": str(query),
             "max_width": max_width,
             "max_height": max_height,
             "kwargs": kwargs,
