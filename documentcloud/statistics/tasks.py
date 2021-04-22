@@ -1,10 +1,13 @@
 # Django
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task
+from django.core.management import call_command
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 
 # Standard Library
+import logging
 from datetime import date, timedelta
 
 # DocumentCloud
@@ -13,6 +16,7 @@ from documentcloud.documents.models import Document, Note
 from documentcloud.projects.models import Project
 from documentcloud.statistics.models import Statistics
 
+logger = logging.getLogger(__name__)
 
 # This is using UTC time instead of the local timezone
 @periodic_task(run_every=crontab(hour=5, minute=30))
@@ -134,3 +138,17 @@ def store_statistics():
     kwargs["total_projects"] = Project.objects.count()
 
     Statistics.objects.create(**kwargs)
+
+
+@periodic_task(
+    run_every=crontab(hour=6, minute=0), time_limit=1800, soft_time_limit=1740
+)
+def db_cleanup():
+    """Call some management commands to clean up the database"""
+    logger.info("Starting DB Clean up")
+    try:
+        call_command("clearsessions", verbosity=2)
+        call_command("deleterevisions", days=180, verbosity=2)
+    except SoftTimeLimitExceeded:
+        logger.error("DB Clean up took too long")
+    logger.info("Ending DB Clean up")
