@@ -6,6 +6,7 @@ from rest_framework.generics import get_object_or_404
 # Standard Library
 import re
 import time
+from urllib.parse import parse_qs
 
 # DocumentCloud
 from documentcloud.common.path import page_image_path, page_text_path
@@ -17,6 +18,14 @@ DOCCLOUD_DEBUG_REGEX = r"(dev[.])?" if settings.DEBUG else r""
 DOCCLOUD_URL_REGEX = (
     r"https?://((www|beta|embed)[.]" + DOCCLOUD_DEBUG_REGEX + r")?documentcloud[.]org"
 )
+
+
+def truthy_param(query, param):
+    """Returns whether the query parameter has a truthy value"""
+    values = parse_qs(query).get(param, [])
+    if values:
+        return values[-1].strip() == "1"
+    return False
 
 
 @register
@@ -34,8 +43,15 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
 
+        responsive = truthy_param(query, "responsive")
         width, height = self.get_dimensions(document, max_width, max_height)
-        oembed = {"title": document.title, "width": width, "height": height}
+        style = self.get_style(responsive, max_width, max_height)
+        oembed = {
+            "title": document.title,
+            "width": width,
+            "height": height,
+            "style": style,
+        }
         context = self.get_context(document, query, oembed, **kwargs)
         template = get_template(self.template)
         oembed["html"] = template.render(context)
@@ -52,18 +68,28 @@ class DocumentOEmbed(RichOEmbed):
         default_width = 700
         aspect_ratio = document.aspect_ratio
         if max_width and max_height:
-            if max_width / aspect_ratio > max_height:
-                # cap based on max_height
-                return int(max_height * aspect_ratio), max_height
-            else:
-                # cap based on max width
-                return max_width, int(max_width / aspect_ratio)
+            # preserve user intention and break aspect ratio
+            return max_width, max_height
         elif max_width:
             return max_width, int(max_width / aspect_ratio)
         elif max_height:
             return int(max_height * aspect_ratio), max_height
         else:
             return default_width, int(default_width / aspect_ratio)
+
+    def get_style(self, responsive, max_width, max_height):
+        if not responsive:
+            # Don't apply any extra styling if not responsive
+            return ""
+
+        # 100% width and 100vh - 100px height (100% fallback for old browsers)"""
+        style = " width: 100%; height: 100%; height: calc(100vh - 100px);"
+
+        if max_width:
+            style += f" max-width: {max_width}px;"
+        if max_height:
+            style += f" max-height: {max_height}px;"
+        return style
 
 
 @register
