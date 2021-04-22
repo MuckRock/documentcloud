@@ -160,6 +160,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         request = context.get("request")
         view = context.get("view")
         user = request and request.user
+        is_document = isinstance(self.instance, Document)
+        is_list = isinstance(self.instance, (list, QuerySet))
+
+        self._init_readonly(request, view, user)
+        self._init_projects_queryset(user)
+        self._init_presigned_url(request, user, is_document, is_list)
+        self._init_change_ownership(request, user, is_document, is_list)
+
+    def _init_readonly(self, request, view, user):
+        """Dynamically alter read only status of fields"""
         if self._authenticate_processing(request):
             # If this request is from our serverless processing functions,
             # make the following fields writable
@@ -170,6 +180,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             # ID is not read only for bulk updates
             self.fields["id"].read_only = False
 
+        if user and user.is_authenticated and not user.verified_journalist:
+            # non-verified journalists may not make documents public
+            if "access" in self.fields:
+                self.fields["access"].choices.pop(Access.public)
+                self.fields["access"].choice_map.pop("public")
+            if "publish_at" in self.fields:
+                self.fields["publish_at"].read_only = True
+
+    def _init_projects_queryset(self, user):
+        """Initalize querysets for valid choices for projects"""
         if (
             user
             # check that projects is a field and not expanded into a serializer
@@ -180,17 +200,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 "projects"
             ].child_relation.queryset = Project.objects.get_editable(user)
 
-        if user and user.is_authenticated and not user.verified_journalist:
-            # non-verified journalists may not make documents public
-            if "access" in self.fields:
-                self.fields["access"].choices.pop(Access.public)
-                self.fields["access"].choice_map.pop("public")
-            if "publish_at" in self.fields:
-                self.fields["publish_at"].read_only = True
-
+    def _init_presigned_url(self, request, user, is_document, is_list):
+        """Only shown presigned url if needed"""
         is_create = self.instance is None
-        is_list = isinstance(self.instance, (list, QuerySet))
-        is_document = isinstance(self.instance, Document)
 
         is_owner = is_create or (is_document and request and self.instance.user == user)
         has_file_url = (
@@ -208,6 +220,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             # file url, or the document has not had a file uploaded yet
             del self.fields["presigned_url"]
 
+    def _init_change_ownership(self, request, user, is_document, is_list):
+        """Check for change ownership permissions"""
         perm = "documents.change_ownership_document"
         if user and (
             (is_document and user.has_perm(perm, self.instance))

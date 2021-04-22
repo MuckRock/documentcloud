@@ -20,14 +20,6 @@ DOCCLOUD_URL_REGEX = (
 )
 
 
-def truthy_param(query, param):
-    """Returns whether the query parameter has a truthy value"""
-    values = parse_qs(query).get(param, [])
-    if values:
-        return values[-1].strip() == "1"
-    return False
-
-
 @register
 class DocumentOEmbed(RichOEmbed):
     template = "oembed/document.html"
@@ -43,7 +35,7 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
 
-        responsive = truthy_param(query, "responsive")
+        responsive = query.params.get("responsive") == "1"
         width, height = self.get_dimensions(document, max_width, max_height)
         style = self.get_style(responsive, max_width, max_height)
         oembed = {
@@ -55,6 +47,7 @@ class DocumentOEmbed(RichOEmbed):
         context = self.get_context(document, query, oembed, **kwargs)
         template = get_template(self.template)
         oembed["html"] = template.render(context)
+        oembed.pop("style")
         return self.oembed(**oembed)
 
     def get_context(self, document, query, extra, **kwargs):
