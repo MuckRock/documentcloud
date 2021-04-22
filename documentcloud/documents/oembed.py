@@ -82,7 +82,7 @@ class DocumentOEmbed(RichOEmbed):
             # Don't apply any extra styling if not responsive
             return ""
 
-        # 100% width and 100vh - 100px height (100% fallback for old browsers)"""
+        # 100% width and 100vh - 100px height (100% fallback for old browsers)
         style = " width: 100%; height: 100%; height: calc(100vh - 100px);"
 
         if max_width:
