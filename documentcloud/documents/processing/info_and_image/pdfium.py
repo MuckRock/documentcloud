@@ -4,6 +4,7 @@ import ctypes
 import hashlib
 import io
 import os
+import numpy as np
 from ctypes import (
     CFUNCTYPE,
     POINTER,
@@ -393,8 +394,11 @@ class Page:
         del image_obj
 
     def add_sized_text(self, text, x, y, width, height):
+        courier = self.workspace.fpdf_load_standard_font(
+            self.doc.doc, fpdf_string("Courier")
+        )
         text_obj = self.workspace.fpdf_page_obj_create_text_obj(
-            self.doc.doc, self.doc.sans_font, height
+            self.doc.doc, courier, height
         )
 
         # Set the text
@@ -450,6 +454,57 @@ class Page:
         return self.workspace.fpdf_get_page_rotation(self.page)
 
 
+class Matrix:
+    matrix_type = c_float * 6
+
+    def __init__(self):
+        self.matrix = self.matrix_type(0, 0, 0, 0, 0, 0)
+
+    def ref(self):
+        return byref(self.matrix)
+
+    @property
+    def list(self):
+        return list(self.matrix)
+
+    @property
+    def a(self):
+        return self.matrix[0]
+
+    @property
+    def b(self):
+        return self.matrix[1]
+
+    @property
+    def c(self):
+        return self.matrix[2]
+
+    @property
+    def d(self):
+        return self.matrix[3]
+
+    @property
+    def e(self):
+        return self.matrix[4]
+
+    @property
+    def f(self):
+        return self.matrix[5]
+
+    @property
+    def rows(self):
+        return [[self.a, self.b, 0], [self.c, self.d, 0], [self.e, self.f, 1]]
+
+    def scale(self, x, y):
+        result = np.matmul(self.rows, [[x, 0, 0], [0, y, 0], [0, 0, 1]])
+        self.matrix[0] = result[0][0]
+        self.matrix[1] = result[0][1]
+        self.matrix[2] = result[1][0]
+        self.matrix[3] = result[1][1]
+        self.matrix[4] = result[2][0]
+        self.matrix[5] = result[2][1]
+
+
 def fpdf_string(text):
     if text is not None:
         if isinstance(text, str):
@@ -466,7 +521,7 @@ class Workspace:
         assert self.pdfium is None, "Do not call this function more than once"
 
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        self.pdfium = cdll.LoadLibrary(os.path.join(script_dir, "libpdfium.so2"))
+        self.pdfium = cdll.LoadLibrary(os.path.join(script_dir, "libpdfium.so"))
 
         self.init_config = FPDFLibraryConfig(2, c_void_p(), c_void_p(), 0)
         self.pdfium.FPDF_InitLibraryWithConfig(byref(self.init_config))
@@ -550,11 +605,23 @@ class Workspace:
         prototype = CFUNCTYPE(None, c_void_p, c_void_p)
         self.fpdf_insert_object = prototype(("FPDFPage_InsertObject", self.pdfium))
 
+        prototype = CFUNCTYPE(c_int, c_void_p, c_void_p)
+        self.fpdf_remove_object = prototype(("FPDFPage_RemoveObject", self.pdfium))
+
         prototype = CFUNCTYPE(c_int, c_void_p, c_void_p, c_char_p, c_int)
         self.fpdf_import_pages = prototype(("FPDF_ImportPages", self.pdfium))
 
         prototype = CFUNCTYPE(None, c_void_p, c_int)
         self.fpdf_page_rotate = prototype(("FPDFPage_SetRotation", self.pdfium))
+
+        prototype = CFUNCTYPE(c_int, c_void_p)
+        self.fpdf_count_objects = prototype(("FPDFPage_CountObjects", self.pdfium))
+
+        prototype = CFUNCTYPE(c_void_p, c_void_p, c_int)
+        self.fpdf_get_object = prototype(("FPDFPage_GetObject", self.pdfium))
+
+        prototype = CFUNCTYPE(c_int, c_void_p)
+        self.fpdf_object_get_type = prototype(("FPDFPageObj_GetType", self.pdfium))
 
         # Text object
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_float)
@@ -590,6 +657,11 @@ class Workspace:
         self.fpdf_page_obj_transform = prototype(("FPDFPageObj_Transform", self.pdfium))
 
         # Fonts
+        prototype = CFUNCTYPE(c_void_p, c_void_p, c_char_p)
+        self.fpdf_load_standard_font = prototype(
+            ("FPDFText_LoadStandardFont", self.pdfium)
+        )
+
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_uint8_p, c_uint32, c_int, c_int)
         self.fpdf_text_load_font = prototype(("FPDFText_LoadFont", self.pdfium))
 
@@ -601,6 +673,10 @@ class Workspace:
         self.fpdf_page_obj_set_fill_color = prototype(
             ("FPDFPageObj_SetFillColor", self.pdfium)
         )
+
+        # Matrices
+        prototype = CFUNCTYPE(c_int, c_void_p, c_void_p)
+        self.fpdf_get_text_matrix = prototype(("FPDFTextObj_GetMatrix", self.pdfium))
 
         # Saving PDF
         prototype = CFUNCTYPE(c_int, c_void_p)

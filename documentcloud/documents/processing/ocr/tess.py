@@ -171,6 +171,11 @@ class Tesseract:
         if not self.pdf_renderer:
             raise TesseractError("Set up renderer")
 
+        if not self._lib.TessResultRendererBeginDocument(
+            self.pdf_renderer, "".encode("utf-8")
+        ):
+            raise TesseractError("could not begin document")
+
         if not self._lib.TessBaseAPIProcessPages(
             self._api,
             os.path.abspath(image_path).encode("utf-8"),
@@ -179,3 +184,6 @@ class Tesseract:
             self.pdf_renderer,
         ):
             raise TesseractError("render failed")
+
+        if not self._lib.TessResultRendererEndDocument(self.pdf_renderer):
+            raise TesseractError("could not end document")
