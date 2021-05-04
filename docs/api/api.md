@@ -417,14 +417,14 @@ To support a flexible host of potential modifications, you must pass in the modi
 
 The following examples assume you are modifying the Mueller Report, a 448-page document.
 
-| Example                                                                                                                                                                                                                                                                                                                          | Description                                                                            |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Example                                                                                                                                                                                                                                                                                                                        | Description                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | <pre>[{<br>&nbsp;&nbsp;"page": "0-447"<br>}]</pre>                                                                                                                                                                                                                                                                             | Leave the Mueller Report unchanged                                                     |
 | <pre>[{<br>&nbsp;&nbsp;"page": "0-23,423-447"<br>}]</pre>                                                                                                                                                                                                                                                                      | Remove the middle 400 pages of the Mueller Report                                      |
 | <pre>[{<br>&nbsp;&nbsp;"page": "0-23,423-447"<br>}]</pre>                                                                                                                                                                                                                                                                      | Duplicate the first 50 pages of the Mueller Report at the end of the document          |
 | <pre>[{<br>&nbsp;&nbsp;"page": "0-447",<br>&nbsp;&nbsp;"modifications": [{<br>&nbsp;&nbsp;&nbsp;&nbsp;"type": "rotate",<br>&nbsp;&nbsp;&nbsp;&nbsp;"angle": "ccw"<br>&nbsp;&nbsp;}]<br>}]</pre>                                                                                                                                | Rotate all the pages of the Mueller Report counter-clockwise                           |
 | <pre>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"page": "0-49",<br>&nbsp;&nbsp;&nbsp;&nbsp;"modifications": [{<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"type": "rotate",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"angle": "hw"<br>&nbsp;&nbsp;&nbsp;&nbsp;}]<br>&nbsp;&nbsp;},<br>&nbsp;&nbsp;{ "page": "50-447" }<br>]</pre> | Rotate just the first 50 pages of the Mueller Report 180 degrees                       |
-| <pre>[<br>&nbsp;&nbsp;{ "page": "0-447" },<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"page": "0-49",<br>&nbsp;&nbsp;&nbsp;&nbsp;"id": "2000000"<br>&nbsp;&nbsp;},<br>]</pre> | Import 50 pages of another document with id `2000000` at the end of the Mueller report |
+| <pre>[<br>&nbsp;&nbsp;{ "page": "0-447" },<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"page": "0-49",<br>&nbsp;&nbsp;&nbsp;&nbsp;"id": "2000000"<br>&nbsp;&nbsp;},<br>]</pre>                                                                                                                                                 | Import 50 pages of another document with id `2000000` at the end of the Mueller report |
 
 #### Endpoints
 
@@ -723,9 +723,6 @@ The status informs you to the current status of your document.
 
 ### Supported File Types
 
-<details>
-<summary>Supported file types</summary>
-
 | Format                                     | Extension                                       | Type                     | Notes                                                                       |
 | ------------------------------------------ | ----------------------------------------------- | ------------------------ | --------------------------------------------------------------------------- |
 | AbiWord                                    | ABW, ZABW                                       | Document                 |                                                                             |
@@ -753,7 +750,7 @@ The status informs you to the current status of your document.
 | Ichitaro 8/9/10/11                         | JTD, JTT                                        | Document                 |                                                                             |
 | JPEG                                       | JPG, JPEG                                       | Graphics                 |                                                                             |
 | Lotus 1-2-3                                | WK1, WKS, 123, wk3, wk4                         | Spreadsheet              |                                                                             |
-| Macintosh Picture File[69]                 | PCT                                             | Graphics                 |                                                                             |
+| Macintosh Picture File                     | PCT                                             | Graphics                 |                                                                             |
 | MathML                                     | MML                                             | Math                     |                                                                             |
 | Microsoft Excel 2003 XML                   | XML                                             | Spreadsheet              |                                                                             |
 | Microsoft Excel 4/5/95                     | XLS, XLW, XLT                                   | Spreadsheet              |                                                                             |
@@ -779,12 +776,7 @@ The status informs you to the current status of your document.
 | Plain text                                 | TXT                                             | Text                     | Various encodings supported                                                 |
 | Portable Document Format                   | PDF                                             | Document                 | Including hybrid PDF                                                        |
 
-</details>
-
 ### Languages
-
-<details>
-<summary>Language choices</summary>
 
 - ara &ndash; Arabic
 - zho &ndash; Chinese (Simplified)
@@ -808,8 +800,6 @@ The status informs you to the current status of your document.
 - spa &ndash; Spanish
 - swe &ndash; Swedish
 - ukr &ndash; Ukrainian
-
-</details>
 
 ### Page Spec
 
