@@ -68,9 +68,9 @@ permission to will return status 403.
 
 All list views accept a `per_page` parameter, which specifies how many
 resources to list per page. It is `25` by default and may be set up to `100`
-for authenticated users.  For anonymous users it is restricted to `25`.  You
+for authenticated users. For anonymous users it is restricted to `25`. You
 may register for a free account at <https://accounts.muckrock.com/> to use the
-`100` limit.  You may view subsequent pages by using the `next` URL, or by
+`100` limit. You may view subsequent pages by using the `next` URL, or by
 specifying a `page` parameter directly.
 
 ### Sub Resources
@@ -171,7 +171,7 @@ documents](#project-documents).
 
 There are two supported ways to upload documents &mdash; directly uploading the
 file to our storage servers or by providing a URL to a publicly available
-PDF. We currently only support PDF documents.
+PDF or other [supported file type](#supported-file-types).
 
 #### Direct File Upload Flow
 
@@ -398,6 +398,37 @@ created, not retrieved or edited.
 #### Endpoints
 
 - `POST /api/documents/<document_id>/redactions/` - Create redaction
+
+### Modifications
+
+Modifications allow you to perform page modification operations on a document, including moving pages, rotating pages, copying pages, deleting pages, and inserting pages from other documents. Applying modifications effectively shuffles, removes, and copies pages, preserving and duplicating page information as needed (this includes page text and any annotations and sections attached to the page). No page text needs to be reprocessed or re-OCR'd. After successfully applying modifications, the document cannot be reverted.
+
+#### Modification Specification
+
+To support a flexible host of potential modifications, you must pass in the modifications as a JSON array that lists the operations to take place. The modification specification defines the pages that should compose the document post-modification and any operations such as rotation to apply to the pages. Each element of the modification array can have the following fields (instructive examples will be listed after the official specification):
+
+| Field         | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| page          | A comma-separated string of page ranges, which can include individual pages or hyphenated inclusive runs of pages. Page numbers are 0-based (the first page of the document is page `0`, and `0-9` refers to the first through the 10th page of the document). Valid examples of page ranges include `"7"`, `"0-499"`, `"0-5,8,11-13"`, and `0,0,0` (page numbers can be repeated to duplicate them). |
+| id            | If unspecified, pull pages from the current document. Otherwise, pull pages from the document with the specified id.                                                                                                                                                                                                                                                                                  |
+| modifications | An array of JSON objects defining modifications to take place. The only currently defined page modification operation is `rotate`, which rotates pages clockwise, counterclockwise, or halfway. Rotation is specified as `{"type": "rotate", "angle": <angle>}`, where `<angle>` is one of `cc`, `ccw`, or `hw` (corresponding to clockwise, counterclockwise, and halfway, respectively).            |
+
+#### Example Specifications
+
+The following examples assume you are modifying the Mueller Report, a 448-page document.
+
+| Example                                                                                                                                                                                                                                                                                                                          | Description                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| <code>[{<br>&nbsp;&nbsp;"page": "0-447"<br>}]</code>                                                                                                                                                                                                                                                                             | Leave the Mueller Report unchanged                                                     |
+| <code>[{<br>&nbsp;&nbsp;"page": "0-23,423-447"<br>}]</code>                                                                                                                                                                                                                                                                      | Remove the middle 400 pages of the Mueller Report                                      |
+| <code>[{<br>&nbsp;&nbsp;"page": "0-23,423-447"<br>}]</code>                                                                                                                                                                                                                                                                      | Duplicate the first 50 pages of the Mueller Report at the end of the document          |
+| <code>[{<br>&nbsp;&nbsp;"page": "0-447",<br>&nbsp;&nbsp;"modifications": [{<br>&nbsp;&nbsp;&nbsp;&nbsp;"type": "rotate",<br>&nbsp;&nbsp;&nbsp;&nbsp;"angle": "ccw"<br>&nbsp;&nbsp;}]<br>}]</code>                                                                                                                                | Rotate all the pages of the Mueller Report counter-clockwise                           |
+| <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"page": "0-49",<br>&nbsp;&nbsp;&nbsp;&nbsp;"modifications": [{<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"type": "rotate",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"angle": "hw"<br>&nbsp;&nbsp;&nbsp;&nbsp;}]<br>&nbsp;&nbsp;},<br>&nbsp;&nbsp;{ "page": "50-447" }<br>]</code> | Rotate just the first 50 pages of the Mueller Report 180 degrees                       |
+| <code>[<br>&nbsp;&nbsp;{<br>&nbsp;&nbsp;&nbsp;&nbsp;"page": "0-49",<br>&nbsp;&nbsp;&nbsp;&nbsp;"modifications": [{<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"type": "rotate",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"amount": 180<br>&nbsp;&nbsp;&nbsp;&nbsp;}]<br>&nbsp;&nbsp;},<br>&nbsp;&nbsp;{ "page": "50-447" }<br>]</code> | Import 50 pages of another document with id `2000000` at the end of the Mueller report |
+
+#### Endpoints
+
+- `POST /api/documents/<document_id>/modifications/` - Create modifications
 
 ### Entities
 
@@ -689,6 +720,66 @@ The status informs you to the current status of your document.
 - `pending` &ndash; The document is processing and not currently readable
 - `error` &ndash; There was an [error](#errors) during processing
 - `nofile` &ndash; The document was created, but no file was uploaded yet
+
+### Supported File Types
+
+<details>
+<summary>Supported file types</summary>
+
+| Format                                     | Extension                                       | Type                     | Notes                                                                       |
+| ------------------------------------------ | ----------------------------------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| AbiWord                                    | ABW, ZABW                                       | Document                 |                                                                             |
+| Adobe PageMaker                            | PMD, PM3, PM4, PM5, PM6, P65                    | Document, DTP            |                                                                             |
+| AppleWorks word processing                 | CWK                                             | Document                 | Formerly called ClarisWorks                                                 |
+| Adobe FreeHand                             | AGD, FHD                                        | Graphics / Vector        |                                                                             |
+| Apple Keynote                              | KTH, KEY                                        | Presentation             |                                                                             |
+| Apple Numbers                              | Numbers                                         | Spreadsheet              |                                                                             |
+| Apple Pages                                | Pages                                           | Document                 |                                                                             |
+| BMP file format                            | BMP                                             | Graphics / Raster        |                                                                             |
+| Comma-separated values                     | CSV, TXT                                        | Text                     |                                                                             |
+| CorelDRAW 6-X7                             | CDR, CMX                                        | Graphics / Vector        |                                                                             |
+| Computer Graphics Metafile                 | CGM                                             | Graphics                 | Binary-encoded only; not those using clear-text or character-based encoding |
+| Data Interchange Format                    | DIF                                             | Spreadsheet              |                                                                             |
+| DBase, Clipper, VP-Info, FoxPro            | DBF                                             | Database                 |                                                                             |
+| DocBook                                    | XML                                             | XML                      |                                                                             |
+| Encapsulated PostScript                    | EPS                                             | Graphics                 |                                                                             |
+| Enhanced Metafile                          | EMF                                             | Graphics / Vector / Text |                                                                             |
+| FictionBook                                | FB2                                             | eBook                    |                                                                             |
+| Gnumeric                                   | GNM, GNUMERIC                                   | Spreadsheet              |                                                                             |
+| Graphics Interchange Format                | GIF                                             | Graphics / Raster        |                                                                             |
+| Hangul WP 97                               | HWP                                             | Document                 | Newer "5.x" documents are not supported                                     |
+| HPGL plotting file                         | PLT                                             | Graphics                 |                                                                             |
+| HTML                                       | HTML, HTM                                       | Document, text           |                                                                             |
+| Ichitaro 8/9/10/11                         | JTD, JTT                                        | Document                 |                                                                             |
+| JPEG                                       | JPG, JPEG                                       | Graphics                 |                                                                             |
+| Lotus 1-2-3                                | WK1, WKS, 123, wk3, wk4                         | Spreadsheet              |                                                                             |
+| Macintosh Picture File[69]                 | PCT                                             | Graphics                 |                                                                             |
+| MathML                                     | MML                                             | Math                     |                                                                             |
+| Microsoft Excel 2003 XML                   | XML                                             | Spreadsheet              |                                                                             |
+| Microsoft Excel 4/5/95                     | XLS, XLW, XLT                                   | Spreadsheet              |                                                                             |
+| Microsoft Excel 97–2003                    | XLS, XLW, XLT                                   | Spreadsheet              |                                                                             |
+| Microsoft Excel 2007-2016                  | XLSX                                            | Spreadsheet              |                                                                             |
+| Microsoft Office 2007-2016 Office Open XML | DOCX, XLSX, PPTX                                | Multiple formats         |                                                                             |
+| Microsoft PowerPoint 97–2003               | PPT, PPS, POT                                   | Presentation             |                                                                             |
+| Microsoft PowerPoint 2007-2016             | PPTX                                            | Presentation             |                                                                             |
+| Microsoft Publisher                        | PUB                                             | Document, DTP            |                                                                             |
+| Microsoft RTF                              | RTF                                             | Document                 |                                                                             |
+| Microsoft Word 2003 XML (WordprocessingML) | XML                                             | Document                 |                                                                             |
+| Microsoft Word                             | DOC, DOT, DOCX                                  | Document                 |                                                                             |
+| Microsoft Works                            | WPS, WKS, WDB                                   | Multiple                 | Microsoft Works for Mac formats since 4.1                                   |
+| Microsoft Write                            | WRI                                             | Document                 |                                                                             |
+| Microsoft Visio                            | VSD                                             | Graphics / Vector        |                                                                             |
+| Netpbm format                              | PGM, PBM, PPM                                   | Graphics / Raster        |                                                                             |
+| OpenDocument                               | ODT, FODT, ODS, FODS, ODP, FODP, ODG, FODG, ODF | Multiple formats         |                                                                             |
+| Open Office Base                           | ODB                                             | Database forms, data     |                                                                             |
+| OpenOffice.org XML                         | SXW, STW, SXC, STC, SXI, STI, SXD, STD, SXM     | Multiple formats         |                                                                             |
+| PCX                                        | PCX                                             | Graphics                 |                                                                             |
+| Photo CD                                   | PCD                                             | Presentation             |                                                                             |
+| PhotoShop                                  | PSD                                             | Graphics                 |                                                                             |
+| Plain text                                 | TXT                                             | Text                     | Various encodings supported                                                 |
+| Portable Document Format                   | PDF                                             | Document                 | Including hybrid PDF                                                        |
+
+</details>
 
 ### Languages
 
