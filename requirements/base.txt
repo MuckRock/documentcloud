@@ -47,6 +47,7 @@ django-model-utils==3.2.0  # via -r requirements/base.in
 django-premailer==0.2.0   # via -r requirements/base.in
 django-redis==4.10.0      # via -r requirements/base.in, python-redis-lock
 django-reversion==3.0.4   # via -r requirements/base.in
+django-robots==4.0        # via -r requirements/base.in
 django-timezone-field==3.0  # via django-celery-beat
 django==2.2.5             # via -r requirements/base.in, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-filter, django-model-utils, django-redis, django-reversion, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/base.in

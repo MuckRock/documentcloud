@@ -100,6 +100,7 @@ urlpatterns = [
         "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"
     ),
     path("pages/", include("django.contrib.flatpages.urls")),
+    path("robots.txt", include("robots.urls")),
 ]
 
 if "debug_toolbar" in settings.INSTALLED_APPS:

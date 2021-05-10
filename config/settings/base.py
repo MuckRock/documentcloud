@@ -80,6 +80,7 @@ THIRD_PARTY_APPS = [
     "squarelet_auth.organizations.apps.OrganizationsConfig",
     "squarelet_auth.apps.SquareletAuthConfig",
     "django_premailer",
+    "robots",
 ]
 
 LOCAL_APPS = [

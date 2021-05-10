@@ -32,6 +32,7 @@ squarelet-auth
 dogslow
 django-debug-toolbar
 django-cprofile-middleware
+django-robots
 
 # Django REST Framework
 djangorestframework
