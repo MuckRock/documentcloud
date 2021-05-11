@@ -223,14 +223,15 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     def _init_change_ownership(self, request, user, is_document, is_list):
         """Check for change ownership permissions"""
         perm = "documents.change_ownership_document"
-        if (
-            user
-            and user.is_authenticated
-            and (
-                (is_document and user.has_perm(perm, self.instance))
-                or (is_list and all(user.has_perm(perm, i) for i in self.instance))
-            )
-        ):
+        if not (user and user.is_authenticated):
+            return
+        if is_document:
+            has_perm = user.has_perm(perm, self.instance)
+        elif is_list:
+            has_perm = all(user.has_perm(perm, i) for i in self.instance)
+        else:
+            return
+        if has_perm:
             # if this user has change ownership permissions, they may change the
             # user and organization which own this document
             self.fields["user"].read_only = False
