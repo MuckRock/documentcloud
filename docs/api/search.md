@@ -144,7 +144,7 @@ Text fields can be used to search for text in a particular field of the document
   - The description of the document.
 - **text**
   - The full text of the document, as obtained by text embedded in the PDF or by OCR. `doctext` is an alias for text.
-- **page_no\_\***
+- **page_no\_\* **
   - You may search the text on the given page of a document. To find all documents which contain the word report on page 2, you could use `page_no_2:report`.
 
 ## API
@@ -167,14 +167,18 @@ You can also specify `per_page`, `page`, and `expand` as you would for `/api/doc
 }
 ```
 
-with the addition of the `escaped` property to specify if the query had a syntax error and needed to be autoescaped. Each document will also contain a `highlights` property, which will contain relevant snippets from the document containing the given search term.
+with the addition of the `escaped` property to specify if the query had a syntax error and needed to be autoescaped.
+
+You may also enable highlighting by setting the `hl` parameter to `true`.  Each document will then contain a `highlights` property, which will contain relevant snippets from the document containing the given search term.
 
 *Note:* Highlights are only available to authenticated users.  You may register for a free account at <https://accounts.muckrock.com/> to use this feature.
 
 ```
+https://api.www.documentcloud.org/api/documents/search?q=report&hl=true
+
 {
     "count": 413,
-    "next": "https://api.www.documentcloud.org/api/documents/search/?q=report&page=2",
+    "next": "https://api.www.documentcloud.org/api/documents/search/?q=report&page=2&hl=true",
     "previous": null,
     "results": [
         {
