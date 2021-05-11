@@ -99,7 +99,7 @@ def search(user, query_params):
     )
     rows, start, page = _paginate(query_params, user)
 
-    # allow explicit disabling of highlighting
+    # allow explicit enabling of highlighting
     if query_params.get("hl", "").lower() == "true":
         use_hl = True
 

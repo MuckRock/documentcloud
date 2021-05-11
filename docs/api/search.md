@@ -171,8 +171,6 @@ with the addition of the `escaped` property to specify if the query had a syntax
 
 You may also enable highlighting by setting the `hl` parameter to `true`.  Each document will then contain a `highlights` property, which will contain relevant snippets from the document containing the given search term.
 
-*Note:* Highlights are only available to authenticated users.  You may register for a free account at <https://accounts.muckrock.com/> to use this feature.
-
 ```
 https://api.www.documentcloud.org/api/documents/search?q=report&hl=true
 
