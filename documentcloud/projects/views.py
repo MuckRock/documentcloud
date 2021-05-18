@@ -1,6 +1,5 @@
 # Django
 from django.db import transaction
-from django.db.models.expressions import F
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import exceptions, serializers, viewsets
@@ -12,6 +11,7 @@ from functools import lru_cache
 
 # Third Party
 import django_filters
+from django_filters.constants import EMPTY_VALUES
 from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
@@ -100,6 +100,22 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
+class OrderingFilter(django_filters.OrderingFilter):
+    """Always add PK to the order to ensure proper index usage
+    Postgres is picking a much slower execution path in certain cases
+    without this modification
+    """
+
+    def filter(self, qs, value):
+        """Add PK to all orderings"""
+        if value in EMPTY_VALUES:
+            return qs
+
+        ordering = [self.get_ordering_value(param) for param in value]
+        ordering.append("pk")
+        return qs.order_by(*ordering)
+
+
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="list")
 class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
@@ -122,12 +138,6 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             # execution plan and drastically reduces run time in certain cases
             project.projectmembership_set.get_viewable(self.request.user)
             .preload(self.request.user, self.request.query_params.get("expand", ""))
-            .annotate(
-                created_at=F("document__created_at"),
-                page_count=F("document__page_count"),
-                title=F("document__title"),
-                source=F("document__source"),
-            )
             .order_by("-document__created_at", "id")
         )
 
@@ -276,8 +286,13 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         _solr_remove(instance)
 
     class Filter(django_filters.FilterSet):
-        ordering = django_filters.OrderingFilter(
-            fields=("created_at", "page_count", "title", "source")
+        ordering = OrderingFilter(
+            fields=(
+                ("document__created_at", "created_at"),
+                ("document__page_count", "page_count"),
+                ("document__title", "title"),
+                ("document__source", "source"),
+            )
         )
         document_id__in = ModelMultipleChoiceFilter(
             model=Document, field_name="document"
@@ -286,6 +301,10 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         class Meta:
             model = ProjectMembership
             fields = ["document_id__in"]
+            order_by = ("created_at", "page_count")
+
+        def get_ordering(self, order_choice):
+            return [order_choice, "pk"]
 
     filterset_class = Filter
 
