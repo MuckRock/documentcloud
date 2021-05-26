@@ -1,6 +1,8 @@
 # Standard Library
 import json
 import logging
+import os
+import tempfile
 import time
 
 # Third Party
@@ -71,6 +73,8 @@ DESIRED_WIDTH = env.int("OCR_WIDTH", default=700)
 LARGE_IMAGE_SUFFIX = "-large"
 TXT_EXTENSION = ".txt"
 
+TESS_PDF_PREFIX = "ocr"
+
 
 def write_text_file(text_path, text, access):
     """Helper method to write a text file."""
@@ -84,8 +88,14 @@ def ocr_page(page_path, ocr_code="eng"):
         The page text.
     """
     # Capture the image as raw pixel data
+    _, img_path = tempfile.mkstemp(suffix=".png")
+
     with storage.open(page_path, "rb") as image_file:
         img = Image.open(image_file).convert("RGB")
+
+    # Write to PNG
+    img.save(img_path, "png")
+
     # Resize only if image is too big (OCR computation is slow with large images)
     if img.width > DESIRED_WIDTH:
         resize = DESIRED_WIDTH / img.width
@@ -98,6 +108,27 @@ def ocr_page(page_path, ocr_code="eng"):
     tess = Tesseract(ocr_code)
     tess.set_image(img_data.ctypes, width, height, depth)
     text = tess.get_text()
+
+    # Render the PDF
+    # TODO: use Tesseract's API to render to text simultaneously
+    pdf_path = tempfile.mkstemp()[1]
+    try:
+        print("RENDERING", pdf_path, img_path)
+        tess.create_pdf_renderer(pdf_path)
+        tess.render_pdf(img_path)
+        tess.destroy_pdf_renderer()
+
+        # Write to s3
+        base_path, file_name = os.path.split(page_path)
+        base_name = os.path.splitext(file_name)[0]
+        new_pdf_path = os.path.join(base_path, TESS_PDF_PREFIX, base_name + ".pdf")
+        with storage.open(new_pdf_path, "wb") as new_pdf_file:
+            with open(pdf_path + ".pdf", "rb") as pdf_file:
+                new_pdf_file.write(pdf_file.read())
+                print(new_pdf_path)
+    finally:
+        os.remove(pdf_path)
+
     return text
 
 

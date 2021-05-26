@@ -166,6 +166,11 @@ class Tesseract:
             1,
         )
 
+    def destroy_pdf_renderer(self):
+        if self.pdf_renderer:
+            self._lib.TessDeleteResultRenderer(self.pdf_renderer)
+            self.pdf_renderer = None
+
     def render_pdf(self, image_path):
         self._check_setup()
         if not self.pdf_renderer:

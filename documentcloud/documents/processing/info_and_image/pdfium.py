@@ -360,6 +360,19 @@ class Page:
         )
         return (left, bottom, right, top)
 
+    def get_media_box(self):
+        left = c_float(0)
+        bottom = c_float(0)
+        right = c_float(0)
+        top = c_float(0)
+        assert (
+            self.workspace.fpdf_page_get_media_box(
+                self.page, byref(left), byref(bottom), byref(right), byref(top)
+            )
+            == 1
+        )
+        return (left.value, bottom.value, right.value, top.value)
+
     def set_desired_transform(self, page_object, x, y, width, height):
         # Get the bounds of the text object
         (left, bottom, right, top) = self.get_bounds(page_object)
@@ -650,6 +663,12 @@ class Workspace:
         self.fpdf_page_obj_get_bounds = prototype(
             ("FPDFPageObj_GetBounds", self.pdfium)
         )
+
+        # Dimensions
+        prototype = CFUNCTYPE(
+            c_int, c_void_p, c_float_p, c_float_p, c_float_p, c_float_p
+        )
+        self.fpdf_page_get_media_box = prototype(("FPDFPage_GetMediaBox", self.pdfium))
 
         prototype = CFUNCTYPE(
             None, c_void_p, c_double, c_double, c_double, c_double, c_double, c_double

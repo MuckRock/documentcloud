@@ -7,6 +7,8 @@ import io
 import itertools
 import json
 import logging
+import math
+import pdfplumber
 import pickle
 import time
 from random import randint
@@ -39,6 +41,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         pubsub_function,
         pubsub_function_import,
     )
+    from documentcloud.documents.processing.info_and_image.graft import OcrGrafter
     from documentcloud.documents.processing.info_and_image.pdfium import (
         StorageHandler,
         Workspace,
@@ -53,6 +56,7 @@ else:
     )
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function, pubsub_function_import
+    from graft import OcrGrafter
     from pdfium import StorageHandler, Workspace
 
     # only initialize sentry on serverless
@@ -789,6 +793,66 @@ def assemble_page_text(data, _context=None):
 
     logger.info("[ASSEMBLE TEXT] doc_id %s", doc_id)
 
+    # Reinject OCR layer into PDF
+    pdf_pages = storage.list(path.ocr_path(doc_id))
+    print("GOT PAGES", pdf_pages)
+    print([int(page.split("-")[-2][1:]) - 1 for page in pdf_pages])
+    pdf_pages = [(page, int(page.split("-")[-2][1:]) - 1) for page in pdf_pages]
+    doc_path = path.doc_path(doc_id, slug)
+
+    class dotdict(dict):
+        """dot.notation access to dictionary attributes"""
+
+        __getattr__ = dict.get
+        __setattr__ = dict.__setitem__
+        __delattr__ = dict.__delitem__
+
+    # Get all page rotations
+    page_rotations = []
+    ROTATIONS = [0, 90, 180, 270]
+    with Workspace() as workspace, workspace.load_document_entirely(
+        storage, doc_path
+    ) as doc:
+        for i in range(0, doc.page_count):
+            page = doc.load_page(i)
+            rotation = page.rotation
+            page_rotations.append(dotdict({"rotation": ROTATIONS[rotation % 4]}))
+
+    # Load PDF in memory
+    with storage.open(doc_path, "rb") as doc_file:
+        contents = doc_file.read()
+        mem_file = io.BytesIO(contents)
+
+    context = dotdict(
+        {
+            "origin": mem_file,
+            "pdfinfo": page_rotations,
+            "options": dotdict({"redo_ocr": False, "keep_temporary_files": False}),
+            "get_path": lambda _: None,
+        }
+    )
+    grafter = OcrGrafter(context)
+    # Graft all the pages
+    print("grafting")
+    for overlay_pdf, page_number in pdf_pages:
+        print("graft", page_number)
+        # Load overlay PDF in memory
+        with storage.open(overlay_pdf, "rb") as overlay_file:
+            contents = overlay_file.read()
+            overlay_mem_file = io.BytesIO(contents)
+        grafter.graft_page(
+            pageno=page_number,
+            image=None,
+            textpdf=overlay_mem_file,
+            autorotate_correction=0,
+        )
+
+    # Overwrite PDF
+    print("overwriting")
+    with storage.open(doc_path, "wb", access=access) as output_file:
+        grafter.output_file = output_file
+        grafter.finalize()
+
     results = utils.get_all_page_text(REDIS, doc_id)
 
     if partial:
@@ -817,6 +881,33 @@ def assemble_page_text(data, _context=None):
         json.dumps(results).encode("utf-8"),
         access=access,
     )
+
+    # Write all the text positions to file
+    with storage.open(doc_path, "rb") as doc_file:
+        contents = doc_file.read()
+        mem_file = io.BytesIO(contents)
+        with pdfplumber.open(mem_file) as pdf:
+            # Go through each page
+            for i, page in enumerate(pdf.pages):
+                # Sample structure
+                # {'text': '765LT', 'x0': Decimal('111.162'), 'x1': Decimal('257.862'), 'top': Decimal('674.950'), 'bottom': Decimal('724.950'), 'upright': True, 'direction': 1}
+                words = [
+                    {
+                        "text": word["text"],
+                        "x1": float(word["x0"]) / float(page.width),
+                        "x2": float(word["x1"]) / float(page.width),
+                        "y1": float(word["top"]) / float(page.height),
+                        "y2": float(word["bottom"]) / float(page.height),
+                    }
+                    for word in page.extract_words()
+                ]
+                print("WORDS", page.extract_words())
+                # Write the json positional words file
+                storage.simple_upload(
+                    path.page_text_position_path(doc_id, slug, i),
+                    json.dumps(words).encode("utf-8"),
+                    access=access,
+                )
 
     utils.send_complete(REDIS, doc_id)
 

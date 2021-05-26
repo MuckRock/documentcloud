@@ -69,3 +69,7 @@ luqum
 
 # entity extraction
 google-cloud-language
+
+# PDF
+pdfplumber
+pikepdf

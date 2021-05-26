@@ -14,6 +14,7 @@ INDEX_SUFFIX = "index"
 PAGESIZE_SUFFIX = "pagesize"
 IMAGE_SUFFIX = "gif"
 TEXT_SUFFIX = "txt"
+SELECTABLE_TEXT_SUFFIX = "position.json"
 JSON_TEXT_SUFFIX = "txt.json"
 
 
@@ -66,6 +67,11 @@ def pages_path(doc_id):
     return path(doc_id) + "pages/"
 
 
+def ocr_path(doc_id):
+    """The path to the OCR'd PDF pages"""
+    return path(doc_id) + "pages/ocr/"
+
+
 def page_image_path(doc_id, slug, page_number, page_size):
     """The path to the image file for a single page"""
     return pages_path(doc_id) + f"{slug}-p{page_number + 1}-{page_size}.{IMAGE_SUFFIX}"
@@ -74,6 +80,11 @@ def page_image_path(doc_id, slug, page_number, page_size):
 def page_text_path(doc_id, slug, page_number):
     """The path to the text file for a single page"""
     return pages_path(doc_id) + f"{slug}-p{page_number + 1}.{TEXT_SUFFIX}"
+
+
+def page_text_position_path(doc_id, slug, page_number):
+    """The path to the text file for a single page"""
+    return pages_path(doc_id) + f"{slug}-p{page_number + 1}.{SELECTABLE_TEXT_SUFFIX}"
 
 
 def import_org_csv(org_id):
