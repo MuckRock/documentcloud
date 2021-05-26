@@ -7,7 +7,6 @@ import io
 import itertools
 import json
 import logging
-import math
 import pdfplumber
 import pickle
 import time

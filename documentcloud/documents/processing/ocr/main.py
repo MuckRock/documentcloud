@@ -81,53 +81,51 @@ def write_text_file(text_path, text, access):
     storage.simple_upload(text_path, text.encode("utf8"), access=access)
 
 
-def ocr_page(page_path, ocr_code="eng"):
+def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
     """Internal method to run OCR on a single page.
 
     Returns:
         The page text.
     """
-    # Capture the image as raw pixel data
+    # Capture the page image as a temporary PNG file
     _, img_path = tempfile.mkstemp(suffix=".png")
-
     with storage.open(page_path, "rb") as image_file:
         img = Image.open(image_file).convert("RGB")
-
-    # Write to PNG
+        # Resize only if image is too big (OCR computation is slow with large images)
+        if img.width > DESIRED_WIDTH:
+            resize = DESIRED_WIDTH / img.width
+            img = img.resize(
+                (DESIRED_WIDTH, round(img.height * resize)), Image.ANTIALIAS
+            )
     img.save(img_path, "png")
 
-    # Resize only if image is too big (OCR computation is slow with large images)
-    if img.width > DESIRED_WIDTH:
-        resize = DESIRED_WIDTH / img.width
-        img = img.resize((DESIRED_WIDTH, round(img.height * resize)), Image.ANTIALIAS)
-
-    img_data = np.array(img.convert("RGB"))
-    height, width, depth = img_data.shape  # pylint: disable=unpacking-non-sequence
-
-    # Run Tesseract OCR on the image
+    # Use Tesseract OCR to render a text-only PDF and txt file
     tess = Tesseract(ocr_code)
-    tess.set_image(img_data.ctypes, width, height, depth)
-    text = tess.get_text()
-
-    # Render the PDF
-    # TODO: use Tesseract's API to render to text simultaneously
-    pdf_path = tempfile.mkstemp()[1]
+    _, pdf_path = tempfile.mkstemp()
+    _, text_path = tempfile.mkstemp()
+    text = ""
     try:
         print("RENDERING", pdf_path, img_path)
-        tess.create_pdf_renderer(pdf_path)
-        tess.render_pdf(img_path)
-        tess.destroy_pdf_renderer()
+        tess.create_renderer(pdf_path, text_path)
+        tess.render(img_path)
+        tess.destroy_renderer()
 
         # Write to s3
         base_path, file_name = os.path.split(page_path)
         base_name = os.path.splitext(file_name)[0]
         new_pdf_path = os.path.join(base_path, TESS_PDF_PREFIX, base_name + ".pdf")
-        with storage.open(new_pdf_path, "wb") as new_pdf_file:
+        with storage.open(new_pdf_path, "wb", access=access) as new_pdf_file:
             with open(pdf_path + ".pdf", "rb") as pdf_file:
                 new_pdf_file.write(pdf_file.read())
-                print(new_pdf_path)
+        with storage.open(upload_text_path, "w", access=access) as new_text_file:
+            with open(text_path + ".txt", "r") as text_file:
+                # Store text locally to return (gets used by Redis later)
+                text = text_file.read()
+                new_text_file.write(text)
     finally:
         os.remove(pdf_path)
+        os.remove(text_path)
+        os.remove(img_path)
 
     return text
 
@@ -202,13 +200,12 @@ def run_tesseract(data, _context=None):
 
             # Benchmark OCR speed
             start_time = time.time()
-            text = ocr_page(image_path, ocr_code)
+            text = ocr_page(image_path, text_path, access, ocr_code)
 
             elapsed_time = time.time() - start_time
             elapsed_times.append(elapsed_time)
 
             # Write the output text
-            write_text_file(text_path, text, access)
             utils.write_page_text(
                 REDIS, doc_id, page_number, text, ocr_version, ocr_code
             )
