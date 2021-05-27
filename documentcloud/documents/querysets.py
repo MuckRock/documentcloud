@@ -83,7 +83,6 @@ class DocumentQuerySet(models.QuerySet):
                 self.exclude(access=Access.invisible)
                 .exclude(status=Status.deleted)
                 .filter(query)
-                .distinct()
             )
         else:
             return self.none()
