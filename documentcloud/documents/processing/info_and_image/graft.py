@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/
 #
-# Source code copied from https://github.com/jbarlow83/OCRmyPDF/blob/master/src/ocrmypdf/_graft.py.
+# Source code copied unchanged from https://github.com/jbarlow83/OCRmyPDF/blob/master/src/ocrmypdf/_graft.py.
 
 
 import logging
@@ -242,9 +242,8 @@ class OcrGrafter:
     ):
         """Insert the text layer from text page 0 on to pdf_base at page_num"""
 
-        log.debug("Grafting")
-        # if Path(textpdf).stat().st_size == 0:
-        #     return
+        if Path(textpdf).stat().st_size == 0:
+            return
 
         # This is a pointer indicating a specific page in the base file
         with pikepdf.open(textpdf) as pdf_text:

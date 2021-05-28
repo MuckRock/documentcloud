@@ -104,30 +104,28 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
     _, pdf_path = tempfile.mkstemp()
     _, text_path = tempfile.mkstemp()
     text = ""
+    pdf_contents = b""
     try:
         print("RENDERING", pdf_path, img_path)
         tess.create_renderer(pdf_path, text_path)
         tess.render(img_path)
         tess.destroy_renderer()
 
-        # Write to s3
-        base_path, file_name = os.path.split(page_path)
-        base_name = os.path.splitext(file_name)[0]
-        new_pdf_path = os.path.join(base_path, TESS_PDF_PREFIX, base_name + ".pdf")
-        with storage.open(new_pdf_path, "wb", access=access) as new_pdf_file:
-            with open(pdf_path + ".pdf", "rb") as pdf_file:
-                new_pdf_file.write(pdf_file.read())
+        # Get txt and text-only pdf file contents
+        with open(pdf_path + ".pdf", "rb") as pdf_file:
+            pdf_contents = pdf_file.read()
         with storage.open(upload_text_path, "w", access=access) as new_text_file:
             with open(text_path + ".txt", "r") as text_file:
                 # Store text locally to return (gets used by Redis later)
                 text = text_file.read()
+                # Also upload text file to s3
                 new_text_file.write(text)
     finally:
         os.remove(pdf_path)
         os.remove(text_path)
         os.remove(img_path)
 
-    return text
+    return text, pdf_contents
 
 
 @pubsub_function(REDIS, OCR_TOPIC)
@@ -200,15 +198,16 @@ def run_tesseract(data, _context=None):
 
             # Benchmark OCR speed
             start_time = time.time()
-            text = ocr_page(image_path, text_path, access, ocr_code)
+            text, pdf_contents = ocr_page(image_path, text_path, access, ocr_code)
 
             elapsed_time = time.time() - start_time
             elapsed_times.append(elapsed_time)
 
-            # Write the output text
+            # Write the output text and pdf to Redis
             utils.write_page_text(
                 REDIS, doc_id, page_number, text, ocr_version, ocr_code
             )
+            utils.write_page_text_pdf(REDIS, doc_id, page_number, pdf_contents)
 
             # Decrement the texts remaining, sending complete if done.
             texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)

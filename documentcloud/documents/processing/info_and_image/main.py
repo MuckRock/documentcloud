@@ -40,7 +40,10 @@ if env.str("ENVIRONMENT").startswith("local"):
         pubsub_function,
         pubsub_function_import,
     )
-    from documentcloud.documents.processing.info_and_image.graft import OcrGrafter
+    import documentcloud.documents.processing.info_and_image.graft as graft
+    from documentcloud.documents.processing.info_and_image.graft_adapter import (
+        GraftContext,
+    )
     from documentcloud.documents.processing.info_and_image.pdfium import (
         StorageHandler,
         Workspace,
@@ -55,7 +58,7 @@ else:
     )
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function, pubsub_function_import
-    from graft import OcrGrafter
+    import graft
     from pdfium import StorageHandler, Workspace
 
     # only initialize sentry on serverless
@@ -76,6 +79,9 @@ IMAGE_BATCH = env.int(
     "EXTRACT_IMAGE_BATCH", default=55
 )  # Number of images to extract with each function
 OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
+TEXT_POSITION_BATCH = env.int(
+    "TEXT_POSITION_BATCH", 20
+)  # Number of pages to pull text positions from with each function
 PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 BLOCK_SIZE = env.int(
     "BLOCK_SIZE", 8 * 1024 * 1024
@@ -119,6 +125,10 @@ IMAGE_EXTRACT_TOPIC = publisher.topic_path(
 )
 ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
+)
+TEXT_POSITION_EXTRACT_TOPIC = publisher.topic_path(
+    "documentcloud",
+    env.str("TEXT_POSITION_EXTRACT_TOPIC", default="text-position-extraction"),
 )
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
@@ -782,7 +792,7 @@ def extract_image(data, _context=None):
 
 @pubsub_function(REDIS, ASSEMBLE_TEXT_TOPIC)
 def assemble_page_text(data, _context=None):
-    """Assembles a single page text file containing the doc's entire page text."""
+    """Assembles a text file with the doc text and merges the text pdf layers in."""
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
@@ -793,66 +803,42 @@ def assemble_page_text(data, _context=None):
     logger.info("[ASSEMBLE TEXT] doc_id %s", doc_id)
 
     # Reinject OCR layer into PDF
-    pdf_pages = storage.list(path.ocr_path(doc_id))
-    print("GOT PAGES", pdf_pages)
-    print([int(page.split("-")[-2][1:]) - 1 for page in pdf_pages])
-    pdf_pages = [(page, int(page.split("-")[-2][1:]) - 1) for page in pdf_pages]
+    page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
+    redis_pdf_pages = REDIS.hkeys(page_text_pdf_field)
     doc_path = path.doc_path(doc_id, slug)
 
-    class dotdict(dict):
-        """dot.notation access to dictionary attributes"""
-
-        __getattr__ = dict.get
-        __setattr__ = dict.__setitem__
-        __delattr__ = dict.__delitem__
-
-    # Get all page rotations
-    page_rotations = []
-    ROTATIONS = [0, 90, 180, 270]
-    with Workspace() as workspace, workspace.load_document_entirely(
-        storage, doc_path
-    ) as doc:
-        for i in range(0, doc.page_count):
-            page = doc.load_page(i)
-            rotation = page.rotation
-            page_rotations.append(dotdict({"rotation": ROTATIONS[rotation % 4]}))
-
     # Load PDF in memory
-    with storage.open(doc_path, "rb") as doc_file:
-        contents = doc_file.read()
-        mem_file = io.BytesIO(contents)
+    handler = StorageHandler(storage, doc_path, False, False, None, read_all=True)
+    with Workspace() as workspace, workspace.load_document_custom(handler) as mem_pdf:
+        mem_file = handler.mem_file  # Grab document as BytesIO instance
+        page_count = mem_pdf.page_count
 
-    context = dotdict(
-        {
-            "origin": mem_file,
-            "pdfinfo": page_rotations,
-            "options": dotdict({"redo_ocr": False, "keep_temporary_files": False}),
-            "get_path": lambda _: None,
-        }
-    )
-    grafter = OcrGrafter(context)
-    # Graft all the pages
-    print("grafting")
-    for overlay_pdf, page_number in pdf_pages:
-        print("graft", page_number)
-        # Load overlay PDF in memory
-        with storage.open(overlay_pdf, "rb") as overlay_file:
-            contents = overlay_file.read()
-            overlay_mem_file = io.BytesIO(contents)
-        grafter.graft_page(
-            pageno=page_number,
-            image=None,
-            textpdf=overlay_mem_file,
-            autorotate_correction=0,
-        )
+        # Graft all the pages
+        context = GraftContext(graft, mem_file, mem_pdf)
+        grafter = graft.OcrGrafter(context)
+        for redis_page_key in redis_pdf_pages:
+            page_number = int(redis_page_key)
+            # Load overlay PDF in memory
+            overlay_mem_file = io.BytesIO(
+                REDIS.hget(page_text_pdf_field, redis_page_key)
+            )
+            grafter.graft_page(
+                pageno=page_number,
+                image=None,
+                textpdf=overlay_mem_file,
+                autorotate_correction=0,
+            )
 
-    # Overwrite PDF
-    print("overwriting")
-    with storage.open(doc_path, "wb", access=access) as output_file:
-        grafter.output_file = output_file
-        grafter.finalize()
+        # Overwrite source PDF
+        with storage.open(doc_path, "wb", access=access) as output_file:
+            grafter.output_file = output_file
+            grafter.finalize()
 
-    results = utils.get_all_page_text(REDIS, doc_id)
+        # Remove the in-memory text PDFs from Redis
+        # (now that the PDF is grafted, OCR does not have to run if reprocessed)
+        REDIS.delete(page_text_pdf_field)
+
+        results = utils.get_all_page_text(REDIS, doc_id)
 
     if partial:
         # Patch the old results in if it's a partial update
@@ -881,15 +867,64 @@ def assemble_page_text(data, _context=None):
         access=access,
     )
 
+    # Extract text positions
+    utils.initialize_text_positions(REDIS, doc_id, page_count)
+
+    # Method to publish text position extraction batches
+    def pub(pages):
+        if pages:
+            publisher.publish(
+                TEXT_POSITION_EXTRACT_TOPIC,
+                data=encode_pubsub_data(
+                    {
+                        "doc_id": doc_id,
+                        "slug": slug,
+                        "access": access,
+                        "pages": pages,
+                        "partial": partial,
+                    }
+                ),
+            )
+
+    # Trigger text position extraction tasks for each page
+    if partial:
+        # If only dirty pages are flagged, process the relevant ones in batches
+        dirty = sorted(partial)
+        for i in range(0, len(dirty), TEXT_POSITION_BATCH):
+            pages = [
+                dirty[j] for j in range(i, min(i + TEXT_POSITION_BATCH, len(dirty)))
+            ]
+            pub(pages)
+    else:
+        # Otherwise, process all pages in batches
+        for i in range(0, page_count, TEXT_POSITION_BATCH):
+            pages = list(range(i, min(i + TEXT_POSITION_BATCH, page_count)))
+            pub(pages)
+
+    return "Ok"
+
+
+@pubsub_function(REDIS, TEXT_POSITION_EXTRACT_TOPIC)
+def extract_text_position(data, _context=None):
+    """Extracts text position files for each page of the document."""
+    data = get_pubsub_data(data)
+
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    access = data.get("access", access_choices.PRIVATE)
+    page_numbers = data["pages"]  # The page numbers to extract
+    doc_path = path.doc_path(doc_id, slug)
+
+    logger.info("[EXTRACT TEXT POSITION] doc_id %s", doc_id)
+
     # Write all the text positions to file
     with storage.open(doc_path, "rb") as doc_file:
         contents = doc_file.read()
         mem_file = io.BytesIO(contents)
         with pdfplumber.open(mem_file) as pdf:
             # Go through each page
-            for i, page in enumerate(pdf.pages):
-                # Sample structure
-                # {'text': '765LT', 'x0': Decimal('111.162'), 'x1': Decimal('257.862'), 'top': Decimal('674.950'), 'bottom': Decimal('724.950'), 'upright': True, 'direction': 1}
+            for page_number in page_numbers:
+                page = pdf.pages[page_number]
                 words = [
                     {
                         "text": word["text"],
@@ -897,18 +932,24 @@ def assemble_page_text(data, _context=None):
                         "x2": float(word["x1"]) / float(page.width),
                         "y1": float(word["top"]) / float(page.height),
                         "y2": float(word["bottom"]) / float(page.height),
+                        "upright": word["upright"],
+                        "direction": word["direction"],
                     }
                     for word in page.extract_words()
                 ]
-                print("WORDS", page.extract_words())
                 # Write the json positional words file
                 storage.simple_upload(
-                    path.page_text_position_path(doc_id, slug, i),
+                    path.page_text_position_path(doc_id, slug, page_number),
                     json.dumps(words).encode("utf-8"),
                     access=access,
                 )
 
-    utils.send_complete(REDIS, doc_id)
+                text_positions_finished = utils.register_text_position_extracted(
+                    REDIS, doc_id, page_number
+                )
+                if text_positions_finished:
+                    # All done processing the doc now
+                    utils.send_complete(REDIS, doc_id)
 
     return "Ok"
 

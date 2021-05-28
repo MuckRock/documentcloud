@@ -81,6 +81,12 @@ def assemble_text_task(data):
     return assemble_text.delay(data)
 
 
+def extract_text_position_task(data):
+    from documentcloud.documents.tasks import text_position_extract
+
+    return text_position_extract.delay(data)
+
+
 def redact_doc_task(data):
     from documentcloud.documents.tasks import redact_document
 
@@ -134,6 +140,13 @@ publisher.register_internal_callback(
 publisher.register_internal_callback(
     ("documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")),
     assemble_text_task,
+)
+publisher.register_internal_callback(
+    (
+        "documentcloud",
+        env.str("TEXT_POSITION_EXTRACT_TOPIC", default="text-position-extraction"),
+    ),
+    extract_text_position_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("REDACT_TOPIC", default="redact-doc")), redact_doc_task

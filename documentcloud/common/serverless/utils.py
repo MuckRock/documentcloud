@@ -169,11 +169,14 @@ def clean_up(redis, doc_id):
         pipeline.delete(
             redis_fields.images_remaining(doc_id),
             redis_fields.texts_remaining(doc_id),
+            redis_fields.text_positions_remaining(doc_id),
             redis_fields.page_count(doc_id),
             redis_fields.is_running(doc_id),
             redis_fields.image_bits(doc_id),
             redis_fields.text_bits(doc_id),
+            redis_fields.text_position_bits(doc_id),
             redis_fields.page_text(doc_id),
+            redis_fields.page_text_pdf(doc_id),
         )
 
         # Remove any existing dimensions that may be lingering
@@ -242,12 +245,31 @@ def register_page_ocrd(redis, doc_id, page_number):
     return texts_remaining == 0
 
 
+def register_text_position_extracted(redis, doc_id, page_number):
+    """Register a single page text position extraction. Return true if all done."""
+    # Decrement the texts remaining
+    text_positions_remaining = register_page_task(
+        redis,
+        page_number,
+        redis_fields.text_positions_remaining(doc_id),
+        redis_fields.text_position_bits(doc_id),
+    )
+    return text_positions_remaining == 0
+
+
 def write_page_text(redis, doc_id, page_number, page_text, ocr, ocr_code="eng"):
     """Write page text to Redis."""
     redis.hset(
         redis_fields.page_text(doc_id),
         f"{page_number}",
         json.dumps({"text": page_text, "ocr": ocr, "ocr_code": ocr_code}),
+    )
+
+
+def write_page_text_pdf(redis, doc_id, page_number, page_text_pdf_contents):
+    """Write text-only pdf file to Redis."""
+    redis.hset(
+        redis_fields.page_text_pdf(doc_id), f"{page_number}", page_text_pdf_contents
     )
 
 
@@ -273,3 +295,13 @@ def get_all_page_text(redis, doc_id):
     results = [get_page(page_number) for page_number in pages]
     response = {"updated": current_millis, "pages": results}
     return response
+
+
+def initialize_text_positions(redis, doc_id, page_count):
+    """Initialize text position data in Redis."""
+    pipeline = redis.pipeline()
+    pipeline.set(redis_fields.text_positions_remaining(doc_id), page_count)
+    text_position_bit_field = redis_fields.text_position_bits(doc_id)
+    pipeline.delete(text_position_bit_field)
+    pipeline.setbit(text_position_bit_field, page_count - 1, 0)
+    pipeline.execute()
