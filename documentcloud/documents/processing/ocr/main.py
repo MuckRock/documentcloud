@@ -7,7 +7,6 @@ import time
 
 # Third Party
 import environ
-import numpy as np
 from cpuprofile import profile_cpu
 from PIL import Image
 
@@ -87,8 +86,14 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
     Returns:
         The page text.
     """
+    # Initialize temporary files
+    tmp_files = {
+        "img": tempfile.mkstemp(suffix=".png")[1],
+        "pdf": tempfile.mkstemp()[1],
+        "text": tempfile.mkstemp()[1],
+    }
+
     # Capture the page image as a temporary PNG file
-    _, img_path = tempfile.mkstemp(suffix=".png")
     with storage.open(page_path, "rb") as image_file:
         img = Image.open(image_file).convert("RGB")
         # Resize only if image is too big (OCR computation is slow with large images)
@@ -97,33 +102,30 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
             img = img.resize(
                 (DESIRED_WIDTH, round(img.height * resize)), Image.ANTIALIAS
             )
-    img.save(img_path, "png")
+    img.save(tmp_files["img"], "png")
 
     # Use Tesseract OCR to render a text-only PDF and txt file
     tess = Tesseract(ocr_code)
-    _, pdf_path = tempfile.mkstemp()
-    _, text_path = tempfile.mkstemp()
     text = ""
     pdf_contents = b""
     try:
-        print("RENDERING", pdf_path, img_path)
-        tess.create_renderer(pdf_path, text_path)
-        tess.render(img_path)
+        tess.create_renderer(tmp_files["pdf"], tmp_files["text"])
+        tess.render(tmp_files["img"])
         tess.destroy_renderer()
 
         # Get txt and text-only pdf file contents
-        with open(pdf_path + ".pdf", "rb") as pdf_file:
+        with open(tmp_files["pdf"] + ".pdf", "rb") as pdf_file:
             pdf_contents = pdf_file.read()
         with storage.open(upload_text_path, "w", access=access) as new_text_file:
-            with open(text_path + ".txt", "r") as text_file:
+            with open(tmp_files["text"] + ".txt", "r") as text_file:
                 # Store text locally to return (gets used by Redis later)
                 text = text_file.read()
                 # Also upload text file to s3
                 new_text_file.write(text)
     finally:
-        os.remove(pdf_path)
-        os.remove(text_path)
-        os.remove(img_path)
+        os.remove(tmp_files["pdf"])
+        os.remove(tmp_files["text"])
+        os.remove(tmp_files["img"])
 
     return text, pdf_contents
 

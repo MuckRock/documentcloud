@@ -4,7 +4,6 @@ import ctypes
 import hashlib
 import io
 import os
-import numpy as np
 from ctypes import (
     CFUNCTYPE,
     POINTER,
@@ -465,57 +464,6 @@ class Page:
     @property
     def rotation(self):
         return self.workspace.fpdf_get_page_rotation(self.page)
-
-
-class Matrix:
-    matrix_type = c_float * 6
-
-    def __init__(self):
-        self.matrix = self.matrix_type(0, 0, 0, 0, 0, 0)
-
-    def ref(self):
-        return byref(self.matrix)
-
-    @property
-    def list(self):
-        return list(self.matrix)
-
-    @property
-    def a(self):
-        return self.matrix[0]
-
-    @property
-    def b(self):
-        return self.matrix[1]
-
-    @property
-    def c(self):
-        return self.matrix[2]
-
-    @property
-    def d(self):
-        return self.matrix[3]
-
-    @property
-    def e(self):
-        return self.matrix[4]
-
-    @property
-    def f(self):
-        return self.matrix[5]
-
-    @property
-    def rows(self):
-        return [[self.a, self.b, 0], [self.c, self.d, 0], [self.e, self.f, 1]]
-
-    def scale(self, x, y):
-        result = np.matmul(self.rows, [[x, 0, 0], [0, y, 0], [0, 0, 1]])
-        self.matrix[0] = result[0][0]
-        self.matrix[1] = result[0][1]
-        self.matrix[2] = result[1][0]
-        self.matrix[3] = result[1][1]
-        self.matrix[4] = result[2][0]
-        self.matrix[5] = result[2][1]
 
 
 def fpdf_string(text):

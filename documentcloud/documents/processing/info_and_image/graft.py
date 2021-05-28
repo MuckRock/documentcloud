@@ -5,14 +5,17 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/
 #
 # Source code copied unchanged from https://github.com/jbarlow83/OCRmyPDF/blob/master/src/ocrmypdf/_graft.py.
+# pylint: skip-file
 
 
+# Standard Library
 import logging
 import uuid
 from contextlib import suppress
 from pathlib import Path
 from typing import Optional
 
+# Third Party
 import pikepdf
 from pikepdf.objects import Dictionary, Name
 

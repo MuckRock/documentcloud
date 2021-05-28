@@ -57,4 +57,3 @@ class GraftContext:
         # Hook up other mocks
         self.options = GraftContext.GraftOptions
         self.get_path = lambda _: None
-

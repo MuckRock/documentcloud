@@ -7,8 +7,8 @@ from documentcloud.documents.processing.document_conversion.main import (
 )
 from documentcloud.documents.processing.info_and_image.main import (
     assemble_page_text,
-    extract_text_position,
     extract_image,
+    extract_text_position,
     finish_import,
     import_document,
     modify_doc,

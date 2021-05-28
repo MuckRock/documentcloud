@@ -81,7 +81,19 @@ def page_extracted(page_number):
     pass
 
 
-def page_ocrd(page_path, language):
+def page_ocrd(page_path, upload_text_path, access, language):
+    pass
+
+
+def pdf_grafted(doc_id, slug, access):
+    pass
+
+
+def page_text_partially_patched(doc_id, slug, results):
+    pass
+
+
+def page_text_position_extracted(pdf, doc_id, slug, page_number, access):
     pass
 
 
@@ -135,6 +147,10 @@ class Workspace:
         return FakePage(not self.doc.needs_ocr(number))
 
 
+def storage_simple_upload(_path, contents, access):
+    pass
+
+
 def storage_size(filename):
     return 1  # Every document is 1 byte for testing
 
@@ -154,6 +170,22 @@ class StorageOpen:
 
     def read(self, size=None):
         return b""
+
+    def close(self):
+        pass
+
+
+class PdfPlumberOpen:
+    """pdfplumber open mock, simulating successfully opening a pdf"""
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
 
     def close(self):
         pass
@@ -185,8 +217,26 @@ def update_pagespec(doc_id):
     pagespec_written()
 
 
-def ocr_page(page_path, language):
-    page_ocrd(page_path, language)
+def ocr_page(page_path, upload_text_path, access, language):
+    page_ocrd(page_path, upload_text_path, access, language)
+    return ("", b"")  # empty text and pdf contents
+
+
+def graft_ocr_in_pdf(doc_id, slug, access):
+    pdf_grafted(doc_id, slug, access)
+
+
+def patch_partial_page_text(doc_id, slug, results):
+    page_text_partially_patched(doc_id, slug, results)
+    return {"pages": []}  # empty concatenated text
+
+
+def write_concatenated_text_file(doc_id, slug, access, page_jsons):
+    pass
+
+
+def extract_text_position_for_page(pdf, doc_id, slug, page_number, access):
+    page_text_position_extracted(pdf, doc_id, slug, page_number, access)
 
 
 def write_text_file(text_path, text, access):
@@ -220,12 +270,20 @@ def patch_pipeline(func):
 
     WORKSPACE_LOAD_MOCK = f"{INFO_AND_IMAGE}.pdfium.Workspace.load_document_custom"
     STORAGE_OPEN_MOCK = f"{ENVIRONMENT}.storage.open"
+    STORAGE_SIMPLE_UPLOAD_MOCK = f"{ENVIRONMENT}.storage.simple_upload"
     STORAGE_SIZE_MOCK = f"{ENVIRONMENT}.storage.size"
+    PDF_PLUMBER_OPEN_MOCK = "pdfplumber.open"
     WRITE_CACHE_MOCK = f"{INFO_AND_IMAGE}.main.write_cache"
     READ_CACHE_MOCK = f"{INFO_AND_IMAGE}.main.read_cache"
     EXTRACT_SINGLE_PAGE_MOCK = f"{INFO_AND_IMAGE}.main.extract_single_page"
     UPDATE_PAGESPEC_MOCK = f"{INFO_AND_IMAGE}.main.update_pagespec"
     OCR_PAGE_MOCK = f"{OCR}.main.ocr_page"
+    GRAFT_OCR_MOCK = f"{INFO_AND_IMAGE}.main.graft_ocr_in_pdf"
+    PARTIAL_PAGE_TEXT_PATCH_MOCK = f"{INFO_AND_IMAGE}.main.patch_partial_page_text"
+    WRITE_CONCATENATED_TEXT_FILE_MOCK = (
+        f"{INFO_AND_IMAGE}.main.write_concatenated_text_file"
+    )
+    EXTRACT_TEXT_POSITION_MOCK = f"{INFO_AND_IMAGE}.main.extract_text_position_for_page"
     WRITE_TEXT_FILE_II_MOCK = f"{INFO_AND_IMAGE}.main.write_text_file"
     WRITE_TEXT_FILE_OCR_MOCK = f"{OCR}.main.write_text_file"
     REDACT_DOC_MOCK = f"{INFO_AND_IMAGE}.main.redact_document_and_overwrite"
@@ -236,6 +294,9 @@ def patch_pipeline(func):
     MOCKS = "documentcloud.documents.processing.tests.pipeline_tests.mocks"
 
     # Mocked methods
+    @patch(f"{MOCKS}.page_text_position_extracted")
+    @patch(f"{MOCKS}.page_text_partially_patched")
+    @patch(f"{MOCKS}.pdf_grafted")
     @patch(f"{MOCKS}.page_ocrd")
     @patch(f"{MOCKS}.page_extracted")
     @patch(f"{MOCKS}.text_file_written")
@@ -251,12 +312,18 @@ def patch_pipeline(func):
     # Replaced methods
     @patch(WORKSPACE_LOAD_MOCK, Workspace)
     @patch(STORAGE_OPEN_MOCK, StorageOpen)
+    @patch(PDF_PLUMBER_OPEN_MOCK, PdfPlumberOpen)
+    @patch(STORAGE_SIMPLE_UPLOAD_MOCK, storage_simple_upload)
     @patch(STORAGE_SIZE_MOCK, storage_size)
     @patch(WRITE_CACHE_MOCK, write_cache)
     @patch(READ_CACHE_MOCK, read_cache)
     @patch(EXTRACT_SINGLE_PAGE_MOCK, extract_single_page)
     @patch(UPDATE_PAGESPEC_MOCK, update_pagespec)
     @patch(OCR_PAGE_MOCK, ocr_page)
+    @patch(GRAFT_OCR_MOCK, graft_ocr_in_pdf)
+    @patch(PARTIAL_PAGE_TEXT_PATCH_MOCK, patch_partial_page_text)
+    @patch(WRITE_CONCATENATED_TEXT_FILE_MOCK, write_concatenated_text_file)
+    @patch(EXTRACT_TEXT_POSITION_MOCK, extract_text_position_for_page)
     @patch(WRITE_TEXT_FILE_II_MOCK, write_text_file)
     @patch(WRITE_TEXT_FILE_OCR_MOCK, write_text_file)
     @patch(REDACT_DOC_MOCK, redact_doc)
@@ -279,6 +346,9 @@ def patch_pipeline(func):
         mock_text_file_written,
         mock_page_extracted,
         mock_page_ocrd,
+        mock_pdf_grafted,
+        mock_page_text_partially_patched,
+        mock_page_text_position_extracted,
     ):
         # pylint: disable=too-many-arguments
         # Patch Celery config
@@ -298,6 +368,9 @@ def patch_pipeline(func):
                 "text_file_written": mock_text_file_written,
                 "page_extracted": mock_page_extracted,
                 "page_ocrd": mock_page_ocrd,
+                "pdf_grafted": mock_pdf_grafted,
+                "page_text_partially_patched": mock_page_text_partially_patched,
+                "page_text_position_extracted": mock_page_text_position_extracted,
                 "update_sent": mock_update_sent,
                 "complete_sent": mock_complete_sent,
                 "error_sent": mock_error_sent,
