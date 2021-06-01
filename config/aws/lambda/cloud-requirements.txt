@@ -1,2 +1,4 @@
 boto3==1.10.14
 smart-open==1.8.4
+pdfplumber==0.5.28
+pikepdf==2.12.1
