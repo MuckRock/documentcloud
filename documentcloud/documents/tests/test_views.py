@@ -465,6 +465,18 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.user != user
 
+    def test_update_owner_bad_steal(self, client, document, user, organization):
+        """Test updating a document's owner"""
+        document.access = Access.organization
+        document.organization = organization
+        document.save()
+        organization.users.add(document.user, user)
+        client.force_authenticate(user=user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"user": user.pk})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.user != user
+
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
@@ -566,6 +578,37 @@ class TestDocumentAPI:
             "/api/documents/", [{"access": "private"}], format="json"
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_bulk_update_owner(self, client, user, organization):
+        """Test updating a document's owner"""
+        my_document = DocumentFactory(
+            user=user, organization=organization, access=Access.organization
+        )
+        other_document = DocumentFactory(
+            organization=organization, access=Access.organization
+        )
+        organization.users.add(other_document.user, user)
+        client.force_authenticate(user=user)
+        response = client.patch(
+            "/api/documents/",
+            [{"id": my_document.pk, "user": other_document.user.pk}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        my_document.refresh_from_db()
+        assert my_document.user == other_document.user
+
+    def test_bulk_update_perm_queries(self, client, user, django_assert_num_queries):
+        """Test bulk update queries for permission checking"""
+        documents = DocumentFactory.create_batch(10, user=user, access=Access.public)
+        client.force_authenticate(user=user)
+        with django_assert_num_queries(15):
+            response = client.patch(
+                "/api/documents/",
+                [{"id": d.pk, "source": "My source"} for d in documents],
+                format="json",
+            )
+        assert response.status_code == status.HTTP_200_OK
 
     def test_destroy(self, client, document):
         """Test destroying a document"""

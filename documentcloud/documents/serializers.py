@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.db.models import prefetch_related_objects
 from django.db.models.query import QuerySet
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
@@ -225,10 +226,20 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         perm = "documents.change_ownership_document"
         if not (user and user.is_authenticated):
             return
+        if request.method not in ("PUT", "PATCH"):
+            # only needed for updates
+            return
         if is_document:
             has_perm = user.has_perm(perm, self.instance)
         elif is_list:
-            has_perm = all(user.has_perm(perm, i) for i in self.instance)
+            try:
+                instances = self.instance.filter(
+                    id__in=[d["id"] for d in self.initial_data]
+                )[: settings.REST_BULK_LIMIT]
+                prefetch_related_objects([user], "organizations")
+                has_perm = all(user.has_perm(perm, i) for i in instances)
+            except (ValueError, KeyError):
+                has_perm = False
         else:
             return
         if has_perm:

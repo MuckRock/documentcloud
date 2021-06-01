@@ -59,10 +59,16 @@ class BulkListSerializer(serializers.ListSerializer):
             raise serializers.ValidationError("Could not find all objects to update.")
 
         updated_objects = []
+        fields = set()
         for obj in queryset:
             obj_id = getattr(obj, id_attr)
             data = data_mapping.get(obj_id)
-            updated_objects.append(self.child.update(obj, data))
+            for attr, value in data.items():
+                setattr(obj, attr, value)
+                fields.add(attr)
+            updated_objects.append(obj)
+        fields.remove(id_attr)
+        self.child.Meta.model.objects.bulk_update(updated_objects, list(fields))
 
         return updated_objects
 

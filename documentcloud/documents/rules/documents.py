@@ -20,7 +20,7 @@ def is_owner(user, document):
 @predicate
 @skip_if_not_obj
 def is_organization(user, document):
-    return document.organization.has_member(user)
+    return document.organization_id in [o.pk for o in user.organizations.all()]
 
 
 def has_access(*accesses):
