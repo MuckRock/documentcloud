@@ -119,15 +119,7 @@ class TestDocumentAPI:
             assert "presigned_url" not in doc_json
 
     @pytest.mark.parametrize(
-        "expand",
-        [
-            "",
-            "~all",
-            (
-                "user.organization,organization,projects,sections,"
-                "notes.user.organization,notes.organization"
-            ),
-        ],
+        "expand", ["", "~all", ("user.organization,organization,projects,sections")]
     )
     @override_settings(DEBUG=True)
     def test_list_queries(self, client, expand):
@@ -322,6 +314,28 @@ class TestDocumentAPI:
         assert response_json["organization"] == organization_serializer.data
         assert public_note_serializer.data in response_json["notes"]
         assert private_note_serializer.data not in response_json["notes"]
+
+    def test_retrieve_expand_note_collab(self, client, user):
+        """Test retrieving a document with notes"""
+        document = DocumentFactory(access=Access.private)
+        NoteFactory.create(document=document, access=Access.organization)
+        ProjectFactory(edit_documents=[document], edit_collaborators=[user])
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert len(response_json["notes"]) == 1
+
+    def test_retrieve_expand_note_no_collab(self, client, user):
+        """Test retrieving a document with notes"""
+        document = DocumentFactory(access=Access.private)
+        NoteFactory.create(document=document, access=Access.organization)
+        ProjectFactory(edit_documents=[document], collaborators=[user])
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert len(response_json["notes"]) == 0
 
     def test_retrieve_bad(self, client):
         """Test retrieving a document you do not have access to"""

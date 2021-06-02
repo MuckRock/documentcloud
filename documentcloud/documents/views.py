@@ -1,7 +1,8 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, prefetch_related_objects
+from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, mixins, parsers, serializers, status, viewsets
@@ -21,6 +22,7 @@ import pysolr
 from django_filters import rest_framework as django_filters
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
+from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub
@@ -98,10 +100,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         "organization",
         "projects",
         "sections",
-        "notes",
-        "notes.user",
-        "notes.user.organization",
-        "notes.organization",
     ]
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
@@ -126,6 +124,26 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         )
 
         return queryset
+
+    def get_object(self):
+        """Prefetch notes here if needed"""
+        document = super().get_object()
+        top_expands, nested_expands = split_levels(
+            self.request.query_params.get("expand", "")
+        )
+        all_expanded = "~all" in top_expands
+        nested_default = "~all" if all_expanded else ""
+        if "notes" in top_expands or all_expanded:
+            prefetch_related_objects(
+                [document],
+                Prefetch(
+                    "notes",
+                    Note.objects.get_viewable(self.request.user, document).preload(
+                        self.request.user, nested_expands.get("notes", nested_default)
+                    ),
+                ),
+            )
+        return document
 
     def filter_update_queryset(self, queryset):
         return queryset.get_editable(self.request.user)
@@ -528,7 +546,7 @@ class NoteViewSet(FlexFieldsModelViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        return document.notes.get_viewable(self.request.user).preload(
+        return document.notes.get_viewable(self.request.user, document).preload(
             self.request.user, self.request.query_params.get("expand", "")
         )
 

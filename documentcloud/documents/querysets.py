@@ -120,16 +120,6 @@ class DocumentQuerySet(models.QuerySet):
             Prefetch("projects", projects.get_viewable(user))
         )
 
-        if "notes" in top_expands or all_expanded:
-            queryset = queryset.prefetch_related(
-                Prefetch(
-                    "notes",
-                    Note.objects.get_viewable(user).preload(
-                        user, nested_expands.get("notes", nested_default)
-                    ),
-                )
-            )
-
         if "sections" in top_expands or all_expanded:
             queryset = queryset.prefetch_related("sections")
 
@@ -139,21 +129,23 @@ class DocumentQuerySet(models.QuerySet):
 class NoteQuerySet(models.QuerySet):
     """Custom queryset for notes"""
 
-    def get_viewable(self, user):
+    def get_viewable(self, user, document):
         if user.is_authenticated:
-            return self.filter(
+            can_change = user.has_perm("documents.change_document", document)
+            query = (
                 # you may see public notes
                 Q(access=Access.public)
                 # you can see notes you own
                 | Q(user=user)
-                # you can see organization level notes in your organization
-                | Q(
-                    access=Access.organization,
-                    organization__in=user.organizations.all(),
-                )
+            )
+            # if you have edit access for the document, you can view collab (org) notes
+            if can_change:
+                query |= Q(access=Access.organization)
+            return self.filter(query, document=document).exclude(
+                access=Access.invisible
             )
         else:
-            return self.filter(access=Access.public)
+            return self.filter(access=Access.public, document=document)
 
     def preload(self, user, expand):
         """Preload relations"""
