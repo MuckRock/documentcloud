@@ -156,7 +156,7 @@ class NoteOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["doc_pk"]
         )
         note = get_object_or_404(
-            document.notes.get_viewable(request.user), pk=kwargs["pk"]
+            document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
 
         height = None

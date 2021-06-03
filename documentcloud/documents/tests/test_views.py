@@ -1598,3 +1598,19 @@ class TestEntityAPI:
         response = client.delete(f"/api/documents/{document.pk}/entities/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert document.entities.count() == 0
+
+
+@pytest.mark.django_db()
+class TestOEmbed:
+    def test_oembed(self, client, note):
+        """Test oEmbed endpoints"""
+        doc_url = "https://www.documentcloud.org" + note.document.get_absolute_url()
+        page_url = f"{doc_url}#document/p{note.page_number}"
+        note_url = f"{page_url}/a{note.pk}"
+
+        urls = [doc_url, page_url, note_url]
+        print(urls)
+
+        for url in urls:
+            response = client.get("/api/oembed/", {"url": url})
+            assert response.status_code == status.HTTP_200_OK
