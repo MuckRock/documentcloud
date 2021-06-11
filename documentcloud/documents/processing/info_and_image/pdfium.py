@@ -458,7 +458,7 @@ class Workspace:
         assert self.pdfium is None, "Do not call this function more than once"
 
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        self.pdfium = cdll.LoadLibrary(os.path.join(script_dir, "libpdfium.so2"))
+        self.pdfium = cdll.LoadLibrary(os.path.join(script_dir, "libpdfium.so"))
 
         self.init_config = FPDFLibraryConfig(2, c_void_p(), c_void_p(), 0)
         self.pdfium.FPDF_InitLibraryWithConfig(byref(self.init_config))
@@ -616,10 +616,6 @@ class Workspace:
         self.fpdf_page_obj_set_fill_color = prototype(
             ("FPDFPageObj_SetFillColor", self.pdfium)
         )
-
-        # Matrices
-        prototype = CFUNCTYPE(c_int, c_void_p, c_void_p)
-        self.fpdf_get_text_matrix = prototype(("FPDFTextObj_GetMatrix", self.pdfium))
 
         # Saving PDF
         prototype = CFUNCTYPE(c_int, c_void_p)
