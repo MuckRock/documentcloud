@@ -61,6 +61,7 @@ else:
 
     # pylint: disable=import-error
     import graft
+    from graft_adapter import GraftContext
     from pdfium import StorageHandler, Workspace
 
     # only initialize sentry on serverless
