@@ -1,5 +1,10 @@
+# Django
 from django.core.management.base import BaseCommand, CommandError
+
+# Standard Library
 import os
+
+# DocumentCloud
 from documentcloud.common.environment import storage
 
 TESSERACT_DATA_DIRECTORY = "documentcloud/documents/processing/ocr/tesseract/tessdata/"

@@ -2,9 +2,9 @@
 import json
 import logging
 import os
-from pathlib import Path
 import tempfile
 import time
+from pathlib import Path
 
 # Third Party
 import environ
@@ -88,8 +88,10 @@ def write_text_file(text_path, text, access):
     storage.simple_upload(text_path, text.encode("utf8"), access=access)
 
 
-def local_folder_size(path):
-    return sum(file.stat().st_size for file in Path(path).rglob("*")) / 1024 / 1024
+def local_folder_size(folder_path):
+    return (
+        sum(file.stat().st_size for file in Path(folder_path).rglob("*")) / 1024 / 1024
+    )
 
 
 def download_tmp_file(relative_path):
