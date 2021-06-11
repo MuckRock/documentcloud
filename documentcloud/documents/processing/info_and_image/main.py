@@ -125,6 +125,9 @@ PAGE_CACHE_TOPIC = publisher.topic_path(
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
+OCR_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction-dev")
+)
 ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
 )
@@ -138,15 +141,6 @@ REDACT_TOPIC = publisher.topic_path(
 MODIFY_TOPIC = publisher.topic_path(
     "documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")
 )
-
-# All OCR topics
-OCR_TOPICS = env.list("OCR_TOPICS", default=["ocr-eng-extraction-dev"])
-OCR_TOPIC_MAP = {}
-for topic in OCR_TOPICS:
-    lang_parts = topic.split("-")[1:-2]
-    for lang in lang_parts:
-        OCR_TOPIC_MAP[lang] = topic
-
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
 )
@@ -697,12 +691,6 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     return (page.width, page.height)
 
 
-def ocr_topic_for_code(ocr_code):
-    return publisher.topic_path(
-        "documentcloud", OCR_TOPIC_MAP.get(ocr_code, OCR_TOPIC_MAP["eng"])
-    )
-
-
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
@@ -732,7 +720,7 @@ def extract_image(data, _context=None):
 
         # Trigger ocr pipeline
         publisher.publish(
-            ocr_topic_for_code(ocr_code),
+            OCR_TOPIC,
             data=encode_pubsub_data(
                 {
                     "paths_and_numbers": ocr_queue,

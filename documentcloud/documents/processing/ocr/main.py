@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 import tempfile
 import time
 
@@ -54,12 +55,18 @@ else:
 REDIS = utils.get_redis()
 
 OCR_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("OCR_TOPIC", default="ocr-eng-extraction-dev")
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction-dev")
 )
 ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
 )
 OCR_VERSION = env.str("OCR_VERSION", default="tess4")
+OCR_DATA_DIRECTORY = env.str("OCR_DATA_DIRECTORY", default="ocr-languages")
+OCR_DATA_EXTENSION = env.str("OCR_DATA_EXTENSION", default=".traineddata")
+TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp")
+TMP_SIZE_LIMIT = env.str(
+    "TMP_SIZE_LIMIT", 400
+)  # size in megabytes (best be under lambda just to be safe)
 
 # Ensures running on roughly 2Ghz+ machine
 PROFILE_CPU = env.bool("PROFILE_CPU", default=False)
@@ -73,11 +80,43 @@ LARGE_IMAGE_SUFFIX = "-large"
 TXT_EXTENSION = ".txt"
 
 TESS_PDF_PREFIX = "ocr"
+PDF_FONT_FILE = "pdf.ttf"  # Tesseract invisible font
 
 
 def write_text_file(text_path, text, access):
     """Helper method to write a text file."""
     storage.simple_upload(text_path, text.encode("utf8"), access=access)
+
+
+def local_folder_size(path):
+    return sum(file.stat().st_size for file in Path(path).rglob("*")) / 1024 / 1024
+
+
+def download_tmp_file(relative_path):
+    """Downloads the requested data file to a tmp directory."""
+    local_file_path = os.path.join(TMP_DIRECTORY, relative_path)
+    if os.path.exists(local_file_path):
+        # OCR language pack already downloaded
+        return
+
+    # Check if tmp directory is too big
+    if local_folder_size(TMP_DIRECTORY) > TMP_SIZE_LIMIT:
+        # If so, just delete all OCR data (shouldn't happen too often)
+        files = Path(TMP_DIRECTORY).rglob("*")
+        for file in files:
+            os.remove(file)
+
+    # Download OCR data file
+    with storage.open(
+        os.path.join(OCR_DATA_DIRECTORY, relative_path), "rb"
+    ) as ocr_data_file:
+        with open(local_file_path, "wb") as local_file:
+            local_file.write(ocr_data_file.read())
+
+
+def download_language_pack(ocr_code):
+    """Downloads the requested ocr code language data to a tmp directory."""
+    download_tmp_file(f"{ocr_code}{OCR_DATA_EXTENSION}")
 
 
 def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
@@ -86,6 +125,10 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
     Returns:
         The page text.
     """
+    # Download the requisite language data
+    download_language_pack(ocr_code)
+    download_tmp_file(PDF_FONT_FILE)
+
     # Initialize temporary files
     tmp_files = {
         "img": tempfile.mkstemp(suffix=".png")[1],
@@ -117,7 +160,7 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
         with open(tmp_files["pdf"] + ".pdf", "rb") as pdf_file:
             pdf_contents = pdf_file.read()
         with storage.open(upload_text_path, "w", access=access) as new_text_file:
-            with open(tmp_files["text"] + ".txt", "r") as text_file:
+            with open(tmp_files["text"] + ".txt", "r", encoding="utf-8") as text_file:
                 # Store text locally to return (gets used by Redis later)
                 text = text_file.read()
                 # Also upload text file to s3

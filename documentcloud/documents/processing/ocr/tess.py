@@ -4,11 +4,17 @@ import ctypes.util
 import locale
 import os
 
+# Third Party
+import environ
+
+env = environ.Env()
 locale.setlocale(locale.LC_ALL, "C")
+
+TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp")
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 LIB_PATH = os.path.join(script_dir, "tesseract/libtesseract.so.5")
-DATA_PATH = os.path.join(script_dir, "tesseract/tessdata")
+DATA_PATH = TMP_DIRECTORY
 
 
 class TesseractError(Exception):

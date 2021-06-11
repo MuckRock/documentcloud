@@ -67,11 +67,6 @@ def pages_path(doc_id):
     return path(doc_id) + "pages/"
 
 
-def ocr_path(doc_id):
-    """The path to the OCR'd PDF pages"""
-    return path(doc_id) + "pages/ocr/"
-
-
 def page_image_path(doc_id, slug, page_number, page_size):
     """The path to the image file for a single page"""
     return pages_path(doc_id) + f"{slug}-p{page_number + 1}-{page_size}.{IMAGE_SUFFIX}"

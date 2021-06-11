@@ -134,8 +134,7 @@ publisher.register_internal_callback(
     extract_image_task,
 )
 publisher.register_internal_callback(
-    ("documentcloud", env.str("OCR_TOPIC", default="ocr-eng-extraction-dev")),
-    ocr_page_task,
+    ("documentcloud", env.str("OCR_TOPIC", default="ocr-extraction-dev")), ocr_page_task
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")),

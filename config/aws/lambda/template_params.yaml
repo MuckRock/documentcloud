@@ -24,7 +24,7 @@ Globals:
         PDF_PROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/pdf_process/topic:latest}}"
         PAGE_CACHE_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/topic:latest}}"
         IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/topic:latest}}"
-        OCR_TOPICS: {$LANGUAGE_TOPICS$}
+        OCR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/topic:latest}}"
         DOCUMENT_CONVERT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/document_conversion/topic:latest}}"
         ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
         TEXT_POSITION_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/text_position_extract/topic:latest}}"
@@ -169,28 +169,25 @@ Resources:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
-{{each:LANGUAGES}}
-  RunTesseractFunction{$TITLE_LANGUAGES$}:
+  RunTesseractFunction:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.7
       Handler: main.run_tesseract
-      CodeUri: ./awsbin/ocr_{$FN_LANGUAGES$}
+      CodeUri: ./awsbin/ocr
       Environment:
         Variables:
           LD_LIBRARY_PATH: /var/task/tesseract
           TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/timeout:latest}}"
-          OCR_TOPIC: ocr-{$TOPIC_LANGUAGES$}-extraction-{$ENV$}
+          OCR_TOPIC: ocr-extraction-{$ENV$}
       # Trigger function via SNS
       Events:
-        OcrApi{$TITLE_LANGUAGES$}:
+        OcrApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-{$TOPIC_LANGUAGES$}-extraction-{$ENV$}
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-extraction-{$ENV$}
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
-
-{{/each:LANGUAGES}}
   ConvertDocFunction:
     Type: AWS::Serverless::Function
     Properties:

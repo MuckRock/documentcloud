@@ -405,30 +405,6 @@ class Page:
         self.workspace.fpdf_insert_object(self.page, image_obj)
         del image_obj
 
-    def add_sized_text(self, text, x, y, width, height):
-        courier = self.workspace.fpdf_load_standard_font(
-            self.doc.doc, fpdf_string("Courier")
-        )
-        text_obj = self.workspace.fpdf_page_obj_create_text_obj(
-            self.doc.doc, courier, height
-        )
-
-        # Set the text
-        encoded = text.encode("utf-16le") + b"\x00\x00"
-        assert self.workspace.fpdf_text_set_text(text_obj, c_char_p(encoded)) == 1
-
-        # Transform the text
-        self.set_desired_transform(text_obj, x, y + height, width, -1)
-
-        # Set transparent fill
-        assert (
-            self.workspace.fpdf_page_obj_set_fill_color(text_obj, 0, 255, 0, 255) == 1
-        )
-
-        # Insert the object into the page.
-        self.workspace.fpdf_insert_object(self.page, text_obj)
-        del text_obj
-
     def save(self):
         assert self.workspace.fpdf_page_generate_content(self.page) == 1
 
