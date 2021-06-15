@@ -83,7 +83,7 @@ IMAGE_BATCH = env.int(
 )  # Number of images to extract with each function
 OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
 TEXT_POSITION_BATCH = env.int(
-    "TEXT_POSITION_BATCH", 20
+    "TEXT_POSITION_BATCH", 3
 )  # Number of pages to pull text positions from with each function
 PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 BLOCK_SIZE = env.int(

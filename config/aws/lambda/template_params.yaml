@@ -12,6 +12,7 @@ Globals:
         SERVERLESS: True
         EXTRACT_IMAGE_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/batch:latest}}"
         OCR_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/batch:latest}}"
+        TEXT_POSITION_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/text_position_extract/batch:latest}}"
         OCR_VERSION: "{{resolve:ssm:/dc/{$ENV$}/params/ocr_version:latest}}"
         OCR_DATA_DIRECTORY: "{{resolve:ssm:/dc/{$ENV$}/params/ocr_data_bucket:latest}}"
         REDIS_PROCESSING_URL: "{{resolve:ssm:/dc/{$ENV$}/params/redis_processing_url:latest}}"
