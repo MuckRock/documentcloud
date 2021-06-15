@@ -22,6 +22,7 @@ from PIL import Image
 env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+logging.getLogger("pdfminer").setLevel(logging.WARNING)
 
 # remove this when done with import code
 # pylint: disable=too-many-lines
