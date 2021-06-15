@@ -122,19 +122,27 @@ def get_progress(request, _context=None):
         for doc_id in doc_ids:
             redis_progress_fields.append(redis_fields.images_remaining(doc_id))
             redis_progress_fields.append(redis_fields.texts_remaining(doc_id))
+            redis_progress_fields.append(redis_fields.text_positions_remaining(doc_id))
             redis_progress_fields.append(redis_fields.page_count(doc_id))
         data = grouper(
             (int(i) if i is not None else i for i in REDIS.mget(redis_progress_fields)),
-            3,
+            4,
         )
-        for doc_id, (images, texts, pages) in zip(doc_ids, data):
+        for doc_id, (images, texts, text_positions, pages) in zip(doc_ids, data):
             response.append(
-                {"doc_id": doc_id, "images": images, "texts": texts, "pages": pages}
+                {
+                    "doc_id": doc_id,
+                    "images": images,
+                    "texts": texts,
+                    "text_positions": text_positions,
+                    "pages": pages,
+                }
             )
     except RedisError as exc:
         logger.error("RedisError during get_progress: %s", exc, exc_info=sys.exc_info())
         response = [
-            {"doc_id": doc_id, "images": None, "texts": None} for doc_id in doc_ids
+            {"doc_id": doc_id, "images": None, "texts": None, "text_positions": None}
+            for doc_id in doc_ids
         ]
 
     return encode_response(response)
