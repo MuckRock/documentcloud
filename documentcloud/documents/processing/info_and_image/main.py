@@ -464,8 +464,10 @@ def download_modification_page_text(context):
     return page_text_json
 
 
-def extract_text_position_for_page(pdf, doc_id, slug, page_number, access):
-    page = pdf.pages[page_number]
+def extract_text_position_for_page(pdf, doc_id, slug, page_number, access, in_memory):
+    # If in-memory, the page number is always 0 (first and only overlay page)
+    extract_page_number = 0 if in_memory else page_number
+    page = pdf.pages[extract_page_number]
     words = [
         {
             "text": word["text"],
@@ -713,34 +715,36 @@ def extract_image(data, _context=None):
         "[EXTRACT IMAGE] doc_id %s pages %s", doc_id, ",".join(map(str, page_numbers))
     )
 
-    # Store a queue of pages to OCR to fill the batch
+    # Store a queue of pages to OCR/extract text positions to fill the batch
     ocr_queue = []
+    text_position_queue = []
 
-    def flush(ocr_queue):
-        if not ocr_queue:
+    def flush(queue, topic):
+        if not queue:
             return
 
         # Trigger ocr pipeline
         publisher.publish(
-            OCR_TOPIC,
+            topic,
             data=encode_pubsub_data(
                 {
-                    "paths_and_numbers": ocr_queue,
+                    "paths_and_numbers": queue,
                     "doc_id": doc_id,
                     "slug": slug,
                     "access": access,
                     "ocr_code": ocr_code,
                     "partial": partial,
                     "force_ocr": force_ocr,
+                    "page_modification": page_modification,
                 }
             ),
         )
 
-        ocr_queue.clear()
+        queue.clear()
 
-    def check_and_flush(ocr_queue):
-        if len(ocr_queue) >= OCR_BATCH:
-            flush(ocr_queue)
+    def check_and_flush(queue, topic, batch):
+        if len(queue) >= batch:
+            flush(queue, topic)
 
     # Open the PDF file with the cached index
     cached = read_cache(path.index_path(doc_id, slug))
@@ -754,6 +758,7 @@ def extract_image(data, _context=None):
         read_all=False,
         block_size=BLOCK_SIZE,
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+        # Iterate each page number
         for page_number in page_numbers:
             # Only process if it has not processed previously
             large_image_path = path.page_image_path(
@@ -761,7 +766,7 @@ def extract_image(data, _context=None):
             )
             page = None
             if not utils.page_extracted(REDIS, doc_id, page_number):
-                # Extract the image.
+                # Extract the image if not already extracted
                 if page is None:
                     page = doc.load_page(page_number)
                 width, height = extract_single_page(
@@ -806,58 +811,33 @@ def extract_image(data, _context=None):
                     text = page.text
 
                 if text is not None and len(text.strip()) > 0:
+                    # Page already has text inside
                     text_path = path.page_text_path(doc_id, slug, page_number)
 
-                    # Page already has text inside
                     write_text_file(text_path, text, access)
                     if page_modification is None:
                         utils.write_page_text(REDIS, doc_id, page_number, text, None)
 
-                    # Decrement the texts remaining, sending complete if done.
-                    texts_finished = utils.register_page_ocrd(
-                        REDIS, doc_id, page_number
+                    # Decrement the texts remaining
+                    utils.register_page_ocrd(REDIS, doc_id, page_number)
+
+                    # Extract text position
+                    text_position_queue.append(page_number)
+                    check_and_flush(
+                        text_position_queue,
+                        TEXT_POSITION_EXTRACT_TOPIC,
+                        TEXT_POSITION_BATCH,
                     )
-                    if texts_finished:
-                        if page_modification is not None:
-                            # Normally, processing entails assembling text once
-                            # finished. In page modification mode, the consolidated
-                            # json has already been created, so now we defer to
-                            # finishing steps.
-                            raw_pagespec = get_redis_pagespec(doc_id)
-                            pagespec = crunch_collection(raw_pagespec)
-                            filehash = utils.pop_file_hash(REDIS, doc_id)
-                            utils.send_modification_post_processing(
-                                REDIS,
-                                doc_id,
-                                {
-                                    "modifications": page_modification["modifications"],
-                                    "pagespec": pagespec,
-                                    "filehash": filehash,
-                                },
-                            )
-                            return "Ok"
-                        else:
-                            publisher.publish(
-                                ASSEMBLE_TEXT_TOPIC,
-                                encode_pubsub_data(
-                                    {
-                                        "doc_id": doc_id,
-                                        "slug": slug,
-                                        "access": access,
-                                        "partial": partial,
-                                    }
-                                ),
-                            )
-                            return "Ok"
                 else:
                     # Prepare the image to be OCRd.
                     ocr_image_path = path.page_image_path(
                         doc_id, slug, page_number, IMAGE_WIDTHS[OCR_IMAGE_INDEX][0]
                     )
                     ocr_queue.append([page_number, ocr_image_path])
-                    check_and_flush(ocr_queue)
+                    check_and_flush(ocr_queue, OCR_TOPIC, OCR_BATCH)
 
-    flush(ocr_queue)
+    flush(ocr_queue, OCR_TOPIC)
+    flush(text_position_queue, TEXT_POSITION_EXTRACT_TOPIC)
 
     return "Ok"
 
@@ -898,39 +878,8 @@ def assemble_page_text(data, _context=None):
         access=access,
     )
 
-    # Now we can extract text position files for each page
-
-    # Method to publish text position extraction batches
-    def pub(pages):
-        if pages:
-            publisher.publish(
-                TEXT_POSITION_EXTRACT_TOPIC,
-                data=encode_pubsub_data(
-                    {
-                        "doc_id": doc_id,
-                        "slug": slug,
-                        "access": access,
-                        "pages": pages,
-                        "partial": partial,
-                    }
-                ),
-            )
-
-    # Trigger text position extraction tasks for each page
-    if partial:
-        # If only dirty pages are flagged, process the relevant ones in batches
-        dirty = sorted(partial)
-        for i in range(0, len(dirty), TEXT_POSITION_BATCH):
-            pages = [
-                dirty[j] for j in range(i, min(i + TEXT_POSITION_BATCH, len(dirty)))
-            ]
-            pub(pages)
-    else:
-        # Otherwise, process all pages in batches
-        page_count = int(REDIS.get(redis_fields.page_count(doc_id)))
-        for i in range(0, page_count, TEXT_POSITION_BATCH):
-            pages = list(range(i, min(i + TEXT_POSITION_BATCH, page_count)))
-            pub(pages)
+    # All done processing the doc now
+    utils.send_complete(REDIS, doc_id)
 
     return "Ok"
 
@@ -938,31 +887,88 @@ def assemble_page_text(data, _context=None):
 @pubsub_function(REDIS, TEXT_POSITION_EXTRACT_TOPIC)
 def extract_text_position(data, _context=None):
     """Extracts text position files for each page of the document."""
+    # pylint: disable=too-many-locals
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
-    page_numbers = data["pages"]  # The page numbers to extract
+    page_modification = data.get("page_modification", None)
+    in_memory = data.get("in_memory", False)
+    page_numbers = data["paths_and_numbers"]  # The page numbers to extract
+    partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     doc_path = path.doc_path(doc_id, slug)
 
     logger.info("[EXTRACT TEXT POSITION] doc_id %s", doc_id)
 
-    # Write all the text positions to file
-    with storage.open(doc_path, "rb") as doc_file:
-        contents = doc_file.read()
-        mem_file = io.BytesIO(contents)
-        with pdfplumber.open(mem_file) as pdf:
-            # Go through each page
-            for page_number in page_numbers:
-                extract_text_position_for_page(pdf, doc_id, slug, page_number, access)
+    page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
 
-                text_positions_finished = utils.register_text_position_extracted(
-                    REDIS, doc_id, page_number
+    # Grab the PDF
+    if not in_memory:
+        # If not using in-memory Redis PDFs, read the whole doc file into memory
+        with storage.open(doc_path, "rb") as doc_file:
+            contents = doc_file.read()
+            mem_file = io.BytesIO(contents)
+        pdf = pdfplumber.open(mem_file)
+
+    # Write all the text positions to file
+
+    # Go through each page
+    for page_number in page_numbers:
+        if in_memory:
+            # If in-memory, use the Redis overlay PDF
+            overlay_mem_file = io.BytesIO(
+                REDIS.hget(page_text_pdf_field, f"{page_number}")
+            )
+            pdf = pdfplumber.open(overlay_mem_file)
+
+        extract_text_position_for_page(
+            pdf, doc_id, slug, page_number, access, in_memory
+        )
+
+        if in_memory:
+            # Close pdfplumber on the overlay pdf
+            pdf.close()
+
+        # Check if all text positions have been extracted
+        text_positions_finished = utils.register_text_position_extracted(
+            REDIS, doc_id, page_number
+        )
+        if text_positions_finished:
+            if page_modification is not None:
+                # Normally, processing entails assembling text once
+                # finished. In page modification mode, the consolidated
+                # json has already been created, so now we defer to
+                # finishing steps.
+                raw_pagespec = get_redis_pagespec(doc_id)
+                pagespec = crunch_collection(raw_pagespec)
+                filehash = utils.pop_file_hash(REDIS, doc_id)
+                utils.send_modification_post_processing(
+                    REDIS,
+                    doc_id,
+                    {
+                        "modifications": page_modification["modifications"],
+                        "pagespec": pagespec,
+                        "filehash": filehash,
+                    },
                 )
-                if text_positions_finished:
-                    # All done processing the doc now
-                    utils.send_complete(REDIS, doc_id)
+            else:
+                # Move on to assembling/grafting the text back into the pdf
+                publisher.publish(
+                    ASSEMBLE_TEXT_TOPIC,
+                    encode_pubsub_data(
+                        {
+                            "doc_id": doc_id,
+                            "slug": slug,
+                            "access": access,
+                            "partial": partial,
+                        }
+                    ),
+                )
+
+    if not in_memory:
+        # Close pdfplumber
+        pdf.close()
 
     return "Ok"
 

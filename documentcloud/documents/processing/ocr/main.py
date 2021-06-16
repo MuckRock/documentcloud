@@ -57,9 +57,13 @@ REDIS = utils.get_redis()
 OCR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction-dev")
 )
-ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
-    "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
+TEXT_POSITION_EXTRACT_TOPIC = publisher.topic_path(
+    "documentcloud",
+    env.str("TEXT_POSITION_EXTRACT_TOPIC", default="text-position-extraction"),
 )
+TEXT_POSITION_BATCH = env.int(
+    "TEXT_POSITION_BATCH", 3
+)  # Number of pages to pull text positions from with each function
 OCR_VERSION = env.str("OCR_VERSION", default="tess4")
 OCR_DATA_DIRECTORY = env.str("OCR_DATA_DIRECTORY", default="ocr-languages")
 OCR_DATA_EXTENSION = env.str("OCR_DATA_EXTENSION", default=".traineddata")
@@ -236,6 +240,35 @@ def run_tesseract(data, _context=None):
         logging.warning("No paths/numbers")
         return "Ok"
 
+    # Queue up text position extraction tasks
+    queue = []
+
+    def flush(queue):
+        if not queue:
+            return
+
+        # Trigger text position extraction pipeline
+        publisher.publish(
+            TEXT_POSITION_EXTRACT_TOPIC,
+            encode_pubsub_data(
+                {
+                    "paths_and_numbers": queue,
+                    "doc_id": doc_id,
+                    "slug": slug,
+                    "access": access,
+                    "ocr_code": ocr_code,
+                    "partial": partial,
+                    "in_memory": True,
+                }
+            ),
+        )
+
+        queue.clear()
+
+    def check_and_flush(queue):
+        if len(queue) >= TEXT_POSITION_BATCH:
+            flush(queue)
+
     # Loop through all paths and numbers
     for page_number, image_path in paths_and_numbers:
 
@@ -256,22 +289,15 @@ def run_tesseract(data, _context=None):
             )
             utils.write_page_text_pdf(REDIS, doc_id, page_number, pdf_contents)
 
-            # Decrement the texts remaining, sending complete if done.
-            texts_finished = utils.register_page_ocrd(REDIS, doc_id, page_number)
-            if texts_finished:
-                publisher.publish(
-                    ASSEMBLE_TEXT_TOPIC,
-                    encode_pubsub_data(
-                        {
-                            "doc_id": doc_id,
-                            "slug": slug,
-                            "access": access,
-                            "ocr_code": ocr_code,
-                            "partial": partial,
-                        }
-                    ),
-                )
-                return "Ok"
+            # Decrement the texts remaining
+            utils.register_page_ocrd(REDIS, doc_id, page_number)
+
+            # Queue text position extraction tasks
+            queue.append(page_number)
+            check_and_flush(queue)
+
+    # Flush the remaining queue
+    flush(queue)
 
     result["doc_id"] = doc_id
     result["elapsed"] = elapsed_times

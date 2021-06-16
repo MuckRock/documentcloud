@@ -93,7 +93,7 @@ def page_text_partially_patched(doc_id, slug, results):
     pass
 
 
-def page_text_position_extracted(pdf, doc_id, slug, page_number, access):
+def page_text_position_extracted(pdf, doc_id, slug, page_number, access, in_memory):
     pass
 
 
@@ -235,8 +235,8 @@ def write_concatenated_text_file(doc_id, slug, access, page_jsons):
     pass
 
 
-def extract_text_position_for_page(pdf, doc_id, slug, page_number, access):
-    page_text_position_extracted(pdf, doc_id, slug, page_number, access)
+def extract_text_position_for_page(pdf, doc_id, slug, page_number, access, in_memory):
+    page_text_position_extracted(pdf, doc_id, slug, page_number, access, in_memory)
 
 
 def write_text_file(text_path, text, access):
