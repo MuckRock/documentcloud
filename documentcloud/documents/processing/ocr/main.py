@@ -67,7 +67,7 @@ TEXT_POSITION_BATCH = env.int(
 OCR_VERSION = env.str("OCR_VERSION", default="tess4")
 OCR_DATA_DIRECTORY = env.str("OCR_DATA_DIRECTORY", default="ocr-languages")
 OCR_DATA_EXTENSION = env.str("OCR_DATA_EXTENSION", default=".traineddata")
-TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp")
+TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp/ocrtmp")
 TMP_SIZE_LIMIT = env.str(
     "TMP_SIZE_LIMIT", 400
 )  # size in megabytes (best be under lambda just to be safe)
@@ -100,6 +100,9 @@ def local_folder_size(folder_path):
 
 def download_tmp_file(relative_path):
     """Downloads the requested data file to a tmp directory."""
+    Path(TMP_DIRECTORY).mkdir(
+        parents=True, exist_ok=True
+    )  # Make tmp directory if it doesn't exist
     local_file_path = os.path.join(TMP_DIRECTORY, relative_path)
     if os.path.exists(local_file_path):
         # OCR language pack already downloaded
@@ -108,6 +111,7 @@ def download_tmp_file(relative_path):
     # Check if tmp directory is too big
     if local_folder_size(TMP_DIRECTORY) > TMP_SIZE_LIMIT:
         # If so, just delete all OCR data (shouldn't happen too often)
+        logger.warning("[Deleting tmp OCR data]")
         files = Path(TMP_DIRECTORY).rglob("*")
         for file in files:
             os.remove(file)
@@ -115,9 +119,8 @@ def download_tmp_file(relative_path):
     # Download OCR data file
     with storage.open(
         os.path.join(OCR_DATA_DIRECTORY, relative_path), "rb"
-    ) as ocr_data_file:
-        with open(local_file_path, "wb") as local_file:
-            local_file.write(ocr_data_file.read())
+    ) as ocr_data_file, open(local_file_path, "wb") as local_file:
+        local_file.write(ocr_data_file.read())
 
 
 def download_language_pack(ocr_code):
