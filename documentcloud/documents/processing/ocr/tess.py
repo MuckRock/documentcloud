@@ -4,11 +4,17 @@ import ctypes.util
 import locale
 import os
 
+# Third Party
+import environ
+
+env = environ.Env()
 locale.setlocale(locale.LC_ALL, "C")
+
+TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp")
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 LIB_PATH = os.path.join(script_dir, "tesseract/libtesseract.so.5")
-DATA_PATH = os.path.join(script_dir, "tesseract/tessdata")
+DATA_PATH = TMP_DIRECTORY
 
 
 class TesseractError(Exception):
@@ -42,6 +48,9 @@ class Tesseract:
         lib.TessBaseAPIDelete.restype = None  # void
         lib.TessBaseAPIDelete.argtypes = (cls.TessBaseAPI,)  # handle
 
+        lib.TessDeleteResultRenderer.restype = None
+        lib.TessDeleteResultRenderer.argtypes = (ctypes.c_void_p,)
+
         lib.TessBaseAPIInit4.argtypes = (
             cls.TessBaseAPI,  # handle
             ctypes.c_char_p,  # datapath
@@ -54,6 +63,9 @@ class Tesseract:
             ctypes.c_int,  # vars size
             ctypes.c_int,
         )  # set only non debug params
+
+        lib.TessBaseAPIGetDatapath.restype = ctypes.c_char_p
+        lib.TessBaseAPIGetDatapath.argtypes = (cls.TessBaseAPI,)  # handle
 
         lib.TessBaseAPISetImage.restype = None
         lib.TessBaseAPISetImage.argtypes = (
@@ -68,10 +80,45 @@ class Tesseract:
         lib.TessBaseAPIGetUTF8Text.restype = ctypes.c_char_p
         lib.TessBaseAPIGetUTF8Text.argtypes = (cls.TessBaseAPI,)  # handle
 
+        lib.TessBaseAPIGetHOCRText.restype = ctypes.c_char_p
+        lib.TessBaseAPIGetHOCRText.argtypes = (cls.TessBaseAPI,)  # handle
+
+        lib.TessPDFRendererCreate.restype = ctypes.c_void_p  # PDF renderer
+        lib.TessPDFRendererCreate.argtypes = (
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_int,
+        )
+
+        lib.TessTextRendererCreate.restype = ctypes.c_void_p  # Text renderer
+        lib.TessTextRendererCreate.argtypes = (ctypes.c_char_p,)
+
+        lib.TessResultRendererInsert.restype = None
+        lib.TessResultRendererInsert.argtypes = (ctypes.c_void_p, ctypes.c_void_p)
+
+        lib.TessResultRendererBeginDocument.restype = ctypes.c_int
+        lib.TessResultRendererBeginDocument.argtypes = (
+            ctypes.c_void_p,
+            ctypes.c_char_p,
+        )
+
+        lib.TessResultRendererEndDocument.restype = ctypes.c_int
+        lib.TessResultRendererEndDocument.argtypes = (ctypes.c_void_p,)
+
+        lib.TessBaseAPIProcessPages.argtypes = (
+            cls.TessBaseAPI,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+        )
+
     def __init__(self, language="eng", datapath=DATA_PATH, lib_path=LIB_PATH):
         if self._lib is None:
             self.setup_lib(lib_path)
+        self.renderer = None
         self._api = self._lib.TessBaseAPICreate()
+        self.datapath = datapath
         if self._lib.TessBaseAPIInit4(
             self._api,
             datapath.encode("utf-8"),
@@ -90,6 +137,8 @@ class Tesseract:
         if not self._lib or not self._api:
             return
         if not getattr(self, "closed", False):
+            if self.renderer:
+                self._lib.TessDeleteResultRenderer(self.renderer)
             self._lib.TessBaseAPIDelete(self._api)
             self.closed = True
 
@@ -115,3 +164,47 @@ class Tesseract:
         self._check_setup()
         result = self._lib.TessBaseAPIGetUTF8Text(self._api)
         return result.decode("utf-8")
+
+    def get_hocr(self):
+        self._check_setup()
+        result = self._lib.TessBaseAPIGetHOCRText(self._api)
+        return result.decode("utf-8")
+
+    def create_renderer(self, pdf_base, text_base):
+        self._check_setup()
+        self.renderer = self._lib.TessPDFRendererCreate(
+            os.path.abspath(pdf_base).encode("utf-8"), self.datapath.encode("utf-8"), 1
+        )
+        self._lib.TessResultRendererInsert(
+            self.renderer,
+            self._lib.TessTextRendererCreate(
+                os.path.abspath(text_base).encode("utf-8")
+            ),
+        )
+
+    def destroy_renderer(self):
+        if self.renderer:
+            self._lib.TessDeleteResultRenderer(self.renderer)
+            self.renderer = None
+
+    def render(self, image_path):
+        self._check_setup()
+        if not self.renderer:
+            raise TesseractError("Set up renderer")
+
+        if not self._lib.TessResultRendererBeginDocument(
+            self.renderer, "".encode("utf-8")
+        ):
+            raise TesseractError("could not begin document")
+
+        if not self._lib.TessBaseAPIProcessPages(
+            self._api,
+            os.path.abspath(image_path).encode("utf-8"),
+            None,
+            0,
+            self.renderer,
+        ):
+            raise TesseractError("render failed")
+
+        if not self._lib.TessResultRendererEndDocument(self.renderer):
+            raise TesseractError("could not end document")

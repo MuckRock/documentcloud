@@ -13,6 +13,7 @@ from random import randint
 
 # Third Party
 import environ
+import pdfplumber
 import redis
 from botocore.exceptions import ClientError
 from listcrunch import crunch_collection
@@ -21,6 +22,7 @@ from PIL import Image
 env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+logging.getLogger("pdfminer").setLevel(logging.WARNING)
 
 # remove this when done with import code
 # pylint: disable=too-many-lines
@@ -39,6 +41,10 @@ if env.str("ENVIRONMENT").startswith("local"):
         pubsub_function,
         pubsub_function_import,
     )
+    import documentcloud.documents.processing.info_and_image.graft as graft
+    from documentcloud.documents.processing.info_and_image.graft_adapter import (
+        GraftContext,
+    )
     from documentcloud.documents.processing.info_and_image.pdfium import (
         StorageHandler,
         Workspace,
@@ -53,6 +59,10 @@ else:
     )
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function, pubsub_function_import
+
+    # pylint: disable=import-error
+    import graft
+    from graft_adapter import GraftContext
     from pdfium import StorageHandler, Workspace
 
     # only initialize sentry on serverless
@@ -73,6 +83,9 @@ IMAGE_BATCH = env.int(
     "EXTRACT_IMAGE_BATCH", default=55
 )  # Number of images to extract with each function
 OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
+TEXT_POSITION_BATCH = env.int(
+    "TEXT_POSITION_BATCH", 3
+)  # Number of pages to pull text positions from with each function
 PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 BLOCK_SIZE = env.int(
     "BLOCK_SIZE", 8 * 1024 * 1024
@@ -114,8 +127,15 @@ PAGE_CACHE_TOPIC = publisher.topic_path(
 IMAGE_EXTRACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("IMAGE_EXTRACT_TOPIC", default="image-extraction")
 )
+OCR_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("OCR_TOPIC", default="ocr-extraction-dev")
+)
 ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
+)
+TEXT_POSITION_EXTRACT_TOPIC = publisher.topic_path(
+    "documentcloud",
+    env.str("TEXT_POSITION_EXTRACT_TOPIC", default="text-position-extraction"),
 )
 REDACT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("REDACT_TOPIC", default="redact-doc")
@@ -123,15 +143,6 @@ REDACT_TOPIC = publisher.topic_path(
 MODIFY_TOPIC = publisher.topic_path(
     "documentcloud", env.str("MODIFY_TOPIC", default="modify-doc")
 )
-
-# All OCR topics
-OCR_TOPICS = env.list("OCR_TOPICS", default=["ocr-eng-extraction-dev"])
-OCR_TOPIC_MAP = {}
-for topic in OCR_TOPICS:
-    lang_parts = topic.split("-")[1:-2]
-    for lang in lang_parts:
-        OCR_TOPIC_MAP[lang] = topic
-
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
 )
@@ -159,6 +170,7 @@ def initialize_redis_page_data(doc_id, page_count):
     dimensions_field = redis_fields.dimensions(doc_id)
     image_bits_field = redis_fields.image_bits(doc_id)
     text_bits_field = redis_fields.text_bits(doc_id)
+    text_position_bits_field = redis_fields.text_position_bits(doc_id)
 
     def dimensions_field_update(pipeline):
         existing_dimensions = pipeline.smembers(dimensions_field)
@@ -172,12 +184,15 @@ def initialize_redis_page_data(doc_id, page_count):
         # Set pages and texts remaining to page count
         pipeline.set(redis_fields.images_remaining(doc_id), page_count)
         pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
+        pipeline.set(redis_fields.text_positions_remaining(doc_id), page_count)
 
         # Set Redis bit arrays flooded to 0 to track each page
         pipeline.delete(image_bits_field)
         pipeline.delete(text_bits_field)
+        pipeline.delete(text_position_bits_field)
         pipeline.setbit(image_bits_field, page_count - 1, 0)
         pipeline.setbit(text_bits_field, page_count - 1, 0)
+        pipeline.setbit(text_position_bits_field, page_count - 1, 0)
 
         # Remove any existing dimensions that may be lingering
         if existing_dimensions is not None:
@@ -188,6 +203,7 @@ def initialize_redis_page_data(doc_id, page_count):
 
         # Remove any existing page text
         pipeline.delete(redis_fields.page_text(doc_id))
+        pipeline.delete(redis_fields.page_text_pdf(doc_id))
 
     # Ensure atomicity while getting a value with the transaction wrapper around WATCH
     # See https://pypi.org/project/redis/#pipelines for details
@@ -204,6 +220,7 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
 
     image_bits_field = redis_fields.image_bits(doc_id)
     text_bits_field = redis_fields.text_bits(doc_id)
+    text_position_bits_field = redis_fields.text_position_bits(doc_id)
 
     pipeline = REDIS.pipeline()
     pipeline.set(redis_fields.page_count(doc_id), page_count)
@@ -211,18 +228,22 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
     # Set images/texts remaining equal to number of dirty pages
     pipeline.set(redis_fields.images_remaining(doc_id), len(dirty_pages))
     pipeline.set(redis_fields.texts_remaining(doc_id), len(dirty_pages))
+    pipeline.set(redis_fields.text_positions_remaining(doc_id), len(dirty_pages))
 
     # Set Redis bit arrays flooded to 1 to track each page.
     # Just the dirty pages will be set to 0 to indicate
     # reprocessing is needed.
     pipeline.delete(image_bits_field)
     pipeline.delete(text_bits_field)
+    pipeline.delete(text_position_bits_field)
     for i in range(page_count):
         pipeline.setbit(image_bits_field, i, 0 if i in dirty_pages else 1)
         pipeline.setbit(text_bits_field, i, 0 if i in dirty_pages else 1)
+        pipeline.setbit(text_position_bits_field, i, 0 if i in dirty_pages else 1)
 
     # Remove any existing page text
     pipeline.delete(redis_fields.page_text(doc_id))
+    pipeline.delete(redis_fields.page_text_pdf(doc_id))
 
     # Execute the pipeline atomically
     pipeline.execute()
@@ -443,6 +464,78 @@ def download_modification_page_text(context):
     return page_text_json
 
 
+def extract_text_position_for_page(pdf, doc_id, slug, page_number, access, in_memory):
+    # If in-memory, the page number is always 0 (first and only overlay page)
+    extract_page_number = 0 if in_memory else page_number
+    page = pdf.pages[extract_page_number]
+    words = [
+        {
+            "text": word["text"],
+            "x1": float(word["x0"]) / float(page.width),
+            "x2": float(word["x1"]) / float(page.width),
+            "y1": float(word["top"]) / float(page.height),
+            "y2": float(word["bottom"]) / float(page.height),
+            "upright": word["upright"],
+            "direction": word["direction"],
+        }
+        for word in page.extract_words()
+    ]
+    # Write the json positional words file
+    storage.simple_upload(
+        path.page_text_position_path(doc_id, slug, page_number),
+        json.dumps(words).encode("utf-8"),
+        access=access,
+    )
+
+
+def graft_ocr_in_pdf(doc_id, slug, access):
+    """Reinjects the OCR'd text-only PDFs back into the main PDF."""
+    page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
+    redis_pdf_pages = REDIS.hkeys(page_text_pdf_field)
+    doc_path = path.doc_path(doc_id, slug)
+
+    # Load PDF in memory
+    handler = StorageHandler(storage, doc_path, False, False, None, read_all=True)
+    with Workspace() as workspace, workspace.load_document_custom(handler) as mem_pdf:
+        mem_file = handler.mem_file  # Grab document as BytesIO instance
+
+        # Graft all the pages
+        grafter = graft.OcrGrafter(GraftContext(graft, mem_file, mem_pdf))
+        for redis_page_key in redis_pdf_pages:
+            page_number = int(redis_page_key)
+            # Load overlay PDF in memory
+            overlay_mem_file = io.BytesIO(
+                REDIS.hget(page_text_pdf_field, redis_page_key)
+            )
+            grafter.graft_page(
+                pageno=page_number,
+                image=None,
+                textpdf=overlay_mem_file,
+                autorotate_correction=0,
+            )
+
+        # Overwrite source PDF
+        with storage.open(doc_path, "wb", access=access) as output_file:
+            grafter.output_file = output_file
+            grafter.finalize()
+
+
+def patch_partial_page_text(doc_id, slug, results):
+    """Patch/assemble page text from a partial update."""
+    with storage.open(path.json_text_path(doc_id, slug), "rb") as json_file:
+        old_results = json.loads(json_file.read())
+
+    for result in results["pages"]:
+        page = result["page"]
+        # Patch in the new page
+        old_results["pages"][page] = result
+
+    # Patch in the updated time
+    old_results["updated"] = results["updated"]
+
+    return old_results
+
+
 @pubsub_function(REDIS, PAGE_CACHE_TOPIC)
 def process_page_cache(data, _context=None):
     """Memoize the memory accesses of all the pages of a PDF in a cache."""
@@ -602,12 +695,6 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
     return (page.width, page.height)
 
 
-def ocr_topic_for_code(ocr_code):
-    return publisher.topic_path(
-        "documentcloud", OCR_TOPIC_MAP.get(ocr_code, OCR_TOPIC_MAP["eng"])
-    )
-
-
 @pubsub_function(REDIS, IMAGE_EXTRACT_TOPIC)
 def extract_image(data, _context=None):
     """Renders (extracts) an image from a PDF file."""
@@ -628,34 +715,36 @@ def extract_image(data, _context=None):
         "[EXTRACT IMAGE] doc_id %s pages %s", doc_id, ",".join(map(str, page_numbers))
     )
 
-    # Store a queue of pages to OCR to fill the batch
+    # Store a queue of pages to OCR/extract text positions to fill the batch
     ocr_queue = []
+    text_position_queue = []
 
-    def flush(ocr_queue):
-        if not ocr_queue:
+    def flush(queue, topic):
+        if not queue:
             return
 
         # Trigger ocr pipeline
         publisher.publish(
-            ocr_topic_for_code(ocr_code),
+            topic,
             data=encode_pubsub_data(
                 {
-                    "paths_and_numbers": ocr_queue,
+                    "paths_and_numbers": queue,
                     "doc_id": doc_id,
                     "slug": slug,
                     "access": access,
                     "ocr_code": ocr_code,
                     "partial": partial,
                     "force_ocr": force_ocr,
+                    "page_modification": page_modification,
                 }
             ),
         )
 
-        ocr_queue.clear()
+        queue.clear()
 
-    def check_and_flush(ocr_queue):
-        if len(ocr_queue) >= OCR_BATCH:
-            flush(ocr_queue)
+    def check_and_flush(queue, topic, batch):
+        if len(queue) >= batch:
+            flush(queue, topic)
 
     # Open the PDF file with the cached index
     cached = read_cache(path.index_path(doc_id, slug))
@@ -669,6 +758,7 @@ def extract_image(data, _context=None):
         read_all=False,
         block_size=BLOCK_SIZE,
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
+        # Iterate each page number
         for page_number in page_numbers:
             # Only process if it has not processed previously
             large_image_path = path.page_image_path(
@@ -676,7 +766,7 @@ def extract_image(data, _context=None):
             )
             page = None
             if not utils.page_extracted(REDIS, doc_id, page_number):
-                # Extract the image.
+                # Extract the image if not already extracted
                 if page is None:
                     page = doc.load_page(page_number)
                 width, height = extract_single_page(
@@ -721,65 +811,40 @@ def extract_image(data, _context=None):
                     text = page.text
 
                 if text is not None and len(text.strip()) > 0:
+                    # Page already has text inside
                     text_path = path.page_text_path(doc_id, slug, page_number)
 
-                    # Page already has text inside
                     write_text_file(text_path, text, access)
                     if page_modification is None:
                         utils.write_page_text(REDIS, doc_id, page_number, text, None)
 
-                    # Decrement the texts remaining, sending complete if done.
-                    texts_finished = utils.register_page_ocrd(
-                        REDIS, doc_id, page_number
+                    # Decrement the texts remaining
+                    utils.register_page_ocrd(REDIS, doc_id, page_number)
+
+                    # Extract text position
+                    text_position_queue.append(page_number)
+                    check_and_flush(
+                        text_position_queue,
+                        TEXT_POSITION_EXTRACT_TOPIC,
+                        TEXT_POSITION_BATCH,
                     )
-                    if texts_finished:
-                        if page_modification is not None:
-                            # Normally, processing entails assembling text once
-                            # finished. In page modification mode, the consolidated
-                            # json has already been created, so now we defer to
-                            # finishing steps.
-                            raw_pagespec = get_redis_pagespec(doc_id)
-                            pagespec = crunch_collection(raw_pagespec)
-                            filehash = utils.pop_file_hash(REDIS, doc_id)
-                            utils.send_modification_post_processing(
-                                REDIS,
-                                doc_id,
-                                {
-                                    "modifications": page_modification["modifications"],
-                                    "pagespec": pagespec,
-                                    "filehash": filehash,
-                                },
-                            )
-                            return "Ok"
-                        else:
-                            publisher.publish(
-                                ASSEMBLE_TEXT_TOPIC,
-                                encode_pubsub_data(
-                                    {
-                                        "doc_id": doc_id,
-                                        "slug": slug,
-                                        "access": access,
-                                        "partial": partial,
-                                    }
-                                ),
-                            )
-                            return "Ok"
                 else:
                     # Prepare the image to be OCRd.
                     ocr_image_path = path.page_image_path(
                         doc_id, slug, page_number, IMAGE_WIDTHS[OCR_IMAGE_INDEX][0]
                     )
                     ocr_queue.append([page_number, ocr_image_path])
-                    check_and_flush(ocr_queue)
+                    check_and_flush(ocr_queue, OCR_TOPIC, OCR_BATCH)
 
-    flush(ocr_queue)
+    flush(ocr_queue, OCR_TOPIC)
+    flush(text_position_queue, TEXT_POSITION_EXTRACT_TOPIC)
 
     return "Ok"
 
 
 @pubsub_function(REDIS, ASSEMBLE_TEXT_TOPIC)
 def assemble_page_text(data, _context=None):
-    """Assembles a single page text file containing the doc's entire page text."""
+    """Assembles a text file with the doc text and merges the text pdf layers in."""
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
@@ -789,23 +854,18 @@ def assemble_page_text(data, _context=None):
 
     logger.info("[ASSEMBLE TEXT] doc_id %s", doc_id)
 
+    # Reinject OCR layer into PDF
+    graft_ocr_in_pdf(doc_id, slug, access)
+
+    # Remove the in-memory text PDFs from Redis
+    # (now that the PDF is grafted, OCR does not have to run if reprocessed)
+    REDIS.delete(redis_fields.page_text_pdf(doc_id))
+
     results = utils.get_all_page_text(REDIS, doc_id)
 
     if partial:
         # Patch the old results in if it's a partial update
-        with storage.open(path.json_text_path(doc_id, slug), "rb") as json_file:
-            old_results = json.loads(json_file.read())
-
-        for result in results["pages"]:
-            page = result["page"]
-            # Patch in the new page
-            old_results["pages"][page] = result
-
-        # Patch in the updated time
-        old_results["updated"] = results["updated"]
-
-        # Overwrite the original results
-        results = old_results
+        results = patch_partial_page_text(doc_id, slug, results)
 
     # Compile and write concatenated text only outside of import mode
     # (we don't want to overwrite the previous file)
@@ -818,7 +878,97 @@ def assemble_page_text(data, _context=None):
         access=access,
     )
 
+    # All done processing the doc now
     utils.send_complete(REDIS, doc_id)
+
+    return "Ok"
+
+
+@pubsub_function(REDIS, TEXT_POSITION_EXTRACT_TOPIC)
+def extract_text_position(data, _context=None):
+    """Extracts text position files for each page of the document."""
+    # pylint: disable=too-many-locals
+    data = get_pubsub_data(data)
+
+    doc_id = data["doc_id"]
+    slug = data["slug"]
+    access = data.get("access", access_choices.PRIVATE)
+    page_modification = data.get("page_modification", None)
+    in_memory = data.get("in_memory", False)
+    page_numbers = data["paths_and_numbers"]  # The page numbers to extract
+    partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
+    doc_path = path.doc_path(doc_id, slug)
+
+    logger.info("[EXTRACT TEXT POSITION] doc_id %s", doc_id)
+
+    page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
+
+    # Grab the PDF
+    if not in_memory:
+        # If not using in-memory Redis PDFs, read the whole doc file into memory
+        with storage.open(doc_path, "rb") as doc_file:
+            contents = doc_file.read()
+            mem_file = io.BytesIO(contents)
+        pdf = pdfplumber.open(mem_file)
+
+    # Write all the text positions to file
+
+    # Go through each page
+    for page_number in page_numbers:
+        if in_memory:
+            # If in-memory, use the Redis overlay PDF
+            overlay_mem_file = io.BytesIO(
+                REDIS.hget(page_text_pdf_field, f"{page_number}")
+            )
+            pdf = pdfplumber.open(overlay_mem_file)
+
+        extract_text_position_for_page(
+            pdf, doc_id, slug, page_number, access, in_memory
+        )
+
+        if in_memory:
+            # Close pdfplumber on the overlay pdf
+            pdf.close()
+
+        # Check if all text positions have been extracted
+        text_positions_finished = utils.register_text_position_extracted(
+            REDIS, doc_id, page_number
+        )
+        if text_positions_finished:
+            if page_modification is not None:
+                # Normally, processing entails assembling text once
+                # finished. In page modification mode, the consolidated
+                # json has already been created, so now we defer to
+                # finishing steps.
+                raw_pagespec = get_redis_pagespec(doc_id)
+                pagespec = crunch_collection(raw_pagespec)
+                filehash = utils.pop_file_hash(REDIS, doc_id)
+                utils.send_modification_post_processing(
+                    REDIS,
+                    doc_id,
+                    {
+                        "modifications": page_modification["modifications"],
+                        "pagespec": pagespec,
+                        "filehash": filehash,
+                    },
+                )
+            else:
+                # Move on to assembling/grafting the text back into the pdf
+                publisher.publish(
+                    ASSEMBLE_TEXT_TOPIC,
+                    encode_pubsub_data(
+                        {
+                            "doc_id": doc_id,
+                            "slug": slug,
+                            "access": access,
+                            "partial": partial,
+                        }
+                    ),
+                )
+
+    if not in_memory:
+        # Close pdfplumber
+        pdf.close()
 
     return "Ok"
 

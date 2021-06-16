@@ -11,6 +11,10 @@ def texts_remaining(doc_id):
     return f"{doc_id}:text"
 
 
+def text_positions_remaining(doc_id):
+    return f"{doc_id}:textposition"
+
+
 def page_count(doc_id):
     return f"{doc_id}:pages"
 
@@ -27,6 +31,10 @@ def page_text(doc_id):
     return f"{doc_id}:pagetext"
 
 
+def page_text_pdf(doc_id):
+    return f"{doc_id}:pagetextpdf"
+
+
 def is_running(doc_id):
     return f"{doc_id}:running"
 
@@ -37,6 +45,10 @@ def image_bits(doc_id):
 
 def text_bits(doc_id):
     return f"{doc_id}:textBits"
+
+
+def text_position_bits(doc_id):
+    return f"{doc_id}:textpositionBits"
 
 
 def file_hash(doc_id):

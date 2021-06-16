@@ -36,6 +36,7 @@ if settings.ENVIRONMENT.startswith("local"):
         extract_images,
         ocr_pages,
         assemble_text,
+        text_position_extract,
         redact_document,
         modify_document,
         start_import_process,

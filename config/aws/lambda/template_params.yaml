@@ -12,7 +12,9 @@ Globals:
         SERVERLESS: True
         EXTRACT_IMAGE_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/batch:latest}}"
         OCR_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/batch:latest}}"
+        TEXT_POSITION_BATCH: "{{resolve:ssm:/dc/{$ENV$}/lambdas/text_position_extract/batch:latest}}"
         OCR_VERSION: "{{resolve:ssm:/dc/{$ENV$}/params/ocr_version:latest}}"
+        OCR_DATA_DIRECTORY: "{{resolve:ssm:/dc/{$ENV$}/params/ocr_data_bucket:latest}}"
         REDIS_PROCESSING_URL: "{{resolve:ssm:/dc/{$ENV$}/params/redis_processing_url:latest}}"
         REDIS_PROCESSING_PASSWORD: "{{resolve:ssm:/dc/{$ENV$}/params/redis_processing_password:latest}}"
         REDIS_SOCKET_TIMEOUT: "{{resolve:ssm:/dc/{$ENV$}/params/redis_socket_timeout:latest}}"
@@ -24,9 +26,10 @@ Globals:
         PDF_PROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/pdf_process/topic:latest}}"
         PAGE_CACHE_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/page_cache/topic:latest}}"
         IMAGE_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/extract_image/topic:latest}}"
-        OCR_TOPICS: {$LANGUAGE_TOPICS$}
+        OCR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/topic:latest}}"
         DOCUMENT_CONVERT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/document_conversion/topic:latest}}"
         ASSEMBLE_TEXT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
+        TEXT_POSITION_EXTRACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/text_position_extract/topic:latest}}"
         REDACT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
         START_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/start_import/topic:latest}}"
         IMPORT_DOCUMENT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
@@ -168,28 +171,25 @@ Resources:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/redact_doc/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
-{{each:LANGUAGES}}
-  RunTesseractFunction{$TITLE_LANGUAGES$}:
+  RunTesseractFunction:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.7
       Handler: main.run_tesseract
-      CodeUri: ./awsbin/ocr_{$FN_LANGUAGES$}
+      CodeUri: ./awsbin/ocr
       Environment:
         Variables:
           LD_LIBRARY_PATH: /var/task/tesseract
           TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/timeout:latest}}"
-          OCR_TOPIC: ocr-{$TOPIC_LANGUAGES$}-extraction-{$ENV$}
+          OCR_TOPIC: ocr-extraction-{$ENV$}
       # Trigger function via SNS
       Events:
-        OcrApi{$TITLE_LANGUAGES$}:
+        OcrApi:
           Type: SNS
           Properties:
-            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-{$TOPIC_LANGUAGES$}-extraction-{$ENV$}
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":ocr-extraction-{$ENV$}
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
-
-{{/each:LANGUAGES}}
   ConvertDocFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -222,6 +222,23 @@ Resources:
           Type: SNS
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/assemble_text/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  ExtractTextFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.extract_text_position
+      CodeUri: ./awsbin/info_and_image
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/text_position_extract/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/text_position_extract/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   StartImportFunction:

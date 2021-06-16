@@ -54,6 +54,7 @@ class PipelineTest(TestCase):
         trigger_processing()
         assert mocks["page_extracted"].call_count == 3
         assert mocks["page_ocrd"].call_count == 3
+        assert mocks["page_text_position_extracted"].call_count == 3
 
     @patch_pipeline
     def test_3pg_no_ocr(self, mocks):
@@ -62,6 +63,7 @@ class PipelineTest(TestCase):
         assert mocks["page_extracted"].call_count == 3
         # No pages need to be OCRd when text is extractable
         assert mocks["page_ocrd"].call_count == 0
+        assert mocks["page_text_position_extracted"].call_count == 3
 
     @patch_pipeline
     def test_5pg_half_ocr(self, mocks):
@@ -69,6 +71,7 @@ class PipelineTest(TestCase):
         trigger_processing()
         assert mocks["page_extracted"].call_count == 5
         assert mocks["page_ocrd"].call_count == 2
+        assert mocks["page_text_position_extracted"].call_count == 5
 
     @patch_pipeline
     def test_redaction(self, mocks):
@@ -83,6 +86,7 @@ class PipelineTest(TestCase):
         assert mocks["page_loaded"].call_count == 2  # 1 + 1
         assert mocks["page_extracted"].call_count == 1
         assert mocks["page_ocrd"].call_count == 1
+        assert mocks["page_text_position_extracted"].call_count == 1
 
     @patch_pipeline
     def test_cache_misses(self, mocks):
@@ -117,3 +121,4 @@ class PipelineTest(TestCase):
         # Two pages should be extracted
         assert mocks["page_extracted"].call_count == 2
         assert mocks["page_ocrd"].call_count == 2
+        assert mocks["page_text_position_extracted"].call_count == 2

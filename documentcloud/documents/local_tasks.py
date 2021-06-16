@@ -8,6 +8,7 @@ from documentcloud.documents.processing.document_conversion.main import (
 from documentcloud.documents.processing.info_and_image.main import (
     assemble_page_text,
     extract_image,
+    extract_text_position,
     finish_import,
     import_document,
     modify_doc,
@@ -51,6 +52,11 @@ def ocr_pages(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def assemble_text(data):
     assemble_page_text(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def text_position_extract(data):
+    extract_text_position(data, None)
 
 
 @task(soft_time_limit=SOFT_TIME_LIMIT)

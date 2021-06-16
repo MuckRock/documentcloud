@@ -359,6 +359,19 @@ class Page:
         )
         return (left, bottom, right, top)
 
+    def get_media_box(self):
+        left = c_float(0)
+        bottom = c_float(0)
+        right = c_float(0)
+        top = c_float(0)
+        assert (
+            self.workspace.fpdf_page_get_media_box(
+                self.page, byref(left), byref(bottom), byref(right), byref(top)
+            )
+            == 1
+        )
+        return (left.value, bottom.value, right.value, top.value)
+
     def set_desired_transform(self, page_object, x, y, width, height):
         # Get the bounds of the text object
         (left, bottom, right, top) = self.get_bounds(page_object)
@@ -391,27 +404,6 @@ class Page:
         self.set_desired_transform(image_obj, x, y, width, height)
         self.workspace.fpdf_insert_object(self.page, image_obj)
         del image_obj
-
-    def add_sized_text(self, text, x, y, width, height):
-        text_obj = self.workspace.fpdf_page_obj_create_text_obj(
-            self.doc.doc, self.doc.sans_font, height
-        )
-
-        # Set the text
-        encoded = text.encode("utf-16le") + b"\x00\x00"
-        assert self.workspace.fpdf_text_set_text(text_obj, c_char_p(encoded)) == 1
-
-        # Transform the text
-        self.set_desired_transform(text_obj, x, y + height, width, -1)
-
-        # Set transparent fill
-        assert (
-            self.workspace.fpdf_page_obj_set_fill_color(text_obj, 0, 255, 0, 255) == 1
-        )
-
-        # Insert the object into the page.
-        self.workspace.fpdf_insert_object(self.page, text_obj)
-        del text_obj
 
     def save(self):
         assert self.workspace.fpdf_page_generate_content(self.page) == 1
@@ -550,11 +542,23 @@ class Workspace:
         prototype = CFUNCTYPE(None, c_void_p, c_void_p)
         self.fpdf_insert_object = prototype(("FPDFPage_InsertObject", self.pdfium))
 
+        prototype = CFUNCTYPE(c_int, c_void_p, c_void_p)
+        self.fpdf_remove_object = prototype(("FPDFPage_RemoveObject", self.pdfium))
+
         prototype = CFUNCTYPE(c_int, c_void_p, c_void_p, c_char_p, c_int)
         self.fpdf_import_pages = prototype(("FPDF_ImportPages", self.pdfium))
 
         prototype = CFUNCTYPE(None, c_void_p, c_int)
         self.fpdf_page_rotate = prototype(("FPDFPage_SetRotation", self.pdfium))
+
+        prototype = CFUNCTYPE(c_int, c_void_p)
+        self.fpdf_count_objects = prototype(("FPDFPage_CountObjects", self.pdfium))
+
+        prototype = CFUNCTYPE(c_void_p, c_void_p, c_int)
+        self.fpdf_get_object = prototype(("FPDFPage_GetObject", self.pdfium))
+
+        prototype = CFUNCTYPE(c_int, c_void_p)
+        self.fpdf_object_get_type = prototype(("FPDFPageObj_GetType", self.pdfium))
 
         # Text object
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_float)
@@ -584,12 +588,23 @@ class Workspace:
             ("FPDFPageObj_GetBounds", self.pdfium)
         )
 
+        # Dimensions
+        prototype = CFUNCTYPE(
+            c_int, c_void_p, c_float_p, c_float_p, c_float_p, c_float_p
+        )
+        self.fpdf_page_get_media_box = prototype(("FPDFPage_GetMediaBox", self.pdfium))
+
         prototype = CFUNCTYPE(
             None, c_void_p, c_double, c_double, c_double, c_double, c_double, c_double
         )
         self.fpdf_page_obj_transform = prototype(("FPDFPageObj_Transform", self.pdfium))
 
         # Fonts
+        prototype = CFUNCTYPE(c_void_p, c_void_p, c_char_p)
+        self.fpdf_load_standard_font = prototype(
+            ("FPDFText_LoadStandardFont", self.pdfium)
+        )
+
         prototype = CFUNCTYPE(c_void_p, c_void_p, c_uint8_p, c_uint32, c_int, c_int)
         self.fpdf_text_load_font = prototype(("FPDFText_LoadFont", self.pdfium))
 
