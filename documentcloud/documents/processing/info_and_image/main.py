@@ -478,7 +478,7 @@ def extract_text_position_for_page(pdf, doc_id, slug, page_number, access, in_me
             "upright": word["upright"],
             "direction": word["direction"],
         }
-        for word in page.extract_words()
+        for word in page.extract_words(use_text_flow=True)
     ]
     # Write the json positional words file
     storage.simple_upload(
