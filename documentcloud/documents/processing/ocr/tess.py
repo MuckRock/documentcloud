@@ -10,7 +10,7 @@ import environ
 env = environ.Env()
 locale.setlocale(locale.LC_ALL, "C")
 
-TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp")
+TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp/ocrtmp")
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 LIB_PATH = os.path.join(script_dir, "tesseract/libtesseract.so.5")
