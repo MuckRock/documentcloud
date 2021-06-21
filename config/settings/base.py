@@ -367,6 +367,8 @@ REST_FRAMEWORK = {
         "documentcloud.core.authentication.ProcessingTokenAuthentication",
     ),
 }
+AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=10)
+ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=5)
 
 # django-extensions
 # ------------------------------------------------------------------------------
