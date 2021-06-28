@@ -855,7 +855,10 @@ def assemble_page_text(data, _context=None):
     logger.info("[ASSEMBLE TEXT] doc_id %s", doc_id)
 
     # Reinject OCR layer into PDF
-    graft_ocr_in_pdf(doc_id, slug, access)
+    try:
+        graft_ocr_in_pdf(doc_id, slug, access)
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.exception("[Grafting doc_id %s failed]", doc_id, exc_info=exc)
 
     # Remove the in-memory text PDFs from Redis
     # (now that the PDF is grafted, OCR does not have to run if reprocessed)
@@ -904,12 +907,20 @@ def extract_text_position(data, _context=None):
     page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
 
     # Grab the PDF
+    errored = False
+    pdf = None
     if not in_memory:
         # If not using in-memory Redis PDFs, read the whole doc file into memory
         with storage.open(doc_path, "rb") as doc_file:
             contents = doc_file.read()
             mem_file = io.BytesIO(contents)
-        pdf = pdfplumber.open(mem_file)
+        try:
+            pdf = pdfplumber.open(mem_file)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.exception(
+                "[Opening pdfplumber doc_id %s failed]", doc_id, exc_info=exc
+            )
+            errored = True
 
     # Write all the text positions to file
 
@@ -917,16 +928,32 @@ def extract_text_position(data, _context=None):
     for page_number in page_numbers:
         if in_memory:
             # If in-memory, use the Redis overlay PDF
+            errored = False
             overlay_mem_file = io.BytesIO(
                 REDIS.hget(page_text_pdf_field, f"{page_number}")
             )
-            pdf = pdfplumber.open(overlay_mem_file)
+            try:
+                pdf = pdfplumber.open(overlay_mem_file)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.exception(
+                    "[Opening pdfplumber doc_id %s failed]", doc_id, exc_info=exc
+                )
+                errored = True
 
-        extract_text_position_for_page(
-            pdf, doc_id, slug, page_number, access, in_memory
-        )
+        if not errored:
+            try:
+                extract_text_position_for_page(
+                    pdf, doc_id, slug, page_number, access, in_memory
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.exception(
+                    "[Extracting pdfplumber doc_id %s page %d failed]",
+                    doc_id,
+                    page_number,
+                    exc_info=exc,
+                )
 
-        if in_memory:
+        if in_memory and pdf:
             # Close pdfplumber on the overlay pdf
             pdf.close()
 
@@ -966,7 +993,7 @@ def extract_text_position(data, _context=None):
                     ),
                 )
 
-    if not in_memory:
+    if not in_memory and pdf:
         # Close pdfplumber
         pdf.close()
 
