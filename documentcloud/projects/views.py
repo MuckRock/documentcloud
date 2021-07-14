@@ -2,9 +2,11 @@
 from django.db import transaction
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from rest_framework import exceptions, serializers, viewsets
+from rest_framework import exceptions, serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
+from rest_framework.response import Response
 
 # Standard Library
 from functools import lru_cache
@@ -16,6 +18,10 @@ from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
+from documentcloud.core.permissions import (
+    DjangoObjectPermissionsOrAnonReadOnly,
+    ProjectPermissions,
+)
 from documentcloud.documents.decorators import (
     anonymous_cache_control,
     conditional_cache_control,
@@ -31,6 +37,8 @@ from documentcloud.projects.serializers import (
     ProjectMembershipSerializer,
     ProjectSerializer,
 )
+from documentcloud.sidekick.models import Sidekick
+from documentcloud.sidekick.tasks import preprocess
 from documentcloud.users.models import User
 
 
@@ -83,6 +91,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         super().perform_destroy(instance)
 
+    @transaction.atomic
+    @action(detail=True, methods=["post"])
+    def sidekick(self, request, pk=None):
+        """Manage a sidekick associated with this project"""
+        # XXX lock for atomic status update
+        # XXX double check pk is set
+        # XXX set tag
+        Sidekick.objects.get_or_create(project_id=pk, defaults={"tag_name": "sidekick"})
+        preprocess.delay(pk)
+        return Response("OK", status=status.HTTP_200_OK)
+
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, field_name="collaborators")
         document = ModelMultipleChoiceFilter(model=Document, field_name="documents")
@@ -125,20 +144,36 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     permit_list_expands = ["document"] + [
         f"document.{e}" for e in DocumentViewSet.permit_list_expands
     ]
+    permission_classes = (DjangoObjectPermissionsOrAnonReadOnly | ProjectPermissions,)
 
     @lru_cache()
     def get_queryset(self):
         """Only fetch projects viewable to this user"""
-        project = get_object_or_404(
-            Project.objects.get_viewable(self.request.user),
-            pk=self.kwargs["project_pk"],
+        valid_token = (
+            hasattr(self.request, "auth")
+            and self.request.auth is not None
+            and "processing" in self.request.auth["permissions"]
         )
+        if valid_token:
+            # Processing scope can access all projects
+            queryset = Project.objects.all()
+        else:
+            queryset = Project.objects.get_viewable(self.request.user)
+
+        project = get_object_or_404(queryset, pk=self.kwargs["project_pk"])
+
+        if valid_token:
+            # Processing scope can access all documents
+            queryset = project.projectmembership_set.all()
+        else:
+            queryset = project.projectmembership_set.get_viewable(self.request.user)
+
         return (
             # adding ID to the order by here helps postgres pick an appropriate
             # execution plan and drastically reduces run time in certain cases
-            project.projectmembership_set.get_viewable(self.request.user)
-            .preload(self.request.user, self.request.query_params.get("expand", ""))
-            .order_by("-document__created_at", "id")
+            queryset.preload(
+                self.request.user, self.request.query_params.get("expand", "")
+            ).order_by("-document__created_at", "id")
         )
 
     @lru_cache()

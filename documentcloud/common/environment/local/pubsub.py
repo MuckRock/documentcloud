@@ -117,6 +117,12 @@ def finish_import_task(data):
     return finish_import_process.delay(data)
 
 
+def sidekick_preprocess_task(data):
+    from documentcloud.sidekick.tasks import sidekick_preprocess
+
+    return sidekick_preprocess.delay(data)
+
+
 publisher.register_internal_callback(
     ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
     process_pdf_task,
@@ -164,4 +170,11 @@ publisher.register_internal_callback(
 publisher.register_internal_callback(
     ("documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")),
     finish_import_task,
+)
+publisher.register_internal_callback(
+    (
+        "documentcloud",
+        env.str("SIDEKICK_PREPROCESS_TOPIC", default="sidekick-preprocess-topic"),
+    ),
+    sidekick_preprocess_task,
 )

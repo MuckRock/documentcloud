@@ -11,5 +11,8 @@ set -e
 # Run document conversion build script
 ./build_document_conversion.sh
 
+# Run sidekick build script
+./build_sidekick.sh
+
 # Run utils build script
 ./build_utils.sh

@@ -90,6 +90,7 @@ LOCAL_APPS = [
     "documentcloud.organizations.apps.OrganizationsConfig",
     "documentcloud.projects",
     "documentcloud.statistics",
+    "documentcloud.sidekick",
     "documentcloud.users.apps.UsersConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -421,6 +422,7 @@ DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
 PROGRESS_URL = env("PROGRESS_URL", default="")
 IMPORT_URL = env("IMPORT_URL", default="")
 PROGRESS_TIMEOUT = env.int("PROGRESS_TIMEOUT", default=1)
+SIDEKICK_PROCESSING_URL = env("SIDEKICK_PROCESSING_URL", default="")
 
 # Auth
 LOGIN_URL = "/accounts/login/squarelet"

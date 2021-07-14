@@ -35,12 +35,15 @@ Globals:
         IMPORT_DOCUMENT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
         FINISH_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_import/topic:latest}}"
         MODIFY_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/modify_document/topic:latest}}"
+        SIDEKICK_PREPROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
         PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
         BLOCK_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/block_size:latest}}"
         IMPORT_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_dir:latest}}"
         IMPORT_BUCKET: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_bucket:latest}}"
         SENTRY_DSN: "{{resolve:ssm:/dc/{$ENV$}/params/sentry_dsn:latest}}"
         AWS_ARN_PREFIX: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}"
+        VOCAB_SIZE: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/vocab_size:latest}}"
+        EMBEDDING_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/embedding_dir:latest}}"
     Timeout: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/timeout:latest}}"
     MemorySize: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/memory_size:latest}}"
     VpcConfig:
@@ -100,6 +103,24 @@ Resources:
           Type: Api
           Properties:
             Path: /import_documents
+            Method: POST
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  SidekickFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.import_documents
+      CodeUri: ./awsbin/utils
+      # Trigger function via HTTP
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick/timeout:latest}}"
+      Events:
+        ProcessPdfApi:
+          Type: Api
+          Properties:
+            Path: /sidekick
             Method: POST
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
@@ -308,3 +329,23 @@ Resources:
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/modify_document/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+      
+  SidekickPreprocessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.preprocess
+      CodeUri: ./awsbin/sidekick
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+      FileSystemConfigs:
+      - Arn: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_efs_arn:latest}}"
+        LocalMountPath: /embeddings

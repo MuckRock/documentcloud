@@ -47,3 +47,10 @@ class DocumentPostProcessPermissions(TokenPermissions):
 
     token_permissions = {"processing"}
     token_methods = ["POST"]
+
+
+class ProjectPermissions(TokenPermissions):
+    """Allow the processing functions to view projects"""
+
+    token_permissions = {"processing"}
+    token_methods = ["GET"]

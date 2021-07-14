@@ -36,3 +36,6 @@ python-Levenshtein
 Unidecode
 opencv-python
 requests-mock
+fasttext
+scikit-learn
+

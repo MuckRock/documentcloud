@@ -82,6 +82,16 @@ def page_text_position_path(doc_id, slug, page_number):
     return pages_path(doc_id) + f"{slug}-p{page_number + 1}.{SELECTABLE_TEXT_SUFFIX}"
 
 
+def sidekick_path(proj_id):
+    """The path where this projects's sidekick files are located"""
+    return f"{DOCUMENT_BUCKET}/sidekick/{proj_id}/"
+
+
+def sidekick_document_vectors_path(proj_id):
+    """The path where this projects's sidekick files are located"""
+    return f"{DOCUMENT_BUCKET}/sidekick/{proj_id}/doc_vectors.npz"
+
+
 def import_org_csv(org_id):
     import_dir = env.str("IMPORT_DIR")
     import_bucket = env.str("IMPORT_BUCKET")
