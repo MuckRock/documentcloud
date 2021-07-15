@@ -346,6 +346,3 @@ Resources:
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
-      FileSystemConfigs:
-      - Arn: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_efs_arn:latest}}"
-        LocalMountPath: /embeddings
