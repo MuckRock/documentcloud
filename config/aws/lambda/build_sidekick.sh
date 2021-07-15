@@ -13,4 +13,4 @@ CODE_DIR=awsbin/sidekick
 cp -Lr ../../../documentcloud/documents/processing/sidekick/* $CODE_DIR 2>/dev/null || :
 
 # Set AWS requirements
-cp sidekick-requirements.txt $CODE_DIR/cloud-requirements.txt
+cp cloud-requirements.txt $CODE_DIR/cloud-requirements.txt
