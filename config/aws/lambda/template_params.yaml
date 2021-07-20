@@ -335,7 +335,7 @@ Resources:
     Properties:
       Runtime: python3.7
       Handler: main.preprocess
-      Layer: arn:aws:lambda:us-east-1:446751924810:layer:python-3-7-scikit-learn-0-23-1:2
+      Layers: ["arn:aws:lambda:us-east-1:446751924810:layer:python-3-7-scikit-learn-0-23-1:2"]
       CodeUri: ./awsbin/sidekick
       # Trigger function via SNS
       Environment:
