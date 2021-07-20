@@ -260,6 +260,7 @@ def doc_embedding(project_id, language, tfidf, features, doc_svd):
         [model.get_word_vector(feature) for feature in features]
     )
 
+    # scale embedding vectors based on frequency of the words
     doc_embeddings = np.dot(tfidf.A, embedding_vectors)
 
     # Doc vectors are just doc_svd and doc_embeddings concatenated
