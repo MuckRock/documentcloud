@@ -110,7 +110,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: python3.7
-      Handler: main.import_documents
+      Handler: main.sidekick
       CodeUri: ./awsbin/utils
       # Trigger function via HTTP
       Environment:

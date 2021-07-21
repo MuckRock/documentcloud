@@ -9,8 +9,6 @@ from urllib.parse import urljoin
 
 # Third Party
 import environ
-import fasttext
-import fasttext.util
 import numpy as np
 import requests
 import sklearn.decomposition
@@ -249,6 +247,7 @@ def get_spell_checker(features, frequencies, count_by_word):
 
 def doc_embedding(project_id, language, tfidf, features, doc_svd):
     """Calculate the doc embeddings"""
+    import fasttext
 
     logger.info("[SIDEKICK PREPROCESS] project_id: %s - doc embeddings", project_id)
 
@@ -273,6 +272,18 @@ def doc_embedding(project_id, language, tfidf, features, doc_svd):
         np.savez_compressed(vectors_file, doc_vectors)
 
 
+def doc_embedding_(project_id, _language, _tfidf, _features, doc_svd):
+    """Simpler doc embeddings - skip word vectors and just use the doc svd"""
+
+    logger.info("[SIDEKICK PREPROCESS] project_id: %s - doc embeddings", project_id)
+
+    # Serialize doc vectors to file
+    with storage.open(
+        path.sidekick_document_vectors_path(project_id), "wb"
+    ) as vectors_file:
+        np.savez_compressed(vectors_file, doc_svd)
+
+
 @pubsub_function(REDIS, SIDEKICK_PREPROCESS_TOPIC)
 def preprocess(data, _context=None):
     """Preprocess the documents in a project for sidekick"""
@@ -286,6 +297,6 @@ def preprocess(data, _context=None):
 
     tfidf, features, doc_svd = process_text_(project_id, texts)
 
-    doc_embedding(project_id, language, tfidf, features, doc_svd)
+    doc_embedding_(project_id, language, tfidf, features, doc_svd)
 
     # XXX set status?  save params?
