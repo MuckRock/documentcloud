@@ -1,5 +1,6 @@
 -r cloud-requirements.txt
 
+aioboto3==6.5.0
 django-environ==0.4.5
 furl==2.1.0
 pebble==4.5.0
