@@ -42,7 +42,7 @@ Globals:
         IMPORT_BUCKET: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_bucket:latest}}"
         SENTRY_DSN: "{{resolve:ssm:/dc/{$ENV$}/params/sentry_dsn:latest}}"
         AWS_ARN_PREFIX: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}"
-        VOCAB_SIZE: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/vocab_size:latest}}"
+        VOCAB_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/vocab_size:latest}}"
         EMBEDDING_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/embedding_dir:latest}}"
     Timeout: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/timeout:latest}}"
     MemorySize: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/memory_size:latest}}"
