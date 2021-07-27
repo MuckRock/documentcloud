@@ -30,24 +30,9 @@ class Sidekick(models.Model):
     status = models.IntegerField(
         _("status"),
         choices=Status.choices,
-        default=Status.uninitialized,
+        default=Status.pending,
         help_text=_("The status of this sidekick"),
     )
-    tag_name = models.CharField(
-        _("tag name"),
-        max_length=50,
-        help_text=_(
-            "The name of the tag to use to associate a document as a positive or "
-            "negative match for this sidekick"
-        ),
-    )
-
-    def preprocess(self):
-        """Preprocess the documents in the project for online learning"""
-
-    def learn(self):
-        """Update the document estimates based on the document tags"""
-        # XXX potentially move to celery task
 
     def get_document_vectors(self):
         """Fetch the pre-preocessed document vectors from storage"""
@@ -60,3 +45,5 @@ class Sidekick(models.Model):
         # Grab document vector matrix
         # XXX how does this work?
         return doc_vector_obj.get(doc_vector_obj.files[0])
+
+    # XXX delete vectors on delete

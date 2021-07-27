@@ -1,24 +1,70 @@
 # Django
-from rest_framework import mixins, viewsets
+from django.db import transaction
+from django.db.utils import IntegrityError
+from django.http.response import Http404, HttpResponseBadRequest
+from rest_framework import serializers, status, viewsets
+from rest_framework.generics import get_object_or_404
+from rest_framework.response import Response
 
 # DocumentCloud
+from documentcloud.core.permissions import (
+    DjangoObjectPermissionsOrAnonReadOnly,
+    DocumentTokenPermissions,
+    SidekickPermissions,
+)
+from documentcloud.projects.models import Project
+from documentcloud.sidekick.choices import Status
 from documentcloud.sidekick.models import Sidekick
 from documentcloud.sidekick.serializers import SidekickSerializer
+from documentcloud.sidekick.tasks import preprocess
 
 
-class SidekickViewset(viewsets.ModelViewSet):
+class SidekickViewSet(viewsets.ModelViewSet):
     serializer_class = SidekickSerializer
     queryset = Sidekick.objects.none()
+    permission_classes = (DjangoObjectPermissionsOrAnonReadOnly | SidekickPermissions,)
 
-    @lru_cache()
-    def get_queryset(self):
-        """Only fetch documents viewable to this user"""
-        document = get_object_or_404(
-            Document.objects.get_viewable(self.request.user),
-            pk=self.kwargs["document_pk"],
+    def get_object(self):
+        """There is always at most one sidekick associated with a project"""
+        valid_token = (
+            hasattr(self.request, "auth")
+            and self.request.auth is not None
+            and "processing" in self.request.auth["permissions"]
         )
-        return document.sections.all()
+        # Processing scope can access all documents
+        if valid_token:
+            projects = Project.objects.all()
+        else:
+            projects = Project.objects.get_editable(self.request.user)
+        project = get_object_or_404(projects, pk=self.kwargs["project_pk"])
+
+        try:
+            return project.sidekick
+        except Sidekick.DoesNotExist:
+            raise Http404
 
     def perform_create(self, serializer):
-        """Specify the document"""
-        serializer.save(document_id=self.kwargs["document_pk"])
+        """Specify the project"""
+        project = get_object_or_404(
+            Project.objects.get_editable(self.request.user),
+            pk=self.kwargs["project_pk"],
+        )
+        try:
+            # try saving and processing the sidekick if one does not exist
+            with transaction.atomic():
+                sidekick = serializer.save(project=project)
+                preprocess.delay(self.kwargs["project_pk"])
+        except IntegrityError:
+            # a sidekick already exists, select it for updating
+            with transaction.atomic():
+                sidekick = Sidekick.objects.select_for_update().get(
+                    project_id=self.kwargs["project_pk"]
+                )
+                if sidekick.status == Status.pending:
+                    # if it is already processing then error
+                    raise serializers.ValidationError("Already processing")
+                else:
+                    # set to processing and begin the processing
+                    sidekick.status = Status.pending
+                    sidekick.save()
+                    preprocess.delay(self.kwargs["project_pk"])

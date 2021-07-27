@@ -7,7 +7,6 @@ from djchoices import ChoiceItem, DjangoChoices
 
 class Status(DjangoChoices):
     # pylint: disable=no-init
-    uninitialized = ChoiceItem(0, _("Uninitialized"))
-    processing = ChoiceItem(1, _("Processing"))
-    initialized = ChoiceItem(2, _("Initialized"))
-    error = ChoiceItem(3, _("Error"))
+    success = ChoiceItem(0, _("Success"), api=True)
+    pending = ChoiceItem(1, _("Pending"), api=True)
+    error = ChoiceItem(2, _("Error"), api=True)

@@ -57,6 +57,16 @@ SIDEKICK_PREPROCESS_TOPIC = publisher.topic_path(
 LANGUAGES = {"eng": "en"}
 
 
+def send_sidekick_update(project_id, json):
+    """Send an update to the API server for sidekick"""
+    # XXX error handle this
+    requests.patch(
+        urljoin(API_CALLBACK, f"projects/{project_id}/sidekick/"),
+        json=json,
+        headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
+    )
+
+
 def load_documents(project_id):
     """Load the documents
 
@@ -232,7 +242,7 @@ def process_text_(project_id, texts):
 
 def get_spell_checker(features, frequencies, count_by_word):
     """Create a spelling dictionary"""
-    from symspellpy import SymSpell  # XXX use faster symspell
+    from symspellpy import SymSpell
 
     dictionary = io.StringIO()
     for i in range(min(len(features), VOCAB_SIZE)):
@@ -252,7 +262,7 @@ def doc_embedding(project_id, language, tfidf, features, doc_svd):
     logger.info("[SIDEKICK PREPROCESS] project_id: %s - doc embeddings", project_id)
 
     # Load the embedding model
-    # XXX error if language not present
+    # error if language not present
     language = LANGUAGES.get(language, language)
     model = fasttext.load_model(os.path.join(EMBEDDING_DIR, f"cc.{language}.300.bin"))
     embedding_vectors = np.array(
@@ -299,4 +309,4 @@ def preprocess(data, _context=None):
 
     doc_embedding_(project_id, language, tfidf, features, doc_svd)
 
-    # XXX set status?  save params?
+    send_sidekick_update(project_id, {"status": "success"})

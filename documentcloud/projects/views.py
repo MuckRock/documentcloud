@@ -91,17 +91,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         super().perform_destroy(instance)
 
-    @transaction.atomic
-    @action(detail=True, methods=["post"])
-    def sidekick(self, request, pk=None):
-        """Manage a sidekick associated with this project"""
-        # XXX lock for atomic status update
-        # XXX double check pk is set
-        # XXX set tag
-        Sidekick.objects.get_or_create(project_id=pk, defaults={"tag_name": "sidekick"})
-        preprocess.delay(pk)
-        return Response("OK", status=status.HTTP_200_OK)
-
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, field_name="collaborators")
         document = ModelMultipleChoiceFilter(model=Document, field_name="documents")

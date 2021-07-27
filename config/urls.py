@@ -33,6 +33,8 @@ from documentcloud.projects.views import (
     ProjectMembershipViewSet,
     ProjectViewSet,
 )
+from documentcloud.sidekick.routers import SidekickRouter
+from documentcloud.sidekick.views import SidekickViewSet
 from documentcloud.users.views import UserViewSet
 
 schema_view = get_schema_view(
@@ -75,6 +77,9 @@ projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
+sidekick_router = SidekickRouter(router, "projects", lookup="project")
+sidekick_router.register("sidekick", SidekickViewSet)
+
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/api/"), name="index"),
@@ -82,6 +87,7 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
+    path("api/", include(sidekick_router.urls)),
     path("api/", include("documentcloud.oembed.urls")),
     # Swagger
     path(

@@ -54,3 +54,10 @@ class ProjectPermissions(TokenPermissions):
 
     token_permissions = {"processing"}
     token_methods = ["GET"]
+
+
+class SidekickPermissions(TokenPermissions):
+    """Allow the processing functions to update sidekick"""
+
+    token_permissions = {"processing"}
+    token_methods = ["PUT", "PATCH"]
