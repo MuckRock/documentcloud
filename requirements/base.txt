@@ -84,6 +84,7 @@ jmespath==0.9.4           # via boto3, botocore
 kombu==4.6.8              # via celery
 libcst==0.3.15            # via google-cloud-language
 listcrunch==1.0.0         # via -r requirements/base.in
+llvmlite==0.36.0          # via numba
 luqum==0.8.1              # via -r requirements/base.in
 lxml==4.5.1               # via pikepdf, premailer
 markdown==3.2.2           # via -r requirements/base.in
@@ -91,7 +92,8 @@ markupsafe==1.1.1         # via jinja2
 more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via typing-inspect
-numpy==1.17.3             # via -r requirements/base.in
+numba==0.53.1             # via -r requirements/base.in
+numpy==1.17.3             # via -r requirements/base.in, numba
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via furl
 packaging==19.2           # via drf-yasg

@@ -81,6 +81,7 @@ def load_documents(project_id):
     )
     file_names = []
     languages = Counter()
+    doc_ids = []
     next_ = urljoin(API_CALLBACK, f"projects/{project_id}/documents/?expand=document")
 
     while next_:
@@ -95,13 +96,14 @@ def load_documents(project_id):
                 path.text_path(result["document"]["id"], result["document"]["slug"])
             )
             languages.update([result["document"]["language"]])
+            doc_ids.append(result["document"]["id"])
 
     language = languages.most_common()[0][0]
 
     # download the files in parallel
     texts = storage.async_download(file_names)
 
-    return texts, language
+    return texts, doc_ids, language
 
 
 def process_text(project_id, texts):
@@ -282,7 +284,7 @@ def doc_embedding(project_id, language, tfidf, features, doc_svd):
         np.savez_compressed(vectors_file, doc_vectors)
 
 
-def doc_embedding_(project_id, _language, _tfidf, _features, doc_svd):
+def doc_embedding_(project_id, _language, _tfidf, _features, doc_svd, doc_ids):
     """Simpler doc embeddings - skip word vectors and just use the doc svd"""
 
     logger.info("[SIDEKICK PREPROCESS] project_id: %s - doc embeddings", project_id)
@@ -291,7 +293,7 @@ def doc_embedding_(project_id, _language, _tfidf, _features, doc_svd):
     with storage.open(
         path.sidekick_document_vectors_path(project_id), "wb"
     ) as vectors_file:
-        np.savez_compressed(vectors_file, doc_svd)
+        np.savez_compressed(vectors_file, vectors=doc_svd, ids=doc_ids)
 
 
 @pubsub_function(REDIS, SIDEKICK_PREPROCESS_TOPIC)
@@ -303,10 +305,10 @@ def preprocess(data, _context=None):
 
     logger.info("[SIDEKICK PREPROCESS] project_id: %s", project_id)
 
-    texts, language = load_documents(project_id)
+    texts, doc_ids, language = load_documents(project_id)
 
     tfidf, features, doc_svd = process_text_(project_id, texts)
 
-    doc_embedding_(project_id, language, tfidf, features, doc_svd)
+    doc_embedding_(project_id, language, tfidf, features, doc_svd, doc_ids)
 
     send_sidekick_update(project_id, {"status": "success"})

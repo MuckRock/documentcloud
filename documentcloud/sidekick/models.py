@@ -43,7 +43,6 @@ class Sidekick(models.Model):
             doc_vector_obj = np.load(vectors_file)
 
         # Grab document vector matrix
-        # XXX how does this work?
-        return doc_vector_obj.get(doc_vector_obj.files[0])
+        return (doc_vector_obj.get("vectors"), doc_vector_obj.get("ids"))
 
     # XXX delete vectors on delete
