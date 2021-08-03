@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.utils import IntegrityError
 from django.http.response import Http404, HttpResponseBadRequest
 from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
@@ -16,7 +17,7 @@ from documentcloud.projects.models import Project
 from documentcloud.sidekick.choices import Status
 from documentcloud.sidekick.models import Sidekick
 from documentcloud.sidekick.serializers import SidekickSerializer
-from documentcloud.sidekick.tasks import preprocess
+from documentcloud.sidekick.tasks import lego_learn, preprocess
 
 
 class SidekickViewSet(viewsets.ModelViewSet):
@@ -68,3 +69,13 @@ class SidekickViewSet(viewsets.ModelViewSet):
                     sidekick.status = Status.pending
                     sidekick.save()
                     preprocess.delay(self.kwargs["project_pk"])
+
+    @action(defailt=False, method=["post"])
+    def learn(self, request, project_pk=None):
+        """Activate lego learning"""
+        if "tagname" not in request.data:
+            raise serializers.ValidationError("Missing tagname")
+
+        lego_learn.delay(request.data["tagname"])
+
+        return Response("OK", status=status.HTTP_200_OK)

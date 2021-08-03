@@ -126,6 +126,7 @@ def lego_learn(sidekick_id, tag_name):
     logger.info("[LEGO LEARN] percentiles: %s", percentiles)
 
     documents = Document.objects.in_bulk(doc_ids)
+    # XXX percentile
     for doc_id, percentile in zip(doc_ids, dists):
         documents[doc_id].data[f"{tag_name}_score"] = [percentile]
         documents[doc_id].solr_dirty = True
