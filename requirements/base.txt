@@ -93,7 +93,7 @@ more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via typing-inspect
 numba==0.53.1             # via -r requirements/base.in
-numpy==1.17.3             # via -r requirements/base.in, numba
+numpy==1.17.3             # via -r requirements/base.in, numba, scipy
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via furl
 packaging==19.2           # via drf-yasg
@@ -137,6 +137,7 @@ ruamel.yaml.clib==0.1.2   # via ruamel.yaml
 ruamel.yaml==0.16.5       # via drf-yasg
 rules==2.1                # via -r requirements/base.in
 s3transfer==0.2.1         # via boto3
+scipy==1.5.4              # via -r requirements/base.in
 six==1.15.0               # via argon2-cffi, cryptography, django-appconf, django-extensions, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django, social-auth-core, traitlets
 smart-open==1.8.4         # via -r requirements/base.in
 social-auth-app-django==3.1.0  # via rest-social-auth
