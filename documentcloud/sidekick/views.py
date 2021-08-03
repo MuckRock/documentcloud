@@ -69,13 +69,14 @@ class SidekickViewSet(viewsets.ModelViewSet):
                 sidekick.save()
                 preprocess.delay(self.kwargs["project_pk"])
 
-    @action(detail=False, method=["post"])
+    @action(detail=True, methods=["post"])
     def learn(self, request, project_pk=None):
         """Activate lego learning"""
         # pylint: disable=unused-argument
+        sidekick = self.get_object()
         if "tagname" not in request.data:
             raise serializers.ValidationError("Missing tagname")
 
-        lego_learn.delay(request.data["tagname"])
+        lego_learn.delay(sidekick.pk, request.data["tagname"])
 
         return Response("OK", status=status.HTTP_200_OK)
