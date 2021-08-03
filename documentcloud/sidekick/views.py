@@ -1,7 +1,7 @@
 # Django
 from django.db import transaction
 from django.db.utils import IntegrityError
-from django.http.response import Http404, HttpResponseBadRequest
+from django.http.response import Http404
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -10,7 +10,6 @@ from rest_framework.response import Response
 # DocumentCloud
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
-    DocumentTokenPermissions,
     SidekickPermissions,
 )
 from documentcloud.projects.models import Project
@@ -64,15 +63,16 @@ class SidekickViewSet(viewsets.ModelViewSet):
                 if sidekick.status == Status.pending:
                     # if it is already processing then error
                     raise serializers.ValidationError("Already processing")
-                else:
-                    # set to processing and begin the processing
-                    sidekick.status = Status.pending
-                    sidekick.save()
-                    preprocess.delay(self.kwargs["project_pk"])
 
-    @action(defailt=False, method=["post"])
+                # set to processing and begin the processing
+                sidekick.status = Status.pending
+                sidekick.save()
+                preprocess.delay(self.kwargs["project_pk"])
+
+    @action(detail=False, method=["post"])
     def learn(self, request, project_pk=None):
         """Activate lego learning"""
+        # pylint: disable=unused-argument
         if "tagname" not in request.data:
             raise serializers.ValidationError("Missing tagname")
 
