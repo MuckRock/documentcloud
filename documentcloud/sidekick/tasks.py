@@ -73,16 +73,21 @@ def lego_learn(sidekick_id, tag_name):
 
     logger.info("[LEGO LEARN] %s %s", sidekick_id, tag_name)
 
-    try:
-        sidekick = Sidekick.objects.get(pk=sidekick_id)
-    except Sidekick.DoesNotExist:
-        logger.warning("Sidekick does not exist: %s", sidekick_id)
-        return
+    with transaction.atomic():
+        try:
+            sidekick = Sidekick.objects.get(pk=sidekick_id)
+        except Sidekick.DoesNotExist:
+            logger.warning("Sidekick does not exist: %s", sidekick_id)
+            return
 
-    if sidekick.status != Status.success:
-        logger.warning(
-            "Sidekick not in successful state: %s %s", sidekick_id, sidekick.status
-        )
+        if sidekick.status != Status.success:
+            logger.warning(
+                "Sidekick not in successful state: %s %s", sidekick_id, sidekick.status
+            )
+            return
+
+        sidekick.status = Status.pending
+        sidekick.save()
 
     try:
         doc_vectors, doc_ids = sidekick.get_document_vectors()
@@ -113,7 +118,8 @@ def lego_learn(sidekick_id, tag_name):
 
     # constraints
     # list of triples of the form (id0, id1, constraint)
-    # where constraint is 1 if both id0 and id1 are positive docs (positively correlated)
+    # where constraint is 1 if both id0 and id1 are positive docs
+    # (positively correlated)
     # and constraint is 0 is one is positive and one is negative (negatively correlated)
     constraints = []
     for doc0, doc1 in combinations(positive_doc_indices, 2):
@@ -142,3 +148,6 @@ def lego_learn(sidekick_id, tag_name):
                 [doc_ids], field_updates={f"data_{tag_name}_score": "set"}
             )
         )
+
+    sidekick.status = Status.success
+    sidekick.save()
