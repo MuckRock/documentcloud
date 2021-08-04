@@ -12,6 +12,7 @@ import environ
 import numpy as np
 import requests
 import sklearn.decomposition
+from requests.exceptions import RequestException
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 env = environ.Env()
@@ -59,7 +60,7 @@ LANGUAGES = {"eng": "en"}
 
 def send_sidekick_update(project_id, json):
     """Send an update to the API server for sidekick"""
-    # XXX error handle this
+    # error handle this when we have a retry mechanism
     requests.patch(
         urljoin(API_CALLBACK, f"projects/{project_id}/sidekick/"),
         json=json,
@@ -88,7 +89,7 @@ def load_documents(project_id):
         response = requests.get(
             next_, headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"}
         )
-        # XXX check response status code
+        response.raise_for_status()
         response_json = response.json()
         next_ = response_json["next"]
         for result in response_json["results"]:
@@ -305,10 +306,11 @@ def preprocess(data, _context=None):
 
     logger.info("[SIDEKICK PREPROCESS] project_id: %s", project_id)
 
-    texts, doc_ids, language = load_documents(project_id)
-
-    tfidf, features, doc_svd = process_text_(project_id, texts)
-
-    doc_embedding_(project_id, language, tfidf, features, doc_svd, doc_ids)
-
-    send_sidekick_update(project_id, {"status": "success"})
+    try:
+        texts, doc_ids, language = load_documents(project_id)
+    except RequestException:
+        send_sidekick_update(project_id, {"status": "error"})
+    else:
+        tfidf, features, doc_svd = process_text_(project_id, texts)
+        doc_embedding_(project_id, language, tfidf, features, doc_svd, doc_ids)
+        send_sidekick_update(project_id, {"status": "success"})
