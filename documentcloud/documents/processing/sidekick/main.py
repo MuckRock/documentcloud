@@ -1,7 +1,5 @@
 # Standard Library
-import io
 import logging
-import math
 import os
 import re
 from collections import Counter
@@ -13,7 +11,7 @@ import numpy as np
 import requests
 import sklearn.decomposition
 from requests.exceptions import RequestException
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 env = environ.Env()
 logger = logging.getLogger()
@@ -112,116 +110,6 @@ def process_text(project_id, texts):
 
     logger.info("[SIDEKICK PREPROCESS] project_id: %s - calculating vocab", project_id)
 
-    # Derive counts for all words
-    count_vectorizer = CountVectorizer(strip_accents="unicode", stop_words=None)
-    counts = count_vectorizer.fit_transform(texts)
-
-    # Calculate word frequencies
-    # An array of integers, corresponding to the count of the word that appears at
-    # that index in the features list
-    count_by_word = np.sum(counts, axis=0).getA().flatten()
-    # List of strings - All words in the corpus
-    features = count_vectorizer.get_feature_names()
-    # An array of indicies into the features list, sorted by most frequent
-    frequencies = np.flip(np.argsort(count_by_word))
-
-    # Reduce vocabulary to most frequent words
-    # A set of the VOCAB_SIZE most frequent words
-    vocab = {features[idx] for idx in frequencies[:VOCAB_SIZE]}
-
-    logger.info("[SIDEKICK PREPROCESS] project_id: %s - bigrams", project_id)
-
-    # Create a small bigram model on most frequent words to filter down
-    # vocabulary quickly
-    bigram_char_vectorizer = TfidfVectorizer(ngram_range=(2, 2), analyzer="char_wb")
-    # An array of floats - I am unclear exactly how this works
-    char_counts = np.asarray(
-        bigram_char_vectorizer.fit_transform(
-            [" ".join([features[idx] for idx in frequencies[:VOCAB_SIZE]])]
-        ).todense()
-    )[0]
-
-    # Spell checking
-    sym_spell = get_spell_checker(features, frequencies, count_by_word)
-
-    def get_bigram_prob(word):
-        """Approximate probability of bigram chars"""
-        text = f" {word} "
-        prob = 0
-        count = len(text) - 1
-        for i in range(count):
-            bigram = text[i : i + 2]
-            prob += math.log(
-                char_counts[bigram_char_vectorizer.vocabulary_.get(bigram, 0)]
-            )
-        return prob / count
-
-    def get_terms(word):
-        """Only use words in the vocab"""
-        # Return the same word if it's in the vocab
-        if word in vocab:
-            return [count_vectorizer.vocabulary_[word]]
-
-        # Quick pass: remove overly long or improbable words
-        if len(word) > 20 or get_bigram_prob(word) < -4:
-            return []
-
-        # Use symspell's compound search to potentially split apart words
-        terms = sym_spell.lookup_compound(word, 2)[0].term.split(" ")
-
-        # Filter terms to only include those in the reduced vocab
-        # This may return nothing if there is no good spelling suggestion,
-        # a single word as suggested by the spell checker, or multiple words as
-        # suggested by the spell checker
-        return [count_vectorizer.vocabulary_[x] for x in terms if x in vocab]
-
-    # map words in the corpus to spell corrected words in the vocab
-    # the vocab are the VOCAB_SIZE most frequent words in the corpus
-    mappings = [get_terms(f) for f in features]
-
-    # Re-compute the entire corpus with a spell-correcting tokenizer
-    def spell_correcting_tokenizer(string):
-        # break the string into tokens
-        tokens = TOKEN_PATTERN.findall(string)
-        results = []
-        for token in tokens:
-            # get the tokens index in the vocabulary
-            # it is guarenteed to be there, since the count vectorizer includes
-            # all tokens from the corpus
-            idx = count_vectorizer.vocabulary_[token]
-
-            # convert the words to their spell corrected mappings
-            results.extend([features[i] for i in mappings[idx]])
-        return results
-
-    logger.info(
-        "[SIDEKICK PREPROCESS] project_id: %s - spell corrected tfidf", project_id
-    )
-
-    # Derive tf-idf data on spell-corrected corpus
-    spell_corrected_vectorizer = TfidfVectorizer(
-        strip_accents="unicode", stop_words=None, tokenizer=spell_correcting_tokenizer
-    )
-
-    spell_corrected_tfidf = spell_corrected_vectorizer.fit_transform(texts)
-    spell_corrected_features = spell_corrected_vectorizer.get_feature_names()
-
-    logger.info("[SIDEKICK PREPROCESS] project_id: %s - svd", project_id)
-
-    # Project tf-idf data down in dimensionality
-    svd_transformer = sklearn.decomposition.TruncatedSVD(
-        300, algorithm="randomized", n_iter=5
-    )
-    doc_svd = svd_transformer.fit_transform(spell_corrected_tfidf)
-
-    return spell_corrected_tfidf, spell_corrected_features, doc_svd
-
-
-def process_text_(project_id, texts):
-    """Calculate the vocabulary for the corpus based on the document texts"""
-
-    logger.info("[SIDEKICK PREPROCESS] project_id: %s - calculating vocab", project_id)
-
     logger.info("[SIDEKICK PREPROCESS] project_id: %s - tfidf", project_id)
 
     # Derive tf-idf data on corpus
@@ -241,21 +129,6 @@ def process_text_(project_id, texts):
     doc_svd = svd_transformer.fit_transform(tfidf)
 
     return tfidf, features, doc_svd
-
-
-def get_spell_checker(features, frequencies, count_by_word):
-    """Create a spelling dictionary"""
-    from symspellpy import SymSpell
-
-    dictionary = io.StringIO()
-    for i in range(min(len(features), VOCAB_SIZE)):
-        idx = frequencies[i]
-        word, freq = features[idx], count_by_word[idx]
-        dictionary.write(f"{word} {freq}\n")
-    dictionary.seek(0)
-    sym_spell = SymSpell(2, 9)
-    sym_spell.load_dictionary_stream(dictionary, 0, 1, " ")
-    return sym_spell
 
 
 def doc_embedding(project_id, language, tfidf, features, doc_svd):
@@ -311,6 +184,6 @@ def preprocess(data, _context=None):
     except RequestException:
         send_sidekick_update(project_id, {"status": "error"})
     else:
-        tfidf, features, doc_svd = process_text_(project_id, texts)
+        tfidf, features, doc_svd = process_text(project_id, texts)
         doc_embedding_(project_id, language, tfidf, features, doc_svd, doc_ids)
         send_sidekick_update(project_id, {"status": "success"})
