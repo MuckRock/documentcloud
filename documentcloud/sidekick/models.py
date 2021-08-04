@@ -36,7 +36,6 @@ class Sidekick(models.Model):
 
     def get_document_vectors(self):
         """Fetch the pre-preocessed document vectors from storage"""
-        # XXX error handle missing file
         with storage.open(
             path.sidekick_document_vectors_path(self.project_id), "rb"
         ) as vectors_file:
@@ -44,5 +43,3 @@ class Sidekick(models.Model):
 
         # Grab document vector matrix
         return (doc_vector_obj.get("vectors"), doc_vector_obj.get("ids"))
-
-    # XXX delete vectors on delete

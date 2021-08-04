@@ -3,4 +3,9 @@ from django.apps import AppConfig
 
 
 class SidekickConfig(AppConfig):
-    name = "sidekick"
+    name = "documentcloud.sidekick"
+
+    def ready(self):
+        # pylint: disable=unused-import
+        # load signals
+        import documentcloud.sidekick.signals

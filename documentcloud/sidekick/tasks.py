@@ -84,7 +84,13 @@ def lego_learn(sidekick_id, tag_name):
             "Sidekick not in successful state: %s %s", sidekick_id, sidekick.status
         )
 
-    doc_vectors, doc_ids = sidekick.get_document_vectors()
+    try:
+        doc_vectors, doc_ids = sidekick.get_document_vectors()
+    except ValueError:
+        sidekick.status = Status.error
+        sidekick.save()
+        return
+
     doc_ids = list(doc_ids)
 
     positive_docs = sidekick.project.documents.filter(

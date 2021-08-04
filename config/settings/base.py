@@ -90,7 +90,7 @@ LOCAL_APPS = [
     "documentcloud.organizations.apps.OrganizationsConfig",
     "documentcloud.projects",
     "documentcloud.statistics",
-    "documentcloud.sidekick",
+    "documentcloud.sidekick.apps.SidekickConfig",
     "documentcloud.users.apps.UsersConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
