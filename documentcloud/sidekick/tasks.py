@@ -14,7 +14,7 @@ from requests.exceptions import RequestException
 # DocumentCloud
 from documentcloud.common.environment import httpsub
 from documentcloud.documents.models import Document
-from documentcloud.documents.tasks import solr_index
+from documentcloud.documents.tasks import solr_index_batch
 from documentcloud.sidekick import lego
 from documentcloud.sidekick.choices import Status
 from documentcloud.sidekick.models import Sidekick
@@ -137,10 +137,8 @@ def lego_learn(sidekick_id, tag_name):
         documents[doc_id].solr_dirty = True
     with transaction.atomic():
         Document.objects.bulk_update(documents.values(), ["data", "solr_dirty"])
-        # XXX better way to bulk update solr
-        for document in documents.values():
-            transaction.on_commit(
-                lambda d=document: solr_index.delay(
-                    d.pk, field_updates={f"data_{tag_name}_score": "set"}
-                )
+        transaction.on_commit(
+            lambda: solr_index_batch.delay(
+                [doc_ids], field_updates={f"data_{tag_name}_score": "set"}
             )
+        )

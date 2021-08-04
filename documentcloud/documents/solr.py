@@ -38,6 +38,7 @@ from dateutil.parser import parse
 # DocumentCloud
 from documentcloud.common import path
 from documentcloud.common.environment import storage
+from documentcloud.core.utils import grouper
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import DeletedDocument, Document
 from documentcloud.documents.search import SOLR
@@ -216,7 +217,26 @@ def reindex_single(collection_name, document_pk):
         Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
-def index_batch(collection_name, document_pks):
+def index_batch(document_pks, field_updates):
+    """Index a batch of documents with the same field updates
+
+    Does not support indexing text
+    """
+    logger.info(
+        "[SOLR INDEX] indexing documents %s, fields %s", document_pks, field_updates
+    )
+
+    documents = Document.objects.filter(pk__in=document_pks)
+
+    solr_documents = [d.solr(field_updates.keys()) for d in documents]
+    # no text, groups of 1000 should be well below the size limit
+    for group in grouper(solr_documents, 1000):
+        SOLR.add(group, fieldUpdates=field_updates)
+
+    Document.objects.filter(pk__in=document_pks).update(solr_dirty=False)
+
+
+def reindex_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
     # The solr documents for the given documents should be known to be under the
     # size limit before calling this function.  This function will fail otherwise.
@@ -519,7 +539,7 @@ def _batch_by_size(collection_name, documents):
             logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
             tasks.append(
                 signature(
-                    "documentcloud.documents.tasks.solr_index_batch",
+                    "documentcloud.documents.tasks.solr_reindex_batch",
                     args=[collection_name, batch],
                 )
             )
@@ -533,7 +553,7 @@ def _batch_by_size(collection_name, documents):
     logger.info("[SOLR INDEX] batch of %s size %s", batch, batch_size)
     tasks.append(
         signature(
-            "documentcloud.documents.tasks.solr_index_batch",
+            "documentcloud.documents.tasks.solr_reindex_batch",
             args=[collection_name, batch],
         )
     )

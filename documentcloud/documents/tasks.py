@@ -290,9 +290,15 @@ def solr_reindex_single(collection_name, document_pk):
 
 
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
-def solr_index_batch(collection_name, document_pks):
+def solr_index_batch(document_pks, field_updates):
+    """Index a batch of documents with the same field updates"""
+    solr.index_batch(document_pks, field_updates)
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+def solr_reindex_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
-    solr.index_batch(collection_name, document_pks)
+    solr.reindex_batch(collection_name, document_pks)
 
 
 @periodic_task(run_every=crontab(minute=30))

@@ -8,7 +8,6 @@ import logging
 import operator
 from bisect import bisect
 from functools import reduce
-from itertools import zip_longest
 
 # Third Party
 import requests
@@ -18,6 +17,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # DocumentCloud
+from documentcloud.core.utils import grouper
 from documentcloud.documents.choices import EntityKind, Status
 from documentcloud.documents.models import Entity, EntityOccurrence
 
@@ -26,13 +26,6 @@ BYTE_LIMIT = 1000000
 logger = logging.getLogger(__name__)
 
 # Utility Functions
-
-
-def grouper(iterable, num, fillvalue=None):
-    "Collect data into fixed-length chunks or blocks"
-    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
-    args = [iter(iterable)] * num
-    return zip_longest(*args, fillvalue=fillvalue)
 
 
 def requests_retry_session(
