@@ -2,11 +2,9 @@
 from django.db import transaction
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from rest_framework import exceptions, serializers, status, viewsets
-from rest_framework.decorators import action
+from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
-from rest_framework.response import Response
 
 # Standard Library
 from functools import lru_cache
@@ -37,8 +35,6 @@ from documentcloud.projects.serializers import (
     ProjectMembershipSerializer,
     ProjectSerializer,
 )
-from documentcloud.sidekick.models import Sidekick
-from documentcloud.sidekick.tasks import preprocess
 from documentcloud.users.models import User
 
 

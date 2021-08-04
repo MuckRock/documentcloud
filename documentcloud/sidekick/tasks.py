@@ -98,15 +98,8 @@ def lego_learn(sidekick_id, tag_name):
 
     doc_ids = list(doc_ids)
 
-    positive_docs = sidekick.project.documents.filter(
-        data__contains={tag_name: ["true"]}, pk__in=doc_ids
-    ).values_list("pk", flat=True)
-    negative_docs = sidekick.project.documents.filter(
-        data__contains={tag_name: ["false"]}, pk__in=doc_ids
-    ).values_list("pk", flat=True)
-
-    positive_doc_indices = [doc_ids.index(d) for d in positive_docs]
-    negative_doc_indices = [doc_ids.index(d) for d in negative_docs]
+    positive_doc_indices = _load_doc_indices(sidekick, doc_ids, tag_name, "true")
+    negative_doc_indices = _load_doc_indices(sidekick, doc_ids, tag_name, "false")
 
     logger.info(
         "[LEGO LEARN] positive: %d negative: %d",
@@ -151,3 +144,11 @@ def lego_learn(sidekick_id, tag_name):
 
     sidekick.status = Status.success
     sidekick.save()
+
+
+def _load_doc_indices(sidekick, doc_ids, tag_name, tag_value):
+    """Load the document indices for the given tag name and value"""
+    docs = sidekick.project.documents.filter(
+        data__contains={tag_name: [tag_value]}, pk__in=doc_ids
+    ).values_list("pk", flat=True)
+    return [doc_ids.index(d) for d in docs]
