@@ -66,5 +66,9 @@ class LocalStorage:
     def exists(self, file_name):
         return os.path.exists(os.path.join(settings.MEDIA_ROOT, file_name))
 
+    def delete(self, file_prefix):
+        """To be mocked in tests"""
+        pass
+
 
 storage = LocalStorage()
