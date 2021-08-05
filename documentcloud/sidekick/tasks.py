@@ -138,7 +138,8 @@ def lego_learn(sidekick_id, tag_name):
         Document.objects.bulk_update(documents.values(), ["data", "solr_dirty"])
         transaction.on_commit(
             lambda: solr_index_batch.delay(
-                [doc_ids], field_updates={f"data_{tag_name}_score": "set"}
+                [int(i) for i in doc_ids],
+                field_updates={f"data_{tag_name}_score": "set"},
             )
         )
 
