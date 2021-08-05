@@ -44,7 +44,7 @@ else:
 REDIS = utils.get_redis()
 API_CALLBACK = env.str("API_CALLBACK")
 PROCESSING_TOKEN = env.str("PROCESSING_TOKEN")
-VOCAB_SIZE = env.int("VOCAB_SIZE", default=30_000)
+VOCAB_SIZE = env.int("VOCAB_SIZE", default=30000)
 TOKEN_PATTERN = re.compile(r"(?u)\b\w\w+\b")
 EMBEDDING_DIR = env.str("EMBEDDING_DIR", default="embedding")
 
