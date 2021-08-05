@@ -68,7 +68,6 @@ class LocalStorage:
 
     def delete(self, file_prefix):
         """To be mocked in tests"""
-        pass
 
 
 storage = LocalStorage()
