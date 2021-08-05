@@ -68,12 +68,14 @@ class TestSidekickAPI:
         response = client.get(f"/api/projects/{project.pk}/sidekick/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete(self, client, project):
+    def test_delete(self, client, project, mocker):
         """Delete a sidekick"""
+        mock_delete = mocker.patch("documentcloud.common.environment.storage.delete")
         Sidekick.objects.create(project=project, status=Status.success)
         client.force_authenticate(user=project.user)
         response = client.delete(f"/api/projects/{project.pk}/sidekick/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
+        mock_delete.assert_called_once()
 
     def test_delete_no_perm(self, client, project, user):
         """Delete a sidekick without permissions"""
