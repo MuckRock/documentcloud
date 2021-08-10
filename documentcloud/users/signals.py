@@ -4,7 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 # Third Party
-from squarelet_auth.organization.models import Membership
+from squarelet_auth.organizations.models import Membership
 
 # DocumentCloud
 from documentcloud.users.models import User
