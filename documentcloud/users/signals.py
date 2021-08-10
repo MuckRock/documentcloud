@@ -3,6 +3,9 @@ from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+# Third Party
+from squarelet_auth.organization.models import Membership
+
 # DocumentCloud
 from documentcloud.users.models import User
 
@@ -16,14 +19,17 @@ if hasattr(settings, "MOESIF_MIDDLEWARE"):
         post_save, sender=User, dispatch_uid="documentcloud.user.signals.moesif_user"
     )
     def moesif_user(instance, **_kwargs):
-        api_client.update_user(
-            {
-                "user_id": str(instance.pk),
-                "company_id": str(instance.organization.pk),
-                "metadata": {
-                    "email": instance.email,
-                    "name": instance.name,
-                    "photo_url": instance.avatar_url,
-                },
-            }
-        )
+        data = {
+            "user_id": str(instance.pk),
+            "metadata": {
+                "email": instance.email,
+                "name": instance.name,
+                "photo_url": instance.avatar_url,
+            },
+        }
+        try:
+            # the organization may not be set yet, skip it if not set
+            data["company_id"] = str(instance.organization.pk)
+        except Membership.DoesNotExist:
+            pass
+        api_client.update_user(data)
