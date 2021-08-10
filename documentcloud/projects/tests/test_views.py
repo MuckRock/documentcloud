@@ -444,28 +444,21 @@ class TestProjectMembershipAPI:
             calls.append(
                 mocker.call(
                     update.pk,
-                    {"id": update.pk, "projects_edit_access": project.pk},
-                    {"projects_edit_access": "add"},
+                    field_updates={"projects": "set", "projects_edit_access": "set"},
                 )
             )
         for add in new_documents[2:]:
             calls.append(
                 mocker.call(
                     add.pk,
-                    {
-                        "id": add.pk,
-                        "projects": project.pk,
-                        "projects_edit_access": project.pk,
-                    },
-                    {"projects": "add", "projects_edit_access": "add"},
+                    field_updates={"projects": "set", "projects_edit_access": "set"},
                 )
             )
         for delete in old_documents[2:]:
             calls.append(
                 mocker.call(
                     delete.pk,
-                    {"id": delete.pk, "projects": project.pk},
-                    {"projects": "remove"},
+                    field_updates={"projects": "set", "projects_edit_access": "set"},
                 )
             )
         mock_solr_index.delay.assert_has_calls(calls, any_order=True)
