@@ -348,3 +348,20 @@ Resources:
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
+
+  RetryErrorsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.7
+      Handler: main.retry_errors
+      CodeUri: ./awsbin/utils
+      # Trigger function via SNS
+      Environment:
+        Variables:
+          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/retry_errors/timeout:latest}}"
+      Events:
+        ExtractImageApi:
+          Type: SNS
+          Properties:
+            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/retry_errors/topic:latest}}"
+      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
