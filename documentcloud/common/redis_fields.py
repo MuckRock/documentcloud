@@ -3,6 +3,14 @@ Helper functions to standardize the name of the fields used to store data in Red
 """
 
 
+def error_retry_queue():
+    return "error_retry_queue"
+
+
+def error_retry_lock():
+    return "error_retry_lock"
+
+
 def images_remaining(doc_id):
     return f"{doc_id}:image"
 

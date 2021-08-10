@@ -18,6 +18,7 @@ from documentcloud.documents.processing.info_and_image.main import (
     start_import,
 )
 from documentcloud.documents.processing.ocr.main import run_tesseract
+from documentcloud.documents.processing.utils.main import retry_errors
 
 # Set a high soft time limit so document processing can
 # proceed without timing out.
@@ -82,3 +83,8 @@ def import_doc(data):
 @task(soft_time_limit=SOFT_TIME_LIMIT)
 def finish_import_process(data):
     finish_import(data, None)
+
+
+@task(soft_time_limit=SOFT_TIME_LIMIT)
+def retry_errors_local(data):
+    retry_errors(data, None)

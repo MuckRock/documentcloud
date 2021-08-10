@@ -123,6 +123,12 @@ def sidekick_preprocess_task(data):
     return sidekick_preprocess.delay(data)
 
 
+def retry_errors_task(data):
+    from documentcloud.documents.tasks import retry_errors_local
+
+    return retry_errors_local.delay(data)
+
+
 publisher.register_internal_callback(
     ("documentcloud", env.str("PDF_PROCESS_TOPIC", default="pdf-process")),
     process_pdf_task,
@@ -177,4 +183,8 @@ publisher.register_internal_callback(
         env.str("SIDEKICK_PREPROCESS_TOPIC", default="sidekick-preprocess-topic"),
     ),
     sidekick_preprocess_task,
+)
+publisher.register_internal_callback(
+    ("documentcloud", env.str("RETRY_ERROR_TOPIC", default="retry-error-topic")),
+    retry_errors_task,
 )

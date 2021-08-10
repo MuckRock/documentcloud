@@ -58,12 +58,7 @@ LANGUAGES = {"eng": "en"}
 
 def send_sidekick_update(project_id, json):
     """Send an update to the API server for sidekick"""
-    # error handle this when we have a retry mechanism
-    requests.patch(
-        urljoin(API_CALLBACK, f"projects/{project_id}/sidekick/"),
-        json=json,
-        headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
-    )
+    utils.request(REDIS, "patch", f"projects/{project_id}/sidekick/", json)
 
 
 def load_documents(project_id):

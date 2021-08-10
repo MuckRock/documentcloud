@@ -13,9 +13,11 @@ import environ
 import furl
 import redis as _redis
 import requests
+from redis.lock import Lock
 
 # Local
 from .. import redis_fields
+from ..environment import encode_pubsub_data, publisher
 
 env = environ.Env()
 
@@ -45,6 +47,9 @@ REDIS_PASSWORD = env.str("REDIS_PROCESSING_PASSWORD")
 REDIS_SOCKET_TIMEOUT = env.int("REDIS_SOCKET_TIMEOUT", default=10)
 REDIS_SOCKET_CONNECT_TIMEOUT = env.int("REDIS_SOCKET_CONNECT_TIMEOUT", default=10)
 REDIS_HEALTH_CHECK_INTERVAL = env.int("REDIS_HEALTH_CHECK_INTERVAL", default=10)
+RETRY_ERROR_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("RETRY_ERROR_TOPIC", default="retry-error-topic")
+)
 
 
 def get_redis():
@@ -77,6 +82,45 @@ def pop_file_hash(redis, doc_id):
     return None
 
 
+def request(redis, method, url, json_):
+    """Request wrapper to handle errors"""
+    logging.info("[UTILS REQUEST] method: %s url: %s json: %s", method, url, json_)
+    response = requests.request(
+        method,
+        urljoin(API_CALLBACK, url),
+        json=json_,
+        timeout=30,
+        headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
+    )
+    if 400 <= response.status_code < 500:
+        # client error, log and fix if necessary
+        logging.error(response.text)
+        capture_message(response.text)
+    elif response.status_code >= 500:
+        # server error, store for retry
+        redis.lpush(
+            redis_fields.error_retry_queue(),
+            json.dumps({"method": method, "url": url, "json": json_}),
+        )
+        logging.info(
+            "[UTILS REQUEST] queueing for retry: method: %s url: %s json: %s",
+            method,
+            url,
+            json_,
+        )
+        logging.error(response.text)
+        capture_message(response.text)
+    elif (
+        200 <= response.status_code < 300
+        and not Lock(redis, redis_fields.error_retry_lock()).locked()
+        and redis.llen(redis_fields.error_retry_queue()) > 0
+    ):
+        # success, retry error queue if populated
+        publisher.publish(RETRY_ERROR_TOPIC, encode_pubsub_data({}))
+
+    return response
+
+
 def send_update(redis, doc_id, json_):
     """Sends an update to the API server specified as JSON"""
     if not still_processing(redis, doc_id):
@@ -87,11 +131,7 @@ def send_update(redis, doc_id, json_):
     if file_hash:
         json_["file_hash"] = file_hash
 
-    requests.patch(
-        urljoin(API_CALLBACK, f"documents/{doc_id}/"),
-        json=json_,
-        headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
-    )
+    request(redis, "patch", f"documents/{doc_id}/", json_)
 
 
 def send_complete(redis, doc_id):
@@ -115,11 +155,7 @@ def send_error(redis, doc_id, exc=None, message=None):
 
     # Send the error to the server
     if doc_id:
-        requests.post(
-            urljoin(API_CALLBACK, f"documents/{doc_id}/errors/"),
-            json={"message": message},
-            headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
-        )
+        request(redis, "post", f"documents/{doc_id}/errors/", {"message": message})
 
     if exc is not None:
         logging.error(message, exc_info=exc)
@@ -139,11 +175,7 @@ def send_modification_post_processing(redis, doc_id, json_):
     if not still_processing(redis, doc_id):
         return
 
-    requests.post(
-        urljoin(API_CALLBACK, f"documents/{doc_id}/modifications/post_process/"),
-        json=json_,
-        headers={"Authorization": f"processing-token {PROCESSING_TOKEN}"},
-    )
+    request(redis, "post", f"documents/{doc_id}/modifications/post_process/", json_)
 
     # Clean out Redis
     clean_up(redis, doc_id)
