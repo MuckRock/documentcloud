@@ -214,7 +214,9 @@ DEBUG_TOOLBAR_CONFIG = {
     "DISABLE_PANELS": ["debug_toolbar.panels.redirects.RedirectsPanel"],
     "SHOW_TEMPLATE_CONTEXT": True,
     "SHOW_TOOLBAR_CALLBACK": lambda request: bool(
-        request.user and request.user.username == "mitch"
+        env.bool("ENABLE_DEBUG_TOOLBAR", default=False)
+        and request.user
+        and request.user.username == "mitch"
     ),
 }
 
