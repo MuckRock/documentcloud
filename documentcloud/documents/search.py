@@ -453,7 +453,7 @@ def _access_filter(user):
             access_filter += f" OR (projects_edit_access:({projects}))"
         return ["!access:invisible", access_filter]
     else:
-        return ["access:public AND status:(success readable)"]
+        return ["filter(access:public AND status:(success readable))"]
 
 
 def _paginate(query_params, user):
@@ -569,7 +569,7 @@ def _add_asset_url(results):
 
 def _add_edit_access(user, results):
     """Add edit_access to results"""
-    ids = [r["id"] for r in results]
+    ids = [r["id"] for r in results if "-" not in r["id"]]
     editable_documents = [
         str(id_)
         for id_ in Document.objects.get_editable(user)

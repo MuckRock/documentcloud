@@ -28,6 +28,12 @@ from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
 logger = logging.getLogger(__name__)
 
 
+def format_date(date):
+    if date is None:
+        return None
+    return date.replace(tzinfo=None).isoformat() + "Z"
+
+
 class Document(models.Model):
     """A document uploaded to DocumentCloud"""
 
@@ -377,11 +383,7 @@ class Document(models.Model):
             p.project_id for p in project_memberships if p.edit_access
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
-
-        def format_date(date):
-            if date is None:
-                return None
-            return date.replace(tzinfo=None).isoformat() + "Z"
+        notes = [note.solr() for note in self.notes.all()]
 
         solr_document = {
             "id": self.pk,
@@ -405,6 +407,7 @@ class Document(models.Model):
             "related_article": self.related_article,
             "publish_at": format_date(self.publish_at),
             "published_url": self.published_url,
+            "notes": notes,
             **pages,
             **data,
         }
@@ -656,6 +659,21 @@ class Note(models.Model):
 
     def __str__(self):
         return self.title
+
+    def solr(self):
+        """Get a solr document to index this note"""
+        return {
+            "id": f"N{self.id}",
+            "type": "note",
+            "user": self.user_id,
+            "organization": self.organization_id,
+            "access": Access.attributes[self.access],
+            "page_count": self.page_number,
+            "title": self.title,
+            "description": self.content,
+            "created_at": format_date(self.created_at),
+            "updated_at": format_date(self.updated_at),
+        }
 
 
 class Section(models.Model):

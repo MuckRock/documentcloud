@@ -6,7 +6,7 @@
 #
 --no-binary psycopg2
 
--e git+https://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr  # via -r requirements/./base.txt
+-e git+https://github.com/MuckRock/pysolr.git@d0864162eb0541bf7fd0ca2f7f34a87dae1a6490#egg=pysolr  # via -r requirements/./base.txt
 aioboto3==6.5.0           # via -r requirements/./base.txt
 aiobotocore[boto3]==0.11.1  # via -r requirements/./base.txt, aioboto3
 aiohttp==3.6.2            # via -r requirements/./base.txt, aiobotocore

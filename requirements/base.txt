@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements/base.in
 #
--e git+https://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr  # via -r requirements/base.in
+-e git+https://github.com/MuckRock/pysolr.git@d0864162eb0541bf7fd0ca2f7f34a87dae1a6490#egg=pysolr  # via -r requirements/base.in
 aioboto3==6.5.0           # via -r requirements/base.in
 aiobotocore[boto3]==0.11.1  # via aioboto3
 aiohttp==3.6.2            # via aiobotocore
