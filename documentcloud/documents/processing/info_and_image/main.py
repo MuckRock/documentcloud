@@ -723,6 +723,7 @@ def extract_image(data, _context=None):
         if not queue:
             return
 
+        logger.info("[EXTRACT IMAGE] flush: doc_id %s queue %s", doc_id, queue)
         # Trigger ocr pipeline
         publisher.publish(
             topic,
@@ -760,6 +761,7 @@ def extract_image(data, _context=None):
     ) as pdf_file, workspace.load_document_custom(pdf_file) as doc:
         # Iterate each page number
         for page_number in page_numbers:
+            logger.info("[EXTRACT IMAGE] doc_id %s page_number %s", doc_id, page_number)
             # Only process if it has not processed previously
             large_image_path = path.page_image_path(
                 doc_id, slug, page_number, IMAGE_WIDTHS[0][0]
@@ -890,7 +892,7 @@ def assemble_page_text(data, _context=None):
 @pubsub_function(REDIS, TEXT_POSITION_EXTRACT_TOPIC)
 def extract_text_position(data, _context=None):
     """Extracts text position files for each page of the document."""
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     data = get_pubsub_data(data)
 
     doc_id = data["doc_id"]
@@ -902,7 +904,9 @@ def extract_text_position(data, _context=None):
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     doc_path = path.doc_path(doc_id, slug)
 
-    logger.info("[EXTRACT TEXT POSITION] doc_id %s", doc_id)
+    logger.info(
+        "[EXTRACT TEXT POSITION] doc_id %s page_numbers %s", doc_id, page_numbers
+    )
 
     page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
 
@@ -926,6 +930,7 @@ def extract_text_position(data, _context=None):
 
     # Go through each page
     for page_number in page_numbers:
+        logger.info("[EXTRACT TEXT POSITION] page_number %s", page_number)
         if in_memory:
             # If in-memory, use the Redis overlay PDF
             errored = False
@@ -961,6 +966,7 @@ def extract_text_position(data, _context=None):
         text_positions_finished = utils.register_text_position_extracted(
             REDIS, doc_id, page_number
         )
+        logger.info("[EXTRACT TEXT POSITION] finished %s", text_positions_finished)
         if text_positions_finished:
             if page_modification is not None:
                 # Normally, processing entails assembling text once
