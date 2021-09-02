@@ -128,15 +128,18 @@ def download_language_pack(ocr_code):
     download_tmp_file(f"{ocr_code}{OCR_DATA_EXTENSION}")
 
 
-def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
+def ocr_page(doc_id, page_path, upload_text_path, access, ocr_code="eng"):
     """Internal method to run OCR on a single page.
 
     Returns:
         The page text.
     """
     # Download the requisite language data
+    logger.info("[OCR PAGE] doc_id %s", doc_id)
     download_language_pack(ocr_code)
     download_tmp_file(PDF_FONT_FILE)
+
+    logger.info("[OCR PAGE] download complete doc_id %s", doc_id)
 
     # Initialize temporary files
     tmp_files = {
@@ -156,6 +159,8 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
             )
     img.save(tmp_files["img"], "png")
 
+    logger.info("[OCR PAGE] image resized doc_id %s", doc_id)
+
     # Use Tesseract OCR to render a text-only PDF and txt file
     tess = Tesseract(ocr_code)
     text = ""
@@ -164,6 +169,8 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
         tess.create_renderer(tmp_files["pdf"], tmp_files["text"])
         tess.render(tmp_files["img"])
         tess.destroy_renderer()
+
+        logger.info("[OCR PAGE] rendered doc_id %s", doc_id)
 
         # Get txt and text-only pdf file contents
         with open(tmp_files["pdf"] + ".pdf", "rb") as pdf_file:
@@ -174,7 +181,9 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
                 text = text_file.read()
                 # Also upload text file to s3
                 new_text_file.write(text)
+        logger.info("[OCR PAGE] data stored doc_id %s", doc_id)
     finally:
+        logger.info("[OCR PAGE] cleanup doc_id %s", doc_id)
         os.remove(tmp_files["pdf"])
         os.remove(tmp_files["text"])
         os.remove(tmp_files["img"])
@@ -186,7 +195,7 @@ def ocr_page(page_path, upload_text_path, access, ocr_code="eng"):
 def run_tesseract(data, _context=None):
     """Runs OCR on the images passed in, storing the extracted text.
     """
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-statements
     overall_start = time.time()
 
     data = get_pubsub_data(data)
@@ -275,16 +284,37 @@ def run_tesseract(data, _context=None):
     # Loop through all paths and numbers
     for page_number, image_path in paths_and_numbers:
 
+        logger.info(
+            "[RUN TESSERACT] doc_id %s page_number %s ocrd %s",
+            doc_id,
+            page_number,
+            utils.page_ocrd(REDIS, doc_id, page_number),
+        )
+
         # Only OCR if the page has yet to be OCRd
         if not utils.page_ocrd(REDIS, doc_id, page_number):
             text_path = path.page_text_path(doc_id, slug, page_number)
 
             # Benchmark OCR speed
             start_time = time.time()
-            text, pdf_contents = ocr_page(image_path, text_path, access, ocr_code)
+            logger.info(
+                "[RUN TESSERACT] doc_id %s page %s start_time %s",
+                doc_id,
+                page_number,
+                start_time,
+            )
+            text, pdf_contents = ocr_page(
+                doc_id, image_path, text_path, access, ocr_code
+            )
 
             elapsed_time = time.time() - start_time
             elapsed_times.append(elapsed_time)
+            logger.info(
+                "[RUN TESSERACT] doc_id %s page %s elapsed_time %s",
+                doc_id,
+                page_number,
+                elapsed_time,
+            )
 
             # Write the output text and pdf to Redis
             utils.write_page_text(

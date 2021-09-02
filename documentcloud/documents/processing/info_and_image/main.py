@@ -930,7 +930,9 @@ def extract_text_position(data, _context=None):
 
     # Go through each page
     for page_number in page_numbers:
-        logger.info("[EXTRACT TEXT POSITION] page_number %s", page_number)
+        logger.info(
+            "[EXTRACT TEXT POSITION] doc_id %s page_number %s", doc_id, page_number
+        )
         if in_memory:
             # If in-memory, use the Redis overlay PDF
             errored = False
@@ -966,7 +968,11 @@ def extract_text_position(data, _context=None):
         text_positions_finished = utils.register_text_position_extracted(
             REDIS, doc_id, page_number
         )
-        logger.info("[EXTRACT TEXT POSITION] finished %s", text_positions_finished)
+        logger.info(
+            "[EXTRACT TEXT POSITION] doc_id %s finished %s",
+            doc_id,
+            text_positions_finished,
+        )
         if text_positions_finished:
             if page_modification is not None:
                 # Normally, processing entails assembling text once

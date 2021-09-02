@@ -90,7 +90,11 @@ def pubsub_function(
                 return func_()
             except futures.TimeoutError:
                 # Retry the function with increased run count
-                logging.warning("Function timed out: retrying (run %d)", run_count + 2)
+                logging.warning(
+                    "Function timed out: doc_id: %s retrying (run %d)",
+                    doc_id,
+                    run_count + 2,
+                )
                 data[RUN_COUNT] = run_count + 1
                 publisher.publish(pubsub_topic, data=encode_pubsub_data(data))
 
