@@ -284,15 +284,16 @@ def run_tesseract(data, _context=None):
     # Loop through all paths and numbers
     for page_number, image_path in paths_and_numbers:
 
+        ocrd = utils.page_ocrd(REDIS, doc_id, page_number)
         logger.info(
             "[RUN TESSERACT] doc_id %s page_number %s ocrd %s",
             doc_id,
             page_number,
-            utils.page_ocrd(REDIS, doc_id, page_number),
+            ocrd,
         )
 
         # Only OCR if the page has yet to be OCRd
-        if not utils.page_ocrd(REDIS, doc_id, page_number):
+        if not ocrd:
             text_path = path.page_text_path(doc_id, slug, page_number)
 
             # Benchmark OCR speed
