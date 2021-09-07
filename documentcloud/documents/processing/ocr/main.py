@@ -292,43 +292,37 @@ def run_tesseract(data, _context=None):
             ocrd,
         )
 
-        # Only OCR if the page has yet to be OCRd
-        if not ocrd:
-            text_path = path.page_text_path(doc_id, slug, page_number)
+        text_path = path.page_text_path(doc_id, slug, page_number)
 
-            # Benchmark OCR speed
-            start_time = time.time()
-            logger.info(
-                "[RUN TESSERACT] doc_id %s page %s start_time %s",
-                doc_id,
-                page_number,
-                start_time,
-            )
-            text, pdf_contents = ocr_page(
-                doc_id, image_path, text_path, access, ocr_code
-            )
+        # Benchmark OCR speed
+        start_time = time.time()
+        logger.info(
+            "[RUN TESSERACT] doc_id %s page %s start_time %s",
+            doc_id,
+            page_number,
+            start_time,
+        )
+        text, pdf_contents = ocr_page(doc_id, image_path, text_path, access, ocr_code)
 
-            elapsed_time = time.time() - start_time
-            elapsed_times.append(elapsed_time)
-            logger.info(
-                "[RUN TESSERACT] doc_id %s page %s elapsed_time %s",
-                doc_id,
-                page_number,
-                elapsed_time,
-            )
+        elapsed_time = time.time() - start_time
+        elapsed_times.append(elapsed_time)
+        logger.info(
+            "[RUN TESSERACT] doc_id %s page %s elapsed_time %s",
+            doc_id,
+            page_number,
+            elapsed_time,
+        )
 
-            # Write the output text and pdf to Redis
-            utils.write_page_text(
-                REDIS, doc_id, page_number, text, ocr_version, ocr_code
-            )
-            utils.write_page_text_pdf(REDIS, doc_id, page_number, pdf_contents)
+        # Write the output text and pdf to Redis
+        utils.write_page_text(REDIS, doc_id, page_number, text, ocr_version, ocr_code)
+        utils.write_page_text_pdf(REDIS, doc_id, page_number, pdf_contents)
 
-            # Decrement the texts remaining
-            utils.register_page_ocrd(REDIS, doc_id, page_number)
+        # Decrement the texts remaining
+        utils.register_page_ocrd(REDIS, doc_id, page_number)
 
-            # Queue text position extraction tasks
-            queue.append(page_number)
-            check_and_flush(queue)
+        # Queue text position extraction tasks
+        queue.append(page_number)
+        check_and_flush(queue)
 
     # Flush the remaining queue
     flush(queue)
