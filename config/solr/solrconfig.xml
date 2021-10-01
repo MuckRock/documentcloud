@@ -1726,8 +1726,28 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   title
                   updated_at
                   user
+                  edit_access:
+                    or(
+                      and(
+                        or(
+                          exists(query({!term f=user v=$qq_user})),
+                          exists(query({!terms f=projects_edit_access v=$qq_projects}))
+                        ),
+												exists(query({!terms f=access v=organization,private}))
+											),
+											and(
+												exists(query({!terms f=organization v=$qq_organizations})),
+												exists(query({!terms f=access v=organization,public}))
+											)
+										)
                 </str>
+                <str name="qq_user">0</str>		
+                <str name="qq_projects"></str>		
+                <str name="qq_organizations"></str>		
                 <str name="uf">* -projects_edit_access</str>
+              </lst>
+              <lst name="appends">
+                <str name="fq">type:document</str>		
               </lst>
               <arr name="last-components">
                 <str>remove-empty-highlight-fields</str>

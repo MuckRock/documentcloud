@@ -20,6 +20,7 @@ from documentcloud.documents.models import Document
 from documentcloud.documents.search_escape import escape
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
 
@@ -112,6 +113,22 @@ def search(user, query_params):
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
+    # these are for calculating edit access
+    if user.is_authenticated:
+        organizations = user.organizations.all()
+        projects = user.projects.filter(
+            collaboration__access__in=(
+                CollaboratorAccess.admin,
+                CollaboratorAccess.edit,
+            )
+        )
+        kwargs.update(
+            {
+                "qq_user": user.pk,
+                "qq_organizations": ",".join(str(o.pk) for o in organizations),
+                "qq_projects": ",".join(str(p.pk) for p in projects),
+            }
+        )
 
     results = SOLR.search(text_query, **kwargs)
     response = _format_response(results, query_params, user, page, rows, escaped)
@@ -507,9 +524,7 @@ def _format_response(results, query_params, user, page, per_page, escaped):
     expands = query_params.get("expand", "").split(",")
     count = results.hits
 
-    results = _add_edit_access(
-        user, _add_asset_url(_format_data(_format_highlights(results)))
-    )
+    results = _add_asset_url(_format_data(_format_highlights(results)))
     if "user" in expands:
         results = _expand_users(results)
     if "organization" in expands:
@@ -564,22 +579,6 @@ def _add_asset_url(results):
             result["asset_url"] = settings.PUBLIC_ASSET_URL
         else:
             result["asset_url"] = settings.PRIVATE_ASSET_URL
-    return results
-
-
-def _add_edit_access(user, results):
-    """Add edit_access to results"""
-    ids = [r["id"] for r in results if "-" not in r["id"]]
-    editable_documents = [
-        str(id_)
-        for id_ in Document.objects.get_editable(user)
-        .filter(id__in=ids)
-        .values_list("id", flat=True)
-    ]
-    for result in results:
-        # access and status should always be available, re-index if they are not
-        result["edit_access"] = result["id"] in editable_documents
-
     return results
 
 
