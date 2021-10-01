@@ -88,6 +88,7 @@ def search(user, query_params):
     text_query, filter_params, sort_order, escaped, use_hl = _parse(
         text_query, query_params, user
     )
+    text_query = _add_note_query(text_query, user)
 
     filter_params.update(query_params)
     filter_queries = _filter_queries(user, filter_params)
@@ -109,6 +110,7 @@ def search(user, query_params):
         "sort": sort,
         "rows": rows,
         "start": start,
+        "uf": "* _query_ -edit_access",
         "hl": "on" if settings.SOLR_USE_HL and use_hl else "off",
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
@@ -605,3 +607,35 @@ def _expand(results, key, queryset, serializer):
         else:
             result[key] = obj_dict.get(result[key])
     return results
+
+
+def _add_note_query(text_query, user):
+    organizations = " ".join(str(o.pk) for o in user.organizations.all())
+    projects = " ".join(
+        str(p.pk)
+        for p in user.projects.filter(
+            collaboration__access__in=(
+                CollaboratorAccess.admin,
+                CollaboratorAccess.edit,
+            )
+        )
+    )
+    # XXX test this!
+    return (
+        # the original query to search for in documents
+        f"({text_query}) "
+        # search through notes which are public or that you own
+        # on all documents you can view
+        f'_query_:"{{!parent which=type:document score=total}}'
+        f"+type:note +(access:public OR user:{user.pk}) "
+        f'+(title:({text_query}) description:({text_query}))" '
+        # search through notes which are organization access
+        # on all documents you can edit
+        f'_query_:"+('
+        f"((user:{user.pk} OR project_edit_access:({projects})) "
+        f"AND access:(private organization)) "
+        f"OR (access:(public organization) AND organizations:({organizations})) "
+        f"{{!parent which=type:document score=total}}"
+        f"+type:note +(access:organization) "
+        f'(title:({text_query}) description:({text_query}))"'
+    )
