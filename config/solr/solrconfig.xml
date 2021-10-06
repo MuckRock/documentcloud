@@ -1767,6 +1767,8 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 </str>
                 <str name="notes.q">{!term f=_root_ v=$row.id}</str>
                 <str name="org_notes.q">{!term f=_root_ v=$row.id}</str>
+                <str name="notes.sort">page_count asc</str>
+                <str name="org_notes.sort">page_count asc</str>
                 <str name="qq_user">0</str>
                 <str name="qq_projects"></str>
                 <str name="qq_organizations"></str>

@@ -16,7 +16,6 @@ from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
-from documentcloud.documents.models import Document
 from documentcloud.documents.search_escape import escape
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
@@ -531,7 +530,7 @@ def _format_response(results, query_params, user, page, per_page, escaped):
     expands = query_params.get("expand", "").split(",")
     count = results.hits
 
-    results = _add_asset_url(_format_data(_format_highlights(results)))
+    results = _add_asset_url(_format_notes(_format_data(_format_highlights(results))))
     if "user" in expands:
         results = _expand_users(results)
     if "organization" in expands:
@@ -571,13 +570,55 @@ def _format_highlights(results):
     return [{**r, "highlights": results.highlighting.get(r["id"])} for r in results]
 
 
+def _format_notes(results):
+    """Put note data into the proper format"""
+
+    def transform_notes(notes):
+        """Note IDs have a leading N to distinguish them from document IDs -
+          we strip them here
+        """
+        return [{**n, "id": n["id"][1:]} for n in notes]
+
+    def format_note(result):
+        """Notes are in the `docs` key as returned from Solr
+        We merge in the Org notes only if the user has edit access to this document
+        """
+        result["notes"] = transform_notes(result["notes"]["docs"])
+        if result["edit_access"]:
+            notes = result["notes"]
+            org_notes = transform_notes(result["org_notes"]["docs"])
+            # merge two lists of sorted notes, removing duplicates
+            result["notes"] = []
+            while notes or org_notes:
+                # if either list runs out, just add the rest of the other list
+                if notes and not org_notes:
+                    result["notes"].extend(notes)
+                    notes.clear()
+                elif not notes and org_notes:
+                    result["notes"].extend(org_notes)
+                    org_notes.clear()
+                # if they are the same, merge them
+                elif notes[0]["id"] == org_notes[0]["id"]:
+                    result["notes"].append(notes.pop(0))
+                    org_notes.pop(0)
+                # otherwise take the note with the lower page number and append it next
+                elif notes[0]["page_number"] <= org_notes[0]["page_number"]:
+                    result["notes"].append(notes.pop(0))
+                else:
+                    result["notes"].append(org_notes.pop(0))
+
+        # remove org_notes from the document
+        result.pop("org_notes")
+
+        return result
+
+    return [format_note(r) for r in results]
+
+
 def _add_asset_url(results):
     from documentcloud.documents.tasks import solr_index
 
     for result in results:
-        # XXX
-        del result["notes"]
-        del result["org_notes"]
         # access and status should always be available, re-index if they are not
         if "access" not in result or "status" not in result:
             solr_index.delay(result["id"])
