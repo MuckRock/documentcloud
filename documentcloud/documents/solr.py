@@ -287,6 +287,18 @@ def index_dirty(timestamp=None):
             )
             # a previous run is still running, do not run two in parallel
             return
+
+        # on initial invocation, kick off dirty deletion
+        deleted = Document.objects.filter(status=Status.deleted).values_list(
+            "pk", flat=True
+        )
+        deleted_count = deleted.count()
+        logger.info("[SOLR DELETE] %d documents to delete", deleted_count)
+        for document_pk in deleted:
+            celery_app.send_task(
+                "documentcloud.documents.tasks.solr_delete", args=[document_pk]
+            )
+
     else:
         # continuing a dirty indexing process, keep the cache alive
         cache.touch("solr_index_dirty_status", timeout=7200)
@@ -307,18 +319,6 @@ def index_dirty(timestamp=None):
             immutable=True,
         ),
     ).delay()
-
-    if timestamp is None:
-        # on initial invocation, kick off dirty deletion
-        deleted = Document.objects.filter(status=Status.deleted).values_list(
-            "pk", flat=True
-        )
-        deleted_count = deleted.count()
-        logger.info("[SOLR DELETE] %d documents to delete", deleted_count)
-        for document_pk in deleted:
-            celery_app.send_task(
-                "documentcloud.documents.tasks.solr_delete", args=[document_pk]
-            )
 
 
 def index_dirty_continue(timestamp):

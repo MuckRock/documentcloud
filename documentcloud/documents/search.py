@@ -88,7 +88,6 @@ def search(user, query_params):
     text_query, filter_params, sort_order, escaped, use_hl = _parse(
         text_query, query_params, user
     )
-    text_query = _add_note_query(text_query, user)
 
     filter_params.update(query_params)
     filter_queries = _filter_queries(user, filter_params)
@@ -110,11 +109,16 @@ def search(user, query_params):
         "sort": sort,
         "rows": rows,
         "start": start,
-        "uf": "* _query_ -edit_access",
         "hl": "on" if settings.SOLR_USE_HL and use_hl else "off",
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
+    if user.is_authenticated and user.feature_level >= 1:
+        # turn note queries on for all pro users
+        text_query = _add_note_query(text_query, user)
+        # XXX check this doesnt allow them to send their own _query_ searches
+        kwargs["uf"] = "* _query_ -edit_access"
+
     # these are for calculating edit access
     if user.is_authenticated:
         organizations = user.organizations.all()
@@ -127,6 +131,7 @@ def search(user, query_params):
         kwargs.update(
             {
                 "qq_user": user.pk,
+                "notes.qq_user": user.pk,
                 "qq_organizations": ",".join(str(o.pk) for o in organizations),
                 "qq_projects": ",".join(str(p.pk) for p in projects),
             }
@@ -570,6 +575,9 @@ def _add_asset_url(results):
     from documentcloud.documents.tasks import solr_index
 
     for result in results:
+        # XXX
+        del result["notes"]
+        del result["org_notes"]
         # access and status should always be available, re-index if they are not
         if "access" not in result or "status" not in result:
             solr_index.delay(result["id"])

@@ -1740,14 +1740,45 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
 												exists(query({!terms f=access v=organization,public}))
 											)
 										)
+                  notes:[subquery]
+                  org_notes:[subquery]
                 </str>
-                <str name="qq_user">0</str>		
-                <str name="qq_projects"></str>		
-                <str name="qq_organizations"></str>		
+                <str name="notes.fl">
+                  access
+                  created_at
+                  content:description
+                  id
+                  organization
+                  page_number:page_count
+                  title
+                  updated_at
+                  user
+                </str>
+                <str name="org_notes.fl">
+                  access
+                  created_at
+                  content:description
+                  id
+                  organization
+                  page_number:page_count
+                  title
+                  updated_at
+                  user
+                </str>
+                <str name="notes.q">{!term f=_root_ v=$row.id}</str>
+                <str name="org_notes.q">{!term f=_root_ v=$row.id}</str>
+                <str name="qq_user">0</str>
+                <str name="qq_projects"></str>
+                <str name="qq_organizations"></str>
+                <str name="notes.qq_user">0</str>
                 <str name="uf">* -projects_edit_access</str>
               </lst>
               <lst name="appends">
-                <str name="fq">type:document</str>		
+                <str name="fq">type:document</str>
+                <str name="notes.fq">type:note</str>
+                <str name="notes.fq">(access:public) OR {!term f=user v=$qq_user}</str>
+                <str name="org_notes.fq">type:note</str>
+                <str name="org_notes.fq">access:organization</str>
               </lst>
               <arr name="last-components">
                 <str>remove-empty-highlight-fields</str>

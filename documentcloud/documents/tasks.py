@@ -218,7 +218,7 @@ def delete_document_files(path):
 @task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
 def solr_delete(document_pk):
     # delete document from solr index
-    SOLR.delete(id=document_pk)
+    SOLR.delete(id=str(document_pk))
 
     # after succesfully deleting from solr, we can delete the correspodning
     # record from the database
