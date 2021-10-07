@@ -8,8 +8,8 @@ import pytz
 from documentcloud.documents.choices import Access, Status
 
 ORGANIZATIONS = [
-    {"id": 1, "name": "The Daily Planet"},
-    {"id": 2, "name": "The Daily Bugle"},
+    {"id": 1, "name": "The Daily Planet", "entitlement": "org"},
+    {"id": 2, "name": "The Daily Bugle", "entitlement": "org"},
     {"id": 3, "name": "The Daily Prophet"},
 ]
 
@@ -21,6 +21,7 @@ USERS = [
     {"id": 4, "name": "Eddie Brock", "organization": 2},
     {"id": 5, "name": "Barnabas Cuffe", "organization": 3},
     {"id": 6, "name": "Ginevra Weasley", "organization": 3},
+    {"id": 7, "name": "Mary Jane Watson", "organization": 2},
 ]
 
 
@@ -177,6 +178,64 @@ DOCUMENTS = [
 ]
 
 
+NOTES = [
+    {
+        "id": 1,
+        "user": 2,
+        "organization": 1,
+        "document": 1,
+        "page_number": 0,
+        "content": "alice",
+        "access": Access.public,
+    },
+    {
+        "id": 2,
+        "user": 2,
+        "organization": 1,
+        "document": 1,
+        "page_number": 1,
+        "content": "bob",
+        "access": Access.private,
+    },
+    {
+        "id": 3,
+        "user": 2,
+        "organization": 1,
+        "document": 1,
+        "page_number": 0,
+        "content": "charlie",
+        "access": Access.organization,
+    },
+    {
+        "id": 4,
+        "user": 1,
+        "organization": 1,
+        "document": 3,
+        "page_number": 0,
+        "content": "delta",
+        "access": Access.public,
+    },
+    {
+        "id": 5,
+        "user": 1,
+        "organization": 1,
+        "document": 3,
+        "page_number": 1,
+        "content": "echo",
+        "access": Access.private,
+    },
+    {
+        "id": 6,
+        "user": 1,
+        "organization": 1,
+        "document": 3,
+        "page_number": 0,
+        "content": "foxtrot",
+        "access": Access.organization,
+    },
+]
+
+
 PROJECTS = [
     {
         "id": 1,
@@ -184,5 +243,6 @@ PROJECTS = [
         "title": "Superman Project",
         "documents": [1, 3],
         "collaborators": [3],
+        "edit_collaborators": [4, 7],
     }
 ]

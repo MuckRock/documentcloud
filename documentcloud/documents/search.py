@@ -112,8 +112,9 @@ def search(user, query_params):
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
-    if user.is_authenticated and user.feature_level >= 1:
+    if user.is_authenticated and user.feature_level >= 1 and text_query != "*:*":
         # turn note queries on for all pro users
+        # *:* returns all documents, do not enable note queries
         text_query = _add_note_query(text_query, user)
         # XXX check this doesnt allow them to send their own _query_ searches
         kwargs["uf"] = "* _query_ -edit_access"
@@ -675,16 +676,27 @@ def _add_note_query(text_query, user):
         f"({text_query}) "
         # search through notes which are public or that you own
         # on all documents you can view
-        f'_query_:"{{!parent which=type:document score=total}}'
-        f"+type:note +(access:public OR user:{user.pk}) "
-        f'+(title:({text_query}) description:({text_query}))" '
+        f"""
+        _query_:"{{!parent which=type:document score=total
+            v='+type:note +(access:public OR user:{user.pk})
+               +(title:({text_query}) description:({text_query}))'
+        }}"
+        """
         # search through notes which are organization access
         # on all documents you can edit
-        f'_query_:"+('
-        f"((user:{user.pk} OR project_edit_access:({projects})) "
-        f"AND access:(private organization)) "
-        f"OR (access:(public organization) AND organizations:({organizations})) "
-        f"{{!parent which=type:document score=total}}"
-        f"+type:note +(access:organization) "
-        f'(title:({text_query}) description:({text_query}))"'
+        f"""
+        _query_:"
+            +(
+                (
+                    (user:{user.pk} OR projects_edit_access:({projects}))
+                    AND access:(private organization)
+                )
+                OR
+                (access:(public organization) AND organization:({organizations}))
+            )
+            +{{!parent which=type:document score=total 
+                v='+type:note +(access:organization)
+                   +(title:({text_query}) description:({text_query}))'}}
+            "
+        """
     )

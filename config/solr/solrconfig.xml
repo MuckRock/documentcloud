@@ -1733,13 +1733,13 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                           exists(query({!term f=user v=$qq_user})),
                           exists(query({!terms f=projects_edit_access v=$qq_projects}))
                         ),
-												exists(query({!terms f=access v=organization,private}))
-											),
-											and(
-												exists(query({!terms f=organization v=$qq_organizations})),
-												exists(query({!terms f=access v=organization,public}))
-											)
-										)
+                        exists(query({!terms f=access v=organization,private}))
+                      ),
+                      and(
+                        exists(query({!terms f=organization v=$qq_organizations})),
+                        exists(query({!terms f=access v=organization,public}))
+                      )
+                    )
                   notes:[subquery]
                   org_notes:[subquery]
                 </str>

@@ -24,15 +24,19 @@ from documentcloud.documents.search import (
     search,
 )
 from documentcloud.documents.search_escape import escape
-from documentcloud.documents.tests.factories import DocumentFactory
+from documentcloud.documents.tests.factories import DocumentFactory, NoteFactory
 from documentcloud.documents.tests.search_data import (
     DOCUMENTS,
+    NOTES,
     ORGANIZATIONS,
     PROJECTS,
     USERS,
 )
 from documentcloud.organizations.models import Organization
-from documentcloud.organizations.tests.factories import OrganizationFactory
+from documentcloud.organizations.tests.factories import (
+    OrganizationEntitlementFactory,
+    OrganizationFactory,
+)
 from documentcloud.projects.models import Project
 from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.models import User
@@ -54,7 +58,12 @@ def setup_solr(django_db_setup, django_db_blocker):
             organizations = {}
             users = {}
             documents = {}
+            notes = {}
+            # this enables searching through notes for users in that org
+            entitlement = OrganizationEntitlementFactory()
             for org in ORGANIZATIONS:
+                if org.pop("entitlement", None) == "org":
+                    org["entitlement"] = entitlement
                 organizations[org["id"]] = OrganizationFactory(**org)
             for user in USERS:
                 user = user.copy()
@@ -69,6 +78,17 @@ def setup_solr(django_db_setup, django_db_blocker):
                 documents[doc["id"]] = DocumentFactory(
                     user=users[user], organization=organizations[org], **doc
                 )
+            for note in NOTES:
+                note = note.copy()
+                user = note.pop("user")
+                org = note.pop("organization")
+                doc = note.pop("document")
+                notes[note["id"]] = NoteFactory(
+                    user=users[user],
+                    organization=organizations[org],
+                    document=documents[doc],
+                    **note,
+                )
             for proj in PROJECTS:
                 ProjectFactory(
                     id=proj["id"],
@@ -76,6 +96,7 @@ def setup_solr(django_db_setup, django_db_blocker):
                     user=users[proj["user"]],
                     edit_documents=[documents[d] for d in proj["documents"]],
                     collaborators=[users[a] for a in proj["collaborators"]],
+                    edit_collaborators=[users[a] for a in proj["edit_collaborators"]],
                 )
             for doc in documents.values():
                 solr.add([doc.solr()])
@@ -349,6 +370,73 @@ class TestSearch:
 
         response = self.search("document=3", user=3)
         assert response["count"] == 1
+
+    @pytest.mark.parametrize(
+        "user,doc,notes",
+        [
+            (None, 1, {"1"}),  # anonymous user my view public notes
+            (2, 1, {"1", "2", "3"}),  # owner may view all notes
+            (1, 1, {"1", "3"}),  # org collaborator may view public and org notes
+            (3, 1, {"1"}),  # non-collaborator may view public notes
+            (4, 1, {"1"}),  # proj collaborator cannot see org notes on public docs
+            (5, 1, {"1"}),  # non-premium user my view public notes
+            (7, 3, {"4", "6"}),  # proj collaborator may view public and org notes
+        ],
+    )
+    def test_search_notes_returned(self, user, doc, notes):
+        """Test that the proper notes are returned"""
+        response = self.search(f"id={doc}", user=user)
+        document = response["results"][0]
+        assert len(document["notes"]) == len(notes)
+        assert {n["id"] for n in document["notes"]} == notes
+
+    @pytest.mark.parametrize(
+        "user,note,viewable",
+        [
+            # anonymous may not search any notes
+            (None, 0, False),
+            (None, 1, False),
+            (None, 2, False),
+            # owner may search all notes
+            (2, 0, True),
+            (2, 1, True),
+            (2, 2, True),
+            # org collaborator may search public/org notes
+            (1, 0, True),
+            (1, 1, False),
+            (1, 2, True),
+            # non-collaborator may search public notes
+            (3, 0, True),
+            (3, 1, False),
+            (3, 2, False),
+            # project collaborator may not search org notes on public docs
+            (4, 0, True),
+            (4, 1, False),
+            (4, 2, False),
+            # non-premium may not search any notes
+            (5, 0, False),
+            (5, 1, False),
+            (5, 2, False),
+            # proj collaborator may search public/org notes
+            (7, 3, True),
+            (7, 4, False),
+            (7, 5, True),
+        ],
+    )
+    def test_search_notes_content(self, user, note, viewable):
+        """Test that the proper notes are searchable for pro users
+        """
+
+        content = NOTES[note]["content"]
+        doc = NOTES[note]["document"]
+        response = self.search(f"q={content}", user=user)
+
+        if viewable:
+            assert len(response["results"]) == 1
+            document = response["results"][0]
+            assert document["id"] == str(doc)
+        else:
+            assert len(response["results"]) == 0
 
 
 class TestBooleanDetector:
