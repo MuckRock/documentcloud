@@ -1776,10 +1776,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                 <str name="uf">* -projects_edit_access</str>
               </lst>
               <lst name="appends">
-                <!-- using -type:note in place of type:document for now to alleviate
-                  the need to immediately re-index all documents with their type set
-                -->
-                <str name="fq">-type:note</str>
+                <str name="fq">type:document</str>
                 <str name="notes.fq">type:note</str>
                 <str name="notes.fq">(access:public) OR {!term f=user v=$qq_user}</str>
                 <str name="org_notes.fq">type:note</str>

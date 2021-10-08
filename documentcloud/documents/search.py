@@ -676,7 +676,7 @@ def _add_note_query(text_query, user):
         # search through notes which are public or that you own
         # on all documents you can view
         f"""
-        _query_:"{{!parent which=-type:note score=total
+        _query_:"{{!parent which=type:document score=total
             v='+type:note +(access:public OR user:{user.pk})
                +(title:({text_query}) description:({text_query}))'
         }}"
@@ -693,7 +693,7 @@ def _add_note_query(text_query, user):
                 OR
                 (access:(public organization) AND organization:({organizations}))
             )
-            +{{!parent which=-type:note score=total 
+            +{{!parent which=type:document score=total 
                 v='+type:note +(access:organization)
                    +(title:({text_query}) description:({text_query}))'}}
             "
