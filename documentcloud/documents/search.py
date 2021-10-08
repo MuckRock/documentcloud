@@ -670,8 +670,7 @@ def _add_note_query(text_query, user):
             )
         )
     )
-    # XXX test this!
-    return (
+    return_query = (
         # the original query to search for in documents
         f"({text_query}) "
         # search through notes which are public or that you own
@@ -700,3 +699,6 @@ def _add_note_query(text_query, user):
             "
         """
     )
+    # replace runs of white space with a single space - keeps the template readable
+    # without incurring overhead of sending extra white space to solr
+    return re.sub("\s+", " ", return_query)
