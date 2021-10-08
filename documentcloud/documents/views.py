@@ -550,12 +550,38 @@ class NoteViewSet(FlexFieldsModelViewSet):
             self.request.user, self.request.query_params.get("expand", "")
         )
 
+    @transaction.atomic
     def perform_create(self, serializer):
         """Specify the document, user and organization"""
         serializer.save(
             document_id=self.kwargs["document_pk"],
             user=self.request.user,
             organization=self.request.user.organization,
+        )
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                self.kwargs["document_pk"], field_updates={"notes": "set"}
+            )
+        )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        """Index the note changes in Solr"""
+        super().perform_update(serializer)
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                self.kwargs["document_pk"], field_updates={"notes": "set"}
+            )
+        )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        """Index the note changes in Solr"""
+        super().perform_destroy(instance)
+        transaction.on_commit(
+            lambda: solr_index.delay(
+                self.kwargs["document_pk"], field_updates={"notes": "set"}
+            )
         )
 
     class Filter(django_filters.FilterSet):
