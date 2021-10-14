@@ -116,7 +116,6 @@ def search(user, query_params):
         # turn note queries on for all pro users
         # *:* returns all documents, do not enable note queries
         text_query = _add_note_query(text_query, user)
-        # XXX check this doesnt allow them to send their own _query_ searches
         kwargs["uf"] = "* _query_ -projects_edit_access"
 
     # these are for calculating edit access
@@ -327,6 +326,10 @@ class FilterExtractor(LuceneTreeTransformer):
             return None
         elif node.name == "hl":
             self.use_hl = str(node.expr).lower() == "true"
+            self.prune_parents(parents)
+            return None
+        elif node.name == "_query_":
+            # remove _query_ for security purposes
             self.prune_parents(parents)
             return None
         else:

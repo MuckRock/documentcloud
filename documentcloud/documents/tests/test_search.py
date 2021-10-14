@@ -561,6 +561,7 @@ class TestFilterExtractor:
             ("a user:1 sort:title", "a", "user=1", False, "title"),
             ("a user:1 sort:title", "a user:1", "", True, "title"),
             ("a (user:1 AND sort:title)", "a (user:1)", "", True, "title"),
+            ('a _query_:"{!term f=access v=private}"', "a", "", False, None),
         ],
     )
     def test_extract_filter(self, query, new_query, filters, sort_only, sort):
