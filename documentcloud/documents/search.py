@@ -117,7 +117,7 @@ def search(user, query_params):
         # *:* returns all documents, do not enable note queries
         text_query = _add_note_query(text_query, user)
         # XXX check this doesnt allow them to send their own _query_ searches
-        kwargs["uf"] = "* _query_ -edit_access"
+        kwargs["uf"] = "* _query_ -projects_edit_access"
 
     # these are for calculating edit access
     if user.is_authenticated:
