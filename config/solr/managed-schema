@@ -116,7 +116,7 @@
 
     <!-- If you don't use child/nested documents, then you should remove the next two fields:  -->
     <!-- for nested documents (minimal; points to root document) -->
-    <field name="_root_" type="string" indexed="true" stored="false" docValues="false" />
+    <field name="_root_" type="string" indexed="true" stored="true" docValues="false" />
     <!-- for nested documents (relationship tracking) -->
     <field name="_nest_path_" type="_nest_path_" /><fieldType name="_nest_path_" class="solr.NestPathField" />
 
@@ -136,6 +136,7 @@
     <copyField source="page_no_*" dest="doctext"/>
     <dynamicField name="data_*" type="strings" indexed="true" stored="true"/>
 
+    <field name="type" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="access" type="string" uninvertible="true" indexed="true" stored="true"/>
     <field name="created_at" type="pdate" uninvertible="false" indexed="true" stored="true" docValues="true" />
     <field name="publish_at" type="pdate" uninvertible="false" indexed="true" stored="true" />
