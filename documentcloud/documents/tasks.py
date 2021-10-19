@@ -393,3 +393,24 @@ def invalidate_cache(document_pk):
 def post_process(document_pk, modification_data):
     document = Document.objects.get(pk=document_pk)
     modifications.post_process(document, modification_data)
+
+
+# temporary tasks
+
+
+@task
+def solr_add_type():
+    """One off task to add `type:document` to all documents in Solr"""
+    docs = SOLR.search("-type:document", rows=200)
+    logger.info(
+        "[SOLR ADD TYPE] adding type to documents, %d untyped documents found",
+        docs.hits,
+    )
+    if docs.hits == 0:
+        logger.info("[SOLR ADD TYPE] finished")
+        return
+    solr_docs = [{"id": d["id"], "type": "document"} for d in docs]
+    SOLR.add(solr_docs, fieldUpdates={"type": "set"})
+    # keep calling until we have updated all documents
+    # wait in between calls to not overload solr
+    solr_add_type.apply_async(countdown=2)

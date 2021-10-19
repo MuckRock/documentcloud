@@ -386,6 +386,7 @@ class Document(models.Model):
 
         solr_document = {
             "id": self.pk,
+            "type": "document",
             "user": self.user_id,
             "organization": self.organization_id,
             "access": Access.attributes[self.access],
