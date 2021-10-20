@@ -411,7 +411,7 @@ class Document(models.Model):
             **data,
         }
 
-        if notes:
+        if settings.SOLR_INDEX_NOTES and notes:
             # empty notes field can sometimes cause issues with Solr
             solr_document["notes"] = notes
 

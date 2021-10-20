@@ -55,3 +55,7 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # ------------------------------------------------------------------------------
 SOLR_URL = "http://documentcloud_test_solr:8983/solr/documentcloud_test"
 SOLR_AUTH = None
+SOLR_ADD_EDIT_ACCESS = False
+SOLR_ADD_NOTES = True
+SOLR_INDEX_NOTES = True
+SOLR_QUERY_NOTES = True

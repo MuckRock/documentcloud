@@ -16,6 +16,7 @@ from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 # DocumentCloud
 from documentcloud.core.pagination import PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
+from documentcloud.documents.models import Document
 from documentcloud.documents.search_escape import escape
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
@@ -82,6 +83,7 @@ def search(user, query_params):
     `user` is used to restrict access on documents - it may be an anonymous user
     `query_params` allows for text queries, other filters, sorting, and paginating
     """
+    # pylint: disable=too-many-locals
     text_query = query_params.get("q", "")
 
     text_query, filter_params, sort_order, escaped, use_hl = _parse(
@@ -112,7 +114,12 @@ def search(user, query_params):
         "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
     }
-    if user.is_authenticated and user.feature_level >= 1 and text_query != "*:*":
+    if (
+        settings.SOLR_QUERY_NOTES
+        and user.is_authenticated
+        and user.feature_level >= 1
+        and text_query != "*:*"
+    ):
         # turn note queries on for all pro users
         # *:* returns all documents, do not enable note queries
         text_query = _add_note_query(text_query, user)
@@ -282,7 +289,7 @@ class FilterExtractor(LuceneTreeTransformer):
                 raise
 
     def visit_search_field(self, node, parents):
-        # pylint: disable=too-many-return-statements
+        # pylint: disable=too-many-return-statements, too-many-branches
         # substitute any aliases
         if node.name in FILTER_FIELDS:
             filter_name = FILTER_FIELDS[node.name]
@@ -535,6 +542,8 @@ def _format_response(results, query_params, user, page, per_page, escaped):
     count = results.hits
 
     results = _add_asset_url(_format_notes(_format_data(_format_highlights(results))))
+    if settings.SOLR_ADD_EDIT_ACCESS:
+        results = _add_edit_access(user, results)
     if "user" in expands:
         results = _expand_users(results)
     if "organization" in expands:
@@ -587,32 +596,37 @@ def _format_notes(results):
         """Notes are in the `docs` key as returned from Solr
         We merge in the Org notes only if the user has edit access to this document
         """
-        result["notes"] = transform_notes(result["notes"]["docs"])
-        if result["edit_access"]:
-            notes = result["notes"]
-            org_notes = transform_notes(result["org_notes"]["docs"])
-            # merge two lists of sorted notes, removing duplicates
-            result["notes"] = []
-            while notes or org_notes:
-                # if either list runs out, just add the rest of the other list
-                if notes and not org_notes:
-                    result["notes"].extend(notes)
-                    notes.clear()
-                elif not notes and org_notes:
-                    result["notes"].extend(org_notes)
-                    org_notes.clear()
-                # if they are the same, merge them
-                elif notes[0]["id"] == org_notes[0]["id"]:
-                    result["notes"].append(notes.pop(0))
-                    org_notes.pop(0)
-                # otherwise take the note with the lower page number and append it next
-                elif notes[0]["page_number"] <= org_notes[0]["page_number"]:
-                    result["notes"].append(notes.pop(0))
-                else:
-                    result["notes"].append(org_notes.pop(0))
+        if settings.SOLR_ADD_NOTES:
+            result["notes"] = transform_notes(result["notes"]["docs"])
+            if result["edit_access"]:
+                notes = result["notes"]
+                org_notes = transform_notes(result["org_notes"]["docs"])
+                # merge two lists of sorted notes, removing duplicates
+                result["notes"] = []
+                while notes or org_notes:
+                    # if either list runs out, just add the rest of the other list
+                    if notes and not org_notes:
+                        result["notes"].extend(notes)
+                        notes.clear()
+                    elif not notes and org_notes:
+                        result["notes"].extend(org_notes)
+                        org_notes.clear()
+                    # if they are the same, merge them
+                    elif notes[0]["id"] == org_notes[0]["id"]:
+                        result["notes"].append(notes.pop(0))
+                        org_notes.pop(0)
+                    # otherwise take the note with the lower page number and append
+                    # it next
+                    elif notes[0]["page_number"] <= org_notes[0]["page_number"]:
+                        result["notes"].append(notes.pop(0))
+                    else:
+                        result["notes"].append(org_notes.pop(0))
 
-        # remove org_notes from the document
-        result.pop("org_notes")
+            # remove org_notes from the document
+            result.pop("org_notes")
+        else:
+            result.pop("notes", None)
+            result.pop("org_notes", None)
 
         return result
 
@@ -634,6 +648,22 @@ def _add_asset_url(results):
             result["asset_url"] = settings.PUBLIC_ASSET_URL
         else:
             result["asset_url"] = settings.PRIVATE_ASSET_URL
+    return results
+
+
+def _add_edit_access(user, results):
+    """Add edit_access to results"""
+    ids = [r["id"] for r in results]
+    editable_documents = [
+        str(id_)
+        for id_ in Document.objects.get_editable(user)
+        .filter(id__in=ids)
+        .values_list("id", flat=True)
+    ]
+    for result in results:
+        # access and status should always be available, re-index if they are not
+        result["edit_access"] = result["id"] in editable_documents
+
     return results
 
 
@@ -696,7 +726,7 @@ def _add_note_query(text_query, user):
                 OR
                 (access:(public organization) AND organization:({organizations}))
             )
-            +{{!parent which=type:document score=total 
+            +{{!parent which=type:document score=total
                 v='+type:note +(access:organization)
                    +(title:({text_query}) description:({text_query}))'}}
             "
@@ -704,4 +734,4 @@ def _add_note_query(text_query, user):
     )
     # replace runs of white space with a single space - keeps the template readable
     # without incurring overhead of sending extra white space to solr
-    return re.sub("\s+", " ", return_query)
+    return re.sub(r"\s+", " ", return_query)

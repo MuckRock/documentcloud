@@ -4,6 +4,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.db.utils import DatabaseError
 from django.utils import timezone
@@ -420,3 +421,25 @@ def solr_add_type():
         logger.info("[SOLR ADD TYPE] Error %s, take a 5 minute break", exc)
         solr_add_type.apply_async(countdown=300)
         raise
+
+
+@task
+def solr_index_notes():
+    """One off task to initially index all notes"""
+    # pre-populate cache
+    indexes = cache.get("solr_index_notes")
+    if not indexes:
+        logging.error("[SOLR INDEX NOTES] cache not set")
+        return
+    indexes = indexes.split(",")
+    logging.info("[SOLR INDEX NOTES] %d documents remaining", len(indexes))
+    # use the first 100 indexes, and save the rest back into the cache
+    use_indexes, save_indexes = indexes[:100], indexes[100:]
+    docs = Document.objects.filter(pk__in=use_indexes)
+    solr_docs = [d.solr(fields=["notes"]) for d in docs]
+    SOLR.add(solr_docs, fieldUpdates={"notes": "set"})
+    if save_indexes:
+        cache.set("solr_index_notes", ",".join(save_indexes), timeout=None)
+        solr_index_notes.apply_async(countdown=3)
+    else:
+        logging.info("[SOLR INDEX NOTES] finished")
