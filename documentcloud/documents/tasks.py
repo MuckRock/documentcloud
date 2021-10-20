@@ -401,16 +401,22 @@ def post_process(document_pk, modification_data):
 @task
 def solr_add_type():
     """One off task to add `type:document` to all documents in Solr"""
-    docs = SOLR.search("-type:document", rows=200)
-    logger.info(
-        "[SOLR ADD TYPE] adding type to documents, %d untyped documents found",
-        docs.hits,
-    )
-    if docs.hits == 0:
-        logger.info("[SOLR ADD TYPE] finished")
-        return
-    solr_docs = [{"id": d["id"], "type": "document"} for d in docs]
-    SOLR.add(solr_docs, fieldUpdates={"type": "set"})
-    # keep calling until we have updated all documents
-    # wait in between calls to not overload solr
-    solr_add_type.apply_async(countdown=3)
+    try:
+        docs = SOLR.search("-type:document", rows=200)
+        logger.info(
+            "[SOLR ADD TYPE] adding type to documents, %d untyped documents found",
+            docs.hits,
+        )
+        if docs.hits == 0:
+            logger.info("[SOLR ADD TYPE] finished")
+            return
+        solr_docs = [{"id": d["id"], "type": "document"} for d in docs]
+        SOLR.add(solr_docs, fieldUpdates={"type": "set"})
+        # keep calling until we have updated all documents
+        # wait in between calls to not overload solr
+        solr_add_type.apply_async(countdown=5)
+    except Exception as exc:
+        # there was an error, try a longer cool off
+        logger.info("[SOLR ADD TYPE] Error %s, take a 5 minute break", exc)
+        solr_add_type.apply_async(countdown=300)
+        raise
