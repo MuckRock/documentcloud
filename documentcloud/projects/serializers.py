@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
 
@@ -148,6 +149,17 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
         write_only=True,
         queryset=User.objects.all(),
         help_text=_("The email address of the user you wish to add as a collaborator"),
+        error_messages={
+            **serializers.SlugRelatedField.default_error_messages,
+            "does_not_exist": _(
+                "No user with the {slug_name} {value} was found. Please check the "
+                "email, or ask the user to "
+                f'<a href="{settings.SQUARELET_URL}/accounts/signup/'
+                '?intent=documentcloud">first register for a free account here</a> '
+                "and then log in to DocumentCloud once, and then this error should "
+                "resolve."
+            ),
+        },
     )
     access = ChoiceField(
         CollaboratorAccess,
