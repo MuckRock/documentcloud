@@ -10,7 +10,6 @@ import environ
 import numpy as np
 import requests
 import sklearn.decomposition
-from requests.exceptions import RequestException
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 env = environ.Env()
@@ -176,9 +175,9 @@ def preprocess(data, _context=None):
 
     try:
         texts, doc_ids, language = load_documents(project_id)
-    except RequestException:
-        send_sidekick_update(project_id, {"status": "error"})
-    else:
         tfidf, features, doc_svd = process_text(project_id, texts)
         doc_embedding_(project_id, language, tfidf, features, doc_svd, doc_ids)
+    except Exception:  # pylint: disable=broad-except
+        send_sidekick_update(project_id, {"status": "error"})
+    else:
         send_sidekick_update(project_id, {"status": "success"})
