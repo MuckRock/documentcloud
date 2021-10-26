@@ -231,6 +231,7 @@ def index_batch(document_pks, field_updates):
     solr_documents = [d.solr(field_updates.keys()) for d in documents]
     # no text, groups of 1000 should be well below the size limit
     for group in grouper(solr_documents, 1000):
+        group = [g for g in group if g is not None]
         SOLR.add(group, fieldUpdates=field_updates)
 
     Document.objects.filter(pk__in=document_pks).update(solr_dirty=False)
