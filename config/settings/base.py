@@ -429,7 +429,7 @@ LOGIN_URL = "/accounts/login/squarelet"
 LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
 LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
-SESSION_COOKIE_SAMESITE = None
+SESSION_COOKIE_SAMESITE = "None"
 
 SIMPLE_JWT = {
     "ALGORITHM": "RS256",
