@@ -54,7 +54,7 @@ django-premailer==0.2.0   # via -r requirements/./base.txt
 django-redis==5.0.0       # via -r requirements/./base.txt, python-redis-lock
 django-reversion==4.0.0   # via -r requirements/./base.txt
 django-robots==4.0        # via -r requirements/./base.txt
-django-storages[boto3]==1.7.1  # via -r requirements/production.in, collectfast
+django-storages[boto3]==1.12.3  # via -r requirements/production.in, collectfast
 django-timezone-field==4.2.1  # via -r requirements/./base.txt, django-celery-beat
 django==3.2.9             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/./base.txt
