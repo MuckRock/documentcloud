@@ -16,7 +16,7 @@ html2text
 
 # Django
 # ------------------------------------------------------------------------------
-django
+django>3.2
 django-environ
 django-model-utils
 django-compressor
@@ -65,7 +65,7 @@ numpy
 typing-extensions
 
 # Solr
--e git://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr
+-e git+https://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr
 luqum
 
 # entity extraction

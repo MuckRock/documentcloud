@@ -16,15 +16,18 @@ WEB_OPEN = "xdg-open {} > /dev/null 2>&1"
 
 
 @task
-def test(c, path="documentcloud", create_db=False, ipdb=False, slow=False):
+def test(
+    c, path="documentcloud", create_db=False, ipdb=False, slow=False, warnings=False
+):
     """Run the test suite"""
     create_switch = "--create-db" if create_db else ""
     ipdb_switch = "--pdb --pdbcls=IPython.terminal.debugger:Pdb" if ipdb else ""
     slow_switch = "" if slow else '-m "not slow"'
+    warnings = "-e PYTHONWARNINGS=always" if warnings else ""
 
     c.run(
         COMPOSE_RUN_OPT_USER.format(
-            opt="-e DJANGO_SETTINGS_MODULE=config.settings.test",
+            opt=f"-e DJANGO_SETTINGS_MODULE=config.settings.test {warnings}",
             service="documentcloud_django",
             cmd=f"pytest {create_switch} {ipdb_switch} {slow_switch} {path}",
         ),

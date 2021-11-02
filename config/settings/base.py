@@ -85,11 +85,11 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "documentcloud.core.apps.CoreConfig",
-    "documentcloud.documents",
+    "documentcloud.documents.apps.DocumentsConfig",
     "documentcloud.oembed.apps.OembedConfig",
     "documentcloud.organizations.apps.OrganizationsConfig",
-    "documentcloud.projects",
-    "documentcloud.statistics",
+    "documentcloud.projects.apps.ProjectsConfig",
+    "documentcloud.statistics.apps.StatisticsConfig",
     "documentcloud.sidekick.apps.SidekickConfig",
     "documentcloud.users.apps.UsersConfig",
 ]

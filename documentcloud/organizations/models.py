@@ -6,7 +6,7 @@ Models for the organization application
 from django.db import models
 from django.db.models.expressions import F
 from django.db.models.functions import Greatest
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 # Standard Library
 import logging

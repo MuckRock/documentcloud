@@ -46,8 +46,8 @@ class UserViewSet(
         class Meta:
             model = User
             fields = {
-                "organization": ["exact"],
-                "project": ["exact"],
+                # "organization": ["exact"],
+                # "project": ["exact"],
                 "name": ["exact", "istartswith"],
                 "username": ["exact"],
                 "uuid": ["exact"],

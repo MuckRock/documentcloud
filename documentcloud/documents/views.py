@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Q, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -481,7 +481,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             fields = {
                 "user": ["exact"],
                 "organization": ["exact"],
-                "project": ["exact"],
+                # "project": ["exact"],
                 "access": ["exact"],
                 "status": ["exact"],
                 "created_at": ["lt", "gt"],
@@ -834,11 +834,11 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         class Meta:
             model = EntityOccurrence
             fields = {
-                "kind": ["exact"],
+                # "kind": ["exact"],
                 "occurrences": ["exact"],
                 "relevance": ["gt"],
-                "mid": ["exact"],
-                "wikipedia_url": ["exact"],
+                # "mid": ["exact"],
+                # "wikipedia_url": ["exact"],
             }
 
     filterset_class = Filter

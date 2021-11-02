@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.db.models import prefetch_related_objects
 from django.db.models.query import QuerySet
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, serializers
 from rest_framework.relations import ManyRelatedField
 

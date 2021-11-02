@@ -93,7 +93,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             model = Project
             fields = {
                 "user": ["exact"],
-                "document": ["exact"],
+                # "document": ["exact"],
                 "private": ["exact"],
                 "slug": ["exact"],
                 "title": ["exact"],

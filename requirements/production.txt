@@ -6,14 +6,14 @@
 #
 --no-binary psycopg2
 
--e git+git://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr  # via -r requirements/./base.txt
+-e git+https://github.com/MuckRock/pysolr.git@57afc5a83f062ad6adccd38b488653dff9317586#egg=pysolr  # via -r requirements/./base.txt
 aioboto3==6.5.0           # via -r requirements/./base.txt
 aiobotocore[boto3]==0.11.1  # via -r requirements/./base.txt, aioboto3
 aiohttp==3.6.2            # via -r requirements/./base.txt, aiobotocore
 amqp==2.5.2               # via -r requirements/./base.txt, kombu
 apscheduler==3.7.0        # via moesifdjango
 argon2-cffi==19.1.0       # via -r requirements/./base.txt
-asgiref==3.3.1            # via scout-apm
+asgiref==3.4.1            # via -r requirements/./base.txt, django, scout-apm
 async-generator==1.10     # via -r requirements/./base.txt, aiobotocore
 async-timeout==3.0.1      # via -r requirements/./base.txt, aiohttp
 attrs==19.3.0             # via -r requirements/./base.txt, aiohttp
@@ -31,7 +31,7 @@ collectfast==1.0.0        # via -r requirements/production.in
 coreapi==2.3.3            # via -r requirements/./base.txt, drf-yasg
 coreschema==0.0.4         # via -r requirements/./base.txt, coreapi, drf-yasg
 cpuprofile==1.0.1         # via -r requirements/./base.txt
-cryptography==2.8         # via -r requirements/./base.txt, pyopenssl, urllib3
+cryptography==2.8         # via -r requirements/./base.txt, pyopenssl, social-auth-core, urllib3
 cssselect==1.1.0          # via -r requirements/./base.txt, premailer
 cssutils==1.0.2           # via -r requirements/./base.txt, premailer
 dataclasses==0.8          # via -r requirements/./base.txt, libcst
@@ -39,31 +39,31 @@ decorator==4.4.0          # via -r requirements/./base.txt, gcsfs, ipython, trai
 defusedxml==0.6.0         # via -r requirements/./base.txt, python3-openid, social-auth-core
 django-anymail[mailgun]==6.1.0  # via -r requirements/production.in
 django-appconf==1.0.3     # via -r requirements/./base.txt, django-compressor
-django-autoslug==1.9.7    # via -r requirements/./base.txt
+django-autoslug==1.9.8    # via -r requirements/./base.txt
 django-celery-beat==1.5.0  # via -r requirements/./base.txt
-django-choices==1.7.0     # via -r requirements/./base.txt
-django-compressor==2.3    # via -r requirements/./base.txt
+django-choices==1.7.2     # via -r requirements/./base.txt
+django-compressor==2.4.1  # via -r requirements/./base.txt
 django-cors-headers==3.1.0  # via -r requirements/./base.txt
 django-cprofile-middleware==1.0.5  # via -r requirements/./base.txt
 django-debug-toolbar==3.1.1  # via -r requirements/./base.txt
 django-environ==0.4.5     # via -r requirements/./base.txt
-django-extensions==2.2.5  # via -r requirements/./base.txt
-django-filter==2.2.0      # via -r requirements/./base.txt
+django-extensions==3.1.3  # via -r requirements/./base.txt
+django-filter==21.1       # via -r requirements/./base.txt
 django-model-utils==3.2.0  # via -r requirements/./base.txt
 django-premailer==0.2.0   # via -r requirements/./base.txt
 django-redis==4.10.0      # via -r requirements/./base.txt, python-redis-lock
-django-reversion==3.0.4   # via -r requirements/./base.txt
+django-reversion==4.0.0   # via -r requirements/./base.txt
 django-robots==4.0        # via -r requirements/./base.txt
 django-storages[boto3]==1.7.1  # via -r requirements/production.in, collectfast
-django-timezone-field==3.0  # via -r requirements/./base.txt, django-celery-beat
-django==2.2.5             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
+django-timezone-field==4.2.1  # via -r requirements/./base.txt, django-celery-beat
+django==3.2.9             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/./base.txt
-djangorestframework==3.11.0  # via -r requirements/./base.txt, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
+djangorestframework==3.12.4  # via -r requirements/./base.txt, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
 docutils==0.15.2          # via -r requirements/./base.txt, botocore
 dogslow==1.2              # via -r requirements/./base.txt
 drf-flex-fields==0.6.1    # via -r requirements/./base.txt
 drf-nested-routers==0.91  # via -r requirements/./base.txt
-drf-yasg==1.17.0          # via -r requirements/./base.txt
+drf-yasg==1.20.0          # via -r requirements/./base.txt
 ecdsa==0.13.2             # via -r requirements/./base.txt, python-jose
 fsspec==0.5.2             # via -r requirements/./base.txt, gcsfs
 furl==2.1.0               # via -r requirements/./base.txt
@@ -132,7 +132,7 @@ pyasn1==0.4.7             # via -r requirements/./base.txt, pyasn1-modules, rsa
 pycparser==2.19           # via -r requirements/./base.txt, cffi
 pycryptodome==3.10.1      # via -r requirements/./base.txt, pdfminer.six
 pygments==2.5.2           # via -r requirements/./base.txt, ipython
-pyjwt==1.7.1              # via -r requirements/./base.txt, djangorestframework-simplejwt, social-auth-core
+pyjwt==2.3.0              # via -r requirements/./base.txt, djangorestframework-simplejwt, social-auth-core
 pyopenssl==19.1.0         # via urllib3
 pyparsing==2.4.2          # via -r requirements/./base.txt, packaging
 python-crontab==2.3.8     # via -r requirements/./base.txt, django-celery-beat
@@ -147,7 +147,7 @@ rcssmin==1.0.6            # via -r requirements/./base.txt, django-compressor
 redis==3.4.1              # via -r requirements/./base.txt, django-redis, python-redis-lock
 requests-oauthlib==1.2.0  # via -r requirements/./base.txt, google-auth-oauthlib, social-auth-core
 requests==2.22.0          # via -r requirements/./base.txt, coreapi, django-anymail, gcsfs, google-api-core, moesifapi, moesifdjango, moesifpythonrequest, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
-rest-social-auth==2.2.0   # via -r requirements/./base.txt
+rest-social-auth==6.0.1   # via -r requirements/./base.txt
 rjsmin==1.1.0             # via -r requirements/./base.txt, django-compressor
 rsa==4.0                  # via -r requirements/./base.txt, google-auth, python-jose
 ruamel.yaml.clib==0.1.2   # via -r requirements/./base.txt, ruamel.yaml
@@ -157,16 +157,16 @@ s3transfer==0.2.1         # via -r requirements/./base.txt, boto3
 scipy==1.5.4              # via -r requirements/./base.txt
 scout-apm==2.17.0         # via -r requirements/production.in
 sentry-sdk==1.0.0         # via -r requirements/production.in
-six==1.15.0               # via -r requirements/./base.txt, apscheduler, argon2-cffi, cryptography, django-anymail, django-appconf, django-extensions, drf-yasg, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, social-auth-core, traitlets
+six==1.15.0               # via -r requirements/./base.txt, apscheduler, argon2-cffi, cryptography, django-anymail, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, traitlets
 smart-open==1.8.4         # via -r requirements/./base.txt
-social-auth-app-django==3.1.0  # via -r requirements/./base.txt, rest-social-auth
-social-auth-core[openidconnect]==3.2.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth
+social-auth-app-django==4.0.0  # via -r requirements/./base.txt, rest-social-auth
+social-auth-core[openidconnect]==4.1.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth
 sortedcontainers==2.4.0   # via -r requirements/./base.txt, pdfminer.six
 sqlparse==0.3.0           # via -r requirements/./base.txt, django, django-debug-toolbar
 squarelet-auth==0.0.46    # via -r requirements/./base.txt
 text-unidecode==1.2       # via -r requirements/./base.txt, python-slugify
 traitlets==4.3.3          # via -r requirements/./base.txt, ipython
-typing-extensions==3.7.4.3  # via -r requirements/./base.txt, aiohttp, collectfast, libcst, typing-inspect
+typing-extensions==3.7.4.3  # via -r requirements/./base.txt, aiohttp, asgiref, collectfast, libcst, typing-inspect
 typing-inspect==0.6.0     # via -r requirements/./base.txt, libcst
 typing==3.7.4.1           # via collectfast
 tzlocal==2.1              # via apscheduler
