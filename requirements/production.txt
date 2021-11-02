@@ -27,7 +27,7 @@ celery==4.4.2             # via -r requirements/./base.txt, squarelet-auth
 certifi==2019.6.16        # via -r requirements/./base.txt, requests, sentry-sdk, urllib3
 cffi==1.12.3              # via -r requirements/./base.txt, argon2-cffi, cryptography
 chardet==3.0.4            # via -r requirements/./base.txt, aiohttp, pdfminer.six, requests
-collectfast==1.0.0        # via -r requirements/production.in
+collectfast==2.2.0        # via -r requirements/production.in
 coreapi==2.3.3            # via -r requirements/./base.txt, drf-yasg
 coreschema==0.0.4         # via -r requirements/./base.txt, coreapi, drf-yasg
 cpuprofile==1.0.1         # via -r requirements/./base.txt
@@ -168,7 +168,6 @@ text-unidecode==1.2       # via -r requirements/./base.txt, python-slugify
 traitlets==4.3.3          # via -r requirements/./base.txt, ipython
 typing-extensions==3.7.4.3  # via -r requirements/./base.txt, aiohttp, asgiref, collectfast, libcst, typing-inspect
 typing-inspect==0.6.0     # via -r requirements/./base.txt, libcst
-typing==3.7.4.1           # via collectfast
 tzlocal==2.1              # via apscheduler
 unidecode==1.1.1          # via -r requirements/./base.txt
 uritemplate==3.0.0        # via -r requirements/./base.txt, coreapi, drf-yasg
