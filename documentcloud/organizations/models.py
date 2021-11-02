@@ -50,7 +50,7 @@ class Organization(AbstractOrganization):
 
     language = models.CharField(
         _("language"),
-        max_length=3,
+        max_length=8,
         choices=Language.choices,
         default="eng",
         blank=True,
@@ -58,7 +58,7 @@ class Organization(AbstractOrganization):
     )
     document_language = models.CharField(
         _("document language"),
-        max_length=3,
+        max_length=8,
         choices=Language.choices,
         default="eng",
         blank=True,

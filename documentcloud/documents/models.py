@@ -1,6 +1,5 @@
 # Django
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.db.models import Q, UniqueConstraint
@@ -116,7 +115,7 @@ class Document(models.Model):
         help_text=_("Tracks if the Solr Index is out of date with the SQL model"),
     )
 
-    data = JSONField(default=dict)
+    data = models.JSONField(default=dict)
 
     related_article = models.URLField(
         _("related article"),
@@ -789,7 +788,7 @@ class Entity(models.Model):
         blank=True,
         help_text=_("The URL to the Wikipedia entry for this entity"),
     )
-    metadata = JSONField(
+    metadata = models.JSONField(
         _("metadata"),
         default=dict,
         help_text=_("Extra data asociated with this entity"),
@@ -830,7 +829,7 @@ class EntityOccurrence(models.Model):
         _("relevance"), default=0.0, help_text=_("The relevance of this entity")
     )
 
-    occurrences = JSONField(
+    occurrences = models.JSONField(
         _("occurrences"),
         default=dict,
         help_text=_("Extra data asociated with this entity"),
