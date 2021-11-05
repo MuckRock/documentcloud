@@ -31,7 +31,7 @@ collectfast==2.2.0        # via -r requirements/production.in
 coreapi==2.3.3            # via -r requirements/./base.txt, drf-yasg
 coreschema==0.0.4         # via -r requirements/./base.txt, coreapi, drf-yasg
 cpuprofile==1.0.1         # via -r requirements/./base.txt
-cryptography==2.8         # via -r requirements/./base.txt, pyopenssl, social-auth-core, urllib3
+cryptography==35.0.0      # via -r requirements/./base.txt, pyopenssl, social-auth-core, urllib3
 cssselect==1.1.0          # via -r requirements/./base.txt, premailer
 cssutils==1.0.2           # via -r requirements/./base.txt, premailer
 dataclasses==0.8          # via -r requirements/./base.txt, libcst
@@ -157,7 +157,7 @@ s3transfer==0.2.1         # via -r requirements/./base.txt, boto3
 scipy==1.5.4              # via -r requirements/./base.txt
 scout-apm==2.17.0         # via -r requirements/production.in
 sentry-sdk==1.0.0         # via -r requirements/production.in
-six==1.15.0               # via -r requirements/./base.txt, apscheduler, argon2-cffi, cryptography, django-anymail, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, traitlets
+six==1.15.0               # via -r requirements/./base.txt, apscheduler, argon2-cffi, django-anymail, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, traitlets
 smart-open==1.8.4         # via -r requirements/./base.txt
 social-auth-app-django==4.0.0  # via -r requirements/./base.txt, rest-social-auth
 social-auth-core[openidconnect]==4.1.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth
