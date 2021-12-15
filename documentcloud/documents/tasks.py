@@ -433,8 +433,8 @@ def solr_index_notes():
         return
     indexes = indexes.split(",")
     logging.info("[SOLR INDEX NOTES] %d documents remaining", len(indexes))
-    # use the first 100 indexes, and save the rest back into the cache
-    use_indexes, save_indexes = indexes[:100], indexes[100:]
+    # use the first 10 indexes, and save the rest back into the cache
+    use_indexes, save_indexes = indexes[:10], indexes[10:]
     docs = Document.objects.filter(pk__in=use_indexes)
     solr_docs = [d.solr(fields=["notes"]) for d in docs]
     SOLR.add(solr_docs, fieldUpdates={"notes": "set"})
