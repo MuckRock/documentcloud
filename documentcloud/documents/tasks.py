@@ -433,11 +433,20 @@ def solr_index_notes():
         return
     indexes = indexes.split(",")
     logging.info("[SOLR INDEX NOTES] %d documents remaining", len(indexes))
-    # use the first 10 indexes, and save the rest back into the cache
-    use_indexes, save_indexes = indexes[:10], indexes[10:]
-    docs = Document.objects.filter(pk__in=use_indexes)
-    solr_docs = [d.solr(fields=["notes"]) for d in docs]
-    SOLR.add(solr_docs, fieldUpdates={"notes": "set"})
+    batch_size = 8
+    while True:
+        # use the first n indexes, and save the rest back into the cache
+        use_indexes, save_indexes = indexes[:batch_size], indexes[batch_size:]
+        docs = Document.objects.filter(pk__in=use_indexes)
+        solr_docs = [d.solr(fields=["notes"]) for d in docs]
+        try:
+            SOLR.add(solr_docs, fieldUpdates={"notes": "set"})
+        except Exception:  # pylint: disable=broad-except
+            batch_size //= 2
+            if not batch_size:
+                raise
+        else:
+            break
     if save_indexes:
         cache.set("solr_index_notes", ",".join(save_indexes), timeout=None)
         solr_index_notes.apply_async(countdown=3)
