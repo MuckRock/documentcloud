@@ -13,6 +13,7 @@ Analyze, Annotate, Publish. Turn documents into data.
 
 ### Installation Steps
 
+0. Install Git Large File support [using these instructions](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage).
 1. Check out the git repository - `git clone git@github.com:MuckRock/documentcloud.git`
 2. Enter the directory - `cd documentcloud`
 3. Run the dotenv initialization script - `python initialize_dotenvs.py`
