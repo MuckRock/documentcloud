@@ -31,7 +31,7 @@ Analyze, Annotate, Publish. Turn documents into data.
    tempUser.save()
    ```
    - `make install` and `make dev` on the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) to start the frontend (used at end).
-8. In Squarelet Django admin page, follow the instructions as for the ["Squarelet Integration" on MuckRock](https://github.com/muckrock/muckrock/#squarelet-integration), except:
+8. Visit the Squarelet Django [admin page](http://dev.squarelet.local) with the `is_staff` user you created. Follow the instructions as for the ["Squarelet Integration" on MuckRock](https://github.com/muckrock/muckrock/#squarelet-integration), except:
    - When creating the OpenID as set out in those instructions, also add `Redirect URIs`: `http://api.dev.documentcloud.org/accounts/complete/squarelet` and `http://minio.documentcloud.org/accounts/complete/squarelet`. 
    - Set Post-logout Redirect UI: `http://dev.documentcloud.org`
    - Scopes (one per line): 
