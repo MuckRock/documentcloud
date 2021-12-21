@@ -18,9 +18,9 @@ Analyze, Annotate, Publish. Turn documents into data.
 3. Enter the directory - `cd documentcloud`
 4. Run the dotenv initialization script - `python initialize_dotenvs.py`
    This will create files with the environment variables needed to run the development environment.
-5. You do not need to immediately start the docker-compose session for DocumentCloud until the Squarelet configuration below is complete.
+5. You do not need to immediately start the docker-compose session for DocumentCloud until the Squarelet authentication service integration below is complete.
 6. Set `api.dev.documentcloud.org` and `minio.documentcloud.org` to point to localhost - `sudo echo "127.0.0.1 api.dev.documentcloud.org minio.documentcloud.org" >> /etc/hosts`
-7. Enter `api.dev.documentcloud.org/` into your browser - you should see the Django API root page. Note that `api` is before `dev` in this URL.
+7. Enter `api.dev.documentcloud.org/` into your browser - you should see the Django API root page. **Note that `api` is before `dev` in this service URL.**
 8. Install and run [Squarelet](https://github.com/muckrock/squarelet) and the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) following the instructions in their repos to view the full-stack application. 
     - `inv sh` (not shell) then `./manage.py createsuperuser` in Squarelet (not DocumentCloud).
     - Login using `inv shell` (not sh) in Squarelet
@@ -31,7 +31,7 @@ Analyze, Annotate, Publish. Turn documents into data.
    tempUser.save()
    ```
    - `make install` and `make dev` on the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) to start the frontend (used at end).
-9. Visit the Squarelet Django [admin page](http://dev.squarelet.local) with the `is_staff` user you created. Follow the instructions as for the ["Squarelet Integration" on MuckRock](https://github.com/muckrock/muckrock/#squarelet-integration), except:
+9. Visit the Squarelet Django [admin page](http://dev.squarelet.local) with the `is_staff` user you created to configure the authentication integration. Follow the instructions as for the ["Squarelet Integration" on MuckRock](https://github.com/muckrock/muckrock/#squarelet-integration), except:
    - When creating the OpenID as set out in those instructions, also add `Redirect URIs`: `http://api.dev.documentcloud.org/accounts/complete/squarelet` and `http://minio.documentcloud.org/accounts/complete/squarelet`. 
    - Set Post-logout Redirect UI: `http://dev.documentcloud.org`
    - Scopes (one per line): 
@@ -54,7 +54,7 @@ Analyze, Annotate, Publish. Turn documents into data.
     - If you do `docker-compose down` on Squarelet when none of the other dependent docker-compose sessions (such as DocumentCloud) are running, `docker-compose down` will delete the Squarelet network. You will have to explicitly bring the whole squarelet docker-compose session back up to recreate it and nginx before being able to start a dependent docker-compose session (such as DocumentCloud).
     - Using `docker-compose up -d` rather than `docker-compose up` will make a daemon for DocumentCloud as Squarelet defaults to.
 13. Log in using the Squarelet staff superuser on the locally-running Documentcloud frontend at http://dev.documentcloud.org
-14. If you can login successfully, go to [Django admin for DocumentCloud](http://dev.api.documentcloud.org/admin) and add a static page
+14. If you can login successfully, go to [Django admin for DocumentCloud](http://api.dev.documentcloud.org/admin) and add a static page
 
 
 [docker-install]: https://docs.docker.com/install/
