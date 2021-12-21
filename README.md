@@ -18,9 +18,7 @@ Analyze, Annotate, Publish. Turn documents into data.
 2. Enter the directory - `cd documentcloud`
 3. Run the dotenv initialization script - `python initialize_dotenvs.py`
    This will create files with the environment variables needed to run the development environment.
-4. Start the docker images - `export COMPOSE_FILE=local.yml; docker-compose up`
-    -   This will build and start all of the DocumentCloud docker images using docker-compose. It will attach to the Squarelet network which must be already running. You can connect to Squarelet nginx on port 80 and it will serve the appropriate dependent http service, such as DocumentCloud, based on domain as a virtual host. The `local.yml` configuration file has the docker-compose details.
-    - If you do `docker-compose down` on Squarelet when none of the other dependent docker-compose sessions (such as DocumentCloud) are running, `docker-compose down` will delete the Squarelet network. You will have to explicitly bring the whole squarelet docker-compose session back up to recreate it and nginx before being able to start a dependent docker-compose session (such as DocumentCloud).
+4. You do not need to immediately start the docker-compose session for DocumentCloud until the Squarelet configuration below is complete.
 5. Set `api.dev.documentcloud.org` and `minio.documentcloud.org` to point to localhost - `sudo echo "127.0.0.1 api.dev.documentcloud.org minio.documentcloud.org" >> /etc/hosts`
 6. Enter `api.dev.documentcloud.org/` into your browser - you should see the Django API root page. Note that `api` is before `dev` in this URL.
 7. Install and run [Squarelet](https://github.com/muckrock/squarelet) and the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) following the instructions in their repos to view the full-stack application. 
@@ -50,9 +48,13 @@ Analyze, Annotate, Publish. Turn documents into data.
    - Additionally, get the value for `JWT_VERIFYING_KEY` by opening the Squarelet Django shell using `inv shell` and copying the `settings.SIMPLE_JWT['VERIFYING_KEY']` (remove the leading `b'` and the trailing `'`, leave the `\n` portions as-is)
    - (If `JWT_VERIFYING_KEY` is blank, don't forget to `inv sh` on Squarelet and then run `./manage.py creatersakey` as the instructions linked above explained)
 9. In Squarelet, you may need to provide valid testing values for `STRIPE_PUB_KEYS`, `STRIPE_SECRET_KEYS` and set `STRIPE_WEBHOOK_SECRETS=None` from the MuckRock team (multiple values are comma separated only, no square braces)
-10. Stop and start the docker compose sessions for DocumentCloud (Ctrl-C, or `docker-compose down`) and Squarelet (`docker-compose down` in Squarelet folder. Then `docker-compose up` for DocumentCloud, and `inv up` in squarelet folder to begin using the new dotfiles.
-11. Log in using the Squarelet staff superuser on the locally-running Documentcloud frontend at http://dev.documentcloud.org
-12. If you can login successfully, go to [Django admin for DocumentCloud](http://dev.api.documentcloud.org/admin) and add a static page
+10. Run `export COMPOSE_FILE=local.yml;` in any of your command line sessions so that docker-compose finds the configuration.
+11. Finally, be sure to stop (if needed) both the docker compose sessions DocumentCloud (Ctrl-C, or `docker-compose down`) and Squarelet (`docker-compose down` in Squarelet folder. Then run the Squarelet session using `inv up` in the squarelet folder. Finally, run `docker-compose up` in this DocumentCloud folder to begin using the new dotfiles.
+    -   This will build and start all of the DocumentCloud docker images using docker-compose. It will attach to the Squarelet network which must be already running. You can connect to Squarelet nginx on port 80 and it will serve the appropriate dependent http service, such as DocumentCloud, based on domain as a virtual host. The `local.yml` configuration file has the docker-compose details.
+    - If you do `docker-compose down` on Squarelet when none of the other dependent docker-compose sessions (such as DocumentCloud) are running, `docker-compose down` will delete the Squarelet network. You will have to explicitly bring the whole squarelet docker-compose session back up to recreate it and nginx before being able to start a dependent docker-compose session (such as DocumentCloud).
+    - Using `docker-compose up -d` rather than `docker-compose up` will make a daemon for DocumentCloud as Squarelet defaults to.
+12. Log in using the Squarelet staff superuser on the locally-running Documentcloud frontend at http://dev.documentcloud.org
+13. If you can login successfully, go to [Django admin for DocumentCloud](http://dev.api.documentcloud.org/admin) and add a static page
 
 
 [docker-install]: https://docs.docker.com/install/
