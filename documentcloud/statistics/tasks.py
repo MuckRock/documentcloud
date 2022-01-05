@@ -21,7 +21,9 @@ from documentcloud.statistics.models import Statistics
 logger = logging.getLogger(__name__)
 
 # This is using UTC time instead of the local timezone
-@periodic_task(run_every=crontab(hour=5, minute=30))
+@periodic_task(
+    run_every=crontab(hour=5, minute=30), time_limit=600, soft_time_limit=540
+)
 def store_statistics():
     """Store the daily statistics"""
     # pylint: disable=too-many-statements
@@ -82,7 +84,7 @@ def store_statistics():
     for key, value in note_counts.items():
         kwargs[f"total_notes_{key}"] = value
 
-    logger.info("User counts")
+    logger.info("[STORE STATS] User counts")
     user_counts = Document.objects.order_by().aggregate(
         all=Count("user_id", distinct=True),
         public=Count("user_id", distinct=True, filter=Q(access=Access.public)),
