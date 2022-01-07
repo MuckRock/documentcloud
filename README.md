@@ -50,7 +50,7 @@ Analyze, Annotate, Publish. Turn documents into data.
    - `Client Secret` goes into `SQUARELET_SECRET`
    - Additionally, get the value for `JWT_VERIFYING_KEY` by opening the Squarelet Django shell using `inv shell` and copying the `settings.SIMPLE_JWT['VERIFYING_KEY']` (remove the leading `b'` and the trailing `'`, leave the `\n` portions as-is)
    - (If `JWT_VERIFYING_KEY` is blank, don't forget to `inv sh` on Squarelet and then run `./manage.py creatersakey` as the instructions linked above explained)
-9. In Squarelet `.django` file, you may need to provide valid testing values for `STRIPE_PUB_KEYS`, `STRIPE_SECRET_KEYS` and set `STRIPE_WEBHOOK_SECRETS=None` from the MuckRock team (multiple values are comma separated only, no square braces)
+9. In Squarelet `.django` file, provide valid testing values for `STRIPE_PUB_KEYS`, `STRIPE_SECRET_KEYS` and set `STRIPE_WEBHOOK_SECRETS=None` from the MuckRock team (multiple values are comma separated only, no square braces)
       - You must always fully `docker-compose down` or Ctrl-C each time you change a `.django` file of a docker-compose session for it to take effect (as far as I know).
       - Avoid changing Squarelet's `.django` file frequently to prevent Docker network problems from `docker-compose down`.
 10. Run `export COMPOSE_FILE=local.yml;` in any of your command line sessions so that docker-compose finds the configuration.
