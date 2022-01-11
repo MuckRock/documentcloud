@@ -25,8 +25,8 @@ Analyze, Annotate, Publish. Turn documents into data.
 6. Set `api.dev.documentcloud.org` and `minio.documentcloud.org` to point to localhost - `sudo echo "127.0.0.1 api.dev.documentcloud.org minio.documentcloud.org" >> /etc/hosts`
 7. Install and run [Squarelet](https://github.com/muckrock/squarelet) and the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) following the instructions in their 2 repos as part of the full-stack application. 
     - **Create Squarelet user:** 
-      - `inv manage createsuperuser` in Squarelet (not DocumentCloud).
-      - Use `inv shell` (not sh) in Squarelet
+      - `inv sh` (not shell) then `./manage.py createsuperuser` in Squarelet (not DocumentCloud).
+      - Login using `inv shell` (not sh) in Squarelet
       - Set your user as `is_staff`: (remove indentation after copying, if needed)
       ```
       tempUser = User.objects.all()[0]
