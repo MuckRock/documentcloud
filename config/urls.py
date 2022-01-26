@@ -28,6 +28,7 @@ from documentcloud.documents.views import (
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.organizations.views import OrganizationViewSet
+from documentcloud.plugins.views import PluginViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
     ProjectMembershipViewSet,
@@ -59,6 +60,7 @@ router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
 router.register("users", UserViewSet)
+router.register("plugins", PluginViewSet)
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
