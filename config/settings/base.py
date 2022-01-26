@@ -89,6 +89,7 @@ LOCAL_APPS = [
     "documentcloud.documents.apps.DocumentsConfig",
     "documentcloud.oembed.apps.OembedConfig",
     "documentcloud.organizations.apps.OrganizationsConfig",
+    "documentcloud.plugins.apps.PluginsConfig",
     "documentcloud.projects.apps.ProjectsConfig",
     "documentcloud.statistics.apps.StatisticsConfig",
     "documentcloud.sidekick.apps.SidekickConfig",
