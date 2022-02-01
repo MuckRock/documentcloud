@@ -299,7 +299,7 @@ LOGGING = {
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
-if 1 or DEBUG:
+if DEBUG:
     LOGGING["loggers"] = {
         "rules": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
         # "django.db.backends": {
