@@ -149,7 +149,12 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             # Processing scope can access all documents
             queryset = project.projectmembership_set.all()
         else:
-            queryset = project.projectmembership_set.get_viewable(self.request.user)
+            # faster to load all of the project memberships from the project,
+            # then filter for the ones the user has access to view in two queries
+            pks = list(project.projectmembership_set.values_list("pk", flat=True))
+            queryset = ProjectMembership.objects.filter(pk__in=pks).get_viewable(
+                self.request.user
+            )
 
         return (
             # adding ID to the order by here helps postgres pick an appropriate
