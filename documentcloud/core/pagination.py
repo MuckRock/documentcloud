@@ -114,6 +114,6 @@ class LargeTablePaginator(Paginator):
                     estimate = int(cursor.fetchone()[0])
                     return estimate
             except Exception:  # pylint: disable=broad-except
-                # If any other exception occurred fall back to default behaviour
+                # If any other exception occurred fall back to large number
                 pass
-        return super().count
+        return 9999999999
