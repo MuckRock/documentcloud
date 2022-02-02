@@ -18,7 +18,6 @@ class DocumentAdmin(VersionAdmin):
     list_display = ("title", "user", "organization", "access", "status")
     list_filter = ("access", "status", "language")
     search_fields = ("title", "user__username", "organization__name")
-    date_hierarchy = "created_at"
     show_full_result_count = False
     paginator = NoCountPaginator
     fields = (
