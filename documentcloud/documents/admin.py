@@ -6,6 +6,7 @@ from django.db import transaction
 from reversion.admin import VersionAdmin
 
 # DocumentCloud
+from documentcloud.core.pagination import LargeTablePaginator
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import solr_index
 
@@ -19,6 +20,7 @@ class DocumentAdmin(VersionAdmin):
     search_fields = ("title", "user__username", "organization__name")
     date_hierarchy = "created_at"
     show_full_result_count = False
+    paginator = LargeTablePaginator
     fields = (
         "title",
         "slug",
