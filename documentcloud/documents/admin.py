@@ -20,6 +20,7 @@ class DocumentAdmin(VersionAdmin):
     search_fields = ("title", "user__username", "organization__name")
     show_full_result_count = False
     paginator = NoCountPaginator
+    ordering = ("pk",)
     fields = (
         "title",
         "slug",
