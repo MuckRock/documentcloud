@@ -199,7 +199,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         ):
             self.fields[
                 "projects"
-            ].child_relation.queryset = Project.objects.get_editable(user)
+            ].child_relation.queryset = Project.objects.get_addable(user)
 
     def _init_presigned_url(self, request, user, is_document, is_list):
         """Only shown presigned url if needed"""

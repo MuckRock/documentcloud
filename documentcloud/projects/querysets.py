@@ -34,6 +34,19 @@ class ProjectQuerySet(models.QuerySet):
         else:
             return self.none()
 
+    def get_addable(self, user):
+        """User may add or remove documents"""
+        if user.is_authenticated:
+            return self.filter(
+                collaborators=user,
+                collaboration__access__in=(
+                    CollaboratorAccess.admin,
+                    CollaboratorAccess.edit,
+                ),
+            )
+        else:
+            return self.none()
+
     def annotate_is_admin(self, user):
         """Annotate each project with whether or not the given user is
         an admin for it
