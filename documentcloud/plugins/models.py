@@ -68,14 +68,17 @@ class Plugin(models.Model):
             return None
         return resp.json().get("access_token")
 
-    def dispatch(self, user, documents, parameters):
+    def dispatch(self, user, documents, query, parameters):
         """Activate the GitHub Action for this plugin"""
         token = self.get_token(user)
         payload = {
             "token": token,
             "base_uri": settings.DOCCLOUD_API_URL + "/api/",
             "documents": documents,
+            "query": query,
             "data": parameters,
+            "user": user.pk,
+            "organization": user.organization.pk,
         }
         # XXX error check
         requests.post(
