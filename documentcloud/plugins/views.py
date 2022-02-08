@@ -27,6 +27,9 @@ class PluginViewSet(viewsets.ModelViewSet):
         plugin = self.get_object()
         # XXX validate
         plugin.dispatch(
-            self.request.user, request.data["documents"], request.data["parameters"]
+            self.request.user,
+            request.data["documents"],
+            request.data.get("query"),
+            request.data["parameters"],
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
