@@ -3,6 +3,9 @@ from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+# Standard Library
+import logging
+
 # Third Party
 import requests
 from squarelet_auth.utils import squarelet_get
@@ -10,6 +13,8 @@ from squarelet_auth.utils import squarelet_get
 # DocumentCloud
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.plugins.querysets import PluginQuerySet
+
+logger = logging.getLogger(__name__)
 
 
 class Plugin(models.Model):
@@ -60,12 +65,13 @@ class Plugin(models.Model):
         itself to the DocumentCloud API
         """
         try:
-            # XXX must be logged in
             resp = squarelet_get("/api/access_tokens/{}/".format(user.uuid))
             resp.raise_for_status()
-        except requests.exceptions.RequestException:
-            # XXX error check
-            return None
+        except requests.exceptions.RequestException as exc:
+            logger.warning(
+                "Error getting token for Add-On: %s", exc, exc_info=sys.exc_info()
+            )
+            raise
         return resp.json().get("access_token")
 
     def dispatch(self, user, documents, query, parameters):
@@ -80,9 +86,21 @@ class Plugin(models.Model):
             "user": user.pk,
             "organization": user.organization.pk,
         }
-        # XXX error check
-        requests.post(
+        resp = requests.post(
             f"https://api.github.com/repos/{self.repository}/dispatches",
             headers={"Authorization": f"Bearer {self.github_token}"},
             json={"event_type": self.name, "client_payload": payload},
         )
+        resp.raise_for_status()
+
+    def validate(self, parameters):
+        """Validate the passed in parameters
+
+        This can eventually be expanded to do more then just check for missing
+        parameters
+        """
+        missing = []
+        for parameter in self.parameters:
+            if parameter["name"] not in parameters:
+                missing.append(parameter["name"])
+        return missing
