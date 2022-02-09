@@ -2,7 +2,7 @@
 
 # Django
 from django.db import models
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.db.models.expressions import Exists, OuterRef
 
 # Third Party
@@ -24,25 +24,24 @@ class UserQuerySet(models.QuerySet):
 
         if user.is_authenticated:
             # unions are much more performant than complex conditions
-            return self.filter(
-                pk__in=self.filter(organizations__in=user.organizations.all())
-                .order_by()
-                .values("pk")
-                .union(
-                    self.filter(projects__in=user.projects.all())
-                    .order_by()
-                    .values("pk"),
-                    self.annotate(
-                        public=Exists(
-                            Document.objects.filter(
-                                user=OuterRef("pk"), access=Access.public
-                            ).values("pk")
-                        )
-                    )
-                    .filter(public=True)
-                    .order_by()
-                    .values("pk"),
+            return self.annotate(
+                public=Exists(
+                    Document.objects.filter(
+                        user=OuterRef("pk"), access=Access.public
+                    ).values("pk")
                 )
+            ).filter(
+                Q(
+                    pk__in=self.filter(organizations__in=user.organizations.all())
+                    .order_by()
+                    .values("pk")
+                    .union(
+                        self.filter(projects__in=user.projects.all())
+                        .order_by()
+                        .values("pk")
+                    )
+                )
+                | Q(public=True)
             )
         else:
             return self.annotate(
