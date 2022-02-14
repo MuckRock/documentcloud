@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # This is using UTC time instead of the local timezone
 @periodic_task(
-    run_every=crontab(hour=5, minute=30), time_limit=600, soft_time_limit=540
+    run_every=crontab(hour=5, minute=30), time_limit=3600, soft_time_limit=3600
 )
 def store_statistics():
     """Store the daily statistics"""
@@ -55,21 +55,19 @@ def store_statistics():
         kwargs[f"total_documents_{key}"] = value
 
     logger.info("[STORE STATS] Page counts")
-    kwargs["total_pages"] = Document.objects.aggregate(
-        pages=Coalesce(Sum("page_count"), 0)
-    )["pages"]
-    kwargs["total_pages_public"] = Document.objects.filter(
-        access=Access.public
-    ).aggregate(pages=Coalesce(Sum("page_count"), 0))["pages"]
-    kwargs["total_pages_organization"] = Document.objects.filter(
-        access=Access.organization
-    ).aggregate(pages=Coalesce(Sum("page_count"), 0))["pages"]
-    kwargs["total_pages_private"] = Document.objects.filter(
-        access=Access.private
-    ).aggregate(pages=Coalesce(Sum("page_count"), 0))["pages"]
-    kwargs["total_pages_invisible"] = Document.objects.filter(
-        access=Access.invisible
-    ).aggregate(pages=Coalesce(Sum("page_count"), 0))["pages"]
+    page_counts = Document.objects.aggregate(
+        all=Coalesce(Sum("page_count"), 0),
+        public=Coalesce(Sum("page_count", filter=Q(access=Access.public)), 0),
+        private=Coalesce(Sum("page_count", filter=Q(access=Access.private)), 0),
+        organization=Coalesce(
+            Sum("page_count", filter=Q(access=Access.organization)), 0
+        ),
+        invisible=Coalesce(Sum("page_count", filter=Q(access=Access.invisible)), 0),
+    )
+
+    kwargs["total_pages"] = page_counts.pop("all")
+    for key, value in page_counts.items():
+        kwargs[f"total_pages_{key}"] = value
 
     logger.info("[STORE STATS] Note counts")
     note_counts = Note.objects.aggregate(
