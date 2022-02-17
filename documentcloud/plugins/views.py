@@ -1,4 +1,5 @@
 # Django
+from django.db import transaction
 from rest_framework import exceptions, mixins, status, viewsets
 from rest_framework.response import Response
 
@@ -45,15 +46,16 @@ class PluginRunViewSet(viewsets.ModelViewSet):
         if missing:
             raise exceptions.ValidationError({"parameters": f"Missing keys: {missing}"})
         try:
-            run = serializer.save(user=self.request.user)
-            run.plugin.dispatch(
-                run.uuid,
-                self.request.user,
-                self.request.data.get("documents"),
-                self.request.data.get("query"),
-                self.request.data["parameters"],
-            )
-            find_run_id.delay(run.uuid)
+            with transaction.atomic():
+                run = serializer.save(user=self.request.user)
+                run.plugin.dispatch(
+                    run.uuid,
+                    self.request.user,
+                    self.request.data.get("documents"),
+                    self.request.data.get("query"),
+                    self.request.data["parameters"],
+                )
+                transaction.on_commit(lambda: find_run_id.delay(run.uuid))
         except requests.exceptions.RequestException as exc:
             raise exceptions.ValidationError(
                 exc.args[0], code=status.HTTP_500_INTERNAL_SERVER_ERROR
