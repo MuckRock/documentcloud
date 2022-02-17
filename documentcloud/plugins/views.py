@@ -1,14 +1,17 @@
 # Django
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
+from rest_framework import exceptions, mixins, status, viewsets
 from rest_framework.response import Response
+
+# Standard Library
+from functools import lru_cache
 
 # Third Party
 import requests
 
 # DocumentCloud
-from documentcloud.plugins.models import Plugin
-from documentcloud.plugins.serializers import PluginSerializer
+from documentcloud.plugins.models import Plugin, PluginRun
+from documentcloud.plugins.serializers import PluginRunSerializer, PluginSerializer
+from documentcloud.plugins.tasks import find_run_id
 
 
 class PluginViewSet(viewsets.ModelViewSet):
@@ -24,34 +27,49 @@ class PluginViewSet(viewsets.ModelViewSet):
             user=self.request.user, organization=self.request.user.organization
         )
 
-    @action(detail=True, url_path="dispatch", methods=["post"])
-    def github_dispatch(self, request, pk=None):
-        # pylint: disable=unused-argument
-        if not request.user.is_authenticated:
-            return Response(
-                {"error": "You must be logged in to activate an Add-On"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if "parameters" not in request.data:
-            return Response(
-                {"error": "Missing `parameters`"}, status=status.HTTP_400_BAD_REQUEST
-            )
-        plugin = self.get_object()
-        missing = plugin.validate(request.data["parameters"])
+
+class PluginRunViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = PluginRunSerializer
+    queryset = PluginRun.objects.none()
+    lookup_field = "uuid"
+
+    @lru_cache()
+    def get_queryset(self):
+        """Only fetch plugin runs viewable to this user"""
+        return PluginRun.objects.get_viewable(self.request.user)
+
+    def perform_create(self, serializer):
+        if "parameters" not in self.request.data:
+            raise exceptions.ValidationError({"parameters": "Missing"})
+        missing = serializer.plugin.validate(self.request.data["parameters"])
         if missing:
-            return Response(
-                {"error": f"Missing the following keys from `parameters`: {mising}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            raise exceptions.ValidationError({"parameters": f"Missing keys: {missing}"})
         try:
-            plugin.dispatch(
+            run = serializer.save(user=self.request.user)
+            run.plugin.dispatch(
+                run.uuid,
                 self.request.user,
-                request.data.get("documents"),
-                request.data.get("query"),
-                request.data["parameters"],
+                self.request.data.get("documents"),
+                self.request.data.get("query"),
+                self.request.data["parameters"],
             )
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            find_run_id.delay(run.uuid)
         except requests.exceptions.RequestException as exc:
-            return Response(
-                {"error": exc.args[0]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            raise exceptions.ValidationError(
+                exc.args[0], code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def retrieve(self, request, *args, **kwargs):
+        """Update status before retrieving if necessary"""
+        # pylint: disable=unused-argument
+        instance = self.get_object()
+        if instance.status in ["queued", "in_progress"] and instance.run_id:
+            instance.status = instance.get_status()
+            instance.save()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
