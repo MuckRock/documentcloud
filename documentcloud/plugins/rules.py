@@ -18,5 +18,5 @@ def is_owner(user, run):
 
 add_perm("plugins.view_pluginrun", is_owner)
 add_perm("plugins.add_pluginrun", is_staff)
-add_perm("plugins.change_pluginrun", always_deny)
+add_perm("plugins.change_pluginrun", is_owner)
 add_perm("plugins.delete_pluginrun", always_deny)

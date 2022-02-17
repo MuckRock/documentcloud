@@ -28,12 +28,7 @@ class PluginViewSet(viewsets.ModelViewSet):
         )
 
 
-class PluginRunViewSet(
-    mixins.CreateModelMixin,
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet,
-):
+class PluginRunViewSet(viewsets.ModelViewSet):
     serializer_class = PluginRunSerializer
     queryset = PluginRun.objects.none()
     lookup_field = "uuid"
