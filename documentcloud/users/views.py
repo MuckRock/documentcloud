@@ -66,6 +66,7 @@ class MessageView(APIView):
 
     def post(self, request, format=None):
         """Send youself an email."""
+        # pylint: disable=redefined-builtin, unused-argument
         serializer = MessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         send_mail(
