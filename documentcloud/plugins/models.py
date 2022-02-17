@@ -191,7 +191,6 @@ class PluginRun(models.Model):
 
     def find_run_id(self):
         """Find the GitHub Actions run ID from the PluginRun's UUID"""
-        # XXX error checking
         date_filter = (self.created_at - timedelta(minutes=5)).strftime(
             "%Y-%m-%dT%H:%M"
         )
@@ -200,6 +199,7 @@ class PluginRun(models.Model):
             f"{self.plugin.api_url}/actions/runs?created=%3E{date_filter}",
             headers=self.plugin.api_headers,
         )
+        resp.raise_for_status()
         runs = resp.json()["workflow_runs"]
 
         logger.info("[FIND RUN ID] len(runs) %s", len(runs))
@@ -209,6 +209,7 @@ class PluginRun(models.Model):
                 logger.info("[FIND RUN ID] get jobs_url %s", jobs_url)
 
                 resp = requests.get(jobs_url, headers=self.plugin.api_headers)
+                resp.raise_for_status()
 
                 jobs = resp.json()["jobs"]
                 logger.info("[FIND RUN ID] len(jobs) %s", len(jobs))
@@ -238,7 +239,8 @@ class PluginRun(models.Model):
             f"{self.plugin.api_url}/actions/runs/{self.run_id}",
             headers=self.plugin.api_headers,
         )
-        # XXX error check
+        if resp.status_code != 200:
+            return None
         status = resp.json()["status"]
         if status == "completed":
             # if we are completed, use the conclusion as the status

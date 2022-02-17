@@ -4,13 +4,20 @@ from celery.task import task
 # Standard Library
 import logging
 
+# Third Party
+from requests.exceptions import RequestException
+
 # DocumentCloud
 from documentcloud.plugins.models import PluginRun
 
 logger = logging.getLogger(__name__)
 
 
-@task(retry_kwargs={"max_retries": 10})
+@task(
+    autoretry_for=(RequestException,),
+    retry_backoff=30,
+    retry_kwargs={"max_retries": 10},
+)
 def find_run_id(uuid):
     """Find the GitHub Actions run ID from the PluginRun's UUID"""
     logger.info("[FIND RUN ID] uuid %s", uuid)
