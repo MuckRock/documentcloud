@@ -8,3 +8,8 @@ class PluginQuerySet(models.QuerySet):
             return self.all()
         else:
             return self.none()
+
+
+class PluginRunQuerySet(models.QuerySet):
+    def get_viewable(self, user):
+        return self.filter(user=user)
