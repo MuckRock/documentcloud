@@ -1,5 +1,5 @@
 {% load premailer %}
-{% load static from staticfiles %}
+{% load static %}
 {% load i18n %}
 {% spaceless %}
   {% premailer base_url %}
@@ -224,7 +224,7 @@
                       </div>
                     </div>
                     <div class="body">
-                      {% block body %}{% endblock %}
+                      {% block body %}{{ content|urlize|linebreaks }}{% endblock %}
                     </div>
                     <div class="footer">
                       {% block settings %}{% endblock %}

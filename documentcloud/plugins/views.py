@@ -64,9 +64,9 @@ class PluginRunViewSet(viewsets.ModelViewSet):
         # pylint: disable=unused-argument
         instance = self.get_object()
         if instance.status in ["queued", "in_progress"]:
-            status = instance.get_status()
-            if status is not None:
-                instance.status = status
+            status_ = instance.get_status()
+            if status_ is not None:
+                instance.status = status_
                 instance.save()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)

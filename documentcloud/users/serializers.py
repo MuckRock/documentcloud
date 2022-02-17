@@ -75,3 +75,10 @@ class UserSerializer(FlexFieldsModelSerializer):
             return bool(obj.verified_organizations)
         else:
             return obj.verified_journalist
+
+
+class MessageSerializer(serializers.Serializer):
+    """A serializer for sending yourself a message"""
+
+    subject = serializers.CharField(max_length=255)
+    content = serializers.CharField()

@@ -36,7 +36,7 @@ from documentcloud.projects.views import (
 )
 from documentcloud.sidekick.routers import SidekickRouter
 from documentcloud.sidekick.views import SidekickViewSet
-from documentcloud.users.views import UserViewSet
+from documentcloud.users.views import MessageView, UserViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -92,6 +92,7 @@ urlpatterns = [
     path("api/", include(projects_router.urls)),
     path("api/", include(sidekick_router.urls)),
     path("api/", include("documentcloud.oembed.urls")),
+    path("api/messages/", MessageView.as_view(), name="message-create"),
     # Swagger
     path(
         "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
