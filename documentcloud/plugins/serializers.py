@@ -50,6 +50,7 @@ class PluginRunSerializer(serializers.ModelSerializer):
             "user",
             "status",
             "progress",
+            "message",
             "presigned_url",
             "file_url",
             "file_name",
