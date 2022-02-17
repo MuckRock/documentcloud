@@ -160,6 +160,11 @@ class PluginRun(models.Model):
         help_text=_("The status of this run"),
         default="queued",
     )
+    progress = models.PositiveSmallIntegerField(
+        _("progress"),
+        help_text=_("The progress as a percent done of this run"),
+        default=0,
+    )
 
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the document was created")
