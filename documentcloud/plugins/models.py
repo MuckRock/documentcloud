@@ -165,6 +165,12 @@ class PluginRun(models.Model):
         help_text=_("The progress as a percent done of this run"),
         default=0,
     )
+    message = models.CharField(
+        _("message"),
+        max_length=255,
+        help_text=_("A progress message for the user while the run is in progress"),
+        default="",
+    )
 
     file_name = models.CharField(
         _("file_name"),
