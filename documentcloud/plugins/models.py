@@ -166,6 +166,13 @@ class PluginRun(models.Model):
         default=0,
     )
 
+    file_name = models.CharField(
+        _("file_name"),
+        max_length=255,
+        help_text=_("Path to uploaded file on S3"),
+        default="",
+    )
+
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the document was created")
     )
@@ -231,3 +238,11 @@ class PluginRun(models.Model):
             # if we are completed, use the conclusion as the status
             status = resp.json()["conclusion"]
         return status
+
+    def file_path(self, file_name=None):
+        if file_name is None:
+            file_name = self.file_name
+        if file_name:
+            return f"{settings.PLUGIN_BUCKET}/{self.uuid}/{file_name}"
+        else:
+            return ""
