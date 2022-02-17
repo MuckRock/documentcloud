@@ -63,8 +63,10 @@ class PluginRunViewSet(viewsets.ModelViewSet):
         """Update status before retrieving if necessary"""
         # pylint: disable=unused-argument
         instance = self.get_object()
-        if instance.status in ["queued", "in_progress"] and instance.run_id:
-            instance.status = instance.get_status()
-            instance.save()
+        if instance.status in ["queued", "in_progress"]:
+            status = instance.get_status()
+            if status is not None:
+                instance.status = status
+                instance.save()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
