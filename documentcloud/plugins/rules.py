@@ -1,5 +1,5 @@
 # Third Party
-from rules import add_perm, always_deny, is_staff, predicate
+from rules import add_perm, always_deny, is_authenticated, is_staff, predicate
 
 # DocumentCloud
 from documentcloud.core.rules import skip_if_not_obj
@@ -18,5 +18,5 @@ def is_owner(user, run):
 
 add_perm("plugins.view_pluginrun", is_owner)
 add_perm("plugins.add_pluginrun", is_staff)
-add_perm("plugins.change_pluginrun", is_owner)
+add_perm("plugins.change_pluginrun", is_authenticated & is_owner)
 add_perm("plugins.delete_pluginrun", always_deny)
