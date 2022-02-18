@@ -20,7 +20,7 @@ class PluginViewSet(viewsets.ModelViewSet):
     queryset = Plugin.objects.none()
 
     def get_queryset(self):
-        return Plugin.objects.get_viewable(self.request.user)
+        return Plugin.objects.get_viewable(self.request.user).order_by("-pk")
 
     def perform_create(self, serializer):
         """Specify the user and organization"""
@@ -37,12 +37,14 @@ class PluginRunViewSet(viewsets.ModelViewSet):
     @lru_cache()
     def get_queryset(self):
         """Only fetch plugin runs viewable to this user"""
-        return PluginRun.objects.get_viewable(self.request.user)
+        return PluginRun.objects.get_viewable(self.request.user).order_by("-pk")
 
     def perform_create(self, serializer):
         if "parameters" not in self.request.data:
             raise exceptions.ValidationError({"parameters": "Missing"})
-        missing = serializer.plugin.validate(self.request.data["parameters"])
+        missing = serializer.validated_data["plugin"].validate(
+            self.request.data["parameters"]
+        )
         if missing:
             raise exceptions.ValidationError({"parameters": f"Missing keys: {missing}"})
         try:
