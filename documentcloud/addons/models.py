@@ -223,7 +223,7 @@ class AddOnRun(models.Model):
                         logger.info(
                             "[FIND RUN ID] second step name %s", second_step["name"]
                         )
-                        if second_step["name"] == self.uuid:
+                        if second_step["name"] == str(self.uuid):
                             return job["run_id"]
 
         # return None if fail to find the run ID
