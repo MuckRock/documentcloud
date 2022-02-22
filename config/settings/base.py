@@ -89,7 +89,7 @@ LOCAL_APPS = [
     "documentcloud.documents.apps.DocumentsConfig",
     "documentcloud.oembed.apps.OembedConfig",
     "documentcloud.organizations.apps.OrganizationsConfig",
-    "documentcloud.plugins.apps.PluginsConfig",
+    "documentcloud.addons.apps.AddOnsConfig",
     "documentcloud.projects.apps.ProjectsConfig",
     "documentcloud.statistics.apps.StatisticsConfig",
     "documentcloud.sidekick.apps.SidekickConfig",
@@ -421,7 +421,7 @@ BYPASS_RATE_LIMIT_SECRET = env("BYPASS_RATE_LIMIT_SECRET", default="")
 
 # bucket to store files in
 DOCUMENT_BUCKET = env("DOCUMENT_BUCKET", default="documents")
-PLUGIN_BUCKET = env("PLUGIN_BUCKET", default="plugins")
+ADDON_BUCKET = env("ADDON_BUCKET", default="addons")
 
 # Processing
 DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")

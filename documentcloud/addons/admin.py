@@ -5,10 +5,10 @@ from django.contrib import admin
 from reversion.admin import VersionAdmin
 
 # DocumentCloud
-from documentcloud.plugins.models import Plugin
+from documentcloud.addons.models import AddOn
 
 
-@admin.register(Plugin)
-class PluginAdmin(VersionAdmin):
+@admin.register(AddOn)
+class AddOnAdmin(VersionAdmin):
     list_display = ["name", "user", "organization", "repository"]
     autocomplete_fields = ["user", "organization"]

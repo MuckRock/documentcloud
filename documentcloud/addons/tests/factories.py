@@ -2,8 +2,8 @@
 import factory
 
 
-class PluginFactory(factory.django.DjangoModelFactory):
-    name = factory.Sequence(lambda n: f"Plugin {n}")
+class AddOnFactory(factory.django.DjangoModelFactory):
+    name = factory.Sequence(lambda n: f"Add-On {n}")
 
     user = factory.SubFactory(
         "documentcloud.users.tests.factories.UserFactory", is_staff=True
@@ -16,15 +16,15 @@ class PluginFactory(factory.django.DjangoModelFactory):
     parameters = [{"name": "test", "type": "text", "label": "Test"}]
 
     class Meta:
-        model = "plugins.Plugin"
+        model = "addons.AddOn"
 
 
-class PluginRunFactory(factory.django.DjangoModelFactory):
-    plugin = factory.SubFactory("documentcloud.plugins.tests.factories.PluginFactory")
+class AddOnRunFactory(factory.django.DjangoModelFactory):
+    addon = factory.SubFactory("documentcloud.addons.tests.factories.AddOnFactory")
 
     user = factory.SubFactory(
         "documentcloud.users.tests.factories.UserFactory", is_staff=True
     )
 
     class Meta:
-        model = "plugins.PluginRun"
+        model = "addons.AddOnRun"

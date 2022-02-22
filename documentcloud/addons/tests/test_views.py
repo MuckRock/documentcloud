@@ -8,42 +8,42 @@ from uuid import UUID
 import pytest
 
 # DocumentCloud
-from documentcloud.plugins.models import Plugin, PluginRun
-from documentcloud.plugins.serializers import PluginRunSerializer, PluginSerializer
-from documentcloud.plugins.tests.factories import PluginFactory, PluginRunFactory
+from documentcloud.addons.models import AddOn, AddOnRun
+from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
+from documentcloud.addons.tests.factories import AddOnFactory, AddOnRunFactory
 from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db()
-class TestPluginAPI:
+class TestAddOnAPI:
     def test_list(self, client):
-        """Non-staff cannot view plugins"""
+        """Non-staff cannot view add-ons"""
         size = 10
-        PluginFactory.create_batch(size)
-        response = client.get("/api/plugins/")
+        AddOnFactory.create_batch(size)
+        response = client.get("/api/addons/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == 0
 
     def test_list_staff(self, client):
-        """Staff can list plugins"""
+        """Staff can list add-ons"""
         size = 10
         user = UserFactory(is_staff=True)
         client.force_authenticate(user=user)
-        PluginFactory.create_batch(size)
-        response = client.get("/api/plugins/")
+        AddOnFactory.create_batch(size)
+        response = client.get("/api/addons/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_create(self, client):
-        """Test creating a new plugin"""
+        """Test creating a new add-on"""
         user = UserFactory(is_staff=True)
         client.force_authenticate(user=user)
         response = client.post(
-            "/api/plugins/",
+            "/api/addons/",
             {
-                "name": "Test Plugin",
+                "name": "Test AddOn",
                 "repository": "example/repo",
                 "parameters": [{"name": "param1", "type": "text"}],
             },
@@ -51,150 +51,148 @@ class TestPluginAPI:
         )
         assert response.status_code == status.HTTP_201_CREATED
         response_json = response.json()
-        assert Plugin.objects.filter(pk=response_json["id"]).exists()
+        assert AddOn.objects.filter(pk=response_json["id"]).exists()
 
     def test_retrieve(self, client):
-        """Test retrieving a new plugin"""
-        plugin = PluginFactory()
-        client.force_authenticate(user=plugin.user)
-        response = client.get(f"/api/plugins/{plugin.pk}/")
+        """Test retrieving a new add-on"""
+        addon = AddOnFactory()
+        client.force_authenticate(user=addon.user)
+        response = client.get(f"/api/addons/{addon.pk}/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
-        serializer = PluginSerializer(plugin)
+        serializer = AddOnSerializer(addon)
         assert response_json == serializer.data
 
     def test_update(self, client):
-        """Test updating a plugin"""
-        plugin = PluginFactory()
-        client.force_authenticate(user=plugin.user)
+        """Test updating a add-on"""
+        addon = AddOnFactory()
+        client.force_authenticate(user=addon.user)
         name = "New name"
-        response = client.patch(f"/api/plugins/{plugin.pk}/", {"name": name})
+        response = client.patch(f"/api/addons/{addon.pk}/", {"name": name})
         assert response.status_code == status.HTTP_200_OK
-        plugin.refresh_from_db()
-        assert plugin.name == name
+        addon.refresh_from_db()
+        assert addon.name == name
 
     def test_destroy(self, client):
-        """Test destroying a plugin"""
-        plugin = PluginFactory()
-        client.force_authenticate(user=plugin.user)
-        response = client.delete(f"/api/plugins/{plugin.pk}/")
+        """Test destroying a add-on"""
+        addon = AddOnFactory()
+        client.force_authenticate(user=addon.user)
+        response = client.delete(f"/api/addons/{addon.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert not Plugin.objects.filter(pk=plugin.pk).exists()
+        assert not AddOn.objects.filter(pk=addon.pk).exists()
 
 
 @pytest.mark.django_db()
-class TestPluginRunAPI:
+class TestAddOnRunAPI:
     def test_list(self, client):
-        """List plugin runs"""
+        """List add-on runs"""
         size = 10
         user = UserFactory(is_staff=True)
         client.force_authenticate(user=user)
-        PluginRunFactory.create_batch(size, user=user)
-        response = client.get("/api/plugin_runs/")
+        AddOnRunFactory.create_batch(size, user=user)
+        response = client.get("/api/addon_runs/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_create(self, client, mocker):
-        """Test creating a new plugin run"""
-        mock_dispatch = mocker.patch("documentcloud.plugins.models.Plugin.dispatch")
+        """Test creating a new add-on run"""
+        mock_dispatch = mocker.patch("documentcloud.addons.models.AddOn.dispatch")
         user = UserFactory(is_staff=True)
-        plugin = PluginFactory()
+        addon = AddOnFactory()
         client.force_authenticate(user=user)
         parameters = {"test": "foobar"}
         response = client.post(
-            "/api/plugin_runs/",
-            {"plugin": plugin.pk, "parameters": parameters},
+            "/api/addon_runs/",
+            {"addon": addon.pk, "parameters": parameters},
             format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
         response_json = response.json()
-        assert PluginRun.objects.filter(uuid=response_json["uuid"]).exists()
+        assert AddOnRun.objects.filter(uuid=response_json["uuid"]).exists()
         mock_dispatch.assert_called_once_with(
             UUID(response_json["uuid"]), user, None, None, parameters
         )
 
     def test_create_missing_parameters(self, client):
-        """Test creating a new plugin run"""
+        """Test creating a new add-on run"""
         user = UserFactory(is_staff=True)
-        plugin = PluginFactory()
+        addon = AddOnFactory()
         client.force_authenticate(user=user)
-        response = client.post(
-            "/api/plugin_runs/", {"plugin": plugin.pk}, format="json"
-        )
+        response = client.post("/api/addon_runs/", {"addon": addon.pk}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_missing_parameter_key(self, client):
-        """Test creating a new plugin run"""
+        """Test creating a new add-on run"""
         user = UserFactory(is_staff=True)
-        plugin = PluginFactory()
+        addon = AddOnFactory()
         client.force_authenticate(user=user)
         parameters = {"foo": "foobar"}
         response = client.post(
-            "/api/plugin_runs/",
-            {"plugin": plugin.pk, "parameters": parameters},
+            "/api/addon_runs/",
+            {"addon": addon.pk, "parameters": parameters},
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_retrieve(self, client):
-        """Test retrieving a plugin run"""
-        run = PluginRunFactory()
+        """Test retrieving a add-on run"""
+        run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
-        response = client.get(f"/api/plugin_runs/{run.uuid}/")
+        response = client.get(f"/api/addon_runs/{run.uuid}/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
-        serializer = PluginRunSerializer(run)
+        serializer = AddOnRunSerializer(run)
         assert response_json == serializer.data
         assert "presigned_url" not in response_json
         assert response_json["file_url"] is None
 
     def test_retrieve_upload_file(self, client):
-        """Test retrieving a plugin run with the intent to upload a file"""
-        run = PluginRunFactory()
+        """Test retrieving a add-on run with the intent to upload a file"""
+        run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
-        response = client.get(f"/api/plugin_runs/{run.uuid}/?upload_file=example.csv")
+        response = client.get(f"/api/addon_runs/{run.uuid}/?upload_file=example.csv")
         assert response.status_code == status.HTTP_200_OK
         assert "presigned_url" in response.json()
 
     def test_retrieve_download_file(self, client):
-        """Test retrieving a plugin run with an available file"""
-        run = PluginRunFactory(file_name="example.csv")
+        """Test retrieving a add-on run with an available file"""
+        run = AddOnRunFactory(file_name="example.csv")
         client.force_authenticate(user=run.user)
-        response = client.get(f"/api/plugin_runs/{run.uuid}/")
+        response = client.get(f"/api/addon_runs/{run.uuid}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["file_url"] is not None
 
     def test_update(self, client):
-        """Test updating a plugin run"""
-        run = PluginRunFactory()
+        """Test updating a add-on run"""
+        run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
         progress = 50
-        response = client.patch(f"/api/plugin_runs/{run.uuid}/", {"progress": progress})
+        response = client.patch(f"/api/addon_runs/{run.uuid}/", {"progress": progress})
         assert response.status_code == status.HTTP_200_OK
         run.refresh_from_db()
         assert run.progress == progress
 
     def test_update_bad_progress(self, client):
         """Progress must be between 0 and 100"""
-        run = PluginRunFactory()
+        run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
         progress = 150
-        response = client.patch(f"/api/plugin_runs/{run.uuid}/", {"progress": progress})
+        response = client.patch(f"/api/addon_runs/{run.uuid}/", {"progress": progress})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_update_no_plugin(self, client):
-        """You may not update the plugin"""
-        run = PluginRunFactory()
-        plugin = PluginFactory()
+    def test_update_no_addon(self, client):
+        """You may not update the add-on"""
+        run = AddOnRunFactory()
+        addon = AddOnFactory()
         client.force_authenticate(user=run.user)
-        response = client.patch(f"/api/plugin_runs/{run.uuid}/", {"plugin": plugin.pk})
+        response = client.patch(f"/api/addon_runs/{run.uuid}/", {"addon": addon.pk})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_destroy(self, client):
-        """A plugin run may not be destroyed"""
-        run = PluginRunFactory()
+        """A add-on run may not be destroyed"""
+        run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
-        response = client.delete(f"/api/plugin_runs/{run.uuid}/")
+        response = client.delete(f"/api/addon_runs/{run.uuid}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert PluginRun.objects.filter(pk=run.pk).exists()
+        assert AddOnRun.objects.filter(pk=run.pk).exists()

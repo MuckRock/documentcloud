@@ -3,13 +3,13 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 # DocumentCloud
+from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.common.environment import storage
-from documentcloud.plugins.models import Plugin, PluginRun
 
 
-class PluginSerializer(serializers.ModelSerializer):
+class AddOnSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Plugin
+        model = AddOn
         fields = [
             "id",
             "user",
@@ -28,7 +28,7 @@ class PluginSerializer(serializers.ModelSerializer):
         }
 
 
-class PluginRunSerializer(serializers.ModelSerializer):
+class AddOnRunSerializer(serializers.ModelSerializer):
 
     presigned_url = serializers.SerializerMethodField(
         label=_("Presigned URL"),
@@ -43,10 +43,10 @@ class PluginRunSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = PluginRun
+        model = AddOnRun
         fields = [
             "uuid",
-            "plugin",
+            "addon",
             "user",
             "status",
             "progress",
@@ -59,7 +59,7 @@ class PluginRunSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "uuid": {"read_only": True},
-            "plugin": {"queryset": Plugin.objects.none()},
+            "addon": {"queryset": AddOn.objects.none()},
             "user": {"read_only": True},
             "status": {"read_only": True},
             "file_name": {"write_only": True},
@@ -72,7 +72,7 @@ class PluginRunSerializer(serializers.ModelSerializer):
         context = kwargs.get("context", {})
         request = context.get("request")
         if request and request.user:
-            self.fields["plugin"].queryset = Plugin.objects.get_viewable(request.user)
+            self.fields["addon"].queryset = AddOn.objects.get_viewable(request.user)
 
         if (
             request
@@ -92,9 +92,9 @@ class PluginRunSerializer(serializers.ModelSerializer):
         else:
             return None
 
-    def validate_plugin(self, value):
+    def validate_addon(self, value):
         if self.instance and value:
-            raise serializers.ValidationError("You may not update `plugin`")
+            raise serializers.ValidationError("You may not update `addon`")
         return value
 
     def validate_progress(self, value):
