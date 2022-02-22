@@ -13,6 +13,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
+from documentcloud.addons.views import AddOnRunViewSet, AddOnViewSet
 from documentcloud.core.views import FileServer, account_logout
 from documentcloud.documents.views import (
     DataViewSet,
@@ -28,7 +29,6 @@ from documentcloud.documents.views import (
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.organizations.views import OrganizationViewSet
-from documentcloud.plugins.views import PluginRunViewSet, PluginViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
     ProjectMembershipViewSet,
@@ -60,8 +60,8 @@ router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
 router.register("users", UserViewSet)
-router.register("plugins", PluginViewSet)
-router.register("plugin_runs", PluginRunViewSet)
+router.register("addons", AddOnViewSet)
+router.register("addon_runs", AddOnRunViewSet)
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)

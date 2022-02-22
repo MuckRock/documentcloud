@@ -10,17 +10,17 @@ from functools import lru_cache
 import requests
 
 # DocumentCloud
-from documentcloud.plugins.models import Plugin, PluginRun
-from documentcloud.plugins.serializers import PluginRunSerializer, PluginSerializer
-from documentcloud.plugins.tasks import find_run_id
+from documentcloud.addons.models import AddOn, AddOnRun
+from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
+from documentcloud.addons.tasks import find_run_id
 
 
-class PluginViewSet(viewsets.ModelViewSet):
-    serializer_class = PluginSerializer
-    queryset = Plugin.objects.none()
+class AddOnViewSet(viewsets.ModelViewSet):
+    serializer_class = AddOnSerializer
+    queryset = AddOn.objects.none()
 
     def get_queryset(self):
-        return Plugin.objects.get_viewable(self.request.user).order_by("-pk")
+        return AddOn.objects.get_viewable(self.request.user).order_by("-pk")
 
     def perform_create(self, serializer):
         """Specify the user and organization"""
@@ -29,20 +29,20 @@ class PluginViewSet(viewsets.ModelViewSet):
         )
 
 
-class PluginRunViewSet(viewsets.ModelViewSet):
-    serializer_class = PluginRunSerializer
-    queryset = PluginRun.objects.none()
+class AddOnRunViewSet(viewsets.ModelViewSet):
+    serializer_class = AddOnRunSerializer
+    queryset = AddOnRun.objects.none()
     lookup_field = "uuid"
 
     @lru_cache()
     def get_queryset(self):
-        """Only fetch plugin runs viewable to this user"""
-        return PluginRun.objects.get_viewable(self.request.user).order_by("-pk")
+        """Only fetch add-on runs viewable to this user"""
+        return AddOnRun.objects.get_viewable(self.request.user).order_by("-pk")
 
     def perform_create(self, serializer):
         if "parameters" not in self.request.data:
             raise exceptions.ValidationError({"parameters": "Missing"})
-        missing = serializer.validated_data["plugin"].validate(
+        missing = serializer.validated_data["addon"].validate(
             self.request.data["parameters"]
         )
         if missing:
@@ -50,7 +50,7 @@ class PluginRunViewSet(viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 run = serializer.save(user=self.request.user)
-                run.plugin.dispatch(
+                run.addon.dispatch(
                     run.uuid,
                     self.request.user,
                     self.request.data.get("documents"),

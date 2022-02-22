@@ -2,7 +2,7 @@
 from django.db import models
 
 
-class PluginQuerySet(models.QuerySet):
+class AddOnQuerySet(models.QuerySet):
     def get_viewable(self, user):
         if user.is_staff:
             return self.all()
@@ -10,6 +10,6 @@ class PluginQuerySet(models.QuerySet):
             return self.none()
 
 
-class PluginRunQuerySet(models.QuerySet):
+class AddOnRunQuerySet(models.QuerySet):
     def get_viewable(self, user):
         return self.filter(user=user)

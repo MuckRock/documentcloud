@@ -2,6 +2,6 @@
 from django.apps import AppConfig
 
 
-class PluginsConfig(AppConfig):
+class AddOnsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "documentcloud.plugins"
+    name = "documentcloud.addons"

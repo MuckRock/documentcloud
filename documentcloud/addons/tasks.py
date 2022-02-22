@@ -8,7 +8,7 @@ import logging
 from requests.exceptions import RequestException
 
 # DocumentCloud
-from documentcloud.plugins.models import PluginRun
+from documentcloud.addons.models import AddOnRun
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
     retry_kwargs={"max_retries": 10},
 )
 def find_run_id(uuid):
-    """Find the GitHub Actions run ID from the PluginRun's UUID"""
+    """Find the GitHub Actions run ID from the AddOnRun's UUID"""
     logger.info("[FIND RUN ID] uuid %s", uuid)
-    run = PluginRun.objects.get(uuid=uuid)
+    run = AddOnRun.objects.get(uuid=uuid)
     run_id = run.find_run_id()
 
     if run_id is not None:

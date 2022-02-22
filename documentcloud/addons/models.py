@@ -14,43 +14,43 @@ import requests
 from squarelet_auth.utils import squarelet_get
 
 # DocumentCloud
+from documentcloud.addons.querysets import AddOnQuerySet, AddOnRunQuerySet
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
-from documentcloud.plugins.querysets import PluginQuerySet, PluginRunQuerySet
 
 logger = logging.getLogger(__name__)
 
 
-class Plugin(models.Model):
+class AddOn(models.Model):
 
-    objects = PluginQuerySet.as_manager()
+    objects = AddOnQuerySet.as_manager()
 
     user = models.ForeignKey(
         verbose_name=_("user"),
         to="users.User",
         on_delete=models.PROTECT,
-        related_name="plugins",
-        help_text=_("The user who created this plugin"),
+        related_name="addons",
+        help_text=_("The user who created this add-on"),
     )
     organization = models.ForeignKey(
         verbose_name=_("organization"),
         to="organizations.Organization",
         on_delete=models.PROTECT,
-        related_name="plugins",
-        help_text=_("The organization this plugin was created within"),
+        related_name="addons",
+        help_text=_("The organization this add-on was created within"),
     )
 
-    name = models.CharField(_("name"), max_length=255, help_text=_("The plugin's name"))
+    name = models.CharField(_("name"), max_length=255, help_text=_("The add-on's name"))
     repository = models.CharField(
-        _("repository"), max_length=140, help_text=_("The plugin's GitHub repository")
+        _("repository"), max_length=140, help_text=_("The add-on's GitHub repository")
     )
     github_token = models.CharField(
         _("github token"),
         max_length=40,
-        help_text=_("The token to access the plugin's GitHub repository"),
+        help_text=_("The token to access the add-on's GitHub repository"),
     )
 
     parameters = models.JSONField(
-        _("parameters"), help_text=_("The parameters for this plugin")
+        _("parameters"), help_text=_("The parameters for this add-on")
     )
 
     created_at = AutoCreatedField(
@@ -64,7 +64,7 @@ class Plugin(models.Model):
         return self.name
 
     def get_token(self, user):
-        """Get a JWT from squarelet for the plugin to be able to authenticate
+        """Get a JWT from squarelet for the add-on to be able to authenticate
         itself to the DocumentCloud API
         """
         try:
@@ -88,7 +88,7 @@ class Plugin(models.Model):
         return {"Authorization": f"Bearer {self.github_token}"}
 
     def dispatch(self, uuid, user, documents, query, parameters):
-        """Activate the GitHub Action for this plugin"""
+        """Activate the GitHub Action for this add-on"""
         token = self.get_token(user)
         payload = {
             "token": token,
@@ -120,24 +120,24 @@ class Plugin(models.Model):
         return missing
 
 
-class PluginRun(models.Model):
-    """Track a particular run of a plugin"""
+class AddOnRun(models.Model):
+    """Track a particular run of a add-on"""
 
-    objects = PluginRunQuerySet.as_manager()
+    objects = AddOnRunQuerySet.as_manager()
 
-    plugin = models.ForeignKey(
-        verbose_name=_("plugin"),
-        to=Plugin,
+    addon = models.ForeignKey(
+        verbose_name=_("add-on"),
+        to=AddOn,
         on_delete=models.PROTECT,
         related_name="runs",
-        help_text=_("The plugin which was ran"),
+        help_text=_("The add-on which was ran"),
     )
     user = models.ForeignKey(
         verbose_name=_("user"),
         to="users.User",
         on_delete=models.PROTECT,
-        related_name="plugin_runs",
-        help_text=_("The user who ran this plugin"),
+        related_name="addon_runs",
+        help_text=_("The user who ran this add-on"),
     )
     uuid = models.UUIDField(
         _("UUID"),
@@ -145,7 +145,7 @@ class PluginRun(models.Model):
         editable=False,
         default=uuid4,
         db_index=True,
-        help_text=_("Unique ID to track plugin runs"),
+        help_text=_("Unique ID to track add-on runs"),
     )
     run_id = models.IntegerField(
         _("run_id"),
@@ -187,17 +187,17 @@ class PluginRun(models.Model):
     )
 
     def __str__(self):
-        return f"Run: {self.plugin_id} - {self.created_at}"
+        return f"Run: {self.addon_id} - {self.created_at}"
 
     def find_run_id(self):
-        """Find the GitHub Actions run ID from the PluginRun's UUID"""
+        """Find the GitHub Actions run ID from the AddOnRun's UUID"""
         date_filter = (self.created_at - timedelta(minutes=5)).strftime(
             "%Y-%m-%dT%H:%M"
         )
 
         resp = requests.get(
-            f"{self.plugin.api_url}/actions/runs?created=%3E{date_filter}",
-            headers=self.plugin.api_headers,
+            f"{self.addon.api_url}/actions/runs?created=%3E{date_filter}",
+            headers=self.addon.api_headers,
         )
         resp.raise_for_status()
         runs = resp.json()["workflow_runs"]
@@ -208,7 +208,7 @@ class PluginRun(models.Model):
                 jobs_url = workflow["jobs_url"]
                 logger.info("[FIND RUN ID] get jobs_url %s", jobs_url)
 
-                resp = requests.get(jobs_url, headers=self.plugin.api_headers)
+                resp = requests.get(jobs_url, headers=self.addon.api_headers)
                 resp.raise_for_status()
 
                 jobs = resp.json()["jobs"]
@@ -236,8 +236,8 @@ class PluginRun(models.Model):
             return None
 
         resp = requests.get(
-            f"{self.plugin.api_url}/actions/runs/{self.run_id}",
-            headers=self.plugin.api_headers,
+            f"{self.addon.api_url}/actions/runs/{self.run_id}",
+            headers=self.addon.api_headers,
         )
         if resp.status_code != 200:
             return None
@@ -251,6 +251,6 @@ class PluginRun(models.Model):
         if file_name is None:
             file_name = self.file_name
         if file_name:
-            return f"{settings.PLUGIN_BUCKET}/{self.uuid}/{file_name}"
+            return f"{settings.ADDON_BUCKET}/{self.uuid}/{file_name}"
         else:
             return ""
