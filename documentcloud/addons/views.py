@@ -1,7 +1,6 @@
 # Django
 from django.db import transaction
-from rest_framework import exceptions, mixins, status, viewsets
-from rest_framework.response import Response
+from rest_framework import exceptions, status, viewsets
 
 # Standard Library
 from functools import lru_cache

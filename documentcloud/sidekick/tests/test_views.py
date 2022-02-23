@@ -9,10 +9,8 @@ import json
 import pytest
 
 # DocumentCloud
-from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.sidekick.choices import Status
 from documentcloud.sidekick.models import Sidekick
-from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db()
