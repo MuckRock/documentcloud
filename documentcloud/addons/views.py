@@ -8,6 +8,7 @@ from functools import lru_cache
 
 # Third Party
 import requests
+from django_filters import rest_framework as django_filters
 
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
@@ -62,3 +63,10 @@ class AddOnRunViewSet(viewsets.ModelViewSet):
             raise exceptions.ValidationError(
                 exc.args[0], code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = AddOnRun
+            fields = {"dismissed": ["exact"]}
+
+    filterset_class = Filter

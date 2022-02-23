@@ -179,6 +179,15 @@ class AddOnRun(models.Model):
         default="",
     )
 
+    dismissed = models.BooleanField(
+        _("dismissed"),
+        default=False,
+        help_text=_(
+            "If this run has been dismissed from view and should no longer be "
+            "shown to the user"
+        ),
+    )
+
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the document was created")
     )
