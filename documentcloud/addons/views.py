@@ -62,15 +62,3 @@ class AddOnRunViewSet(viewsets.ModelViewSet):
             raise exceptions.ValidationError(
                 exc.args[0], code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-    def retrieve(self, request, *args, **kwargs):
-        """Update status before retrieving if necessary"""
-        # pylint: disable=unused-argument
-        instance = self.get_object()
-        if instance.status in ["queued", "in_progress"]:
-            status_ = instance.get_status()
-            if status_ is not None:
-                instance.status = status_
-                instance.save()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)

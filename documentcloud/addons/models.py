@@ -224,28 +224,34 @@ class AddOnRun(models.Model):
                             "[FIND RUN ID] second step name %s", second_step["name"]
                         )
                         if second_step["name"] == str(self.uuid):
-                            return job["run_id"]
+                            return job["run_id"], job["status"], job["conclusion"]
 
         # return None if fail to find the run ID
         return None
 
-    def get_status(self):
+    def set_status(self):
         """Get the status from the GitHub API"""
 
         if not self.run_id:
-            return None
+            logger.info("[SET STATUS] %s - no run id", self.uuid)
+            return
 
         resp = requests.get(
             f"{self.addon.api_url}/actions/runs/{self.run_id}",
             headers=self.addon.api_headers,
         )
         if resp.status_code != 200:
-            return None
+            logger.info(
+                "[SET STATUS] %s - %d request error", self.uuid, resp.status_code
+            )
+            return
         status = resp.json()["status"]
         if status == "completed":
             # if we are completed, use the conclusion as the status
             status = resp.json()["conclusion"]
-        return status
+        logger.info("[SET STATUS] %s - %s", self.uuid, self.status)
+        self.status = status
+        self.save()
 
     def file_path(self, file_name=None):
         if file_name is None:
