@@ -2,12 +2,15 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+# Third Party
+from rest_flex_fields import FlexFieldsModelSerializer
+
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.common.environment import storage
 
 
-class AddOnSerializer(serializers.ModelSerializer):
+class AddOnSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = AddOn
         fields = [
@@ -28,7 +31,7 @@ class AddOnSerializer(serializers.ModelSerializer):
         }
 
 
-class AddOnRunSerializer(serializers.ModelSerializer):
+class AddOnRunSerializer(FlexFieldsModelSerializer):
 
     presigned_url = serializers.SerializerMethodField(
         label=_("Presigned URL"),
@@ -67,6 +70,7 @@ class AddOnRunSerializer(serializers.ModelSerializer):
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
         }
+        expandable_fields = {"addon": ("documentcloud.addons.AddOnSerializer", {})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
