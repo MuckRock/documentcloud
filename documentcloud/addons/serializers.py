@@ -54,6 +54,7 @@ class AddOnRunSerializer(serializers.ModelSerializer):
             "presigned_url",
             "file_url",
             "file_name",
+            "dismissed",
             "created_at",
             "updated_at",
         ]
