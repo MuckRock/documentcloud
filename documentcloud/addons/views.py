@@ -9,6 +9,8 @@ from functools import lru_cache
 # Third Party
 import requests
 from django_filters import rest_framework as django_filters
+from rest_flex_fields import FlexFieldsModelViewSet
+from rest_flex_fields.utils import is_expanded
 
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
@@ -30,15 +32,19 @@ class AddOnViewSet(viewsets.ModelViewSet):
         )
 
 
-class AddOnRunViewSet(viewsets.ModelViewSet):
+class AddOnRunViewSet(FlexFieldsModelViewSet):
     serializer_class = AddOnRunSerializer
     queryset = AddOnRun.objects.none()
     lookup_field = "uuid"
+    permit_list_expands = ["addon"]
 
     @lru_cache()
     def get_queryset(self):
         """Only fetch add-on runs viewable to this user"""
-        return AddOnRun.objects.get_viewable(self.request.user).order_by("-pk")
+        queryset = AddOnRun.objects.get_viewable(self.request.user).order_by("-pk")
+        if is_expanded(self.request, "addon"):
+            queryset = queryset.select_related("addon")
+        return queryset
 
     def perform_create(self, serializer):
         if "parameters" not in self.request.data:
