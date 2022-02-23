@@ -1,5 +1,5 @@
 # Django
-from celery.task import periodic_task, task
+from celery.task import task
 
 # Standard Library
 import logging

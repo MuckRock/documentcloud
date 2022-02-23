@@ -80,5 +80,7 @@ class UserSerializer(FlexFieldsModelSerializer):
 class MessageSerializer(serializers.Serializer):
     """A serializer for sending yourself a message"""
 
+    # pylint: disable=abstract-method
+
     subject = serializers.CharField(max_length=255)
     content = serializers.CharField()
