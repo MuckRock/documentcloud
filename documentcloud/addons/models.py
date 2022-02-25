@@ -10,6 +10,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 # Third Party
+import jsonschema
 import requests
 from squarelet_auth.utils import squarelet_get
 
@@ -108,16 +109,8 @@ class AddOn(models.Model):
         resp.raise_for_status()
 
     def validate(self, parameters):
-        """Validate the passed in parameters
-
-        This can eventually be expanded to do more then just check for missing
-        parameters
-        """
-        missing = []
-        for parameter in self.parameters:
-            if parameter["name"] not in parameters:
-                missing.append(parameter["name"])
-        return missing
+        """Validate the passed in parameters"""
+        jsonschema.validate(instance=parameters, schema=self.parameters)
 
 
 class AddOnRun(models.Model):

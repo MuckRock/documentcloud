@@ -48,11 +48,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     def perform_create(self, serializer):
         if "parameters" not in self.request.data:
             raise exceptions.ValidationError({"parameters": "Missing"})
-        missing = serializer.validated_data["addon"].validate(
-            self.request.data["parameters"]
-        )
-        if missing:
-            raise exceptions.ValidationError({"parameters": f"Missing keys: {missing}"})
+        serializer.validated_data["addon"].validate(self.request.data["parameters"])
         try:
             with transaction.atomic():
                 run = serializer.save(user=self.request.user)
