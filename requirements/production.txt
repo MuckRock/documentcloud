@@ -16,7 +16,7 @@ argon2-cffi==19.1.0       # via -r requirements/./base.txt
 asgiref==3.4.1            # via -r requirements/./base.txt, django, scout-apm
 async-generator==1.10     # via -r requirements/./base.txt, aiobotocore
 async-timeout==3.0.1      # via -r requirements/./base.txt, aiohttp
-attrs==19.3.0             # via -r requirements/./base.txt, aiohttp
+attrs==19.3.0             # via -r requirements/./base.txt, aiohttp, jsonschema
 backcall==0.1.0           # via -r requirements/./base.txt, ipython
 billiard==3.6.3.0         # via -r requirements/./base.txt, celery
 boto3==1.10.14            # via -r requirements/./base.txt, aiobotocore, django-storages, smart-open
@@ -82,7 +82,7 @@ gunicorn==19.9.0          # via -r requirements/production.in
 html2text==2020.1.16      # via -r requirements/./base.txt
 idna-ssl==1.1.0           # via -r requirements/./base.txt, aiohttp
 idna==2.8                 # via -r requirements/./base.txt, idna-ssl, requests, urllib3, yarl
-importlib-metadata==0.21  # via -r requirements/./base.txt, jsonpickle, kombu, markdown, scout-apm
+importlib-metadata==0.21  # via -r requirements/./base.txt, jsonpickle, jsonschema, kombu, markdown, scout-apm
 inflection==0.3.1         # via -r requirements/./base.txt, drf-yasg
 ipython-genutils==0.2.0   # via -r requirements/./base.txt, traitlets
 ipython==7.11.1           # via -r requirements/./base.txt
@@ -92,6 +92,7 @@ jedi==0.16.0              # via -r requirements/./base.txt, ipython
 jinja2==2.10.1            # via -r requirements/./base.txt, coreschema
 jmespath==0.9.4           # via -r requirements/./base.txt, boto3, botocore
 jsonpickle==2.0.0         # via moesifapi, moesifdjango
+jsonschema==3.2.0         # via -r requirements/./base.txt
 kombu==4.6.8              # via -r requirements/./base.txt, celery
 libcst==0.3.15            # via -r requirements/./base.txt, google-cloud-language
 listcrunch==1.0.0         # via -r requirements/./base.txt
@@ -136,6 +137,7 @@ pygments==2.5.2           # via -r requirements/./base.txt, ipython
 pyjwt==2.3.0              # via -r requirements/./base.txt, djangorestframework-simplejwt, social-auth-core
 pyopenssl==19.1.0         # via urllib3
 pyparsing==2.4.2          # via -r requirements/./base.txt, packaging
+pyrsistent==0.18.0        # via -r requirements/./base.txt, jsonschema
 python-crontab==2.3.8     # via -r requirements/./base.txt, django-celery-beat
 python-dateutil==2.8.0    # via -r requirements/./base.txt, botocore, moesifapi, moesifdjango, python-crontab
 python-jose==3.0.1        # via -r requirements/./base.txt, social-auth-core
@@ -158,7 +160,7 @@ s3transfer==0.2.1         # via -r requirements/./base.txt, boto3
 scipy==1.5.4              # via -r requirements/./base.txt
 scout-apm==2.17.0         # via -r requirements/production.in
 sentry-sdk==1.0.0         # via -r requirements/production.in
-six==1.15.0               # via -r requirements/./base.txt, apscheduler, argon2-cffi, django-anymail, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, traitlets
+six==1.15.0               # via -r requirements/./base.txt, apscheduler, argon2-cffi, django-anymail, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, jsonschema, orderedmultidict, packaging, protobuf, pyopenssl, python-dateutil, python-jose, social-auth-app-django, traitlets
 smart-open==1.8.4         # via -r requirements/./base.txt
 social-auth-app-django==4.0.0  # via -r requirements/./base.txt, rest-social-auth
 social-auth-core[openidconnect]==4.1.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth

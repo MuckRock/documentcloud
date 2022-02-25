@@ -13,6 +13,7 @@ pebble
 unidecode
 markdown
 html2text
+jsonschema
 
 # Django
 # ------------------------------------------------------------------------------
