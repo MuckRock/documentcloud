@@ -360,7 +360,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "documentcloud.core.permissions.DjangoObjectPermissionsOrAnonReadOnly"
     ],
-    "DEFAULT_PAGINATION_CLASS": "documentcloud.core.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "documentcloud.core.pagination.VersionedPagination",
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "HTML_SELECT_CUTOFF": 20,
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -368,6 +368,9 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "documentcloud.core.authentication.ProcessingTokenAuthentication",
     ),
+    "DEFAULT_VERSIONING_CLASS": "documentcloud.core.versioning.QueryParameterVersioning",
+    "DEFAULT_VERSION": "1.0",
+    "ALLOWED_VERSIONS": ["1.0", "2.0"],
 }
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
 ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=100)

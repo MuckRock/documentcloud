@@ -62,6 +62,51 @@ class PageNumberPagination(pagination.PageNumberPagination):
         return list(self.page)
 
 
+class CursorPagination(pagination.CursorPagination):
+    ordering = "pk"
+    page_size = 25
+    max_page_size = 1000
+    page_size_query_param = "per_page"
+
+
+class VersionedPagination(pagination.BasePagination):
+    """Proxies calls to different paginators depending on the version of the
+    API in use
+    """
+
+    # pylint: disable=abstract-method
+
+    def __init__(self):
+        self.default_paginator = PageNumberPagination()
+        self.paginators = {"1.0": self.default_paginator, "2.0": CursorPagination()}
+
+    def paginate_queryset(self, queryset, request, view=None):
+        self.request = request
+        paginator = self.paginators.get(request.version, self.default_paginator)
+        return paginator.paginate_queryset(queryset, request, view)
+
+    def __getattribute__(self, attr):
+        """Redirect all other attribute accesses to the given paginator based on
+        the request version
+        """
+        attributes = [
+            "__init__",
+            "paginate_queryset",
+            "default_paginator",
+            "paginators",
+            "request",
+        ]
+        if attr in attributes:
+            return super().__getattribute__(attr)
+        if hasattr(self, "request"):
+            paginator = self.paginators.get(
+                self.request.version, self.default_paginator
+            )
+        else:
+            paginator = self.default_paginator
+        return getattr(paginator, attr)
+
+
 class NoCountPaginator(Paginator):
     """For the admin where count is too slow"""
 
