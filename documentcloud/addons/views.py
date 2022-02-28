@@ -6,6 +6,7 @@ from rest_framework import exceptions, status, viewsets
 from functools import lru_cache
 
 # Third Party
+import jsonschema
 import requests
 from django_filters import rest_framework as django_filters
 from rest_flex_fields import FlexFieldsModelViewSet
@@ -46,13 +47,6 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        if "parameters" not in self.request.data:
-            raise exceptions.ValidationError({"parameters": "Missing"})
-        missing = serializer.validated_data["addon"].validate(
-            self.request.data["parameters"]
-        )
-        if missing:
-            raise exceptions.ValidationError({"parameters": f"Missing keys: {missing}"})
         try:
             with transaction.atomic():
                 run = serializer.save(user=self.request.user)

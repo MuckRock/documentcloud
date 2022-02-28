@@ -107,18 +107,6 @@ class AddOn(models.Model):
         )
         resp.raise_for_status()
 
-    def validate(self, parameters):
-        """Validate the passed in parameters
-
-        This can eventually be expanded to do more then just check for missing
-        parameters
-        """
-        missing = []
-        for parameter in self.parameters:
-            if parameter["name"] not in parameters:
-                missing.append(parameter["name"])
-        return missing
-
 
 class AddOnRun(models.Model):
     """Track a particular run of a add-on"""

@@ -101,7 +101,7 @@ class TestAddOnRunAPI:
         user = UserFactory(is_staff=True)
         addon = AddOnFactory()
         client.force_authenticate(user=user)
-        parameters = {"test": "foobar"}
+        parameters = {"name": "foobar"}
         response = client.post(
             "/api/addon_runs/",
             {"addon": addon.pk, "parameters": parameters},
@@ -115,15 +115,15 @@ class TestAddOnRunAPI:
         )
 
     def test_create_missing_parameters(self, client):
-        """Test creating a new add-on run"""
+        """Test creating a new add-on run missing the parameters"""
         user = UserFactory(is_staff=True)
         addon = AddOnFactory()
         client.force_authenticate(user=user)
         response = client.post("/api/addon_runs/", {"addon": addon.pk}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_missing_parameter_key(self, client):
-        """Test creating a new add-on run"""
+    def test_create_parameters_invalid(self, client):
+        """Test creating a new add-on run with invalid parameters"""
         user = UserFactory(is_staff=True)
         addon = AddOnFactory()
         client.force_authenticate(user=user)

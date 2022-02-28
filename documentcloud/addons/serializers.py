@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 # Third Party
+import jsonschema
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -45,6 +46,12 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         help_text=_("The presigned URL to download the file from"),
     )
 
+    parameters = serializers.JSONField(
+        label=_("Parameters"),
+        write_only=True,
+        help_text=_("The user supplied parameters"),
+    )
+
     class Meta:
         model = AddOnRun
         fields = [
@@ -58,6 +65,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             "file_url",
             "file_name",
             "dismissed",
+            "parameters",
             "created_at",
             "updated_at",
         ]
@@ -106,3 +114,14 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         if value < 0 or value > 100:
             raise serializers.ValidationError("`progress` must be between 0 and 100")
         return value
+
+    def validate(self, attrs):
+        """Validate the parameters using jsonschema"""
+        if "parameters" in attrs:
+            try:
+                jsonschema.validate(
+                    instance=attrs.pop("parameters"), schema=attrs["addon"].parameters
+                )
+            except jsonschema.exceptions.ValidationError as exc:
+                raise serializers.ValidationError(exc.message)
+        return attrs

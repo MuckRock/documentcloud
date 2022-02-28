@@ -13,7 +13,12 @@ class AddOnFactory(factory.django.DjangoModelFactory):
     repository = factory.Sequence(lambda n: f"owner/repo-{n}")
     github_token = factory.Sequence(lambda n: f"ghp_{n}")
 
-    parameters = [{"name": "test", "type": "text", "label": "Test"}]
+    parameters = {
+        "type": "object",
+        "title": "Hello World",
+        "required": ["name"],
+        "properties": {"name": {"type": "string", "title": "Name"}},
+    }
 
     class Meta:
         model = "addons.AddOn"
