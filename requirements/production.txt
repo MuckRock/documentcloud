@@ -23,7 +23,7 @@ boto3==1.10.14            # via -r requirements/./base.txt, aiobotocore, django-
 boto==2.49.0              # via -r requirements/./base.txt, smart-open
 botocore==1.13.14         # via -r requirements/./base.txt, aiobotocore, boto3, s3transfer
 cachetools==3.1.1         # via -r requirements/./base.txt, google-auth
-celery==4.4.2             # via -r requirements/./base.txt, squarelet-auth
+celery==4.4.2             # via -r requirements/./base.txt, django-celery-email, squarelet-auth
 certifi==2019.6.16        # via -r requirements/./base.txt, requests, sentry-sdk, urllib3
 cffi==1.12.3              # via -r requirements/./base.txt, argon2-cffi, cryptography
 chardet==3.0.4            # via -r requirements/./base.txt, aiohttp, pdfminer.six, requests
@@ -38,9 +38,10 @@ dataclasses==0.8          # via -r requirements/./base.txt, libcst
 decorator==4.4.0          # via -r requirements/./base.txt, gcsfs, ipython, traitlets
 defusedxml==0.6.0         # via -r requirements/./base.txt, python3-openid, social-auth-core
 django-anymail[mailgun]==6.1.0  # via -r requirements/production.in
-django-appconf==1.0.3     # via -r requirements/./base.txt, django-compressor
+django-appconf==1.0.3     # via -r requirements/./base.txt, django-celery-email, django-compressor
 django-autoslug==1.9.8    # via -r requirements/./base.txt
 django-celery-beat==1.5.0  # via -r requirements/./base.txt
+django-celery-email==3.0.0  # via -r requirements/production.in
 django-choices==1.7.2     # via -r requirements/./base.txt
 django-compressor==2.4.1  # via -r requirements/./base.txt
 django-cors-headers==3.1.0  # via -r requirements/./base.txt
@@ -56,7 +57,7 @@ django-reversion==4.0.0   # via -r requirements/./base.txt
 django-robots==4.0        # via -r requirements/./base.txt
 django-storages[boto3]==1.12.3  # via -r requirements/production.in, collectfast
 django-timezone-field==4.2.1  # via -r requirements/./base.txt, django-celery-beat
-django==3.2.9             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
+django==3.2.9             # via -r requirements/./base.txt, collectfast, django-anymail, django-appconf, django-celery-email, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-reversion, django-storages, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/./base.txt
 djangorestframework==3.12.4  # via -r requirements/./base.txt, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
 docutils==0.15.2          # via -r requirements/./base.txt, botocore
