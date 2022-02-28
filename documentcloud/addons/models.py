@@ -11,6 +11,7 @@ from uuid import uuid4
 
 # Third Party
 import jsonschema
+import json
 import requests
 from squarelet_auth.utils import squarelet_get
 
@@ -110,7 +111,7 @@ class AddOn(models.Model):
 
     def validate(self, parameters):
         """Validate the passed in parameters"""
-        jsonschema.validate(instance=parameters, schema=self.parameters)
+        jsonschema.validate(instance=json.loads(parameters), schema=self.parameters)
 
 
 class AddOnRun(models.Model):
