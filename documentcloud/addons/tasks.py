@@ -24,8 +24,7 @@ def find_run_id(uuid):
     run = AddOnRun.objects.get(uuid=uuid)
     data = run.find_run_id()
 
-    # if data is not None:
-    if False:
+    if data is not None:
         run_id, status, conclusion = data
         run.run_id = run_id
         if status == "completed":
