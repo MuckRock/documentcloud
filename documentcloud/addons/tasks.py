@@ -24,7 +24,8 @@ def find_run_id(uuid):
     run = AddOnRun.objects.get(uuid=uuid)
     data = run.find_run_id()
 
-    if data is not None:
+    # if data is not None:
+    if False:
         run_id, status, conclusion = data
         run.run_id = run_id
         if status == "completed":
@@ -35,7 +36,11 @@ def find_run_id(uuid):
         run.save()
     else:
         # if we fail to find the run ID, try again
-        find_run_id.retry(args=[uuid], countdown=5)
+        find_run_id.retry(
+            args=[uuid],
+            countdown=min(2 ** find_run_id.request.retries, 30),
+            max_retries=10,
+        )
 
 
 @task
