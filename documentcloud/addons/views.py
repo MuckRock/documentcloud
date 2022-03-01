@@ -15,7 +15,7 @@ from rest_flex_fields.utils import is_expanded
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
-from documentcloud.addons.tasks import find_run_id
+from documentcloud.addons.tasks import dispatch
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -47,20 +47,17 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        try:
-            with transaction.atomic():
-                run = serializer.save(user=self.request.user)
-                run.addon.dispatch(
+        with transaction.atomic():
+            run = serializer.save(user=self.request.user)
+            transaction.on_commit(
+                lambda: dispatch.delay(
+                    run.addon_id,
                     run.uuid,
-                    self.request.user,
+                    self.request.user.pk,
                     self.request.data.get("documents"),
                     self.request.data.get("query"),
                     self.request.data["parameters"],
                 )
-                transaction.on_commit(lambda: find_run_id.delay(run.uuid))
-        except requests.exceptions.RequestException as exc:
-            raise exceptions.ValidationError(
-                exc.args[0], code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     class Filter(django_filters.FilterSet):

@@ -97,7 +97,6 @@ class TestAddOnRunAPI:
 
     def test_create(self, client, mocker):
         """Test creating a new add-on run"""
-        mock_dispatch = mocker.patch("documentcloud.addons.models.AddOn.dispatch")
         user = UserFactory(is_staff=True)
         addon = AddOnFactory()
         client.force_authenticate(user=user)
@@ -110,9 +109,6 @@ class TestAddOnRunAPI:
         assert response.status_code == status.HTTP_201_CREATED
         response_json = response.json()
         assert AddOnRun.objects.filter(uuid=response_json["uuid"]).exists()
-        mock_dispatch.assert_called_once_with(
-            UUID(response_json["uuid"]), user, None, None, parameters
-        )
 
     def test_create_missing_parameters(self, client):
         """Test creating a new add-on run missing the parameters"""

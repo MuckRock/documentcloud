@@ -1,4 +1,5 @@
 # Django
+from celery.exceptions import MaxRetriesExceededError
 from celery.task import task
 
 # Standard Library
@@ -8,7 +9,8 @@ import logging
 from requests.exceptions import RequestException
 
 # DocumentCloud
-from documentcloud.addons.models import AddOnRun
+from documentcloud.addons.models import AddOn, AddOnRun
+from documentcloud.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -50,3 +52,19 @@ def set_run_status(uuid):
     if run.status in ["queued", "in_progress"]:
         # if we are not in a completed status, continue polling for new status
         set_run_status.apply_async(args=[uuid], countdown=5)
+
+
+@task
+def dispatch(addon_id, uuid, user_id, documents, query, parameters):
+    addon = AddOn.objects.get(pk=addon_id)
+    user = User.objects.get(pk=user_id)
+
+    try:
+        addon.dispatch(uuid, user, documents, query, parameters)
+        find_run_id.delay(uuid)
+    except RequestException as exc:
+        try:
+            dispatch.retry(exc=exc, max_retries=3, countdown=10)
+        except MaxRetriesExceededError:
+            logger.error("Failed to dispatch: %s", uuid)
+            AddOnRun.objects.filter(uuid=uuid).update(status="failure")
