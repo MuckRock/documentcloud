@@ -549,7 +549,9 @@ def _format_response(results, query_params, user, page, per_page, escaped):
     expands = query_params.get("expand", "").split(",")
     count = results.hits
 
-    results = _add_asset_url(_format_notes(_format_data(_format_highlights(results))))
+    results = _add_canonical_url(
+        _add_asset_url(_format_notes(_format_data(_format_highlights(results))))
+    )
     if settings.SOLR_ADD_EDIT_ACCESS:
         results = _add_edit_access(user, results)
     if "user" in expands:
@@ -639,6 +641,15 @@ def _format_notes(results):
         return result
 
     return [format_note(r) for r in results]
+
+
+def _add_canonical_url(results):
+
+    for result in results:
+        result[
+            "canonical_url"
+        ] = f"{settings.DOCCLOUD_URL}/documents/{result['id']}-{result['slug']}"
+    return results
 
 
 def _add_asset_url(results):
