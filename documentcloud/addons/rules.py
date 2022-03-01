@@ -1,10 +1,23 @@
+# Django
+from django.conf import settings
+
 # Third Party
-from rules import add_perm, always_deny, is_authenticated, is_staff, predicate
+from rules import (
+    add_perm,
+    always_allow,
+    always_deny,
+    is_authenticated,
+    is_staff,
+    predicate,
+)
 
 # DocumentCloud
 from documentcloud.core.rules import skip_if_not_obj
 
-add_perm("addons.view_addon", is_staff)
+if settings.ADDONS_SHOW_ALL:
+    add_perm("addons.view_addon", always_allow)
+else:
+    add_perm("addons.view_addon", is_staff)
 add_perm("addons.add_addon", is_staff)
 add_perm("addons.change_addon", is_staff)
 add_perm("addons.delete_addon", is_staff)

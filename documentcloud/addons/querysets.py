@@ -1,10 +1,11 @@
 # Django
+from django.conf import settings
 from django.db import models
 
 
 class AddOnQuerySet(models.QuerySet):
     def get_viewable(self, user):
-        if user.is_staff:
+        if user.is_staff or settings.ADDONS_SHOW_ALL:
             return self.all()
         else:
             return self.none()
