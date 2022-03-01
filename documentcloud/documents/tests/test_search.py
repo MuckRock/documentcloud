@@ -274,6 +274,20 @@ class TestSearch:
         )
         assert response["count"] == 1
 
+    def test_search_created_at_range(self):
+        """Test searching by created_at date range"""
+
+        response = self.search(
+            "created_at=[2011-02-01T00:00:00Z TO 2011-03-01T00:00:00Z]"
+        )
+        self.assert_documents(
+            response["results"],
+            test=lambda d: datetime(2011, 2, 1, tzinfo=pytz.utc)
+            <= d["created_at"]
+            <= datetime(2011, 3, 1, tzinfo=pytz.utc),
+        )
+        assert response["count"] == 2
+
     def test_search_created_at_invalid(self):
         """Test searching for an invalid project"""
         self.search("created_at=foo")
@@ -484,6 +498,7 @@ class TestDateValidator:
             ("NOW+2MONTHS+2DAYS/MONTH", True),
             ("NOW/YEAR+2MONTHS/MONTH+2DAYS/DAY", True),
             ("NOW/YEAR+NOW", False),
+            ("[NOW-1HOUR TO *]", True),
         ],
     )
     def test_validator(self, query, valid):

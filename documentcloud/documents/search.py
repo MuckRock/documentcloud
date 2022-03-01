@@ -10,7 +10,7 @@ from datetime import datetime
 # Third Party
 import pysolr
 from luqum.parser import ParseError, parser
-from luqum.tree import Boost, Not, Prohibit, Unary
+from luqum.tree import Boost, Not, Prohibit, Range, Unary, Word
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
@@ -437,6 +437,14 @@ def _filter_queries(user, query_params):
     return filter_queries
 
 
+def _validate_range(value, validator):
+    """Validate using the validator as well as ensuring the top level node
+    is either a word or range
+    """
+    node = parser.parse(value)
+    return all(validator.visit(node)) and isinstance(node, (Word, Range))
+
+
 def _handle_params(query_params, fields, dynamic_fields):
     """Convert query params to a list of Solr field queries"""
     return_list = []
@@ -449,13 +457,13 @@ def _handle_params(query_params, fields, dynamic_fields):
             # joining with whitespace will default to OR
             values = query_params.getlist(param)
             if field in NUMERIC_FIELDS:
-                values = [v for v in values if NumberValidator()._validate(v)]
+                values = [v for v in values if _validate_range(v, NumberValidator())]
             if field in DATE_FIELDS:
                 # validate date fields and escape colons
                 values = [
                     v.replace(":", "\\:")
                     for v in values
-                    if DateValidator()._validate(v)
+                    if _validate_range(v, DateValidator())
                 ]
             values = " ".join(values)
             if values:
