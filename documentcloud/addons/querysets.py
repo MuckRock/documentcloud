@@ -12,4 +12,7 @@ class AddOnQuerySet(models.QuerySet):
 
 class AddOnRunQuerySet(models.QuerySet):
     def get_viewable(self, user):
-        return self.filter(user=user)
+        if user.is_authenticated:
+            return self.filter(user=user)
+        else:
+            return self.none()
