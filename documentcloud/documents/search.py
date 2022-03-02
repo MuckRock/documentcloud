@@ -514,16 +514,20 @@ def _paginate(query_params, user):
             return default
 
     if user.is_authenticated:
-        max_value = PageNumberPagination.max_page_size
+        max_page_size = PageNumberPagination.max_page_size
+        max_page = PageNumberPagination.auth_page_limit
     else:
-        max_value = settings.SOLR_ANON_MAX_ROWS
+        max_page_size = settings.SOLR_ANON_MAX_ROWS
+        max_page = PageNumberPagination.anon_page_limit
 
     rows = get_int(
         PageNumberPagination.page_size_query_param,
         PageNumberPagination.page_size,
-        max_value=max_value,
+        max_value=max_page_size,
     )
-    page = get_int(PageNumberPagination.page_query_param, 1, min_value=1)
+    page = get_int(
+        PageNumberPagination.page_query_param, 1, min_value=1, max_value=max_page
+    )
     start = (page - 1) * rows
     return rows, start, page
 
