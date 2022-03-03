@@ -414,6 +414,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+        except ValueError as exc:
+            return Response(
+                {"error": exc.args[0], "code": "max_page"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         else:
             return Response(response)
 

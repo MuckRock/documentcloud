@@ -525,9 +525,11 @@ def _paginate(query_params, user):
         PageNumberPagination.page_size,
         max_value=max_page_size,
     )
-    page = get_int(
-        PageNumberPagination.page_query_param, 1, min_value=1, max_value=max_page
-    )
+    page = get_int(PageNumberPagination.page_query_param, 1, min_value=1)
+    if page > max_page:
+        raise ValueError(
+            f"The selected `page` value of {page} is over the limit of {max_page}"
+        )
     start = (page - 1) * rows
     return rows, start, page
 
