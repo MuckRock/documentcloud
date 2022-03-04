@@ -1,13 +1,11 @@
 # Django
 from django.db import transaction
-from rest_framework import exceptions, status, viewsets
+from rest_framework import viewsets
 
 # Standard Library
 from functools import lru_cache
 
 # Third Party
-import jsonschema
-import requests
 from django_filters import rest_framework as django_filters
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded

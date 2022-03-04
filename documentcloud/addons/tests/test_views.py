@@ -1,9 +1,6 @@
 # Django
 from rest_framework import status
 
-# Standard Library
-from uuid import UUID
-
 # Third Party
 import pytest
 
@@ -95,7 +92,7 @@ class TestAddOnRunAPI:
         response_json = response.json()
         assert len(response_json["results"]) == size
 
-    def test_create(self, client, mocker):
+    def test_create(self, client):
         """Test creating a new add-on run"""
         user = UserFactory(is_staff=True)
         addon = AddOnFactory()

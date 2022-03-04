@@ -10,7 +10,6 @@ from datetime import timedelta
 from uuid import uuid4
 
 # Third Party
-import jsonschema
 import requests
 from squarelet_auth.utils import squarelet_get
 
