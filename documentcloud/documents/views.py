@@ -452,7 +452,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not self.request.user or not self.request.user.is_authenticated:
             return Response([])
 
-        pending_ocuments = list(
+        pending_documents = list(
             Document.objects.filter(
                 user=self.request.user, status=Status.pending
             ).values_list("id", flat=True)
