@@ -731,9 +731,16 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     permission_classes = (IsAuthenticated,)
 
     def get_object(self):
-        document = get_object_or_404(
-            Document.objects.get_viewable(self.request.user).select_for_update(),
+        # Just check if we have view permissions
+        get_object_or_404(
+            Document.objects.get_viewable(self.request.user).values_list("pk"),
             pk=self.kwargs["document_pk"],
+        )
+        # Then reload with select_for_update - cannot do in one call since
+        # get_viewable has a distinct clause which cannot be run with select
+        # for update
+        document = Document.objects.select_for_update().get(
+            pk=self.kwargs["document_pk"]
         )
         if not self.request.user.has_perm("documents.change_document", document):
             self.permission_denied(self.request, "You may not edit this document")
