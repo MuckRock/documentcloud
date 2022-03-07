@@ -126,7 +126,7 @@ def search(user, query_params):
         kwargs["uf"] = "* _query_ -projects_edit_access"
 
     # these are for calculating edit access
-    if user.is_authenticated:
+    if user.is_authenticated and not settings.SOLR_ADD_EDIT_ACCESS:
         organizations = user.organizations.all()
         projects = user.projects.filter(
             collaboration__access__in=(

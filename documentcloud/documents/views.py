@@ -452,7 +452,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not self.request.user or not self.request.user.is_authenticated:
             return Response([])
 
-        pending_documents = list(
+        pending_ocuments = list(
             Document.objects.filter(
                 user=self.request.user, status=Status.pending
             ).values_list("id", flat=True)
@@ -472,9 +472,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             return Response([])
 
     class Filter(django_filters.FilterSet):
-        ordering = django_filters.OrderingFilter(
-            fields=("created_at", "page_count", "title", "source")
-        )
         user = ModelMultipleChoiceFilter(model=User)
         organization = ModelMultipleChoiceFilter(model=Organization)
         project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
@@ -486,7 +483,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             fields = {
                 "user": ["exact"],
                 "organization": ["exact"],
-                # "project": ["exact"],
                 "access": ["exact"],
                 "status": ["exact"],
                 "created_at": ["lt", "gt"],

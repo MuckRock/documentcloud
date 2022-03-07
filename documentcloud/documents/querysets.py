@@ -26,12 +26,9 @@ class DocumentQuerySet(models.QuerySet):
                 # you can see documents you own
                 | Q(user=user)
                 # you may see documents in your projects
-                # written this way for performance
                 | Q(
-                    id__in=self.model.objects.filter(
-                        projects__in=user.projects.all(),
-                        projectmembership__edit_access=True,
-                    )
+                    projects__in=user.projects.all(),
+                    projectmembership__edit_access=True,
                 )
                 # you can see organization level documents in your
                 # organization
@@ -44,6 +41,7 @@ class DocumentQuerySet(models.QuerySet):
                 self.exclude(access=Access.invisible)
                 .exclude(status=Status.deleted)
                 .filter(query)
+                .distinct("id")
             )
         else:
             return self.filter(
@@ -63,13 +61,8 @@ class DocumentQuerySet(models.QuerySet):
                 # you can edit documents you own that are not public
                 (Q(user=user) & ~Q(access=Access.public))
                 # you may edit documents in your projects shared for editing
-                # written this way for performance
                 | (
-                    Q(
-                        id__in=self.model.objects.filter(
-                            projects__in=projects, projectmembership__edit_access=True
-                        )
-                    )
+                    Q(projects__in=projects, projectmembership__edit_access=True)
                     & ~Q(access=Access.public)
                 )
                 # you can edit organization level documents in your
@@ -83,6 +76,7 @@ class DocumentQuerySet(models.QuerySet):
                 self.exclude(access=Access.invisible)
                 .exclude(status=Status.deleted)
                 .filter(query)
+                .distinct("id")
             )
         else:
             return self.none()

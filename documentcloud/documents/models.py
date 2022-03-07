@@ -63,6 +63,7 @@ class Document(models.Model):
         choices=Status.choices,
         default=Status.nofile,
         help_text=_("The processing status of this document"),
+        db_index=True,
     )
 
     title = models.CharField(
@@ -207,7 +208,7 @@ class Document(models.Model):
     )
 
     class Meta:
-        ordering = ("created_at",)
+        ordering = ("pk",)
         permissions = (
             (
                 "share_document",
@@ -223,6 +224,13 @@ class Document(models.Model):
                 "Can change the user or organization which owns the document",
             ),
         )
+        indexes = [
+            models.Index(
+                fields=["id"],
+                condition=Q(solr_dirty=True) & ~Q(status=Status.deleted),
+                name="solr_dirty",
+            )
+        ]
 
     def __str__(self):
         return self.title

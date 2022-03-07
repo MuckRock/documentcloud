@@ -271,14 +271,6 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         _solr_set(instance.document_id)
 
     class Filter(django_filters.FilterSet):
-        ordering = OrderingFilter(
-            fields=(
-                ("document__created_at", "created_at"),
-                ("document__page_count", "page_count"),
-                ("document__title", "title"),
-                ("document__source", "source"),
-            )
-        )
         document_id__in = ModelMultipleChoiceFilter(
             model=Document, field_name="document"
         )
@@ -286,10 +278,6 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         class Meta:
             model = ProjectMembership
             fields = ["document_id__in"]
-            order_by = ("created_at", "page_count")
-
-        def get_ordering(self, order_choice):
-            return [order_choice, "pk"]
 
     filterset_class = Filter
 
