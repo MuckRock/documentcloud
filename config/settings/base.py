@@ -74,7 +74,6 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "drf_yasg",
     "rest_framework",
-    "reversion",
     "rules.apps.AutodiscoverRulesConfig",
     "social_django",
     "corsheaders",
@@ -168,7 +167,6 @@ MIDDLEWARE = [
     "social_django.middleware.SocialAuthExceptionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "reversion.middleware.RevisionMiddleware",
     "documentcloud.core.middleware.ProfilerMiddleware",
 ]
 

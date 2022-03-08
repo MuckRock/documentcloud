@@ -47,10 +47,9 @@ django-filter==21.1       # via -r requirements/base.in
 django-model-utils==3.2.0  # via -r requirements/base.in
 django-premailer==0.2.0   # via -r requirements/base.in
 django-redis==5.0.0       # via -r requirements/base.in, python-redis-lock
-django-reversion==4.0.0   # via -r requirements/base.in
 django-robots==4.0        # via -r requirements/base.in
 django-timezone-field==4.2.1  # via django-celery-beat
-django==3.2.9             # via -r requirements/base.in, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-reversion, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
+django==3.2.9             # via -r requirements/base.in, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
 djangorestframework-simplejwt==4.3.0  # via -r requirements/base.in
 djangorestframework==3.12.4  # via -r requirements/base.in, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
 docutils==0.15.2          # via botocore

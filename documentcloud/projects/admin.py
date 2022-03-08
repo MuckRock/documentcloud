@@ -1,15 +1,12 @@
 # Django
 from django.contrib import admin
 
-# Third Party
-from reversion.admin import VersionAdmin
-
 # DocumentCloud
 from documentcloud.projects.models import Project
 
 
 @admin.register(Project)
-class ProjectAdmin(VersionAdmin):
+class ProjectAdmin(admin.ModelAdmin):
     """Document Admin"""
 
     list_display = ("title", "user", "private")

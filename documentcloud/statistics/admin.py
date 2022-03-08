@@ -1,15 +1,12 @@
 # Django
 from django.contrib import admin
 
-# Third Party
-from reversion.admin import VersionAdmin
-
 # DocumentCloud
 from documentcloud.statistics.models import Statistics
 
 
 @admin.register(Statistics)
-class StatisticsAdmin(VersionAdmin):
+class StatisticsAdmin(admin.ModelAdmin):
     list_display = (
         "date",
         "total_documents",

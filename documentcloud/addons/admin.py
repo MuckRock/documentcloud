@@ -6,9 +6,6 @@ from django.forms import widgets
 # Standard Library
 import json
 
-# Third Party
-from reversion.admin import VersionAdmin
-
 # DocumentCloud
 from documentcloud.addons.models import AddOn
 
@@ -28,7 +25,7 @@ class PrettyJSONWidget(widgets.Textarea):
 
 
 @admin.register(AddOn)
-class AddOnAdmin(VersionAdmin):
+class AddOnAdmin(admin.ModelAdmin):
     list_display = ["name", "user", "organization", "repository"]
     autocomplete_fields = ["user", "organization"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}

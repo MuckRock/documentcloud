@@ -126,17 +126,6 @@ def db_cleanup():
     logger.info("Starting DB Clean up")
     try:
         call_command("clearsessions", verbosity=2)
-        call_command("deleterevisions", "documents", days=90, verbosity=2)
-        call_command(
-            "deleterevisions",
-            "organizations",
-            "addons",
-            "projects",
-            "statistics",
-            "users",
-            days=180,
-            verbosity=2,
-        )
     except SoftTimeLimitExceeded:
         logger.error("DB Clean up took too long")
     logger.info("Ending DB Clean up")

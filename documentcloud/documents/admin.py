@@ -2,9 +2,6 @@
 from django.contrib import admin
 from django.db import transaction
 
-# Third Party
-from reversion.admin import VersionAdmin
-
 # DocumentCloud
 from documentcloud.core.pagination import LargeTablePaginator
 from documentcloud.documents.models import Document
@@ -12,7 +9,7 @@ from documentcloud.documents.tasks import solr_index
 
 
 @admin.register(Document)
-class DocumentAdmin(VersionAdmin):
+class DocumentAdmin(admin.ModelAdmin):
     """Document Admin"""
 
     list_display = ("title", "user", "organization", "access", "status")
