@@ -63,19 +63,19 @@ class AddOn(models.Model):
     def __str__(self):
         return self.name
 
-    def get_token(self, user):
-        """Get a JWT from squarelet for the add-on to be able to authenticate
-        itself to the DocumentCloud API
+    def get_tokens(self, user):
+        """Get a JWT refresh token an access token from squarelet for the
+        add-on to be able to authenticate itself to the DocumentCloud API
         """
         try:
-            resp = squarelet_get("/api/access_tokens/{}/".format(user.uuid))
+            resp = squarelet_get("/api/refresh_tokens/{}/".format(user.uuid))
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             logger.warning(
                 "Error getting token for Add-On: %s", exc, exc_info=sys.exc_info()
             )
             raise
-        return resp.json().get("access_token")
+        return resp.json()
 
     @property
     def api_url(self):
@@ -89,9 +89,10 @@ class AddOn(models.Model):
 
     def dispatch(self, uuid, user, documents, query, parameters):
         """Activate the GitHub Action for this add-on"""
-        token = self.get_token(user)
+        tokens = self.get_access_token(user)
         payload = {
-            "token": token,
+            "token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
             "base_uri": settings.DOCCLOUD_API_URL + "/api/",
             "id": str(uuid),
             "documents": documents,
