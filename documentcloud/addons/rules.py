@@ -30,6 +30,9 @@ def is_owner(user, run):
 
 
 add_perm("addons.view_addonrun", is_owner)
-add_perm("addons.add_addonrun", is_staff)
+if settings.ADDONS_SHOW_ALL:
+    add_perm("addons.add_addonrun", is_authenticated)
+else:
+    add_perm("addons.add_addonrun", is_staff)
 add_perm("addons.change_addonrun", is_authenticated & is_owner)
 add_perm("addons.delete_addonrun", always_deny)
