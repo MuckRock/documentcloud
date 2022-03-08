@@ -167,7 +167,6 @@ MIDDLEWARE = [
     "social_django.middleware.SocialAuthExceptionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "documentcloud.core.middleware.ProfilerMiddleware",
 ]
 
 # STATIC
