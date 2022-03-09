@@ -89,7 +89,7 @@ class AddOn(models.Model):
 
     def dispatch(self, uuid, user, documents, query, parameters):
         """Activate the GitHub Action for this add-on"""
-        tokens = self.get_access_token(user)
+        tokens = self.get_tokens(user)
         payload = {
             "token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
