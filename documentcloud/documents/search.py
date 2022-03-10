@@ -14,7 +14,7 @@ from luqum.tree import Boost, Not, Prohibit, Range, Unary, Word
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
-from documentcloud.core.pagination import PageNumberPagination
+from documentcloud.core.pagination import CursorPagination, PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.models import Document
 from documentcloud.documents.search_escape import escape
@@ -58,15 +58,15 @@ TEXT_FIELDS = {
 DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 
 SORT_MAP = {
-    "score": "score desc, created_at desc",
-    "created_at": "created_at desc",
-    "-created_at": "created_at asc",
-    "page_count": "page_count desc, created_at desc",
-    "-page_count": "page_count asc, created_at desc",
-    "title": "title_sort asc, created_at desc",
-    "-title": "title_sort desc, created_at desc",
-    "source": "source_sort asc, created_at desc",
-    "-source": "source_sort desc, created_at desc",
+    "score": "score desc, id desc",
+    "created_at": "created_at desc, id desc",
+    "-created_at": "created_at asc, id desc",
+    "page_count": "page_count desc, id desc",
+    "-page_count": "page_count asc, id desc",
+    "title": "title_sort asc, id desc",
+    "-title": "title_sort desc, id desc",
+    "source": "source_sort asc, id desc",
+    "-source": "source_sort desc, id desc",
 }
 SOLR = pysolr.Solr(
     settings.SOLR_URL,
@@ -99,7 +99,7 @@ def search(user, query_params):
         query_params.get("sort", query_params.get("order", sort_order)),
         SORT_MAP["score"],
     )
-    rows, start, page = _paginate(query_params, user)
+    page_query_data, page_response_data = _paginate(query_params, user)
 
     # allow explicit enabling of highlighting
     if query_params.get("hl", "").lower() == "true":
@@ -108,11 +108,9 @@ def search(user, query_params):
     kwargs = {
         "fq": filter_queries,
         "sort": sort,
-        "rows": rows,
-        "start": start,
         "hl": "on" if settings.SOLR_USE_HL and use_hl else "off",
-        "hl.requireFieldMatch": settings.SOLR_HL_REQUIRE_FIELD_MATCH,
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
+        **page_query_data,
     }
     if (
         settings.SOLR_QUERY_NOTES
@@ -144,7 +142,9 @@ def search(user, query_params):
         )
 
     results = SOLR.search(text_query, **kwargs)
-    response = _format_response(results, query_params, user, page, rows, escaped)
+    response = _format_response(
+        results, query_params, user, escaped, page_response_data
+    )
 
     if settings.DEBUG or user.is_staff:
         response["debug"] = {"text_query": text_query, "qtime": results.qtime, **kwargs}
@@ -498,20 +498,34 @@ def _access_filter(user):
         return ["filter(access:public AND status:(success readable))"]
 
 
-def _paginate(query_params, user):
+def _paginate(query_params, user):  # pylint: disable=inconsistent-return-statements
     """Emulate the Django Rest Framework pagination style"""
+    version = query_params.get("version", settings.REST_FRAMEWORK["DEFAULT_VERSION"])
 
-    def get_int(field, default, max_value=None, min_value=None):
-        """Helper function to convert a parameter to an integer"""
-        try:
-            value = int(query_params.get(field, default))
-            if max_value is not None:
-                value = min(value, max_value)
-            if min_value is not None:
-                value = max(value, min_value)
-            return value
-        except ValueError:
-            return default
+    if version not in ["1.0", "2.0"]:
+        version = settings.REST_FRAMEWORK["DEFAULT_VERSION"]
+
+    if version == "1.0":
+        return _paginate_page(query_params, user)
+    elif version == "2.0":
+        return _paginate_cursor(query_params, user)
+
+
+def _get_int(query_params, field, default, max_value=None, min_value=None):
+    """Helper function to convert a parameter to an integer"""
+    try:
+        value = int(query_params.get(field, default))
+        if max_value is not None:
+            value = min(value, max_value)
+        if min_value is not None:
+            value = max(value, min_value)
+        return value
+    except ValueError:
+        return default
+
+
+def _paginate_page(query_params, user):
+    """Emulate the Django Rest Framework page number pagination style"""
 
     if user.is_authenticated:
         max_page_size = PageNumberPagination.max_page_size
@@ -520,36 +534,63 @@ def _paginate(query_params, user):
         max_page_size = settings.SOLR_ANON_MAX_ROWS
         max_page = PageNumberPagination.anon_page_limit
 
-    rows = get_int(
+    rows = _get_int(
+        query_params,
         PageNumberPagination.page_size_query_param,
         PageNumberPagination.page_size,
         max_value=max_page_size,
     )
-    page = get_int(PageNumberPagination.page_query_param, 1, min_value=1)
+    page = _get_int(query_params, PageNumberPagination.page_query_param, 1, min_value=1)
     if page > max_page:
         raise ValueError(
             f"The selected `page` value of {page} is over the limit of {max_page}"
         )
     start = (page - 1) * rows
-    return rows, start, page
+    return {"rows": rows, "start": start}, {"page": page, "rows": rows}
 
 
-def _format_response(results, query_params, user, page, per_page, escaped):
+def _paginate_cursor(query_params, user):
+    """Emulate the Django Rest Framework cursor pagination style"""
+
+    if user.is_authenticated:
+        max_page_size = CursorPagination.max_page_size
+    else:
+        max_page_size = settings.SOLR_ANON_MAX_ROWS
+
+    cursor = query_params.get("cursor", "*")
+
+    rows = _get_int(
+        query_params,
+        CursorPagination.page_size_query_param,
+        CursorPagination.page_size,
+        max_value=max_page_size,
+    )
+    return {"rows": rows, "cursorMark": cursor}, {}
+
+
+def _format_response(results, query_params, user, escaped, page_data):
     """Emulate the Django Rest Framework response format"""
     base_url = f"{settings.DOCCLOUD_API_URL}/api/documents/search/"
     query_params = query_params.copy()
 
-    max_page = math.ceil(results.hits / per_page)
-    if page < max_page:
-        query_params["page"] = page + 1
-        next_url = f"{base_url}?{query_params.urlencode()}"
-    else:
-        next_url = None
+    if "page" in page_data:
+        page = page_data["page"]
+        per_page = page_data["rows"]
+        max_page = math.ceil(results.hits / per_page)
+        if page < max_page:
+            query_params["page"] = page + 1
+            next_url = f"{base_url}?{query_params.urlencode()}"
+        else:
+            next_url = None
 
-    if page > 1:
-        query_params["page"] = page - 1
-        previous_url = f"{base_url}?{query_params.urlencode()}"
+        if page > 1:
+            query_params["page"] = page - 1
+            previous_url = f"{base_url}?{query_params.urlencode()}"
+        else:
+            previous_url = None
     else:
+        query_params["cursor"] = results.nextCursorMark
+        next_url = f"{base_url}?{query_params.urlencode()}"
         previous_url = None
 
     expands = query_params.get("expand", "").split(",")
@@ -596,7 +637,9 @@ def _format_data(results):
 def _format_highlights(results):
     """Put the highlight data with the corresponding document"""
 
-    return [{**r, "highlights": results.highlighting.get(r["id"])} for r in results]
+    return [
+        {**r, "highlights": results.highlighting.get(r["id"])} for r in results.docs
+    ]
 
 
 def _format_notes(results):
