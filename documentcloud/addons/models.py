@@ -11,6 +11,7 @@ from uuid import uuid4
 
 # Third Party
 import requests
+import yaml
 from squarelet_auth.utils import squarelet_get
 
 # DocumentCloud
@@ -60,6 +61,12 @@ class AddOn(models.Model):
         _("updated at"), help_text=_("Timestamp of when the document was last updated")
     )
 
+    error = models.BooleanField(
+        _("error"),
+        help_text=_("There was an error with the configuration file"),
+        default=False,
+    )
+
     def __str__(self):
         return self.name
 
@@ -107,6 +114,24 @@ class AddOn(models.Model):
             json={"event_type": self.name, "client_payload": payload},
         )
         resp.raise_for_status()
+
+    def update_config(self):
+        """Update the config from the repo's config.yaml file"""
+        resp = requests.get(
+            f"{self.api_url}/contents/config.yaml",
+            headers={**self.api_headers, "Accept": "application/vnd.github.v3.raw"},
+        )
+        if resp.status_code == 404:
+            self.error = True
+            self.save()
+            return
+        resp.raise_for_status()
+        try:
+            self.parameters = yaml.safe_load(resp.content)
+            self.error = False
+        except yaml.YAMLError:
+            self.error = True
+        self.save()
 
 
 class AddOnRun(models.Model):
