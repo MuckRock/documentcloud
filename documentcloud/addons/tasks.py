@@ -68,3 +68,11 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters):
         except MaxRetriesExceededError:
             logger.error("Failed to dispatch: %s", uuid)
             AddOnRun.objects.filter(uuid=uuid).update(status="failure")
+
+
+@task(
+    autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
+)
+def update_config(repository):
+    for addon in AddOn.objects.filter(repository=repository):
+        addon.update_config()

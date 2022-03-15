@@ -1,6 +1,9 @@
 # Django
 from django.db import transaction
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 # Standard Library
 from functools import lru_cache
@@ -13,7 +16,7 @@ from rest_flex_fields.utils import is_expanded
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
-from documentcloud.addons.tasks import dispatch
+from documentcloud.addons.tasks import dispatch, update_config
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -28,6 +31,13 @@ class AddOnViewSet(viewsets.ModelViewSet):
         serializer.save(
             user=self.request.user, organization=self.request.user.organization
         )
+
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    def update_config(self, request):
+        name = request.data.get("repository")
+        if name:
+            update_config.delay(name)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AddOnRunViewSet(FlexFieldsModelViewSet):

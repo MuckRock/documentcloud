@@ -1,13 +1,16 @@
 # Django
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import JSONField
 from django.forms import widgets
+from django.http.response import HttpResponseRedirect
+from django.urls import path, reverse
 
 # Standard Library
 import json
 
 # DocumentCloud
 from documentcloud.addons.models import AddOn
+from documentcloud.addons.tasks import update_config
 
 
 # https://stackoverflow.com/questions/48145992/showing-json-field-in-django-admin
@@ -29,3 +32,20 @@ class AddOnAdmin(admin.ModelAdmin):
     list_display = ["name", "user", "organization", "repository"]
     autocomplete_fields = ["user", "organization"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
+
+    def get_urls(self):
+        """Add custom URLs here"""
+        urls = super().get_urls()
+        my_urls = [
+            path(
+                "update_config/<int:pk>/<path:repository>/",
+                self.admin_site.admin_view(self.update_config),
+                name="addon-update-config",
+            )
+        ]
+        return my_urls + urls
+
+    def update_config(self, request, pk, repository):
+        update_config.delay(repository)
+        messages.success(request, f"Updating from repo {repository}")
+        return HttpResponseRedirect(reverse("admin:addons_addon_change", args=[pk]))
