@@ -2,6 +2,7 @@
 from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 # Standard Library
@@ -31,7 +32,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
             user=self.request.user, organization=self.request.user.organization
         )
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def update_config(self, request):
         name = request.data.get("repository")
         if name:
