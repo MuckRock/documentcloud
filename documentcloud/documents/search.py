@@ -589,8 +589,11 @@ def _format_response(results, query_params, user, escaped, page_data):
         else:
             previous_url = None
     else:
-        query_params["cursor"] = results.nextCursorMark
-        next_url = f"{base_url}?{query_params.urlencode()}"
+        if query_params.get("cursor", "*") == results.nextCursorMark:
+            next_url = None
+        else:
+            query_params["cursor"] = results.nextCursorMark
+            next_url = f"{base_url}?{query_params.urlencode()}"
         previous_url = None
 
     expands = query_params.get("expand", "").split(",")
