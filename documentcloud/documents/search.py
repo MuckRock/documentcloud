@@ -58,7 +58,7 @@ TEXT_FIELDS = {
 DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 
 SORT_MAP = {
-    "score": "score desc, id desc",
+    "score": "score desc, created_at desc, id desc",
     "created_at": "created_at desc, id desc",
     "-created_at": "created_at asc, id desc",
     "page_count": "page_count desc, id desc",
