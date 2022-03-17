@@ -128,6 +128,8 @@ class AddOn(models.Model):
         resp.raise_for_status()
         try:
             self.parameters = yaml.safe_load(resp.content)
+            if "title" in self.parameters:
+                self.name = self.parameters["title"]
             self.error = False
         except yaml.YAMLError:
             self.error = True
