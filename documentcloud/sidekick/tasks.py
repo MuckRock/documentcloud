@@ -133,13 +133,19 @@ def lego_learn(sidekick_id, tag_name):
     documents = Document.objects.in_bulk(doc_ids)
     for doc_id, dist in zip(doc_ids, dists):
         documents[doc_id].data[f"{tag_name}_score"] = [str(dist)]
+        documents[doc_id].data[f"{tag_name}_likely"] = (
+            "Likely" if dist > 0.75 else ("Unlikely" if dist < -0.75 else "Uncertain")
+        )
         documents[doc_id].solr_dirty = True
     with transaction.atomic():
         Document.objects.bulk_update(documents.values(), ["data", "solr_dirty"])
         transaction.on_commit(
             lambda: solr_index_batch.delay(
                 [int(i) for i in doc_ids],
-                field_updates={f"data_{tag_name}_score": "set"},
+                field_updates={
+                    f"data_{tag_name}_score": "set",
+                    f"data_{tag_name}_likely": "set",
+                },
             )
         )
 
