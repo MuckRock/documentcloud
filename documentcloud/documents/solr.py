@@ -469,8 +469,10 @@ def _index_solr_document(solr, solr_document, field_updates=None):
         len(page_fields),
     )
     for page_field, page_value in page_fields.items():
-        # len('<field name="" update="set"></field>') == 36
-        page_size = 36 + len(page_field.encode("utf8")) + len(page_value.encode("utf8"))
+        # len('{"": {"set": ""}}') == 17
+        # field updates are done via json
+        # unicode text is encoded in json and can be much larger than the text len
+        page_size = 17 + len(json.dumps(page_field)) + len(json.dumps(page_value))
         size += page_size
         # if adding the next page would put us over the limit, add the current fields
         # to solr, then start building up a new document
