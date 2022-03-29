@@ -12,6 +12,7 @@ from django.db.models.query import Prefetch
 from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.projects.choices import CollaboratorAccess
 from documentcloud.users.models import User
@@ -86,7 +87,39 @@ class ProjectMembershipQuerySet(models.QuerySet):
     """Custom queryset for project memberships"""
 
     def get_viewable(self, user):
-        return self.filter(document__in=Document.objects.get_viewable(user))
+        if user.is_authenticated:
+
+            query = (
+                # you may see public documents in a viewable state
+                Q(
+                    document__access=Access.public,
+                    document__status__in=[Status.success, Status.readable],
+                )
+                # you can see documents you own
+                | Q(document__user=user)
+                # you may see documents in your projects
+                | Q(
+                    document__projects__in=user.projects.all(),
+                    document__projectmembership__edit_access=True,
+                )
+                # you can see organization level documents in your
+                # organization
+                | Q(
+                    document__access=Access.organization,
+                    document__organization__in=user.organizations.all(),
+                )
+            )
+            return (
+                self.exclude(document__access=Access.invisible)
+                .exclude(document__status=Status.deleted)
+                .filter(query)
+                .distinct("id")
+            )
+        else:
+            return self.filter(
+                document__access=Access.public,
+                document__status__in=[Status.success, Status.readable],
+            )
 
     def preload(self, user, expand):
         """Preload relations"""
