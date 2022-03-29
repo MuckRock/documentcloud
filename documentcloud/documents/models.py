@@ -19,6 +19,7 @@ from listcrunch import uncrunch
 # DocumentCloud
 from documentcloud.common import path
 from documentcloud.common.environment import storage
+from documentcloud.common.extensions import EXTENSIONS
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.utils import slugify
@@ -153,6 +154,7 @@ class Document(models.Model):
     original_extension = models.CharField(
         _("original extension"),
         default="pdf",
+        choices=[(e, e) for e in EXTENSIONS],
         max_length=255,
         help_text=_("The original extension of the underlying file"),
     )

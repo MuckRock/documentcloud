@@ -36,6 +36,20 @@ class TestDocumentSerializer:
         serializer = DocumentSerializer(data={"description": "a" * 4001}, partial=True)
         assert not serializer.is_valid()
 
+    def test_good_extension(self):
+        """Test validating good value for `original_extension`"""
+        serializer = DocumentSerializer(
+            data={"original_extension": "docx"}, partial=True
+        )
+        assert serializer.is_valid()
+
+    def test_bad_extension(self):
+        """Test validating bad value for `original_extension`"""
+        serializer = DocumentSerializer(
+            data={"original_extension": ".docx"}, partial=True
+        )
+        assert not serializer.is_valid()
+
 
 @pytest.mark.django_db()
 class TestModificationSerializer:
