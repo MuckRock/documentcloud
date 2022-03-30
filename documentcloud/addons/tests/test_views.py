@@ -8,33 +8,24 @@ import pytest
 from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
 from documentcloud.addons.tests.factories import AddOnFactory, AddOnRunFactory
+from documentcloud.documents.choices import Access
 from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db()
 class TestAddOnAPI:
+    # XXX
     def test_list(self, client):
-        """Non-staff cannot view add-ons"""
+        """List add-ons"""
         size = 10
-        AddOnFactory.create_batch(size)
-        response = client.get("/api/addons/")
-        assert response.status_code == status.HTTP_200_OK
-        response_json = response.json()
-        assert len(response_json["results"]) == 0
-
-    def test_list_staff(self, client):
-        """Staff can list add-ons"""
-        size = 10
-        user = UserFactory(is_staff=True)
-        client.force_authenticate(user=user)
-        AddOnFactory.create_batch(size)
+        AddOnFactory.create_batch(size, access=Access.public)
         response = client.get("/api/addons/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
 
     def test_create(self, client):
-        """Test creating a new add-on"""
+        """No creating add-ons through the API"""
         user = UserFactory(is_staff=True)
         client.force_authenticate(user=user)
         response = client.post(
@@ -46,9 +37,7 @@ class TestAddOnAPI:
             },
             format="json",
         )
-        assert response.status_code == status.HTTP_201_CREATED
-        response_json = response.json()
-        assert AddOn.objects.filter(pk=response_json["id"]).exists()
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_retrieve(self, client):
         """Test retrieving a new add-on"""
@@ -61,17 +50,17 @@ class TestAddOnAPI:
         assert response_json == serializer.data
 
     def test_update(self, client):
-        """Test updating a add-on"""
+        """Test updating an add-on"""
         addon = AddOnFactory()
+        assert addon.access == Access.private
         client.force_authenticate(user=addon.user)
-        name = "New name"
-        response = client.patch(f"/api/addons/{addon.pk}/", {"name": name})
+        response = client.patch(f"/api/addons/{addon.pk}/", {"access": "public"})
         assert response.status_code == status.HTTP_200_OK
         addon.refresh_from_db()
-        assert addon.name == name
+        assert addon.access == Access.public
 
     def test_destroy(self, client):
-        """Test destroying a add-on"""
+        """Test destroying an add-on"""
         addon = AddOnFactory()
         client.force_authenticate(user=addon.user)
         response = client.delete(f"/api/addons/{addon.pk}/")
@@ -94,9 +83,8 @@ class TestAddOnRunAPI:
 
     def test_create(self, client):
         """Test creating a new add-on run"""
-        user = UserFactory(is_staff=True)
         addon = AddOnFactory()
-        client.force_authenticate(user=user)
+        client.force_authenticate(user=addon.user)
         parameters = {"name": "foobar"}
         response = client.post(
             "/api/addon_runs/",
@@ -109,17 +97,15 @@ class TestAddOnRunAPI:
 
     def test_create_missing_parameters(self, client):
         """Test creating a new add-on run missing the parameters"""
-        user = UserFactory(is_staff=True)
         addon = AddOnFactory()
-        client.force_authenticate(user=user)
+        client.force_authenticate(user=addon.user)
         response = client.post("/api/addon_runs/", {"addon": addon.pk}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_parameters_invalid(self, client):
         """Test creating a new add-on run with invalid parameters"""
-        user = UserFactory(is_staff=True)
         addon = AddOnFactory()
-        client.force_authenticate(user=user)
+        client.force_authenticate(user=addon.user)
         parameters = {"foo": "foobar"}
         response = client.post(
             "/api/addon_runs/",

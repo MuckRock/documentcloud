@@ -17,6 +17,7 @@ from squarelet_auth.utils import squarelet_get
 # DocumentCloud
 from documentcloud.addons.querysets import AddOnQuerySet, AddOnRunQuerySet
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+from documentcloud.documents.choices import Access
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,12 @@ class AddOn(models.Model):
         on_delete=models.PROTECT,
         related_name="addons",
         help_text=_("The organization this add-on was created within"),
+    )
+    access = models.IntegerField(
+        _("access"),
+        choices=Access.choices,
+        default=Access.private,
+        help_text=_("Designates who may access this document by default"),
     )
 
     name = models.CharField(_("name"), max_length=255, help_text=_("The add-on's name"))

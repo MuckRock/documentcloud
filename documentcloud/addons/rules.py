@@ -1,38 +1,32 @@
-# Django
-from django.conf import settings
-
 # Third Party
-from rules import (
-    add_perm,
-    always_allow,
-    always_deny,
-    is_authenticated,
-    is_staff,
-    predicate,
-)
+from rules import add_perm, always_deny, is_authenticated, is_staff
 
 # DocumentCloud
-from documentcloud.core.rules import skip_if_not_obj
+from documentcloud.documents.models import Access
+from documentcloud.documents.rules.documents import (
+    has_access,
+    is_organization,
+    is_owner,
+)
 
-if settings.ADDONS_SHOW_ALL:
-    add_perm("addons.view_addon", always_allow)
-else:
-    add_perm("addons.view_addon", is_staff)
-add_perm("addons.add_addon", is_staff)
-add_perm("addons.change_addon", is_staff)
-add_perm("addons.delete_addon", is_staff)
+can_view = (
+    # everyone can view public add-ons
+    has_access(Access.public)
+    # the owner may view all of their add-ons
+    | is_owner
+    # add-ons shared among the organization may be viewed by those
+    # in the organization
+    | (has_access(Access.organization) & is_organization)
+)
 
 
-@predicate
-@skip_if_not_obj
-def is_owner(user, run):
-    return user == run.user
+add_perm("addons.view_addon", can_view)
+add_perm("addons.add_addon", always_deny)
+add_perm("addons.change_addon", is_authenticated & is_owner)
+add_perm("addons.delete_addon", is_authenticated & is_owner)
 
 
-add_perm("addons.view_addonrun", is_owner)
-if settings.ADDONS_SHOW_ALL:
-    add_perm("addons.add_addonrun", is_authenticated)
-else:
-    add_perm("addons.add_addonrun", is_staff)
+add_perm("addons.view_addonrun", is_authenticated & is_owner)
+add_perm("addons.add_addonrun", is_authenticated)
 add_perm("addons.change_addonrun", is_authenticated & is_owner)
 add_perm("addons.delete_addonrun", always_deny)

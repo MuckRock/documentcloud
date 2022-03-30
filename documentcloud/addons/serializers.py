@@ -9,15 +9,24 @@ from rest_flex_fields import FlexFieldsModelSerializer
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.common.environment import storage
+from documentcloud.documents.choices import Access
+from documentcloud.documents.fields import ChoiceField
 
 
 class AddOnSerializer(FlexFieldsModelSerializer):
+    access = ChoiceField(
+        Access,
+        default=Access.private,
+        help_text=AddOn._meta.get_field("access").help_text,
+    )
+
     class Meta:
         model = AddOn
         fields = [
             "id",
             "user",
             "organization",
+            "access",
             "name",
             "repository",
             "parameters",
@@ -27,6 +36,9 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "user": {"read_only": True},
             "organization": {"read_only": True},
+            "name": {"read_only": True},
+            "repository": {"read_only": True},
+            "parameters": {"read_only": True},
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
         }
