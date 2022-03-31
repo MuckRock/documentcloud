@@ -1,5 +1,6 @@
 # Django
 from django.db import transaction
+from django.db.models import Q
 from django.db.models.expressions import Exists, OuterRef
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -59,6 +60,13 @@ class AddOnViewSet(viewsets.ModelViewSet):
 
     class Filter(django_filters.FilterSet):
         active = django_filters.BooleanFilter(field_name="active", label="Active")
+        query = django_filters.CharFilter(method="query_filter", label="Query")
+
+        def query_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            return queryset.filter(
+                Q(name__icontains=value) | Q(parameters__description__icontains=value)
+            )
 
         class Meta:
             model = AddOn
