@@ -1,5 +1,5 @@
 # Third Party
-from rules import add_perm, always_deny, is_authenticated, is_staff
+from rules import add_perm, always_deny, is_authenticated
 
 # DocumentCloud
 from documentcloud.documents.models import Access

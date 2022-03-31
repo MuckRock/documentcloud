@@ -1,5 +1,6 @@
 # Django
 from django.db import transaction
+from django.db.models.expressions import Exists, OuterRef
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -24,13 +25,30 @@ class AddOnViewSet(viewsets.ModelViewSet):
     queryset = AddOn.objects.none()
 
     def get_queryset(self):
-        return AddOn.objects.get_viewable(self.request.user).order_by("-pk")
-
-    def perform_create(self, serializer):
-        """Specify the user and organization"""
-        serializer.save(
-            user=self.request.user, organization=self.request.user.organization
+        return (
+            AddOn.objects.get_viewable(self.request.user)
+            .order_by("-pk")
+            .annotate(
+                active=Exists(self.request.user.active_addons.filter(pk=OuterRef("pk")))
+            )
         )
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        # add or remove to add-on from the current user's active add-ons
+        # if needed
+        if "active_w" not in serializer.validated_data:
+            return
+        addon = self.get_object()
+        if serializer.validated_data["active_w"] and not addon.active:
+            self.request.user.active_addons.add(addon)
+        if not serializer.validated_data["active_w"] and addon.active:
+            self.request.user.active_addons.remove(addon)
+        # pylint: disable=pointless-statement, protected-access
+        # data is a property, we call it here to populate _data
+        serializer.data
+        # we need to set _data directly to set the update value from active_w
+        serializer._data["active"] = serializer.validated_data["active_w"]
 
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def update_config(self, request):
@@ -38,6 +56,15 @@ class AddOnViewSet(viewsets.ModelViewSet):
         if name:
             update_config.delay(name)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    class Filter(django_filters.FilterSet):
+        active = django_filters.BooleanFilter(field_name="active", label="Active")
+
+        class Meta:
+            model = AddOn
+            fields = []
+
+    filterset_class = Filter
 
 
 class AddOnRunViewSet(FlexFieldsModelViewSet):

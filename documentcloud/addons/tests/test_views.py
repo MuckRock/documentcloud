@@ -14,15 +14,25 @@ from documentcloud.users.tests.factories import UserFactory
 
 @pytest.mark.django_db()
 class TestAddOnAPI:
-    # XXX
     def test_list(self, client):
         """List add-ons"""
-        size = 10
-        AddOnFactory.create_batch(size, access=Access.public)
+        user = UserFactory()
+        viewable = [
+            AddOnFactory(access=Access.public),
+            AddOnFactory(user=user, access=Access.private),
+            AddOnFactory(organization=user.organization, access=Access.organization),
+        ]
+        non_viewable = [
+            AddOnFactory(access=Access.private),
+            AddOnFactory(access=Access.organization),
+        ]
+        client.force_authenticate(user=user)
         response = client.get("/api/addons/")
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
-        assert len(response_json["results"]) == size
+        pks = [r["id"] for r in response_json["results"]]
+        assert all(a.pk in pks for a in viewable)
+        assert all(a.pk not in pks for a in non_viewable)
 
     def test_create(self, client):
         """No creating add-ons through the API"""

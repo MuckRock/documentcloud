@@ -19,6 +19,42 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         default=Access.private,
         help_text=AddOn._meta.get_field("access").help_text,
     )
+    active_w = serializers.BooleanField(
+        label=_("Active"),
+        default=False,
+        write_only=True,
+        help_text=_("Show this add-on in your add-on menu"),
+    )
+    active = serializers.SerializerMethodField(
+        label=_("Active"), help_text=_("Show this add-on in your add-on menu")
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        view = self.context.get("view")
+
+        active_w = self.fields.pop("active_w")
+        # for updates which include setting active
+        # change the active field to the writable active field
+        if (
+            view
+            and view.action in ("update", "partial_update")
+            and hasattr(self, "initial_data")
+            and "active" in self.initial_data
+        ):
+            self.fields["active"] = active_w
+
+    def get_active(self, obj):
+
+        if hasattr(obj, "active"):
+            # pre calculate active for efficiency
+            return obj.active
+
+        request = self.context.get("request")
+        if not request:
+            return False
+
+        return request.user.active_addons.filter(pk=obj.pk).exists()
 
     class Meta:
         model = AddOn
@@ -32,6 +68,8 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "parameters",
             "created_at",
             "updated_at",
+            "active_w",
+            "active",
         ]
         extra_kwargs = {
             "user": {"read_only": True},

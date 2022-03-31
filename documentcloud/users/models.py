@@ -32,6 +32,12 @@ class User(SAUser):
         blank=True,
         help_text=_("The default language for documents uploaded by this user"),
     )
+    active_addons = models.ManyToManyField(
+        verbose_name=_("active add-ons"),
+        to="addons.AddOn",
+        related_name="users",
+        help_text=_("Add-Ons shown for this user"),
+    )
 
     objects = UserManager()
 
