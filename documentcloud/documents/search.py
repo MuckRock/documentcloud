@@ -198,7 +198,7 @@ class NumberValidator(Validator):
     """Validate nodes are numbers"""
 
     def _validate(self, value):
-        return value.isdecimal()
+        return value.isdecimal() or value == "*"
 
 
 class DateValidator(Validator):
