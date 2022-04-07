@@ -1,13 +1,20 @@
 # Django
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.db.models.expressions import Exists, OuterRef
+from django.http.response import HttpResponse, HttpResponseForbidden
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 # Standard Library
+import hashlib
+import hmac
+import json
+import logging
 from functools import lru_cache
 
 # Third Party
@@ -16,9 +23,11 @@ from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn, AddOnRun
+from documentcloud.addons.models import AddOn, AddOnRun, GitHubAccount
 from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
 from documentcloud.addons.tasks import dispatch, update_config
+
+logger = logging.getLogger(__name__)
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -109,3 +118,56 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             fields = {"dismissed": ["exact"]}
 
     filterset_class = Filter
+
+
+@csrf_exempt
+def github_webhook(request):
+    def verify_signature(request):
+        hmac_digest = (
+            "sha256="
+            + hmac.new(
+                key=settings.GITHUB_WEBHOOK_SECRET.encode("utf8"),
+                msg=request.body,
+                digestmod=hashlib.sha256,
+            ).hexdigest()
+        )
+        return hmac.compare_digest(
+            str(request.headers["x-hub-signature-256"]), str(hmac_digest)
+        )
+
+    # XXX error check all the things
+
+    if not verify_signature(request):
+        return HttpResponseForbidden()
+
+    data = json.loads(request.body)
+    logger.info("[GITHUB WEBHOOK] data %s", json.dumps(data, indent=2))
+    if data.get("action") == "added":
+        logger.info("[GITHUB WEBHOOK] added")
+        uid = data["sender"]["id"]
+        acct = GitHubAccount.objects.get(uid=uid)
+        for repo in data["repositories_added"]:
+            logger.info("[GITHUB WEBHOOK] added %s", repo["full_name"])
+            with transaction.atomic():
+                AddOn.objects.update_or_create(
+                    repository=repo["full_name"],
+                    defaults=dict(
+                        user=acct.user,
+                        # XXX should org be set this way?
+                        organization=acct.user.organization,
+                        github_account=acct,
+                        removed=False,
+                    ),
+                )
+                transaction.on_commit(
+                    lambda r=repo: update_config.delay(r["full_name"])
+                )
+    elif data.get("action") == "removed":
+        logger.info("[GITHUB WEBHOOK] removed")
+        uid = data["sender"]["id"]
+        acct = GitHubAccount.objects.get(uid=uid)
+        for repo in data["repositories_removed"]:
+            logger.info("[GITHUB WEBHOOK] removed %s", repo["full_name"])
+            AddOn.objects.filter(repository=repo["full_name"]).update(removed=True)
+
+    return HttpResponse()

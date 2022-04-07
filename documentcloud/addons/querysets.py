@@ -15,10 +15,11 @@ class AddOnQuerySet(models.QuerySet):
                 | Q(
                     access=Access.organization,
                     organization__in=user.organizations.all(),
-                )
+                ),
+                removed=False,
             )
         else:
-            return self.filter(access=Access.public)
+            return self.filter(access=Access.public, removed=False)
 
 
 class AddOnRunQuerySet(models.QuerySet):

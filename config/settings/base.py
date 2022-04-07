@@ -550,3 +550,7 @@ CLOUDFLARE_API_KEY = env("CLOUDFLARE_API_KEY", default="")
 CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# GitHub Webhook
+# ------------------------------------------------------------------------------
+GITHUB_WEBHOOK_SECRET = env("GITHUB_WEBHOOK_SECRET", default="")

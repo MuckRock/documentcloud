@@ -13,7 +13,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
-from documentcloud.addons.views import AddOnRunViewSet, AddOnViewSet
+from documentcloud.addons.views import AddOnRunViewSet, AddOnViewSet, github_webhook
 from documentcloud.core.views import FileServer, account_logout
 from documentcloud.documents.views import (
     DataViewSet,
@@ -109,6 +109,7 @@ urlpatterns = [
     path(
         "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"
     ),
+    path("github-webhook/", github_webhook, name="github-webhook"),
     path("pages/", include("django.contrib.flatpages.urls")),
     path("robots.txt", include("robots.urls")),
 ]

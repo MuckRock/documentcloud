@@ -74,5 +74,5 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters):
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
 def update_config(repository):
-    for addon in AddOn.objects.filter(repository=repository):
+    for addon in AddOn.objects.filter(repository=repository, removed=False):
         addon.update_config()

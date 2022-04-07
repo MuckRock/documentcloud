@@ -49,16 +49,28 @@ class AddOn(models.Model):
 
     name = models.CharField(_("name"), max_length=255, help_text=_("The add-on's name"))
     repository = models.CharField(
-        _("repository"), max_length=140, help_text=_("The add-on's GitHub repository")
+        _("repository"),
+        max_length=140,
+        help_text=_("The add-on's GitHub repository"),
+        unique=True,
     )
-    github_token = models.CharField(
+    _github_token = models.CharField(
         _("github token"),
         max_length=40,
         help_text=_("The token to access the add-on's GitHub repository"),
+        db_column="github_token",
+    )
+    github_account = models.ForeignKey(
+        verbose_name=_("github account"),
+        to="addons.GitHubAccount",
+        on_delete=models.PROTECT,
+        related_name="addons",
+        help_text=_("The GitHub account that added this add-on"),
+        null=True,
     )
 
     parameters = models.JSONField(
-        _("parameters"), help_text=_("The parameters for this add-on")
+        _("parameters"), default={}, help_text=_("The parameters for this add-on")
     )
 
     created_at = AutoCreatedField(
@@ -72,6 +84,9 @@ class AddOn(models.Model):
         _("error"),
         help_text=_("There was an error with the configuration file"),
         default=False,
+    )
+    removed = models.BooleanField(
+        _("removed"), help_text=_("This add-on was removed"), default=False
     )
 
     def __str__(self):
@@ -100,6 +115,10 @@ class AddOn(models.Model):
     def api_headers(self):
         """Get the authorization header for API calls"""
         return {"Authorization": f"Bearer {self.github_token}"}
+
+    @property
+    def github_token(self):
+        return self.github_account.token
 
     def dispatch(self, uuid, user, documents, query, parameters):
         """Activate the GitHub Action for this add-on"""
@@ -292,3 +311,19 @@ class AddOnRun(models.Model):
             return f"{settings.ADDON_BUCKET}/{self.uuid}/{file_name}"
         else:
             return ""
+
+
+class GitHubAccount(models.Model):
+    """A linked GitHub account"""
+
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="github_accounts",
+        help_text=_("The user associated with this GitHub account"),
+    )
+    uid = models.IntegerField(_("uid"), help_text=_("The ID for the GitHub account"))
+    token = models.CharField(
+        _("token"), max_length=255, help_text=_("The GitHub token")
+    )

@@ -5,3 +5,8 @@ from django.apps import AppConfig
 class AddOnsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "documentcloud.addons"
+
+    def ready(self):
+        # pylint: disable=unused-import
+        # load signals
+        import documentcloud.addons.signals
