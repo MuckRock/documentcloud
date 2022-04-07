@@ -74,8 +74,8 @@ class TestAddOnAPI:
         addon = AddOnFactory()
         client.force_authenticate(user=addon.user)
         response = client.delete(f"/api/addons/{addon.pk}/")
-        assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert not AddOn.objects.filter(pk=addon.pk).exists()
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert AddOn.objects.filter(pk=addon.pk).exists()
 
 
 @pytest.mark.django_db()
