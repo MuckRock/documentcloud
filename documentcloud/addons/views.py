@@ -142,11 +142,15 @@ def github_webhook(request):
 
     data = json.loads(request.body)
     logger.info("[GITHUB WEBHOOK] data %s", json.dumps(data, indent=2))
-    if data.get("action") == "added":
-        logger.info("[GITHUB WEBHOOK] added")
+    if data.get("action") in ["added", "created"]:
+        logger.info("[GITHUB WEBHOOK] %s", data["action"])
         uid = data["sender"]["id"]
         acct = GitHubAccount.objects.get(uid=uid)
-        for repo in data["repositories_added"]:
+        if data["action"] == "added":
+            repos = data["repositories_added"]
+        elif data["action"] == "created":
+            repos = data["repositories"]
+        for repo in repos:
             logger.info("[GITHUB WEBHOOK] added %s", repo["full_name"])
             with transaction.atomic():
                 AddOn.objects.update_or_create(
@@ -162,11 +166,15 @@ def github_webhook(request):
                 transaction.on_commit(
                     lambda r=repo: update_config.delay(r["full_name"])
                 )
-    elif data.get("action") == "removed":
-        logger.info("[GITHUB WEBHOOK] removed")
+    elif data.get("action") in ["removed", "deleted"]:
+        logger.info("[GITHUB WEBHOOK] %s", data["action"])
         uid = data["sender"]["id"]
         acct = GitHubAccount.objects.get(uid=uid)
-        for repo in data["repositories_removed"]:
+        if data["action"] == "removed":
+            repos = data["repositories_removed"]
+        elif data["action"] == "deleted":
+            repos = data["repositories"]
+        for repo in repos:
             logger.info("[GITHUB WEBHOOK] removed %s", repo["full_name"])
             AddOn.objects.filter(repository=repo["full_name"]).update(removed=True)
 
