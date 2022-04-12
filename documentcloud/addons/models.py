@@ -1,15 +1,17 @@
 # Django
 from django.conf import settings
+from django.core.cache import cache
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
 import logging
 import sys
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 # Third Party
+import jwt
 import requests
 import yaml
 from squarelet_auth.utils import squarelet_get
@@ -26,17 +28,21 @@ class AddOn(models.Model):
 
     objects = AddOnQuerySet.as_manager()
 
-    user = models.ForeignKey(
+    # XXX remove
+    _user = models.ForeignKey(
         verbose_name=_("user"),
         to="users.User",
         on_delete=models.PROTECT,
         related_name="addons",
         help_text=_("The user who created this add-on"),
+        null=True,
+        db_column="user",
     )
     organization = models.ForeignKey(
         verbose_name=_("organization"),
         to="organizations.Organization",
         on_delete=models.PROTECT,
+        null=True,
         related_name="addons",
         help_text=_("The organization this add-on was created within"),
     )
@@ -66,6 +72,16 @@ class AddOn(models.Model):
         on_delete=models.PROTECT,
         related_name="addons",
         help_text=_("The GitHub account that added this add-on"),
+        # XXX switch to not null
+        null=True,
+    )
+    github_installation = models.ForeignKey(
+        verbose_name=_("github installation"),
+        to="addons.GitHubInstallation",
+        on_delete=models.PROTECT,
+        related_name="addons",
+        help_text=_("The GitHub installation that contains this add-on"),
+        # XXX switch to not null
         null=True,
     )
 
@@ -107,6 +123,10 @@ class AddOn(models.Model):
         return resp.json()
 
     @property
+    def user(self):
+        return self.github_account.user
+
+    @property
     def api_url(self):
         """Get the base API URL"""
         return f"https://api.github.com/repos/{self.repository}"
@@ -114,11 +134,14 @@ class AddOn(models.Model):
     @property
     def api_headers(self):
         """Get the authorization header for API calls"""
-        return {"Authorization": f"Bearer {self.github_token}"}
+        return {
+            "Authorization": f"Bearer {self.github_token}",
+            "Accept": "application/vnd.github.v3+json",
+        }
 
     @property
     def github_token(self):
-        return self.github_account.token
+        return self.github_installation.token
 
     def dispatch(self, uuid, user, documents, query, parameters):
         """Activate the GitHub Action for this add-on"""
@@ -320,10 +343,80 @@ class GitHubAccount(models.Model):
         verbose_name=_("user"),
         to="users.User",
         on_delete=models.PROTECT,
+        null=True,
         related_name="github_accounts",
         help_text=_("The user associated with this GitHub account"),
     )
-    uid = models.IntegerField(_("uid"), help_text=_("The ID for the GitHub account"))
+    name = models.CharField(
+        _("name"), max_length=255, help_text=_("The GitHub username")
+    )
+    uid = models.IntegerField(
+        _("uid"), unique=True, help_text=_("The ID for the GitHub account")
+    )
     token = models.CharField(
         _("token"), max_length=255, help_text=_("The GitHub token")
     )
+
+    def __str__(self):
+        return self.name
+
+
+class GitHubInstallation(models.Model):
+    """An installation of the GitHub app"""
+
+    iid = models.IntegerField(
+        _("iid"), unique=True, help_text=_("The ID for the GitHub installation")
+    )
+    account = models.ForeignKey(
+        verbose_name=_("account"),
+        to="addons.GitHubAccount",
+        on_delete=models.PROTECT,
+        related_name="installations",
+        help_text=_("The account which installed the app"),
+    )
+    name = models.CharField(
+        _("name"),
+        max_length=255,
+        help_text=_(
+            "The GitHub name of the user or organization the app was installed for"
+        ),
+    )
+    removed = models.BooleanField(
+        _("removed"), help_text=_("This installation was removed"), default=False
+    )
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def token(self):
+        """Get an access token for this installation"""
+        key = f"ghi_token:{self.iid}"
+        token = cache.get(key)
+        expire_in = 600
+        if not token:
+            with cache.lock(key):
+                token = cache.get(key)
+                if not token:
+                    now = int(datetime.now().timestamp())
+                    payload = {
+                        "iat": now - 60,
+                        "exp": now + expire_in,
+                        "iss": settings.GITHUB_APP_ID,
+                    }
+                    jwt_token = jwt.encode(
+                        payload, settings.GITHUB_APP_PRIVATE_KEY, algorithm="RS256"
+                    )
+                    headers = {
+                        "Accept": "vnd.github.v3+json",
+                        "Authorization": f"Bearer {jwt_token}",
+                    }
+                    resp = requests.post(
+                        "https://api.github.com/app/installations/"
+                        f"{self.iid}/access_tokens",
+                        headers=headers,
+                    )
+                    resp = resp.json()
+                    token = resp["token"]
+                    cache.set(key, token, expire_in - 10)
+        return token

@@ -23,7 +23,12 @@ from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn, AddOnRun, GitHubAccount
+from documentcloud.addons.models import (
+    AddOn,
+    AddOnRun,
+    GitHubAccount,
+    GitHubInstallation,
+)
 from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
 from documentcloud.addons.tasks import dispatch, update_config
 
@@ -41,6 +46,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
             .annotate(
                 active=Exists(self.request.user.active_addons.filter(pk=OuterRef("pk")))
             )
+            .select_related("github_account")
         )
 
     def perform_update(self, serializer):
@@ -135,17 +141,24 @@ def github_webhook(request):
             str(request.headers["x-hub-signature-256"]), str(hmac_digest)
         )
 
-    # XXX error check all the things
-
     if not verify_signature(request):
         return HttpResponseForbidden()
 
     data = json.loads(request.body)
     logger.info("[GITHUB WEBHOOK] data %s", json.dumps(data, indent=2))
+
     if data.get("action") in ["added", "created"]:
         logger.info("[GITHUB WEBHOOK] %s", data["action"])
-        uid = data["sender"]["id"]
-        acct = GitHubAccount.objects.get(uid=uid)
+        acct, _created = GitHubAccount.objects.get_or_create(
+            uid=data["sender"]["id"], defaults={"name": data["sender"]["login"]}
+        )
+        installation, _created = GitHubInstallation.objects.get_or_create(
+            iid=data["installation"]["id"],
+            defaults={
+                "account": acct,
+                "name": data["installation"]["account"]["login"],
+            },
+        )
         if data["action"] == "added":
             repos = data["repositories_added"]
         elif data["action"] == "created":
@@ -156,10 +169,8 @@ def github_webhook(request):
                 AddOn.objects.update_or_create(
                     repository=repo["full_name"],
                     defaults=dict(
-                        user=acct.user,
-                        # XXX should org be set this way?
-                        organization=acct.user.organization,
                         github_account=acct,
+                        github_installation=installation,
                         removed=False,
                     ),
                 )
@@ -168,10 +179,15 @@ def github_webhook(request):
                 )
     elif data.get("action") in ["removed", "deleted"]:
         logger.info("[GITHUB WEBHOOK] %s", data["action"])
-        uid = data["sender"]["id"]
-        acct = GitHubAccount.objects.get(uid=uid)
         if data["action"] == "removed":
             repos = data["repositories_removed"]
+            GitHubInstallation.objects.update_or_create(
+                iid=data["installation"]["id"],
+                defaults={
+                    "name": data["installation"]["account"]["login"],
+                    "removed": True,
+                },
+            )
         elif data["action"] == "deleted":
             repos = data["repositories"]
         for repo in repos:

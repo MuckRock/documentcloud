@@ -9,7 +9,6 @@ from squarelet_auth.users.utils import user_update
 
 # DocumentCloud
 from documentcloud.addons.models import GitHubAccount
-from documentcloud.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +26,7 @@ def update_github_account(user, data, **_kwargs):
             token = acct["tokens"][0]["token"]
         else:
             token = ""
+        name = acct["extra_data"].get("login", "")
         GitHubAccount.objects.update_or_create(
-            uid=acct["uid"], defaults={"user": user, "token": token}
+            uid=acct["uid"], defaults={"user": user, "token": token, "name": name}
         )

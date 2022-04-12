@@ -9,7 +9,7 @@ from django.urls import path, reverse
 import json
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn
+from documentcloud.addons.models import AddOn, GitHubAccount, GitHubInstallation
 from documentcloud.addons.tasks import update_config
 
 
@@ -30,8 +30,10 @@ class PrettyJSONWidget(widgets.Textarea):
 @admin.register(AddOn)
 class AddOnAdmin(admin.ModelAdmin):
     list_display = ["name", "user", "organization", "repository"]
-    autocomplete_fields = ["user", "organization"]
+    list_select_related = ["github_account__user", "organization"]
+    autocomplete_fields = ["organization", "github_account", "github_installation"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
+    search_fields = ["name", "repository"]
 
     def get_urls(self):
         """Add custom URLs here"""
@@ -49,3 +51,21 @@ class AddOnAdmin(admin.ModelAdmin):
         update_config.delay(repository)
         messages.success(request, f"Updating from repo {repository}")
         return HttpResponseRedirect(reverse("admin:addons_addon_change", args=[pk]))
+
+
+@admin.register(GitHubAccount)
+class GitHubAccountAdmin(admin.ModelAdmin):
+    list_display = ["name", "user"]
+    list_select_related = ["user"]
+    fields = ["user", "name", "uid"]
+    readonly_fields = ["user", "name", "uid"]
+    search_fields = ["name"]
+
+
+@admin.register(GitHubInstallation)
+class GitHubInstallationAdmin(admin.ModelAdmin):
+    list_display = ["name", "account"]
+    list_select_related = ["account"]
+    fields = ["account", "name", "iid"]
+    readonly_fields = ["account", "name", "iid"]
+    search_fields = ["name"]

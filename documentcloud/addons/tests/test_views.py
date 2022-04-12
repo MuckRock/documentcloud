@@ -19,7 +19,7 @@ class TestAddOnAPI:
         user = UserFactory()
         viewable = [
             AddOnFactory(access=Access.public),
-            AddOnFactory(user=user, access=Access.private),
+            AddOnFactory(github_account__user=user, access=Access.private),
             AddOnFactory(organization=user.organization, access=Access.organization),
         ]
         non_viewable = [
@@ -62,12 +62,22 @@ class TestAddOnAPI:
     def test_update(self, client):
         """Test updating an add-on"""
         addon = AddOnFactory()
-        assert addon.access == Access.private
         client.force_authenticate(user=addon.user)
-        response = client.patch(f"/api/addons/{addon.pk}/", {"access": "public"})
+        response = client.patch(
+            f"/api/addons/{addon.pk}/", {"organization": addon.user.organization.pk}
+        )
         assert response.status_code == status.HTTP_200_OK
         addon.refresh_from_db()
-        assert addon.access == Access.public
+        assert addon.organization == addon.user.organization
+
+    def test_update_bad(self, client, organization):
+        """Test updating an add-on"""
+        addon = AddOnFactory()
+        client.force_authenticate(user=addon.user)
+        response = client.patch(
+            f"/api/addons/{addon.pk}/", {"organization": organization}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_destroy(self, client):
         """Test destroying an add-on"""

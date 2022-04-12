@@ -11,6 +11,7 @@ from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access
 from documentcloud.documents.fields import ChoiceField
+from documentcloud.organizations.models import Organization
 
 
 class AddOnSerializer(FlexFieldsModelSerializer):
@@ -18,6 +19,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         Access,
         default=Access.private,
         help_text=AddOn._meta.get_field("access").help_text,
+        read_only=True,
     )
     active_w = serializers.BooleanField(
         label=_("Active"),
@@ -28,10 +30,14 @@ class AddOnSerializer(FlexFieldsModelSerializer):
     active = serializers.SerializerMethodField(
         label=_("Active"), help_text=_("Show this add-on in your add-on menu")
     )
+    user = serializers.PrimaryKeyRelatedField(
+        read_only=True, source="github_account.user"
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         view = self.context.get("view")
+        request = self.context.get("request")
 
         active_w = self.fields.pop("active_w")
         # for updates which include setting active
@@ -43,6 +49,9 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             and "active" in self.initial_data
         ):
             self.fields["active"] = active_w
+
+        if request and request.user.is_authenticated:
+            self.fields["organization"].queryset = request.user.organizations.all()
 
     def get_active(self, obj):
 
@@ -72,8 +81,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "active",
         ]
         extra_kwargs = {
-            "user": {"read_only": True},
-            "organization": {"read_only": True},
+            "organization": {"queryset": Organization.objects.none()},
             "name": {"read_only": True},
             "repository": {"read_only": True},
             "parameters": {"read_only": True},
