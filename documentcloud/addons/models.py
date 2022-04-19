@@ -28,16 +28,6 @@ class AddOn(models.Model):
 
     objects = AddOnQuerySet.as_manager()
 
-    # XXX remove
-    _user = models.ForeignKey(
-        verbose_name=_("user"),
-        to="users.User",
-        on_delete=models.PROTECT,
-        related_name="addons",
-        help_text=_("The user who created this add-on"),
-        null=True,
-        db_column="user",
-    )
     organization = models.ForeignKey(
         verbose_name=_("organization"),
         to="organizations.Organization",
@@ -72,8 +62,6 @@ class AddOn(models.Model):
         on_delete=models.PROTECT,
         related_name="addons",
         help_text=_("The GitHub account that added this add-on"),
-        # XXX switch to not null
-        null=True,
     )
     github_installation = models.ForeignKey(
         verbose_name=_("github installation"),
@@ -81,8 +69,6 @@ class AddOn(models.Model):
         on_delete=models.PROTECT,
         related_name="addons",
         help_text=_("The GitHub installation that contains this add-on"),
-        # XXX switch to not null
-        null=True,
     )
 
     parameters = models.JSONField(

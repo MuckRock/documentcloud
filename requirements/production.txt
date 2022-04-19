@@ -165,7 +165,7 @@ social-auth-app-django==4.0.0  # via -r requirements/./base.txt, rest-social-aut
 social-auth-core[openidconnect]==4.1.0  # via -r requirements/./base.txt, rest-social-auth, social-auth-app-django, squarelet-auth
 sortedcontainers==2.4.0   # via -r requirements/./base.txt, pdfminer.six
 sqlparse==0.3.0           # via -r requirements/./base.txt, django, django-debug-toolbar
-squarelet-auth==0.0.47.dev1    # via -r requirements/./base.txt
+squarelet-auth==0.0.47    # via -r requirements/./base.txt
 text-unidecode==1.2       # via -r requirements/./base.txt, python-slugify
 traitlets==4.3.3          # via -r requirements/./base.txt, ipython
 typing-extensions==3.7.4.3  # via -r requirements/./base.txt, aiohttp, asgiref, collectfast, libcst, typing-inspect
