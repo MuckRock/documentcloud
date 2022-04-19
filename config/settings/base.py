@@ -383,13 +383,13 @@ INSTALLED_APPS += ["django_extensions"]  # noqa F405
 
 # first party urls
 # ------------------------------------------------------------------------------
-SQUARELET_URL = env("SQUARELET_URL", default="http://dev.squarelet.com")
-MUCKROCK_URL = env("MUCKROCK_URL", default="http://dev.muckrock.com")
-FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="http://dev.foiamachine.org")
-DOCCLOUD_URL = env("DOCCLOUD_URL", default="http://www.dev.documentcloud.org")
-DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="http://api.dev.documentcloud.org")
+SQUARELET_URL = env("SQUARELET_URL", default="https://dev.squarelet.com")
+MUCKROCK_URL = env("MUCKROCK_URL", default="https://dev.muckrock.com")
+FOIAMACHINE_URL = env("FOIAMACHINE_URL", default="https://dev.foiamachine.org")
+DOCCLOUD_URL = env("DOCCLOUD_URL", default="https://www.dev.documentcloud.org")
+DOCCLOUD_API_URL = env("DOCCLOUD_API_URL", default="https://api.dev.documentcloud.org")
 DOCCLOUD_EMBED_URL = env(
-    "DOCCLOUD_EMBED_URL", default="http://www.dev.documentcloud.org"
+    "DOCCLOUD_EMBED_URL", default="https://www.dev.documentcloud.org"
 )
 BASE_URL = DOCCLOUD_URL
 
@@ -551,3 +551,5 @@ CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")
 
 # Add-Ons
 ADDONS_SHOW_ALL = env.bool("ADDONS_SHOW_ALL", default=False)
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

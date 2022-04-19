@@ -22,6 +22,9 @@ RUN apt-get -qq -y update && \
   curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
   python3 get-pip.py --force-reinstall
 
+# set up makecert root CA
+RUN curl http://localhost/rootCA.pem > /usr/local/share/ca-certificates/rootCA.crt && update-ca-certificates
+
 # Requirements are installed here to ensure they will be cached.
 COPY ./requirements /requirements
 # RUN pip install --upgrade pip && pip install -r /requirements/local.txt

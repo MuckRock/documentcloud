@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 volumes:
   local_postgres_data: {}
@@ -13,6 +13,7 @@ services:
     build:
       context: .
       dockerfile: ./compose/local/django/Dockerfile
+      network: host
     image: documentcloud_local_django
     depends_on:
       - documentcloud_postgres
@@ -29,12 +30,10 @@ services:
     networks:
       default:
         aliases:
-          - api.dev.documentcloud.org
-          - api.dev.documentcloud.local
+          - internal.api.dev.documentcloud.org
       squarelet_default:
         aliases:
-          - api.dev.documentcloud.org
-          - api.dev.documentcloud.local
+          - internal.api.dev.documentcloud.org
 
 
   documentcloud_postgres:
