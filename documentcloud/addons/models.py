@@ -50,12 +50,6 @@ class AddOn(models.Model):
         help_text=_("The add-on's GitHub repository"),
         unique=True,
     )
-    _github_token = models.CharField(
-        _("github token"),
-        max_length=40,
-        help_text=_("The token to access the add-on's GitHub repository"),
-        db_column="github_token",
-    )
     github_account = models.ForeignKey(
         verbose_name=_("github account"),
         to="addons.GitHubAccount",
