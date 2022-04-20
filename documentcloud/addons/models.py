@@ -33,6 +33,7 @@ class AddOn(models.Model):
         to="organizations.Organization",
         on_delete=models.PROTECT,
         null=True,
+        blank=True,
         related_name="addons",
         help_text=_("The organization this add-on was created within"),
     )
