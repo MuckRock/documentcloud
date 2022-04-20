@@ -192,7 +192,7 @@ class AddOnRun(models.Model):
         db_index=True,
         help_text=_("Unique ID to track add-on runs"),
     )
-    run_id = models.IntegerField(
+    run_id = models.BigIntegerField(
         _("run_id"),
         unique=True,
         null=True,
