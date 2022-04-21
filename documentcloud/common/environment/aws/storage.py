@@ -92,10 +92,54 @@ class AwsStorage:
         with io.BytesIO(contents) as mem_file:
             self.s3_client.upload_fileobj(mem_file, bucket, key, ExtraArgs=extra_args)
 
-    def presign_url(self, file_name, method_name):
+    def presign_url(self, file_name, method_name, use_custom_domain=False):
+
+        if (
+            use_custom_domain
+            and method_name == "get_object"
+            and env.bool("AWS_SIGN_USE_CUSTOM_DOMAIN", default=False)
+        ):
+            # hack to use custom domain
+            return self._presign_url_custom(file_name)
+
         bucket, key = self.bucket_key(file_name)
         return self.s3_client.generate_presigned_url(
             method_name, Params={"Bucket": bucket, "Key": key}, ExpiresIn=300
+        )
+
+    def _presign_url_custom(self, file_name):
+        """This is very hacky way to get boto3 to produce the correct
+        presigned URL with a custom domain name, instead of using an
+        AWS domain.  Using the custom domain lets us use the CloudFlare CDN
+        """
+        from django.conf import settings
+
+        resource_kwargs = {
+            **self.resource_kwargs,
+            "config": Config(
+                signature_version="s3v4",
+                retries={"max_attempts": AWS_RETRIES_MAX_ATTEMPTS},
+                s3={"addressing_style": "path"},
+            ),
+        }
+        s3_client = boto3.client("s3", **resource_kwargs)
+
+        bucket, key = self.bucket_key(file_name)
+        request_dict = {
+            "context": {
+                "is_presign_request": True,
+                "use_global_endpoint": True,
+                "signing": {"bucket": bucket},
+            },
+            "headers": {},
+            "method": "GET",
+            "query_string": {},
+            "url": f"{settings.PUBLIC_ASSET_URL}{key}",
+            "url_path": key,
+            "body": b"",
+        }
+        return s3_client._request_signer.generate_presigned_url(
+            request_dict, "GetObject", expires_in=300
         )
 
     def exists(self, file_name):

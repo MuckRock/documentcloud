@@ -24,7 +24,7 @@ class FileServer(APIView):
         )
         if not document.public:
             url = document.path + kwargs["path"]
-            url = storage.presign_url(url, "get_object")
+            url = storage.presign_url(url, "get_object", use_custom_domain=True)
         else:
             url = (
                 f"{settings.PUBLIC_ASSET_URL}documents/{kwargs['pk']}/{kwargs['path']}"
