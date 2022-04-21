@@ -138,6 +138,7 @@ class AwsStorage:
             "url_path": key,
             "body": b"",
         }
+        # pylint: disable=protected-access
         return s3_client._request_signer.generate_presigned_url(
             request_dict, "GetObject", expires_in=300
         )
