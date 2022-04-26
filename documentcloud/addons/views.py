@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
-from django.db.models.expressions import Exists, OuterRef
+from django.db.models.expressions import Exists, OuterRef, Value
 from django.http.response import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
@@ -40,14 +40,18 @@ class AddOnViewSet(viewsets.ModelViewSet):
     queryset = AddOn.objects.none()
 
     def get_queryset(self):
-        return (
+        queryset = (
             AddOn.objects.get_viewable(self.request.user)
             .order_by("-pk")
-            .annotate(
-                active=Exists(self.request.user.active_addons.filter(pk=OuterRef("pk")))
-            )
             .select_related("github_account")
         )
+        if self.request.user.is_authenticated:
+            queryset = queryset.annotate(
+                active=Exists(self.request.user.active_addons.filter(pk=OuterRef("pk")))
+            )
+        else:
+            queryset = queryset.annotate(active=Value(False))
+        return queryset
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
