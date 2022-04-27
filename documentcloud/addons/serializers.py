@@ -11,7 +11,6 @@ from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access
 from documentcloud.documents.fields import ChoiceField
-from documentcloud.organizations.models import Organization
 
 
 class AddOnSerializer(FlexFieldsModelSerializer):
