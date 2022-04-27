@@ -32,7 +32,7 @@ can_view = (
 
 add_perm("addons.view_addon", can_view)
 add_perm("addons.add_addon", always_deny)
-add_perm("addons.change_addon", is_authenticated & is_owner & ~is_removed)
+add_perm("addons.change_addon", is_authenticated & ~is_removed)
 add_perm("addons.delete_addon", always_deny)
 
 

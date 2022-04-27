@@ -70,14 +70,34 @@ class TestAddOnAPI:
         addon.refresh_from_db()
         assert addon.organization == addon.user.organization
 
-    def test_update_bad(self, client, organization):
-        """Test updating an add-on"""
+    def test_update_bad_org(self, client, organization):
+        """You may only set an add-on org to an org you belong to"""
         addon = AddOnFactory()
         client.force_authenticate(user=addon.user)
         response = client.patch(
             f"/api/addons/{addon.pk}/", {"organization": organization}
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_bad_user(self, client, user):
+        """You may only update `active` if you are not the owner of the add-on"""
+        addon = AddOnFactory(access=Access.public)
+        assert addon.organization != user.organization
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/addons/{addon.pk}/", {"organization": user.organization.pk}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        addon.refresh_from_db()
+        assert addon.organization != user.organization
+
+    def test_update_activate(self, client, user):
+        """The non-owner may update `active`"""
+        addon = AddOnFactory(access=Access.public)
+        client.force_authenticate(user=user)
+        response = client.patch(f"/api/addons/{addon.pk}/", {"active": True})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["active"]
 
     def test_destroy(self, client):
         """Test destroying an add-on"""

@@ -50,7 +50,14 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         ):
             self.fields["active"] = active_w
 
-        if request and request.user.is_authenticated:
+        if (
+            request
+            and request.user.is_authenticated
+            and view.action in ("update", "partial_update")
+            and self.instance
+            and self.instance.user == request.user
+        ):
+            self.fields["organization"].read_only = False
             self.fields["organization"].queryset = request.user.organizations.all()
 
     def get_active(self, obj):
@@ -81,7 +88,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "active",
         ]
         extra_kwargs = {
-            "organization": {"queryset": Organization.objects.none()},
+            "organization": {"read_only": True},
             "name": {"read_only": True},
             "repository": {"read_only": True},
             "parameters": {"read_only": True},
