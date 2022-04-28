@@ -66,6 +66,6 @@ class GitHubAccountAdmin(admin.ModelAdmin):
 class GitHubInstallationAdmin(admin.ModelAdmin):
     list_display = ["name", "account"]
     list_select_related = ["account"]
-    fields = ["account", "name", "iid"]
-    readonly_fields = ["account", "name", "iid"]
+    fields = ["account", "name", "iid", "removed"]
+    readonly_fields = ["account", "name", "iid", "removed"]
     search_fields = ["name"]
