@@ -151,16 +151,17 @@ def github_webhook(request):
     data = json.loads(request.body)
     logger.info("[GITHUB WEBHOOK] data %s", json.dumps(data, indent=2))
 
+    acct, _created = GitHubAccount.objects.get_or_create(
+        uid=data["sender"]["id"], defaults={"name": data["sender"]["login"]}
+    )
     if data.get("action") in ["added", "created"]:
         logger.info("[GITHUB WEBHOOK] %s", data["action"])
-        acct, _created = GitHubAccount.objects.get_or_create(
-            uid=data["sender"]["id"], defaults={"name": data["sender"]["login"]}
-        )
         installation, _created = GitHubInstallation.objects.get_or_create(
             iid=data["installation"]["id"],
             defaults={
                 "account": acct,
                 "name": data["installation"]["account"]["login"],
+                "removed": False,
             },
         )
         if data["action"] == "added":
@@ -188,6 +189,7 @@ def github_webhook(request):
             GitHubInstallation.objects.update_or_create(
                 iid=data["installation"]["id"],
                 defaults={
+                    "acct": acct,
                     "name": data["installation"]["account"]["login"],
                     "removed": True,
                 },
@@ -197,5 +199,12 @@ def github_webhook(request):
         for repo in repos:
             logger.info("[GITHUB WEBHOOK] removed %s", repo["full_name"])
             AddOn.objects.filter(repository=repo["full_name"]).update(removed=True)
+    elif data.get("action") == "renamed":
+        logger.info("[GITHUB WEBHOOK] %s", data["action"])
+        new_name = data["repository"]["full_name"]
+        prefix = new_name.split("/", 1)[0]
+        old_name = f"{prefix}/" + data["changes"]["repository"]["name"]["from"]
+        AddOn.objects.filter(repository=old_name).update(repository=new_name)
+        logger.info("[GITHUB WEBHOOK] renamed %s to %s", old_name, new_name)
 
     return HttpResponse()

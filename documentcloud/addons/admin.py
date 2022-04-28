@@ -29,8 +29,9 @@ class PrettyJSONWidget(widgets.Textarea):
 
 @admin.register(AddOn)
 class AddOnAdmin(admin.ModelAdmin):
-    list_display = ["name", "user", "organization", "repository"]
+    list_display = ["name", "user", "organization", "repository", "removed"]
     list_select_related = ["github_account__user", "organization"]
+    list_filter = ["removed"]
     autocomplete_fields = ["organization", "github_account", "github_installation"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     search_fields = ["name", "repository"]
@@ -64,7 +65,7 @@ class GitHubAccountAdmin(admin.ModelAdmin):
 
 @admin.register(GitHubInstallation)
 class GitHubInstallationAdmin(admin.ModelAdmin):
-    list_display = ["name", "account"]
+    list_display = ["name", "account", "removed"]
     list_select_related = ["account"]
     fields = ["account", "name", "iid", "removed"]
     readonly_fields = ["account", "name", "iid", "removed"]

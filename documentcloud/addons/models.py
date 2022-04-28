@@ -87,7 +87,7 @@ class AddOn(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return self.name if self.name else "- Nameless Add-On -"
 
     def get_tokens(self, user):
         """Get a JWT refresh token an access token from squarelet for the
