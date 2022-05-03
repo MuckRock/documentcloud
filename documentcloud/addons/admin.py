@@ -29,7 +29,7 @@ class PrettyJSONWidget(widgets.Textarea):
 
 @admin.register(AddOn)
 class AddOnAdmin(admin.ModelAdmin):
-    list_display = ["name", "user", "organization", "repository", "removed"]
+    list_display = ["name", "user", "organization", "repository", "access", "removed"]
     list_select_related = ["github_account__user", "organization"]
     list_filter = ["removed"]
     autocomplete_fields = ["organization", "github_account", "github_installation"]
