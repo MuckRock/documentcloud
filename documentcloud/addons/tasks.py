@@ -34,7 +34,7 @@ def find_run_id(uuid):
         else:
             run.status = status
             set_run_status.apply_async(args=[uuid], countdown=5)
-        run.save()
+        run.save(update_fields=["run_id", "status"])
     else:
         # if we fail to find the run ID, try again
         find_run_id.retry(

@@ -306,7 +306,7 @@ class AddOnRun(models.Model):
             status = resp.json()["conclusion"]
         logger.info("[SET STATUS] %s - %s", self.uuid, self.status)
         self.status = status
-        self.save()
+        self.save(update_fields=["status"])
 
     def file_path(self, file_name=None):
         if file_name is None:
