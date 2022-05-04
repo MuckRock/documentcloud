@@ -67,7 +67,7 @@ class AddOn(models.Model):
     )
 
     parameters = models.JSONField(
-        _("parameters"), default={}, help_text=_("The parameters for this add-on")
+        _("parameters"), default=dict, help_text=_("The parameters for this add-on")
     )
 
     created_at = AutoCreatedField(

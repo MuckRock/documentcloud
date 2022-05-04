@@ -22,6 +22,7 @@ class PrettyJSONWidget(widgets.Textarea):
             row_lengths = [len(r) for r in value.split("\n")]
             self.attrs["rows"] = min(max(len(row_lengths) + 2, 10), 30)
             self.attrs["cols"] = min(max(max(row_lengths) + 2, 40), 120)
+            self.attrs["disabled"] = True
             return value
         except Exception:  # pylint: disable=broad-except
             return super(PrettyJSONWidget, self).format_value(value)
@@ -32,9 +33,21 @@ class AddOnAdmin(admin.ModelAdmin):
     list_display = ["name", "user", "organization", "repository", "access", "removed"]
     list_select_related = ["github_account__user", "organization"]
     list_filter = ["access", "removed"]
-    autocomplete_fields = ["organization", "github_account", "github_installation"]
+    autocomplete_fields = ["organization"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     search_fields = ["name", "repository"]
+    readonly_fields = ["name", "repository", "github_account", "github_installation"]
+    fields = [
+        "name",
+        "repository",
+        "github_account",
+        "github_installation",
+        "parameters",
+        "organization",
+        "access",
+        "error",
+        "removed",
+    ]
 
     def get_urls(self):
         """Add custom URLs here"""
