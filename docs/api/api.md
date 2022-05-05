@@ -163,7 +163,7 @@ documents](#project-documents).
 | status          | String       | Read Only          | The [status](#statuses) for the document                                                                                                                         |
 | title           | String       | Required           | The document's title                                                                                                                                             |
 | updated_at      | Date Time    | Read Only          | Time stamp when the document was last updated                                                                                                                    |
-| user            | ID           | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                           |
+| user            | Integer      | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                           |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
 
@@ -679,6 +679,79 @@ the DocumentCloud API.
 - `PUT /api/users/<id>/` - Update a user
 - `PATCH /api/users/<id>/` - Partial update a user
 
+## Add-Ons
+
+Add-Ons allow you to easily add custom features to DocumentCloud.  [Learn more
+about Add-Ons][7].  Add-Ons are added by installing the [GitHub App][8] in the
+repository you would like to use as an add-on.  The API allows you to view,
+edit and run your add-ons.
+
+### Fields
+
+| Field         | Type         | Options          | Description                                                                             |
+| ------------- | ------------ | ---------------- | --------------------------------------------------------------------------------------- |
+| ID            | Integer      | Read Only        | The ID for the add-on                                                                   |
+| access        | String       | Read Only        | The [access level](#access-levels) for the add-on (will be settable in the future)      |
+| active        | Bool         | Default: `false` | Whether this add-on is active for you
+| created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                                 |
+| name          | String       | Read Only        | The name of the add-on (set in the configuration)                                       |
+| organization  | Integer      | Not Required     | The ID for the [organization](#organizations) this add-on belongs to                    |
+| parameters    | JSON         | Read Only        | The contents of the config.yaml file from the repository, converted to JSON             |
+| repository    | String       | Read Only        | The full name of the GitHub repository, including the account name                      |
+| updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                             |
+| user          | Integer      | Read Only        | The ID for the [user](#users) this add-on belongs to                                    |
+
+Your active add-ons are showed to you in the web interface.
+
+### Endpoints
+
+- `GET /api/addons/` - List add-ons
+- `GET /api/addons/<id>/` - Get an add-on
+- `PUT /api/addons/<id>/` - Update an add-on
+- `PATCH /api/addons/<id>/` - Partial update an add-on
+
+### Filters
+
+- `active` &mdash; Filter by only your active or inactive add-ons 
+- `query` &mdash; Searches for add-ons which contain the query in their name or description
+
+### Add-On Runs
+
+Add-on runs represent an invocation of an add-on.  You create one to run the
+add-on.  The add-on itself can then update the add-on run as a means of
+supplying feedback to the caller.
+
+#### Fields
+
+| Field         | Type         | Options          | Description                                                                                                                                                                            |
+| ------------- | ------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UUID          | UUID         | Read Only        | The ID for the add-on run                                                                                                                                                              |
+| addon         | Integer      | Required         | The ID of the add-on that is being ran                                                                                                                                                 |
+| created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                                                                                                                                |
+| dismissed     | Bool         | Default: `false` | Add-on runs are shown to the user until they are dismissed                                                                                                                             |
+| file_name     | String       | Write Only       | The add-on must set this to the name of the file supplied to `presigned_url` after uploading the file to make it accessible to the user                                                |
+| file_url      | URL          | Read Only        | The URL of a file uploaded via `presigned_url`                                                                                                                                         |
+| message       | String       | Not Required     | Add-ons may set infromational messages to the user while running                                                                                                                       |
+| parameters    | JSON         | Write Only       | The add-on specific data                                                                                                                                                               |
+| presigned_url | URL          | Read Only        | Only included if you set the `upload_file` query parameter to the name of the file to upload.  This is a URL the add-on can directly `PUT` a file to in order to return it to the user |
+| progress      | Integer      | Not Required     | Long running add-ons may set this as a percentage of their progress                                                                                                                    |
+| status        | String       | Read Only        | The status of the run - `queued`, `in_progress`, `success`, or `failure`                                                                                                               |
+| updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                                                                                                                            |
+| user          | Integer      | Read Only        | The ID for the [user](#users) who ran the add-on                                                                                                                                       |
+
+#### Endpoints
+
+- `POST /api/addon_runs/` - Create a new add-on run - this will start the run using GitHub actions
+- `GET /api/addon_runs` - List add-on runs
+- `GET /api/addon_runs<uuid>/` - Get an add-on run
+- `PUT /api/addon_runs/<uuid>/` - Update an add-on run
+- `PATCH /api/addon_runs/<uuid>/` - Partial update an add-on run
+
+#### Filters
+
+- `dismissed` &mdash; Filter by dismissed or not dismissed add-on runs
+
+
 ## oEmbed
 
 Generate an embed code for a document using our [oEmbed][4] service.
@@ -870,3 +943,5 @@ To expand all fields:
 [4]: https://oembed.com
 [5]: https://github.com/rsinger86/drf-flex-fields
 [6]: https://www.documentcloud.org/help/search/
+[7]: https://www.documentcloud.org/help/add-ons/
+[8]: https://github.com/apps/documentcloud-add-on
