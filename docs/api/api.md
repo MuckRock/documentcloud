@@ -708,18 +708,18 @@ edit and run your add-ons.
 
 ### Fields
 
-| Field         | Type         | Options          | Description                                                                             |
-| ------------- | ------------ | ---------------- | --------------------------------------------------------------------------------------- |
-| ID            | Integer      | Read Only        | The ID for the add-on                                                                   |
-| access        | String       | Read Only        | The [access level](#access-levels) for the add-on (will be settable in the future)      |
-| active        | Bool         | Default: `false` | Whether this add-on is active for you
-| created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                                 |
-| name          | String       | Read Only        | The name of the add-on (set in the configuration)                                       |
-| organization  | Integer      | Not Required     | The ID for the [organization](#organizations) this add-on belongs to                    |
-| parameters    | JSON         | Read Only        | The contents of the config.yaml file from the repository, converted to JSON             |
-| repository    | String       | Read Only        | The full name of the GitHub repository, including the account name                      |
-| updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                             |
-| user          | Integer      | Read Only        | The ID for the [user](#users) this add-on belongs to                                    |
+| Field         | Type         | Options          | Description                                                                         |
+| ------------- | ------------ | ---------------- | ----------------------------------------------------------------------------------- |
+| ID            | Integer      | Read Only        | The ID for the add-on                                                               |
+| access        | String       | Read Only        | The [access level](#access-levels) for the add-on (will be settable in the future)  |
+| active        | Bool         | Default: `false` | Whether this add-on is active for you                                               |
+| created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                             |
+| name          | String       | Read Only        | The name of the add-on (set in the configuration)                                   |
+| organization  | Integer      | Not Required     | The ID for the [organization](#organizations) this add-on belongs to                |
+| parameters    | JSON         | Read Only        | The contents of the config.yaml file from the repository, converted to JSON         |
+| repository    | String       | Read Only        | The full name of the GitHub repository, including the account name                  |
+| updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                         |
+| user          | Integer      | Read Only        | The ID for the [user](#users) this add-on belongs to                                |
 
 Your active add-ons are showed to you in the web interface.
 
