@@ -273,7 +273,8 @@ if MOESIF_ID:
         "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
             DOCCLOUD_EMBED_URL
         )
-        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
+        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL)
+        or request.user.is_anonymous,
         "IDENTIFY_USER": lambda request, response: request.user.pk
         if request.user and request.user.is_authenticated
         else None,
