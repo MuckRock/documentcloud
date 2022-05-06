@@ -1,6 +1,7 @@
 # Django
 from celery.exceptions import MaxRetriesExceededError
-from celery.task import task
+from celery.schedules import crontab
+from celery.task import periodic_task, task
 
 # Standard Library
 import logging
@@ -9,7 +10,8 @@ import logging
 from requests.exceptions import RequestException
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn, AddOnRun
+from documentcloud.addons.choices import Event
+from documentcloud.addons.models import AddOn, AddOnEvent, AddOnRun
 from documentcloud.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -55,12 +57,12 @@ def set_run_status(uuid):
 
 
 @task
-def dispatch(addon_id, uuid, user_id, documents, query, parameters):
+def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=None):
     addon = AddOn.objects.get(pk=addon_id)
     user = User.objects.get(pk=user_id)
 
     try:
-        addon.dispatch(uuid, user, documents, query, parameters)
+        addon.dispatch(uuid, user, documents, query, parameters, event_id)
         find_run_id.delay(uuid)
     except RequestException as exc:
         try:
@@ -76,3 +78,28 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters):
 def update_config(repository):
     for addon in AddOn.objects.filter(repository=repository, removed=False):
         addon.update_config()
+
+
+def dispatch_events(event_choice):
+    """Run all add-ons for the given event"""
+    # XXX will this scale ok?
+    logger.info("[DISPATCHING EVENTS] type: %s", event_choice)
+    events = AddOnEvent.objects.filter(event=event_choice)
+    logger.info("[DISPATCHING EVENTS] events to run: %d", len(events))
+    for event in events:
+        event.dispatch()
+
+
+@periodic_task(run_every=crontab(minute=0))
+def hourly_event():
+    dispatch_events(Event.hourly)
+
+
+@periodic_task(run_every=crontab(minute=30, hour=0))
+def daily_event():
+    dispatch_events(Event.daily)
+
+
+@periodic_task(run_every=crontab(minute=30, hour=1, day_of_week=0))
+def weekly_event():
+    dispatch_events(Event.weekly)

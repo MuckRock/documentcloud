@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.core.cache import cache
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -17,7 +17,13 @@ import yaml
 from squarelet_auth.utils import squarelet_get
 
 # DocumentCloud
-from documentcloud.addons.querysets import AddOnQuerySet, AddOnRunQuerySet
+from documentcloud.addons.choices import Event
+from documentcloud.addons.querysets import (
+    AddOnEventQuerySet,
+    AddOnQuerySet,
+    AddOnRunQuerySet,
+)
+from documentcloud.addons.tasks import dispatch
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access
 
@@ -71,10 +77,10 @@ class AddOn(models.Model):
     )
 
     created_at = AutoCreatedField(
-        _("created at"), help_text=_("Timestamp of when the document was created")
+        _("created at"), help_text=_("Timestamp of when the add-on was created")
     )
     updated_at = AutoLastModifiedField(
-        _("updated at"), help_text=_("Timestamp of when the document was last updated")
+        _("updated at"), help_text=_("Timestamp of when the add-on was last updated")
     )
 
     error = models.BooleanField(
@@ -124,7 +130,7 @@ class AddOn(models.Model):
     def github_token(self):
         return self.github_installation.token
 
-    def dispatch(self, uuid, user, documents, query, parameters):
+    def dispatch(self, uuid, user, documents, query, parameters, event_id):
         """Activate the GitHub Action for this add-on"""
         tokens = self.get_tokens(user)
         payload = {
@@ -137,6 +143,7 @@ class AddOn(models.Model):
             "data": parameters,
             "user": user.pk,
             "organization": user.organization.pk,
+            "event_id": event_id,
         }
         resp = requests.post(
             f"{self.api_url}/dispatches",
@@ -177,6 +184,15 @@ class AddOnRun(models.Model):
         on_delete=models.PROTECT,
         related_name="runs",
         help_text=_("The add-on which was ran"),
+    )
+    event = models.ForeignKey(
+        verbose_name=_("event"),
+        to="addons.AddOnEvent",
+        on_delete=models.PROTECT,
+        related_name="runs",
+        blank=True,
+        null=True,
+        help_text=_("The add-on event which triggered this run"),
     )
     user = models.ForeignKey(
         verbose_name=_("user"),
@@ -235,10 +251,11 @@ class AddOnRun(models.Model):
     )
 
     created_at = AutoCreatedField(
-        _("created at"), help_text=_("Timestamp of when the document was created")
+        _("created at"), help_text=_("Timestamp of when the add-on was ran")
     )
     updated_at = AutoLastModifiedField(
-        _("updated at"), help_text=_("Timestamp of when the document was last updated")
+        _("updated at"),
+        help_text=_("Timestamp of when the add-on run was last updated"),
     )
 
     def __str__(self):
@@ -315,6 +332,72 @@ class AddOnRun(models.Model):
             return f"{settings.ADDON_BUCKET}/{self.uuid}/{file_name}"
         else:
             return ""
+
+
+class AddOnEvent(models.Model):
+    """An event to trigger on add-on run"""
+
+    objects = AddOnEventQuerySet.as_manager()
+
+    addon = models.ForeignKey(
+        verbose_name=_("add-on"),
+        to=AddOn,
+        on_delete=models.PROTECT,
+        related_name="events",
+        help_text=_("The add-on to run"),
+    )
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="events",
+        help_text=_("The user who defined this event"),
+    )
+    parameters = models.JSONField(
+        _("parameters"),
+        default=dict,
+        help_text=_("The user supplied parameters to run the add-on with"),
+    )
+    event = models.IntegerField(
+        _("event"),
+        choices=Event.choices,
+        help_text=_("The event to trigger the add-on run"),
+    )
+    scratch = models.JSONField(
+        _("scratch"),
+        default=dict,
+        help_text=_("Field to store data for add-on between events"),
+    )
+
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the add-on event was created")
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"),
+        help_text=_("Timestamp of when the add-on event was last updated"),
+    )
+    # XXX Org?
+
+    def __str__(self):
+        return f"Event: {self.addon_id} - {self.event}"
+
+    def dispatch(self):
+        """Run the add-on when triggered by this event"""
+        with transaction.atomic():
+            run = AddOnRun.objects.create(
+                addon_id=self.addon_id, event=self, user=self.user, dismissed=True
+            )
+            transaction.on_commit(
+                lambda: dispatch.delay(
+                    run.addon_id,
+                    run.uuid,
+                    self.user_id,
+                    [],  # XXX documents
+                    "",  # XXX query
+                    self.parameters,
+                    self.id,
+                )
+            )
 
 
 class GitHubAccount(models.Model):

@@ -40,3 +40,9 @@ add_perm("addons.view_addonrun", is_authenticated & is_owner)
 add_perm("addons.add_addonrun", is_authenticated)
 add_perm("addons.change_addonrun", is_authenticated & is_owner)
 add_perm("addons.delete_addonrun", always_deny)
+
+
+add_perm("addons.view_addonevent", is_authenticated & is_owner)
+add_perm("addons.add_addonevent", is_authenticated)
+add_perm("addons.change_addonevent", is_authenticated & is_owner)
+add_perm("addons.delete_addonevent", always_deny)

@@ -28,3 +28,11 @@ class AddOnRunQuerySet(models.QuerySet):
             return self.filter(user=user)
         else:
             return self.none()
+
+
+class AddOnEventQuerySet(models.QuerySet):
+    def get_viewable(self, user):
+        if user.is_authenticated:
+            return self.filter(user=user)
+        else:
+            return self.none()

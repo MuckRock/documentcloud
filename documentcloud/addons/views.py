@@ -25,11 +25,16 @@ from rest_flex_fields.utils import is_expanded
 # DocumentCloud
 from documentcloud.addons.models import (
     AddOn,
+    AddOnEvent,
     AddOnRun,
     GitHubAccount,
     GitHubInstallation,
 )
-from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
+from documentcloud.addons.serializers import (
+    AddOnEventSerializer,
+    AddOnRunSerializer,
+    AddOnSerializer,
+)
 from documentcloud.addons.tasks import dispatch, update_config
 
 logger = logging.getLogger(__name__)
@@ -128,6 +133,20 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             fields = {"dismissed": ["exact"]}
 
     filterset_class = Filter
+
+
+class AddOnEventViewSet(FlexFieldsModelViewSet):
+    serializer_class = AddOnEventSerializer
+    queryset = AddOnEvent.objects.none()
+    permit_list_expands = ["addon"]
+
+    @lru_cache()
+    def get_queryset(self):
+        """Only fetch add-on events viewable to this user"""
+        queryset = AddOnEvent.objects.get_viewable(self.request.user).order_by("-pk")
+        if is_expanded(self.request, "addon"):
+            queryset = queryset.select_related("addon")
+        return queryset
 
 
 @csrf_exempt

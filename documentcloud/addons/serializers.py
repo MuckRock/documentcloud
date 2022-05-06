@@ -7,7 +7,7 @@ import jsonschema
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn, AddOnRun
+from documentcloud.addons.models import AddOn, AddOnEvent, AddOnRun
 from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access
 from documentcloud.documents.fields import ChoiceField
@@ -189,3 +189,33 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             except jsonschema.exceptions.ValidationError as exc:
                 raise serializers.ValidationError(exc.message)
         return attrs
+
+
+class AddOnEventSerializer(FlexFieldsModelSerializer):
+    class Meta:
+        model = AddOnEvent
+        fields = [
+            "addon",
+            "user",
+            "parameters",
+            "event",
+            "parameters",
+            # XXX put a size limit on scratch
+            "scratch",
+            "created_at",
+            "updated_at",
+        ]
+        extra_kwargs = {
+            "addon": {"queryset": AddOn.objects.none()},
+            "user": {"read_only": True},
+            "created_at": {"read_only": True},
+            "updated_at": {"read_only": True},
+        }
+        expandable_fields = {"addon": ("documentcloud.addons.AddOnSerializer", {})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        context = kwargs.get("context", {})
+        request = context.get("request")
+        if request and request.user:
+            self.fields["addon"].queryset = AddOn.objects.get_viewable(request.user)
