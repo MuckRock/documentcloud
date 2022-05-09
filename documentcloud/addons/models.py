@@ -23,7 +23,6 @@ from documentcloud.addons.querysets import (
     AddOnQuerySet,
     AddOnRunQuerySet,
 )
-from documentcloud.addons.tasks import dispatch
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.documents.choices import Access
 
@@ -383,6 +382,8 @@ class AddOnEvent(models.Model):
 
     def dispatch(self):
         """Run the add-on when triggered by this event"""
+        from documentcloud.addons.tasks import dispatch
+
         with transaction.atomic():
             run = AddOnRun.objects.create(
                 addon_id=self.addon_id, event=self, user=self.user, dismissed=True
