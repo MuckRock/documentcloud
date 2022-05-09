@@ -9,7 +9,12 @@ from django.urls import path, reverse
 import json
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn, GitHubAccount, GitHubInstallation
+from documentcloud.addons.models import (
+    AddOn,
+    AddOnEvent,
+    GitHubAccount,
+    GitHubInstallation,
+)
 from documentcloud.addons.tasks import update_config
 
 
@@ -65,6 +70,14 @@ class AddOnAdmin(admin.ModelAdmin):
         update_config.delay(repository)
         messages.success(request, f"Updating from repo {repository}")
         return HttpResponseRedirect(reverse("admin:addons_addon_change", args=[pk]))
+
+
+@admin.register(AddOnEvent)
+class AddOnEventAdmin(admin.ModelAdmin):
+    list_display = ["addon", "user", "event"]
+    list_select_related = ["addon", "user"]
+    list_filter = ["event"]
+    autocomplete_fields = ["addon", "user"]
 
 
 @admin.register(GitHubAccount)
