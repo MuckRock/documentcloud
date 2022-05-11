@@ -148,6 +148,9 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             queryset = queryset.select_related("addon")
         return queryset
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 @csrf_exempt
 def github_webhook(request):
