@@ -130,7 +130,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     class Filter(django_filters.FilterSet):
         class Meta:
             model = AddOnRun
-            fields = {"dismissed": ["exact"]}
+            fields = {"dismissed": ["exact"], "event": ["exact"]}
 
     filterset_class = Filter
 
@@ -150,6 +150,13 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = AddOnEvent
+            fields = {"addon": ["exact"]}
+
+    filterset_class = Filter
 
 
 @csrf_exempt

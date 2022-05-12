@@ -195,6 +195,7 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = AddOnEvent
         fields = [
+            "id",
             "addon",
             "user",
             "parameters",
