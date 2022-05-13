@@ -27,7 +27,7 @@ class PrettyJSONWidget(widgets.Textarea):
             row_lengths = [len(r) for r in value.split("\n")]
             self.attrs["rows"] = min(max(len(row_lengths) + 2, 10), 30)
             self.attrs["cols"] = min(max(max(row_lengths) + 2, 40), 120)
-            self.attrs["disabled"] = True
+            self.attrs["readonly"] = True
             return value
         except Exception:  # pylint: disable=broad-except
             return super(PrettyJSONWidget, self).format_value(value)
