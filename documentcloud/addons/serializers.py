@@ -201,7 +201,6 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
             "parameters",
             "event",
             "parameters",
-            # XXX put a size limit on scratch
             "scratch",
             "created_at",
             "updated_at",

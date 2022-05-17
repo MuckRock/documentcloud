@@ -58,6 +58,7 @@ def set_run_status(uuid):
 
 @task
 def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=None):
+    # pylint: disable=too-many-arguments
     addon = AddOn.objects.get(pk=addon_id)
     user = User.objects.get(pk=user_id)
 
@@ -82,7 +83,6 @@ def update_config(repository):
 
 def dispatch_events(event_choice):
     """Run all add-ons for the given event"""
-    # XXX will this scale ok?
     logger.info("[DISPATCHING EVENTS] type: %s", event_choice)
     events = AddOnEvent.objects.filter(event=event_choice)
     logger.info("[DISPATCHING EVENTS] events to run: %d", len(events))

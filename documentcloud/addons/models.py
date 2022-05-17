@@ -131,6 +131,7 @@ class AddOn(models.Model):
 
     def dispatch(self, uuid, user, documents, query, parameters, event_id):
         """Activate the GitHub Action for this add-on"""
+        # pylint: disable=too-many-arguments
         tokens = self.get_tokens(user)
         payload = {
             "token": tokens["access_token"],
@@ -375,7 +376,6 @@ class AddOnEvent(models.Model):
         _("updated at"),
         help_text=_("Timestamp of when the add-on event was last updated"),
     )
-    # XXX Org?
 
     def __str__(self):
         return f"Event: {self.addon_id} - {self.event}"
@@ -393,8 +393,8 @@ class AddOnEvent(models.Model):
                     run.addon_id,
                     run.uuid,
                     self.user_id,
-                    [],  # XXX documents
-                    "",  # XXX query
+                    [],
+                    "",
                     self.parameters,
                     self.id,
                 )
