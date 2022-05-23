@@ -1740,11 +1740,9 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                         exists(query({!terms f=access v=organization,public}))
                       )
                     )
-                  notes:[subquery]
-                  org_notes:[subquery]
+                  notes:[subquery fromIndex=notes]
+                  org_notes:[subquery fromIndex=notes]
                 </str>
-                <str name="notes.collection">notes</str>
-                <str name="org_notes.collection">notes</str>
                 <str name="notes.fl">
                   access
                   created_at
