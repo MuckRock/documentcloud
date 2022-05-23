@@ -40,8 +40,8 @@ from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.core.utils import grouper
 from documentcloud.documents.choices import Status
-from documentcloud.documents.models import DeletedDocument, Document
-from documentcloud.documents.search import SOLR
+from documentcloud.documents.models import DeletedDocument, Document, Note
+from documentcloud.documents.search import SOLR, SOLR_NOTES
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +188,16 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
     Document.objects.filter(pk=document_pk).update(solr_dirty=False)
 
 
+def index_note(note_pk):
+    """Index a single note"""
+    logger.info("[SOLR INDEX] indexing note %s", note_pk)
+    note = Note.objects.get(pk=note_pk)
+    solr_document = note.solr()
+    SOLR_NOTES.add([solr_document])
+
+    Note.objects.filter(pk=note_pk).update(solr_dirty=False)
+
+
 def reindex_single(collection_name, document_pk):
     """Re-index a single document into a new Solr collection
 
@@ -274,6 +284,27 @@ def reindex_batch(collection_name, document_pks):
         Document.objects.filter(pk__in=document_pks).update(solr_dirty=False)
 
 
+def batch_notes(collection_name, note_pks):
+    """Re-index a batch of notes into a new Solr collection"""
+
+    logger.info(
+        "[SOLR INDEX] index batch notes %s collection %s", note_pks, collection_name
+    )
+
+    solr = get_solr_connection(collection_name)
+
+    notes = Note.objects.filter(pk__in=note_pks)
+
+    # generate the data to index into solr
+    solr_documents = [n.solr() for n in notes]
+    solr.add(solr_documents)
+
+    if collection_name == settings.SOLR_NOTES_COLLECTION_NAME:
+        # if we are indexing into the default collection, clear the dirty flag after
+        # a succesful index
+        Note.objects.filter(pk__in=note_pks).update(solr_dirty=False)
+
+
 def index_dirty(timestamp=None):
     """Index dirty documents"""
 
@@ -310,7 +341,14 @@ def index_dirty(timestamp=None):
         return
 
     documents = _dirty_prepare_documents()
+    notes = _dirty_prepare_notes()
     tasks = _batch_by_size(None, documents)
+    tasks.append(
+        signature(
+            "documentcloud.documents.tasks.solr_batch_notes",
+            args=[settings.SOLR_NOTES_COLLECTION_NAME, notes],
+        )
+    )
     chord(
         tasks,
         signature(
@@ -327,10 +365,13 @@ def index_dirty_continue(timestamp):
     documents_left = (
         Document.objects.exclude(status=Status.deleted).filter(solr_dirty=True).count()
     )
-    if documents_left > 0:
+    notes_left = Note.objects.filter(solr_dirty=True).count()
+    if documents_left > 0 or notes_left > 9:
         # if there are any documents left continue re-indexing
         logger.info(
-            "[SOLR INDEX] continuing with %d dirty documents left", documents_left
+            "[SOLR INDEX] continuing with %d dirty documents, %d dirty notes left",
+            documents_left,
+            notes_left,
         )
         celery_app.send_task(
             "documentcloud.documents.tasks.solr_index_dirty", args=[timestamp]
@@ -614,3 +655,22 @@ def _dirty_prepare_documents():
         full_count,
     )
     return documents
+
+
+def _dirty_prepare_notes():
+    """Prepare which dirty notes will be indexed in this batch"""
+    notes = (
+        Note.objects.filter(solr_dirty=True)
+        .order_by("-created_at")
+        .values_list("pk", flat=True)
+    )
+
+    full_count = notes.count()
+    notes = list(notes[: settings.SOLR_INDEX_LIMIT])
+    logger.info(
+        "[SOLR INDEX] indexing %d dirty notes now, %d notes left to "
+        "re-index in total",
+        len(notes),
+        full_count,
+    )
+    return notes

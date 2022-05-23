@@ -4,7 +4,6 @@ from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
 from django.conf import settings
-from django.core.cache import cache
 from django.db import transaction
 from django.db.utils import DatabaseError
 from django.utils import timezone
@@ -24,7 +23,7 @@ from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents import entity_extraction, modifications, solr
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError
-from documentcloud.documents.search import SOLR
+from documentcloud.documents.search import SOLR, SOLR_NOTES
 
 logger = logging.getLogger(__name__)
 
@@ -216,10 +215,12 @@ def delete_document_files(path):
     storage.delete(path)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=60)
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
 def solr_delete(document_pk):
     # delete document from solr index
     SOLR.delete(id=str(document_pk))
+    # delete the notes
+    SOLR_NOTES.delete(q=f"document_s:{document_pk}")
 
     # after succesfully deleting from solr, we can delete the correspodning
     # record from the database
@@ -396,69 +397,24 @@ def post_process(document_pk, modification_data):
     modifications.post_process(document, modification_data)
 
 
+# notes
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+def solr_index_note(note_pk):
+    solr.index_note(note_pk)
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+def solr_delete_note(note_pk):
+    # delete document from solr index
+    SOLR_NOTES.delete(id=str(note_pk))
+
+
+@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+def solr_batch_notes(collection_name, note_pks):
+    """Re-index a batch of notes into a new Solr collection"""
+    solr.batch_notes(collection_name, note_pks)
+
+
 # temporary tasks
-
-
-@task
-def solr_add_type():
-    """One off task to add `type:document` to all documents in Solr"""
-    try:
-        docs = SOLR.search("-type:document", rows=200)
-        logger.info(
-            "[SOLR ADD TYPE] adding type to documents, %d untyped documents found",
-            docs.hits,
-        )
-        if docs.hits == 0:
-            logger.info("[SOLR ADD TYPE] finished")
-            return
-        solr_docs = [{"id": d["id"], "type": "document"} for d in docs]
-        SOLR.add(solr_docs, fieldUpdates={"type": "set"})
-        # keep calling until we have updated all documents
-        # wait in between calls to not overload solr
-        solr_add_type.apply_async(countdown=5)
-    except Exception as exc:
-        # there was an error, try a longer cool off
-        logger.info("[SOLR ADD TYPE] Error %s, take a 5 minute break", exc)
-        solr_add_type.apply_async(countdown=300)
-        raise
-
-
-@task
-def solr_index_notes():
-    """One off task to initially index all notes"""
-    # pre-populate cache
-    indexes = cache.get("solr_index_notes")
-    if not indexes:
-        logging.error("[SOLR INDEX NOTES] cache not set")
-        return
-    indexes = indexes.split(",")
-    logging.info("[SOLR INDEX NOTES] %d documents remaining", len(indexes))
-    batch_size = 8
-    while True:
-        logging.info("[SOLR INDEX NOTES] trying batch size %d", batch_size)
-        # use the first n indexes, and save the rest back into the cache
-        use_indexes, save_indexes = indexes[:batch_size], indexes[batch_size:]
-        docs = Document.objects.filter(pk__in=use_indexes)
-        solr_docs = [d.solr(fields=["notes"]) for d in docs]
-        try:
-            SOLR.add(solr_docs, fieldUpdates={"notes": "set"})
-        except Exception as exc:  # pylint: disable=broad-except
-            logging.info("[SOLR INDEX NOTES] Error %s", exc)
-            batch_size //= 2
-            if not batch_size:
-                failed_indexes = cache.get("solr_index_notes_failed", "")
-                failed_indexes = [i for i in failed_indexes.split(",") if i]
-                failed_indexes.extend(use_indexes)
-                cache.set(
-                    "solr_index_notes_failed", ",".join(failed_indexes), timeout=None
-                )
-                logging.info("[SOLR INDEX NOTES] failed %s", use_indexes)
-                break
-        else:
-            logging.info("[SOLR INDEX NOTES] indexed")
-            break
-    if save_indexes:
-        cache.set("solr_index_notes", ",".join(save_indexes), timeout=None)
-        solr_index_notes.apply_async(countdown=3)
-    else:
-        logging.info("[SOLR INDEX NOTES] finished")

@@ -53,6 +53,7 @@ def setup_solr(django_db_setup, django_db_blocker):
     """
     # pylint: disable=unused-argument
     solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
+    solr_notes = pysolr.Solr(settings.SOLR_NOTES_URL, auth=settings.SOLR_AUTH)
     with django_db_blocker.unblock():
         try:
             organizations = {}
@@ -100,6 +101,8 @@ def setup_solr(django_db_setup, django_db_blocker):
                 )
             for doc in documents.values():
                 solr.add([doc.solr()])
+            for note in notes.values():
+                solr_notes.add([note.solr()])
             solr.commit()
             yield
         finally:

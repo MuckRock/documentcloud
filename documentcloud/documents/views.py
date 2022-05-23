@@ -73,7 +73,9 @@ from documentcloud.documents.tasks import (
     process,
     process_cancel,
     redact,
+    solr_delete_note,
     solr_index,
+    solr_index_note,
     update_access,
 )
 from documentcloud.drf_bulk.views import BulkModelMixin
@@ -554,36 +556,25 @@ class NoteViewSet(FlexFieldsModelViewSet):
     @transaction.atomic
     def perform_create(self, serializer):
         """Specify the document, user and organization"""
-        serializer.save(
+        note = serializer.save(
             document_id=self.kwargs["document_pk"],
             user=self.request.user,
             organization=self.request.user.organization,
         )
-        transaction.on_commit(
-            lambda: solr_index.delay(
-                self.kwargs["document_pk"], field_updates={"notes": "set"}
-            )
-        )
+        transaction.on_commit(lambda: solr_index_note.delay(note.pk))
 
     @transaction.atomic
     def perform_update(self, serializer):
         """Index the note changes in Solr"""
-        super().perform_update(serializer)
-        transaction.on_commit(
-            lambda: solr_index.delay(
-                self.kwargs["document_pk"], field_updates={"notes": "set"}
-            )
-        )
+        note = serializer.save()
+        transaction.on_commit(lambda: solr_index_note.delay(note.pk))
 
     @transaction.atomic
     def perform_destroy(self, instance):
         """Index the note changes in Solr"""
+        note_pk = instance.pk
         super().perform_destroy(instance)
-        transaction.on_commit(
-            lambda: solr_index.delay(
-                self.kwargs["document_pk"], field_updates={"notes": "set"}
-            )
-        )
+        transaction.on_commit(lambda: solr_delete_note.delay(note_pk))
 
     class Filter(django_filters.FilterSet):
         class Meta:

@@ -75,6 +75,12 @@ SOLR = pysolr.Solr(
     verify=settings.SOLR_VERIFY,
     timeout=settings.SOLR_TIMEOUT,
 )
+SOLR_NOTES = pysolr.Solr(
+    settings.SOLR_NOTES_URL,
+    auth=settings.SOLR_AUTH,
+    verify=settings.SOLR_VERIFY,
+    timeout=settings.SOLR_TIMEOUT,
+)
 
 
 def search(user, query_params):
@@ -648,21 +654,15 @@ def _format_highlights(results):
 def _format_notes(results):
     """Put note data into the proper format"""
 
-    def transform_notes(notes):
-        """Note IDs have a leading N to distinguish them from document IDs -
-          we strip them here
-        """
-        return [{**n, "id": n["id"][1:]} for n in notes]
-
     def format_note(result):
         """Notes are in the `docs` key as returned from Solr
         We merge in the Org notes only if the user has edit access to this document
         """
         if settings.SOLR_ADD_NOTES:
-            result["notes"] = transform_notes(result["notes"]["docs"])
+            result["notes"] = result["notes"]["docs"]
             if result["edit_access"]:
                 notes = result["notes"]
-                org_notes = transform_notes(result["org_notes"]["docs"])
+                org_notes = result["org_notes"]["docs"]
                 # merge two lists of sorted notes, removing duplicates
                 result["notes"] = []
                 while notes or org_notes:
@@ -780,7 +780,7 @@ def _add_note_query(text_query, user):
         # search through notes which are public or that you own
         # on all documents you can view
         f"""
-        _query_:"{{!parent which=type:document score=total
+        _query_:"{{!join from=document_s fromIndex=notes to=id score=total
             v='+type:note +(access:public OR user:{user.pk})
                +(title:({text_query}) description:({text_query}))'
         }}"
@@ -797,7 +797,7 @@ def _add_note_query(text_query, user):
                 OR
                 (access:(public organization) AND organization:({organizations}))
             )
-            +{{!parent which=type:document score=total
+            +{{!join from=document_s fromIndex=notes to=id score=total
                 v='+type:note +(access:organization)
                    +(title:({text_query}) description:({text_query}))'}}
             "

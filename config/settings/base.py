@@ -459,7 +459,9 @@ HTTPSUB_RETRY_LIMIT = env.int("HTTPSUB_RETRY_LIMIT", default=10)
 SOLR_HOST_URL = env("SOLR_HOST_URL", default="http://documentcloud_solr:8983/")
 SOLR_BASE_URL = SOLR_HOST_URL + "solr/"
 SOLR_COLLECTION_NAME = env("SOLR_COLLECTION_NAME", default="documentcloud")
+SOLR_NOTES_COLLECTION_NAME = env("SOLR_NOTES_COLLECTION_NAME", default="notes")
 SOLR_URL = SOLR_BASE_URL + SOLR_COLLECTION_NAME
+SOLR_NOTES_URL = SOLR_BASE_URL + SOLR_NOTES_COLLECTION_NAME
 
 SOLR_USERNAME = env("SOLR_USERNAME", default="")
 SOLR_PASSWORD = env("SOLR_PASSWORD", default="")
@@ -494,9 +496,8 @@ SOLR_HL_MULTI_TERM = env("SOLR_HL_MULTI_TERM", default="true")
 SOLR_TIMEOUT = env.int("SOLR_TIMEOUT", default=20)
 SOLR_ANON_MAX_ROWS = env.int("SOLR_ANON_MAX_ROWS", default=25)
 SOLR_ADD_EDIT_ACCESS = env.bool("SOLR_ADD_EDIT_ACCESS", default=True)
-SOLR_ADD_NOTES = env.bool("SOLR_ADD_NOTES", default=False)
-SOLR_INDEX_NOTES = env.bool("SOLR_INDEX_NOTES", default=False)
-SOLR_QUERY_NOTES = env.bool("SOLR_QUERY_NOTES", default=False)
+SOLR_ADD_NOTES = env.bool("SOLR_ADD_NOTES", default=True)
+SOLR_QUERY_NOTES = env.bool("SOLR_QUERY_NOTES", default=True)
 
 # OEmbed
 # ------------------------------------------------------------------------------

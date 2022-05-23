@@ -76,9 +76,9 @@ services:
       - ./config/solr:/config
       - ./config/solr/lib:/opt/solr-8.3.0/lib
     command:
-      - solr-precreate
-      - documentcloud
-      - /config
+      - bash
+      - "-c"
+      - "precreate-core documentcloud /config; precreate-core notes /config; exec solr -f"
 
   documentcloud_test_solr:
     image: solr:8.3
@@ -89,9 +89,9 @@ services:
       - ./config/solr:/config
       - ./config/solr/lib:/opt/solr-8.3.0/lib
     command:
-      - solr-precreate
-      - documentcloud_test
-      - /config
+      - bash
+      - "-c"
+      - "precreate-core documentcloud_test /config; precreate-core notes /config; exec solr -f"
 
   documentcloud_celeryworker:
     <<: *django

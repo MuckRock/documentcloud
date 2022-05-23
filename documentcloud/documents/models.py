@@ -393,7 +393,6 @@ class Document(models.Model):
             p.project_id for p in project_memberships if p.edit_access
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
-        notes = [note.solr() for note in self.notes.all()]
 
         solr_document = {
             "id": self.pk,
@@ -420,10 +419,6 @@ class Document(models.Model):
             **pages,
             **data,
         }
-
-        if settings.SOLR_INDEX_NOTES and notes:
-            # empty notes field can sometimes cause issues with Solr
-            solr_document["notes"] = notes
 
         if fields:
             # for partial updates, just return the needed fields
@@ -621,6 +616,11 @@ class Note(models.Model):
     updated_at = AutoLastModifiedField(
         _("updated at"), help_text=_("Timestamp of when the note was last updated")
     )
+    solr_dirty = models.BooleanField(
+        _("solr dirty"),
+        default=True,
+        help_text=_("Tracks if the Solr Index is out of date with the SQL model"),
+    )
 
     class Meta:
         ordering = ("document", "page_number")
@@ -673,10 +673,17 @@ class Note(models.Model):
     def __str__(self):
         return self.title
 
+    def save(self, *args, **kwargs):
+        """Mark this model's solr index as being out of date on every save"""
+        # pylint: disable=signature-differs
+        self.solr_dirty = True
+        super().save(*args, **kwargs)
+
     def solr(self):
         """Get a solr document to index this note"""
         return {
-            "id": f"N{self.id}",
+            "id": self.pk,
+            "document_s": self.document_id,
             "type": "note",
             "user": self.user_id,
             "organization": self.organization_id,
