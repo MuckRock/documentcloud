@@ -561,20 +561,23 @@ class NoteViewSet(FlexFieldsModelViewSet):
             user=self.request.user,
             organization=self.request.user.organization,
         )
-        transaction.on_commit(lambda: solr_index_note.delay(note.pk))
+        if settings.SOLR_INDEX_NOTES:
+            transaction.on_commit(lambda: solr_index_note.delay(note.pk))
 
     @transaction.atomic
     def perform_update(self, serializer):
         """Index the note changes in Solr"""
         note = serializer.save()
-        transaction.on_commit(lambda: solr_index_note.delay(note.pk))
+        if settings.SOLR_INDEX_NOTES:
+            transaction.on_commit(lambda: solr_index_note.delay(note.pk))
 
     @transaction.atomic
     def perform_destroy(self, instance):
         """Index the note changes in Solr"""
         note_pk = instance.pk
         super().perform_destroy(instance)
-        transaction.on_commit(lambda: solr_delete_note.delay(note_pk))
+        if settings.SOLR_INDEX_NOTES:
+            transaction.on_commit(lambda: solr_delete_note.delay(note_pk))
 
     class Filter(django_filters.FilterSet):
         class Meta:

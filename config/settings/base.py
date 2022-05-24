@@ -495,8 +495,9 @@ SOLR_USE_HL = env.bool("SOLR_USE_HL", default=True)
 SOLR_HL_MULTI_TERM = env("SOLR_HL_MULTI_TERM", default="true")
 SOLR_TIMEOUT = env.int("SOLR_TIMEOUT", default=20)
 SOLR_ANON_MAX_ROWS = env.int("SOLR_ANON_MAX_ROWS", default=25)
-SOLR_ADD_EDIT_ACCESS = env.bool("SOLR_ADD_EDIT_ACCESS", default=True)
+SOLR_ADD_EDIT_ACCESS = env.bool("SOLR_ADD_EDIT_ACCESS", default=False)
 SOLR_ADD_NOTES = env.bool("SOLR_ADD_NOTES", default=True)
+SOLR_INDEX_NOTES = env.bool("SOLR_INDEX_NOTES", default=True)
 SOLR_QUERY_NOTES = env.bool("SOLR_QUERY_NOTES", default=True)
 
 # OEmbed
