@@ -38,6 +38,11 @@ class User(SAUser):
         related_name="users",
         help_text=_("Add-Ons shown for this user"),
     )
+    mailkey = models.UUIDField(
+        _("mailkey"),
+        null=True,
+        help_text=_("Mail key for uploading documents via email"),
+    )
 
     objects = UserManager()
 

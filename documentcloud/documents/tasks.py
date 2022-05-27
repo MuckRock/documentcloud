@@ -49,11 +49,13 @@ logger = logging.getLogger(__name__)
 
 
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
-def fetch_file_url(file_url, document_pk, force_ocr):
+def fetch_file_url(file_url, document_pk, force_ocr, auth=None):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
+    if auth is not None:
+        auth = tuple(auth)
     try:
-        storage.fetch_url(file_url, document.original_path, document.access)
+        storage.fetch_url(file_url, document.original_path, document.access, auth)
     except RequestException as exc:
         if (
             exc.response

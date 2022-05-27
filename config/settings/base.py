@@ -558,3 +558,8 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 GITHUB_WEBHOOK_SECRET = env("GITHUB_WEBHOOK_SECRET", default="")
 GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
 GITHUB_APP_PRIVATE_KEY = env.str("GITHUB_APP_PRIVATE_KEY", multiline=True, default="")
+
+
+# Mailgun
+# ------------------------------------------------------------------------------
+MAILGUN_API_KEY = env("MAILGUN_API_KEY", default="")

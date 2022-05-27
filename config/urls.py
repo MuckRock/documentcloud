@@ -19,7 +19,7 @@ from documentcloud.addons.views import (
     AddOnViewSet,
     github_webhook,
 )
-from documentcloud.core.views import FileServer, account_logout
+from documentcloud.core.views import FileServer, account_logout, mailgun
 from documentcloud.documents.views import (
     DataViewSet,
     DocumentErrorViewSet,
@@ -116,6 +116,7 @@ urlpatterns = [
         "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"
     ),
     path("github-webhook/", github_webhook, name="github-webhook"),
+    path("mailgun/", mailgun, name="mailgun"),
     path("pages/", include("django.contrib.flatpages.urls")),
     path("robots.txt", include("robots.urls")),
 ]

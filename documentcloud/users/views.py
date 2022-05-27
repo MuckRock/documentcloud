@@ -1,7 +1,11 @@
 # Django
 from rest_framework import mixins, permissions, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+# Standard Library
+import uuid
 
 # Third Party
 import django_filters
@@ -39,6 +43,36 @@ class UserViewSet(
             return self.get_queryset().get(pk=self.request.user.pk)
         else:
             return super().get_object()
+
+    @action(detail=False, methods=["post"])
+    def mailkey(self, request):
+        """Create a new mailkey for yourself"""
+        if not self.request.user.is_authenticated:
+            return Response({"error": "Unauthenticated"}, status=401)
+
+        self.request.user.mailkey = uuid.uuid4()
+        self.request.user.save()
+        send_mail(
+            subject="A private upload email address was created for your account",
+            user=self.request.user,
+            template="core/email/mailkey.html",
+        )
+        return Response({"mailkey": self.request.user.mailkey})
+
+    @mailkey.mapping.delete
+    def delete_mailkey(self, request):
+        """Delete an existing mailkey"""
+        if not self.request.user.is_authenticated:
+            return Response({"error": "Unauthenticated"}, status=401)
+
+        self.request.user.mailkey = None
+        self.request.user.save()
+        send_mail(
+            subject="A private upload email address was deleted from your account",
+            user=self.request.user,
+            template="core/email/mailkey_delete.html",
+        )
+        return Response(status=204)
 
     class Filter(django_filters.FilterSet):
         organization = ModelMultipleChoiceFilter(
