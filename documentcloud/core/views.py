@@ -23,6 +23,7 @@ from urllib.parse import urlencode
 
 # DocumentCloud
 from documentcloud.common.environment import storage
+from documentcloud.common.extensions import EXTENSIONS
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access
 from documentcloud.documents.models import Document
@@ -76,7 +77,6 @@ def mailgun(request):
         return HttpResponseForbidden()
 
     email = request.POST["To"]
-    # XXX check from is an allowed email?
     mailkey = email.split("@", 1)[0]
     user = User.objects.get(mailkey=mailkey)
 
@@ -85,7 +85,9 @@ def mailgun(request):
     for attachment in attachments:
         with transaction.atomic():
             title, original_extension = os.path.splitext(attachment["name"])
-            original_extension = original_extension.strip(".")
+            original_extension = original_extension.strip(".").lower()
+            if original_extension not in EXTENSIONS:
+                continue
             document = Document.objects.create(
                 access=Access.private,
                 language=Language.english,

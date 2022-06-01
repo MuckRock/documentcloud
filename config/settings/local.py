@@ -23,7 +23,7 @@ CSRF_COOKIE_DOMAIN = ".dev.documentcloud.org"
 # EMAIL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-host
-EMAIL_HOST = env("EMAIL_HOST", default="dev.mailhog.com")
+EMAIL_HOST = env("EMAIL_HOST", default="internal.dev.mailhog.com")
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-port
 EMAIL_PORT = 1025
 
