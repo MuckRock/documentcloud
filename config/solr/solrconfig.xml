@@ -1742,6 +1742,8 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                     )
                   notes:[subquery]
                   org_notes:[subquery]
+                  content
+                  page_number
                 </str>
                 <str name="notes.collection">notes</str>
                 <str name="org_notes.collection">notes</str>
