@@ -19,7 +19,7 @@ RUN apt-get -qq -y update && \
   # Symlink bash and python
   ln -sf bash /bin/sh && rm -f /usr/bin/python && \
   ln -s /usr/bin/python3 /usr/bin/python && \
-  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+  curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py && \
   python3 get-pip.py --force-reinstall
 
 # set up makecert root CA
