@@ -34,16 +34,16 @@ Analyze, Annotate, Publish. Turn documents into data.
       tempUser.save()
       ```
    - **Setup frontend:** `make install` and `make dev` on the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) to start the frontend (used at end).
-8. Visit the Squarelet Django [admin page](http://dev.squarelet.local) with the `is_staff` user you created to configure the authentication integration. Follow the instructions as for the ["Squarelet Integration" on MuckRock](https://github.com/muckrock/muckrock/#squarelet-integration), except:
-   - When creating the OpenID as set out in those instructions, also add `Redirect URIs`: `http://api.dev.documentcloud.org/accounts/complete/squarelet` and `http://minio.documentcloud.org/accounts/complete/squarelet`. 
-   - Set Post-logout Redirect UI: `http://dev.documentcloud.org`
+8. Visit the Squarelet Django [admin page](https://dev.squarelet.local) with the `is_staff` user you created to configure the authentication integration. Follow the instructions as for the ["Squarelet Integration" on MuckRock](https://github.com/muckrock/muckrock/#squarelet-integration), except:
+   - When creating the OpenID as set out in those instructions, also add `Redirect URIs`: `https://api.dev.documentcloud.org/accounts/complete/squarelet` and `https://minio.documentcloud.org/accounts/complete/squarelet`. 
+   - Set Post-logout Redirect UI: `https://dev.documentcloud.org`
    - Scopes (one per line): 
       ```
       read_user
       read_organization
       read_auth_token
       ```
-   - Add a Client profile and set the `Webhook URL`: `http://api.dev.documentcloud.org/squarelet/webhook/`. The `Source` can remain "MuckRock" in the dropdown.
+   - Add a Client profile and set the `Webhook URL`: `https://api.dev.documentcloud.org/squarelet/webhook/`. The `Source` can remain "MuckRock" in the dropdown.
    - You will have to look up **three** authentication-related configuration lines from your Squarelet instance to insert into DocumentCloud `.django` file (as if it was MuckRock). 
    - Write their values into the `./.envs/.local/.django` file of the DocumentCloud repository, which should already be initialized from above.
    - `Client ID` goes into `SQUARELET_KEY`
@@ -59,7 +59,7 @@ Analyze, Annotate, Publish. Turn documents into data.
     -   This will build and start all of the DocumentCloud docker images using docker-compose. It will attach to the Squarelet network which must be already running. You can connect to Squarelet nginx on port 80 and it will serve the appropriate dependent http service, such as DocumentCloud, based on domain as a virtual host. The `local.yml` configuration file has the docker-compose details.
     - If you do `docker-compose down` on Squarelet when none of the other dependent docker-compose sessions (such as DocumentCloud) are running, `docker-compose down` will delete the Squarelet network. You will have to explicitly bring the whole squarelet docker-compose session back up to recreate it and nginx before being able to start a dependent docker-compose session (such as DocumentCloud).
     - Using `docker-compose up -d` rather than `docker-compose up` will make a daemon for DocumentCloud as Squarelet defaults to.
-13. Log in using the Squarelet superuser on the locally-running [Documentcloud-frontend](https://github.com/muckrock/documentcloud-frontend) that you installed earlier at http://dev.documentcloud.org
+13. Log in using the Squarelet superuser on the locally-running [Documentcloud-frontend](https://github.com/muckrock/documentcloud-frontend) that you installed earlier at https://dev.documentcloud.org
     - `SQUARELET_WHITELIST_VERIFIED_JOURNALISTS=True` environment variable makes it so only verified journalists can *log into* DocumentCloud.
     - Use the squarelet admin [Organization page](http://dev.squarelet.local/admin/organizations/organization/) to mark your organization as a verified journalist to allow upload to DocumentCloud.
     - **Make your Squarelet superuser also a superuser on DocumentCloud Django:** Run `inv shell` in the DocumentCloud folder and use these commands (no indent):
