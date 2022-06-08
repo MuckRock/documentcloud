@@ -5,6 +5,7 @@ from django.http.request import QueryDict
 # Standard Library
 import math
 import re
+from collections import defaultdict
 from datetime import datetime
 
 # Third Party
@@ -108,13 +109,13 @@ def search(user, query_params):
     page_query_data, page_response_data = _paginate(query_params, user)
 
     # allow explicit enabling of highlighting
-    if query_params.get("hl", "").lower() == "true":
+    if query_params.get("hl", "").lower() == "true" and settings.SOLR_USE_HL:
         use_hl = True
 
     kwargs = {
         "fq": filter_queries,
         "sort": sort,
-        "hl": "on" if settings.SOLR_USE_HL and use_hl else "off",
+        "hl": "on" if use_hl else "off",
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
         **page_query_data,
     }
@@ -126,8 +127,12 @@ def search(user, query_params):
     ):
         # turn note queries on for all pro users
         # *:* returns all documents, do not enable note queries
+        original_text_query = text_query
         text_query = _add_note_query(text_query, user)
         kwargs["uf"] = "* _query_ -projects_edit_access"
+        query_notes = True
+    else:
+        query_notes = False
 
     # these are for calculating edit access
     if user.is_authenticated and not settings.SOLR_ADD_EDIT_ACCESS:
@@ -151,6 +156,8 @@ def search(user, query_params):
     response = _format_response(
         results, query_params, user, escaped, page_response_data
     )
+    if use_hl and query_notes:
+        response = _highlight_notes(response, original_text_query)
 
     if settings.DEBUG or user.is_staff:
         response["debug"] = {"text_query": text_query, "qtime": results.qtime, **kwargs}
@@ -693,6 +700,37 @@ def _format_notes(results):
         return result
 
     return [format_note(r) for r in results]
+
+
+def _highlight_notes(response, text_query):
+    """Do a second query to highlight notes if necessary"""
+    notes = [n for d in response["results"] for n in d["notes"]]
+    note_ids = [n["id"] for n in notes]
+    parents = {n["id"]: d["id"] for d in response["results"] for n in d["notes"]}
+    fq_ = [f"id:({' '.join(note_ids)})"]
+    query = f"title:{text_query} description:{text_query}"
+    kwargs = {
+        "fq": fq_,
+        "rows": 50,
+        "start": 0,
+        "hl": "on",
+        "hl.fl": "title description",
+    }
+
+    # dict[doc id] -> (dic[note id] -> (dic[field] -> highlight))
+    note_highlights = defaultdict(lambda: defaultdict(dict))
+    while True:
+        results = SOLR_NOTES.search(query, **kwargs)
+        for id_, highlight in results.highlighting.items():
+            print(id_, highlight)
+            note_highlights[parents[id_]][id_] = highlight
+        if results.hits > kwargs["rows"] + kwargs["start"]:
+            kwargs["start"] += kwargs["rows"]
+        else:
+            break
+    for doc in response["results"]:
+        doc["note_highlights"] = note_highlights.get(doc["id"], {})
+    return response
 
 
 def _add_canonical_url(results):
