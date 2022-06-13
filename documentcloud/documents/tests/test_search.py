@@ -454,6 +454,12 @@ class TestSearch:
         else:
             assert len(response["results"]) == 0
 
+    def test_search_notes_escape_quotes(self):
+        """Test for search syntax for quoted searches"""
+
+        response = self.search('q="delta"', user=1)
+        assert len(response["results"]) == 1
+
 
 class TestBooleanDetector:
     @pytest.mark.parametrize(
