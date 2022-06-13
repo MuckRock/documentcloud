@@ -1744,6 +1744,10 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   org_notes:[subquery]
                   content
                   page_number
+                  x1
+                  x2
+                  y1
+                  y2
                 </str>
                 <str name="notes.collection">notes</str>
                 <str name="org_notes.collection">notes</str>
@@ -1757,6 +1761,10 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   title
                   updated_at
                   user
+                  x1:x1_f
+                  x2:x2_f
+                  y1:y1_f
+                  y2:y2_f
                 </str>
                 <str name="org_notes.fl">
                   access
@@ -1768,6 +1776,10 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   title
                   updated_at
                   user
+                  x1:x1_f
+                  x2:x2_f
+                  y1:y1_f
+                  y2:y2_f
                 </str>
                 <str name="notes.q">{!term f=document_s v=$row.id}</str>
                 <str name="org_notes.q">{!term f=document_s v=$row.id}</str>

@@ -709,6 +709,10 @@ class Note(models.Model):
             "description": self.content,
             "created_at": format_date(self.created_at),
             "updated_at": format_date(self.updated_at),
+            "x1_f": self.x1,
+            "x2_f": self.x2,
+            "y1_f": self.y1,
+            "y2_f": self.y2,
         }
 
 
