@@ -1,6 +1,7 @@
 # Django
 from rest_framework import mixins, permissions, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -44,7 +45,7 @@ class UserViewSet(
         else:
             return super().get_object()
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
     def mailkey(self, request):
         """Create a new mailkey for yourself"""
         if not self.request.user.is_authenticated:

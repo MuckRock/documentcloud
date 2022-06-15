@@ -5,6 +5,7 @@ from rest_framework import status
 
 # Standard Library
 import json
+import uuid
 
 # Third Party
 import pytest
@@ -140,3 +141,25 @@ class TestUserAPI:
         client.force_authenticate(user=user)
         response = client.patch(f"/api/users/{user.pk}/", {"organization": 999})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_mailkey(self, client, user):
+        """Users may create an upload mail key for themselves"""
+        client.force_authenticate(user=user)
+        assert user.mailkey is None
+        response = client.post("/api/users/mailkey/")
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.mailkey is not None
+
+    def test_create_mailkey_anon(self, client):
+        response = client.post("/api/users/mailkey/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_destroy_mailkey(self, client, user):
+        client.force_authenticate(user=user)
+        user.mailkey = uuid.uuid4()
+        user.save()
+        response = client.delete("/api/users/mailkey/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        user.refresh_from_db()
+        assert user.mailkey is None
