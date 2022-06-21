@@ -706,6 +706,8 @@ def _highlight_notes(response, text_query):
     """Do a second query to highlight notes if necessary"""
     notes = [n for d in response["results"] for n in d["notes"]]
     note_ids = [n["id"] for n in notes]
+    if not note_ids:
+        return response
     parents = {n["id"]: d["id"] for d in response["results"] for n in d["notes"]}
     fq_ = [f"id:({' '.join(note_ids)})"]
     query = f"title:{text_query} description:{text_query}"
