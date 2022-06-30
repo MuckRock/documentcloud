@@ -267,6 +267,7 @@ class AddOnRun(models.Model):
             "%Y-%m-%dT%H:%M"
         )
 
+        page = 1
         resp = requests.get(
             f"{self.addon.api_url}/actions/runs?created=%3E{date_filter}",
             headers=self.addon.api_headers,
@@ -275,7 +276,7 @@ class AddOnRun(models.Model):
         runs = resp.json()["workflow_runs"]
 
         logger.info("[FIND RUN ID] len(runs) %s", len(runs))
-        if len(runs) > 0:
+        while len(runs) > 0:
             for workflow in runs:
                 jobs_url = workflow["jobs_url"]
                 logger.info("[FIND RUN ID] get jobs_url %s", jobs_url)
@@ -297,6 +298,15 @@ class AddOnRun(models.Model):
                         )
                         if second_step["name"] == str(self.uuid):
                             return job["run_id"], job["status"], job["conclusion"]
+            # fetch the next page
+            page += 1
+            resp = requests.get(
+                f"{self.addon.api_url}/actions/runs?"
+                f"created=%3E{date_filter}&page={page}",
+                headers=self.addon.api_headers,
+            )
+            resp.raise_for_status()
+            runs = resp.json()["workflow_runs"]
 
         # return None if fail to find the run ID
         return None
