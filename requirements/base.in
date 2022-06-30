@@ -65,7 +65,7 @@ numpy
 typing-extensions
 
 # Solr
--e git+https://github.com/MuckRock/pysolr.git@d0864162eb0541bf7fd0ca2f7f34a87dae1a6490#egg=pysolr
+-e git+https://github.com/MuckRock/pysolr.git@958db93824d6ba58c3183cee43f8cfd8c26165ba#egg=pysolr
 luqum
 
 # entity extraction
