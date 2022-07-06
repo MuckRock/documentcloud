@@ -23,7 +23,7 @@ Analyze, Annotate, Publish. Turn documents into data.
 4. Run the dotenv initialization script - `python initialize_dotenvs.py`
    This will create files with the environment variables needed to run the development environment.
 5. You do not need to immediately start the docker-compose session for DocumentCloud until the Squarelet authentication service integration below is complete.
-6. Set `api.dev.documentcloud.org` and `minio.documentcloud.org` to point to localhost - `sudo echo "127.0.0.1 api.dev.documentcloud.org minio.documentcloud.org" >> /etc/hosts`
+6. Set `api.dev.documentcloud.org` and `minio.documentcloud.org` to point to localhost - `echo "127.0.0.1 api.dev.documentcloud.org minio.documentcloud.org" | sudo tee -a /etc/hosts`
 7. Install and run [Squarelet](https://github.com/muckrock/squarelet) and the [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend) following the instructions in their 2 repos as part of the full-stack application. 
     - **Create Squarelet user:** 
       - `inv sh` (not shell) then `./manage.py createsuperuser` in Squarelet (not DocumentCloud).
