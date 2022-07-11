@@ -1,11 +1,12 @@
 # DocumentCloud
+**DocumentCloud** &middot; [Squarelet][squarelet] &middot; [MuckRock][muckrock] &middot; [DocumentCloud-Frontend][documentcloudfrontend]
 
 Analyze, Annotate, Publish. Turn documents into data.
 
 ### Prerequisites
 You must first have these set up and ready to go: 
-- [Squarelet](https://github.com/muckrock/squarelet). DocumentCloud depends on Squarelet for user authentication. As the services need to communicate directly, the development environment for DocumentCloud depends on the development environment for Squarelet - the DocumentCloud docker containers will join Squarelet's docker network. Please install Squarelet and set up its development environment first.
-- [DocumentCloud frontend](https://github.com/muckrock/documentcloud-frontend)
+- [Squarelet][squarelet]. DocumentCloud depends on Squarelet for user authentication. As the services need to communicate directly, the development environment for DocumentCloud depends on the development environment for Squarelet - the DocumentCloud docker containers will join Squarelet's docker network. Please install Squarelet and set up its development environment first.
+- [DocumentCloud frontend][documentcloudfrontend]
 
 *Note the front end will not be functional until you complete the current install.
 
@@ -118,3 +119,6 @@ Be sure to stop (if needed) both the docker compose sessions DocumentCloud (Ctrl
 [invoke-install]: http://www.pyinvoke.org/installing.html
 [python-install]: https://www.python.org/downloads/
 [git-install]: https://git-scm.com/downloads
+[muckrock]: https://github.com/MuckRock/muckrock
+[documentcloudfrontend]: https://github.com/MuckRock/documentcloud-frontend
+[squarelet]: https://github.com/muckrock/squarelet
