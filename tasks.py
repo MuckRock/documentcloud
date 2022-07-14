@@ -1,7 +1,7 @@
 # Third Party
 from invoke import task
 
-COMPOSE_PREFIX = "docker-compose -f local.yml"
+COMPOSE_PREFIX = "docker compose -f local.yml"
 COMPOSE_BUILD = f"{COMPOSE_PREFIX} build {{opt}} {{service}}"
 COMPOSE_RUN_OPT = f"{COMPOSE_PREFIX} run {{opt}} --rm {{service}} {{cmd}}"
 COMPOSE_RUN_OPT_USER = COMPOSE_RUN_OPT.format(
