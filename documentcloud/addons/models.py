@@ -267,46 +267,48 @@ class AddOnRun(models.Model):
             "%Y-%m-%dT%H:%M"
         )
 
-        page = 1
-        resp = requests.get(
-            f"{self.addon.api_url}/actions/runs?created=%3E{date_filter}",
-            headers=self.addon.api_headers,
-        )
-        resp.raise_for_status()
-        runs = resp.json()["workflow_runs"]
+        url = f"{self.addon.api_url}/actions/runs?created=%3E{date_filter}"
+        while url is not None:
+            resp = requests.get(url, headers=self.addon.api_headers)
+            resp.raise_for_status()
+            url = resp.links.get("next", {}).get("url")
+            runs = resp.json()["workflow_runs"]
+            logger.info("[FIND RUN ID] len(runs) %s", len(runs))
 
-        logger.info("[FIND RUN ID] len(runs) %s", len(runs))
-        while len(runs) > 0:
             for workflow in runs:
                 jobs_url = workflow["jobs_url"]
                 logger.info("[FIND RUN ID] get jobs_url %s", jobs_url)
+
+                cache_key = f"find_run_id:{jobs_url}"
+                cache_results = cache.get(cache_key)
+                if cache_results:
+                    logger.info(
+                        "[FIND RUN ID] get jobs_url %s cache hit %s", jobs_url, job_uuid
+                    )
+                    job_uuid, results = cache_results
+                    if job_uuid == str(self.uuid):
+                        return results
+                    else:
+                        continue
 
                 resp = requests.get(jobs_url, headers=self.addon.api_headers)
                 resp.raise_for_status()
 
                 jobs = resp.json()["jobs"]
                 logger.info("[FIND RUN ID] len(jobs) %s", len(jobs))
+
                 if len(jobs) > 0:
                     # the ID is located at the second step of the first job
                     job = jobs[0]
                     steps = job["steps"]
                     logger.info("[FIND RUN ID] len(steps) %s", len(steps))
                     if len(steps) >= 2:
-                        second_step = steps[1]
-                        logger.info(
-                            "[FIND RUN ID] second step name %s", second_step["name"]
-                        )
-                        if second_step["name"] == str(self.uuid):
-                            return job["run_id"], job["status"], job["conclusion"]
-            # fetch the next page
-            page += 1
-            resp = requests.get(
-                f"{self.addon.api_url}/actions/runs?"
-                f"created=%3E{date_filter}&page={page}",
-                headers=self.addon.api_headers,
-            )
-            resp.raise_for_status()
-            runs = resp.json()["workflow_runs"]
+                        job_uuid = steps[1]["name"]
+                        logger.info("[FIND RUN ID] second step name %s", job_uuid)
+                        results = (job["run_id"], job["status"], job["conclusion"])
+                        cache.set(cache_key, (job_uuid, results), 300)
+                        if job_uuid == str(self.uuid):
+                            return results
 
         # return None if fail to find the run ID
         return None
