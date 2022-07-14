@@ -269,11 +269,13 @@ class AddOnRun(models.Model):
 
         url = f"{self.addon.api_url}/actions/runs?created=%3E{date_filter}"
         while url is not None:
+            logger.info("[FIND RUN ID] get %s", url)
             resp = requests.get(url, headers=self.addon.api_headers)
             resp.raise_for_status()
             url = resp.links.get("next", {}).get("url")
-            runs = resp.json()["workflow_runs"]
-            logger.info("[FIND RUN ID] len(runs) %s", len(runs))
+            resp_json = resp.json()
+            runs = resp_json["workflow_runs"]
+            logger.info("[FIND RUN ID] total_count %s", resp_json["total_count"])
 
             for workflow in runs:
                 jobs_url = workflow["jobs_url"]
@@ -282,10 +284,10 @@ class AddOnRun(models.Model):
                 cache_key = f"find_run_id:{jobs_url}"
                 cache_results = cache.get(cache_key)
                 if cache_results:
+                    job_uuid, results = cache_results
                     logger.info(
                         "[FIND RUN ID] get jobs_url %s cache hit %s", jobs_url, job_uuid
                     )
-                    job_uuid, results = cache_results
                     if job_uuid == str(self.uuid):
                         return results
                     else:
