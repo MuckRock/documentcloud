@@ -1,8 +1,8 @@
 # Django
-from django.contrib.postgres.fields.jsonb import KeyTextTransform
 from django.db import models
 from django.db.models.aggregates import Max
-from django.db.models.functions import Cast
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 
 # Third Party
@@ -50,8 +50,11 @@ class User(SAUser):
     def feature_level(self):
         """The user's highest feature level among all organizations they belong to"""
         return self.organizations.annotate(
-            feature_level=Cast(
-                KeyTextTransform("feature_level", "entitlement__resources"),
-                models.IntegerField(),
+            feature_level=Coalesce(
+                Cast(
+                    KeyTextTransform("feature_level", "entitlement__resources"),
+                    models.IntegerField(),
+                ),
+                0,
             )
         ).aggregate(max=Max("feature_level"))["max"]
