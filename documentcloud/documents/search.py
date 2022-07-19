@@ -774,6 +774,7 @@ def _add_note_query(text_query, user):
             )
         )
     )
+    escaped_text_query = text_query.replace('"', '\\"')
     return_query = (
         # the original query to search for in documents
         f"({text_query}) "
@@ -782,7 +783,7 @@ def _add_note_query(text_query, user):
         f"""
         _query_:"{{!join from=document_s fromIndex=notes to=id score=total
             v='+type:note +(access:public OR user:{user.pk})
-               +(title:({text_query}) description:({text_query}))'
+               +(title:({escaped_text_query}) description:({escaped_text_query}))'
         }}"
         """
         # search through notes which are organization access
@@ -799,7 +800,7 @@ def _add_note_query(text_query, user):
             )
             +{{!join from=document_s fromIndex=notes to=id score=total
                 v='+type:note +(access:organization)
-                   +(title:({text_query}) description:({text_query}))'}}
+                   +(title:({escaped_text_query}) description:({escaped_text_query}))'}}
             "
         """
     )
