@@ -4,6 +4,7 @@ import os
 
 # Third Party
 import sentry_sdk
+from ipware import get_client_ip
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -273,11 +274,10 @@ if MOESIF_ID:
         "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
             DOCCLOUD_EMBED_URL
         )
-        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL)
-        or request.user.is_anonymous,
+        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
         "IDENTIFY_USER": lambda request, response: request.user.pk
         if request.user and request.user.is_authenticated
-        else None,
+        else get_client_ip(request)[0],
         "IDENTIFY_COMPANY": lambda request, response: request.user.organization.pk
         if request.user and request.user.is_authenticated
         else None,

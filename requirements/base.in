@@ -33,6 +33,7 @@ dogslow
 django-debug-toolbar
 django-cprofile-middleware
 django-robots
+django-ipware
 
 # Django REST Framework
 djangorestframework
