@@ -8,11 +8,12 @@
 aioboto3==9.6.0           # via -r requirements/base.in
 aiobotocore[boto3]==2.3.0  # via aioboto3
 aiohttp==3.8.1            # via aiobotocore
+aioitertools==0.10.0      # via aiobotocore
+aiosignal==1.2.0          # via aiohttp
 amqp==2.5.2               # via kombu
 argon2-cffi==19.1.0       # via -r requirements/base.in
 asgiref==3.4.1            # via django
 asttokens==2.0.5          # via stack-data
-async-generator==1.10     # via aiobotocore
 async-timeout==4.0.2      # via aiohttp
 attrs==19.3.0             # via aiohttp, jsonschema
 backcall==0.1.0           # via ipython
@@ -21,10 +22,11 @@ boto==2.49.0              # via smart-open
 boto3==1.21.21            # via -r requirements/base.in, aiobotocore, smart-open
 botocore==1.24.21         # via aiobotocore, boto3, s3transfer
 cachetools==3.1.1         # via google-auth
-celery==4.4.2             # via -r requirements/base.in, squarelet-auth
+celery==4.4.2             # via -r requirements/base.in, django-celery-beat, squarelet-auth
 certifi==2019.6.16        # via requests
 cffi==1.15.1              # via argon2-cffi, cryptography
-chardet==3.0.4            # via aiohttp, pdfminer-six, requests
+chardet==3.0.4            # via pdfminer-six
+charset-normalizer==2.1.0  # via aiohttp, requests
 cpuprofile==1.0.1         # via -r requirements/base.in
 cryptography==35.0.0      # via -r requirements/base.in, social-auth-core
 cssselect==1.1.0          # via premailer
@@ -32,7 +34,7 @@ cssutils==1.0.2           # via premailer
 decorator==4.4.0          # via gcsfs, ipython
 defusedxml==0.6.0         # via python3-openid, social-auth-core
 deprecation==2.1.0        # via pikepdf
-django==3.2.9             # via -r requirements/base.in, django-appconf, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, drf-yasg, rest-social-auth, squarelet-auth
+django==3.2.9             # via -r requirements/base.in, django-appconf, django-celery-beat, django-choices, django-cors-headers, django-debug-toolbar, django-extensions, django-filter, django-model-utils, django-redis, django-timezone-field, djangorestframework, djangorestframework-simplejwt, dogslow, drf-nested-routers, rest-social-auth, squarelet-auth
 django-appconf==1.0.3     # via django-compressor
 django-autoslug==1.9.8    # via -r requirements/base.in
 django-celery-beat==2.0.0  # via -r requirements/base.in
@@ -50,17 +52,16 @@ django-premailer==0.2.0   # via -r requirements/base.in
 django-redis==5.0.0       # via -r requirements/base.in, python-redis-lock
 django-robots==5.0        # via -r requirements/base.in
 django-timezone-field==4.2.1  # via django-celery-beat
-djangorestframework==3.12.4  # via -r requirements/base.in, djangorestframework-simplejwt, drf-nested-routers, drf-yasg, rest-social-auth
-djangorestframework-simplejwt==4.3.0  # via -r requirements/base.in
-docutils==0.15.2          # via botocore
+djangorestframework==3.12.4  # via -r requirements/base.in, djangorestframework-simplejwt, drf-nested-routers, rest-social-auth
+djangorestframework-simplejwt==4.8.0  # via -r requirements/base.in
 dogslow==1.2              # via -r requirements/base.in
 drf-flex-fields==0.6.1    # via -r requirements/base.in
 drf-nested-routers==0.91  # via -r requirements/base.in
 ecdsa==0.13.2             # via python-jose
 executing==0.8.3          # via stack-data
+frozenlist==1.3.0         # via aiohttp, aiosignal
 fsspec==0.5.2             # via gcsfs
 furl==2.1.0               # via -r requirements/base.in
-future==0.17.1            # via python-jose
 gcsfs==0.3.1              # via -r requirements/base.in
 google-api-core[grpc]==1.23.0  # via google-cloud-language, google-cloud-pubsub
 google-auth==1.23.0       # via gcsfs, google-api-core, google-auth-oauthlib
@@ -73,9 +74,7 @@ grpcio==1.47.0            # via google-api-core, googleapis-common-protos, grpc-
 html2text==2020.1.16      # via -r requirements/base.in
 idna==2.8                 # via requests, yarl
 ipython==8.4.0            # via -r requirements/base.in
-itypes==1.1.0             # via coreapi
 jedi==0.16.0              # via ipython
-jinja2==2.10.1            # via coreschema
 jmespath==0.9.4           # via boto3, botocore
 jsonschema==3.2.0         # via -r requirements/base.in
 kombu==4.6.8              # via celery
@@ -85,7 +84,6 @@ llvmlite==0.38.1          # via numba
 luqum==0.8.1              # via -r requirements/base.in
 lxml==4.9.1               # via pikepdf, premailer
 markdown==3.4.1           # via -r requirements/base.in
-markupsafe==1.1.1         # via jinja2
 matplotlib-inline==0.1.3  # via ipython
 multidict==4.7.5          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via typing-inspect
@@ -93,7 +91,7 @@ numba==0.55.2             # via -r requirements/base.in
 numpy==1.22.4             # via -r requirements/base.in, numba, scipy
 oauthlib==3.1.0           # via requests-oauthlib, social-auth-core
 orderedmultidict==1.0.1   # via furl
-packaging==21.3           # via deprecation, drf-yasg, pikepdf
+packaging==21.3           # via deprecation, pikepdf
 parso==0.8.3              # via jedi
 pdfminer-six==20200517    # via pdfplumber
 pdfplumber==0.5.28        # via -r requirements/base.in
@@ -104,12 +102,12 @@ pikepdf==5.4.0            # via -r requirements/base.in
 pillow==9.2.0             # via -r requirements/base.in, pdfplumber, pikepdf
 ply==3.11                 # via luqum
 premailer==3.0.0          # via django-premailer
-prompt-toolkit==3.0.3     # via ipython
+prompt-toolkit==3.0.30    # via ipython
 proto-plus==1.13.0        # via google-cloud-language
 protobuf==3.14.0          # via google-api-core, googleapis-common-protos, proto-plus
 ptyprocess==0.6.0         # via pexpect
 pure-eval==0.2.2          # via stack-data
-pyasn1==0.4.7             # via pyasn1-modules, rsa
+pyasn1==0.4.7             # via pyasn1-modules, python-jose, rsa
 pyasn1-modules==0.2.7     # via google-auth
 pycparser==2.19           # via cffi
 pycryptodome==3.10.1      # via pdfminer-six
@@ -127,7 +125,7 @@ pytz==2022.1              # via -r requirements/base.in, celery, django, django-
 pyyaml==5.3.1             # via libcst
 rcssmin==1.0.6            # via -r requirements/base.in, django-compressor
 redis==3.4.1              # via -r requirements/base.in, django-redis, python-redis-lock
-requests==2.28.1          # via coreapi, gcsfs, google-api-core, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
+requests==2.28.1          # via gcsfs, google-api-core, premailer, pysolr, requests-oauthlib, smart-open, social-auth-core, squarelet-auth
 requests-oauthlib==1.2.0  # via google-auth-oauthlib, social-auth-core
 rest-social-auth==7.0.0   # via -r requirements/base.in
 rjsmin==1.1.0             # via django-compressor
@@ -135,7 +133,7 @@ rsa==4.0                  # via google-auth, python-jose
 rules==2.1                # via -r requirements/base.in
 s3transfer==0.5.2         # via boto3
 scipy==1.8.1              # via -r requirements/base.in
-six==1.15.0               # via argon2-cffi, asttokens, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, jsonschema, orderedmultidict, packaging, protobuf, python-dateutil, python-jose, social-auth-app-django
+six==1.15.0               # via argon2-cffi, asttokens, django-appconf, django-choices, django-compressor, furl, google-api-core, google-auth, grpcio, jsonschema, orderedmultidict, protobuf, python-dateutil
 smart-open==1.8.4         # via -r requirements/base.in
 social-auth-app-django==5.0.0  # via rest-social-auth
 social-auth-core[openidconnect]==4.1.0  # via -r requirements/base.in, rest-social-auth, social-auth-app-django, squarelet-auth
@@ -148,7 +146,7 @@ traitlets==5.3.0          # via ipython, matplotlib-inline
 typing-extensions==3.7.4.3  # via -r requirements/base.in, libcst, typing-inspect
 typing-inspect==0.6.0     # via libcst
 unidecode==1.1.1          # via -r requirements/base.in
-urllib3==1.26.10           # via botocore, requests
+urllib3==1.26.10          # via botocore, requests
 vine==1.3.0               # via amqp, celery
 wand==0.6.6               # via pdfplumber
 wcwidth==0.1.8            # via prompt-toolkit

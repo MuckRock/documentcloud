@@ -37,7 +37,6 @@ django-ipware
 
 # Django REST Framework
 djangorestframework
-coreapi
 rest-social-auth
 social-auth-core[openidconnect]
 django-cors-headers
