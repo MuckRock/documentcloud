@@ -8,7 +8,6 @@ pip-tools
 
 # Testing
 # ------------------------------------------------------------------------------
-mypy
 pytest
 pytest-sugar
 pytest-mock

@@ -1,5 +1,5 @@
 # FROM python:3.6-alpine
-FROM matthewfeickert/docker-python3-ubuntu:3.6.8
+FROM matthewfeickert/docker-python3-ubuntu:3.10.5
 
 ENV PYTHONUNBUFFERED 1
 
@@ -11,7 +11,7 @@ RUN apt-get -qq -y update && \
   # Pip dependencies
   python3-pip \
   # Postgres dependencies
-  libpq-dev postgresql-client python-psycopg2 \
+  libpq-dev postgresql-client python3-psycopg2 \
   # Tesseract dependencies
   libjpeg-turbo8 libtiff5 \
   # LibreOffice dependencies

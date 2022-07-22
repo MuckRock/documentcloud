@@ -200,7 +200,8 @@ class AwsStorage:
 
         async def main():
             # pylint: disable=not-async-context-manager
-            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+            session = aioboto3.Session()
+            async with session.resource("s3", **self.resource_kwargs) as as3_resource:
                 tasks = []
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)
@@ -220,12 +221,12 @@ class AwsStorage:
 
         async def main():
             # pylint: disable=not-async-context-manager
-            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+            session = aioboto3.Session()
+            async with session.client("s3", **self.resource_kwargs) as as3_client:
                 tasks = []
                 for file_name, datum in zip(file_names, data):
                     bucket, key = self.bucket_key(file_name)
-                    object_ = as3_resource.Object(bucket, key)
-                    tasks.append(object_.download_fileobj(datum))
+                    tasks.append(as3_client.download_fileobj(bucket, key, datum))
                 await asyncio.gather(*tasks, return_exceptions=True)
 
         loop = asyncio.get_event_loop()
@@ -244,7 +245,8 @@ class AwsStorage:
 
         async def main():
             # pylint: disable=not-async-context-manager
-            async with aioboto3.resource("s3", **self.resource_kwargs) as as3_resource:
+            session = aioboto3.Session()
+            async with session.resource("s3", **self.resource_kwargs) as as3_resource:
                 tasks = []
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)

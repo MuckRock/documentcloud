@@ -45,7 +45,7 @@ from documentcloud.users.tests.factories import UserFactory
 # pylint: disable=too-many-public-methods
 
 
-@pytest.yield_fixture(scope="class")
+@pytest.fixture(scope="class")
 def setup_solr(django_db_setup, django_db_blocker):
     """Set up the models for the search tests
 

@@ -8,8 +8,6 @@ from django.views.generic.base import RedirectView
 from rest_framework import permissions
 
 # Third Party
-from drf_yasg import openapi
-from drf_yasg.views import get_schema_view
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
@@ -42,18 +40,6 @@ from documentcloud.projects.views import (
 from documentcloud.sidekick.routers import SidekickRouter
 from documentcloud.sidekick.views import SidekickViewSet
 from documentcloud.users.views import MessageView, UserViewSet
-
-schema_view = get_schema_view(
-    openapi.Info(
-        title="DocumentCloud API",
-        default_version="v1",
-        description="API for Document Cloud",
-        terms_of_service="https://www.documentcloud.org/tos/",
-        contact=openapi.Contact(email="dylan@documentcloud.org"),
-    ),
-    public=True,
-    permission_classes=(permissions.AllowAny,),
-)
 
 
 class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
@@ -99,15 +85,6 @@ urlpatterns = [
     path("api/", include(sidekick_router.urls)),
     path("api/", include("documentcloud.oembed.urls")),
     path("api/messages/", MessageView.as_view(), name="message-create"),
-    # Swagger
-    path(
-        "swagger<format>", schema_view.without_ui(cache_timeout=0), name="schema-json"
-    ),
-    path(
-        "swagger/",
-        schema_view.with_ui("swagger", cache_timeout=0),
-        name="schema-swagger-ui",
-    ),
     # Social Django
     path("accounts/logout/", account_logout, name="logout"),
     path("accounts/", include("social_django.urls", namespace="social")),

@@ -449,6 +449,7 @@ def download_modification_page_text(context):
     """Download necessary page text for modifications in parallel"""
     page_text_json = []
     page_text_urls = list(context["page_text_download_urls"])
+    logger.info("[DLMPT] %s %s", page_text_urls, storage.async_download(page_text_urls))
     page_text_download_files = [
         json.loads(contents) for contents in storage.async_download(page_text_urls)
     ]

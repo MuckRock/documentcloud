@@ -108,7 +108,8 @@ class ReportGenerator:
                 the image. (default: {None})
         """
         self.string_io.write("<figure>")
-        encoded = base64.b64encode(open(png_path, "rb").read()).decode("ascii")
+        with open(png_path, "rb") as png_file:
+            encoded = base64.b64encode(png_file.read()).decode("ascii")
         self.string_io.write(
             f'<img style="width: 400px; {EMBED_STYLE}"'
             f'src="data:image/png;base64,{encoded}">'
@@ -146,7 +147,8 @@ class ReportGenerator:
         Arguments:
             pdf_path {str} -- The full path to the PDF resource to embed.
         """
-        encoded = base64.b64encode(open(pdf_path, "rb").read()).decode("ascii")
+        with open(pdf_path, "rb") as pdf_file:
+            encoded = base64.b64encode(pdf_file.read()).decode("ascii")
         self.string_io.write(
             f'<embed style="{EMBED_STYLE}" width="400" height="600"'
             f'src="data:application/pdf;base64,{encoded}">'

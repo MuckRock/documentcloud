@@ -72,7 +72,6 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "django_celery_beat",
     "django_filters",
-    "drf_yasg",
     "rest_framework",
     "rules.apps.AutodiscoverRulesConfig",
     "social_django",
@@ -111,7 +110,7 @@ SQUARELET_ORGANIZATION_MODEL = "organizations.Organization"
 
 # SQUARELET AUTHENTICATION
 # ------------------------------------------------------------------------------
-SOCIAL_AUTH_POSTGRES_JSONFIELD = True
+SOCIAL_AUTH_JSONFIELD_ENABLED = True
 SOCIAL_AUTH_SQUARELET_KEY = env("SQUARELET_KEY")
 SOCIAL_AUTH_SQUARELET_SECRET = SQUARELET_SECRET = env("SQUARELET_SECRET")
 SOCIAL_AUTH_SQUARELET_SCOPE = ["uuid", "organizations", "preferences"]
