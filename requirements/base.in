@@ -40,7 +40,6 @@ djangorestframework
 coreapi
 rest-social-auth
 social-auth-core[openidconnect]
-drf-yasg
 django-cors-headers
 djangorestframework_simplejwt
 drf-nested-routers
@@ -50,7 +49,7 @@ drf-flex-fields
 # Cloud providers
 gcsfs
 google-cloud-pubsub
-boto3==1.10.14 # pinned for aioboto3 to install
+boto3
 smart-open
 aioboto3
 
