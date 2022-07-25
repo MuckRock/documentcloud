@@ -250,7 +250,7 @@ class AwsStorage:
                 tasks = []
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)
-                    object_ = as3_resource.Object(bucket, key)
+                    object_ = await as3_resource.Object(bucket, key)
                     tasks.append(object_.content_length)
                 return await asyncio.gather(*tasks, return_exceptions=True)
 
