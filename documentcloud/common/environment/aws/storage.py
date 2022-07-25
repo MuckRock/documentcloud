@@ -205,7 +205,7 @@ class AwsStorage:
                 tasks = []
                 for file_name in file_names:
                     bucket, key = self.bucket_key(file_name)
-                    object_acl = as3_resource.ObjectAcl(bucket, key)
+                    object_acl = await as3_resource.ObjectAcl(bucket, key)
                     tasks.append(object_acl.put(ACL=ACLS[access]))
                 await asyncio.gather(*tasks)
 
