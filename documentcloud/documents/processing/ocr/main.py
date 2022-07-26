@@ -37,6 +37,8 @@ else:
     )
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
+
+    # pylint: disable=import-error
     from tess import Tesseract
 
     # only initialize sentry on serverless
@@ -44,8 +46,6 @@ else:
     import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
-
-    # pylint: enable=import-error
 
     sentry_sdk.init(
         dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration(), RedisIntegration()]

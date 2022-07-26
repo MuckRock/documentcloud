@@ -30,7 +30,7 @@ class PrettyJSONWidget(widgets.Textarea):
             self.attrs["readonly"] = True
             return value
         except Exception:  # pylint: disable=broad-except
-            return super(PrettyJSONWidget, self).format_value(value)
+            return super().format_value(value)
 
 
 @admin.register(AddOn)

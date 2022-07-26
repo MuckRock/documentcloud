@@ -132,6 +132,7 @@ def pubsub_function_import(redis, finish_pubsub_topic):
                         {"org_id": org_id, "doc_id": doc_id, "slug": slug}
                     ),
                 )
+                return None
             except Exception as exc:  # pylint: disable=broad-except
                 # Handle any error that comes up during function execution
                 logging.error(exc, exc_info=sys.exc_info())

@@ -18,7 +18,7 @@ amqp==2.5.2               # via -r requirements/./base.txt, kombu
 appdirs==1.4.3            # via black
 argon2-cffi==19.1.0       # via -r requirements/./base.txt
 asgiref==3.4.1            # via -r requirements/./base.txt, django
-astroid==2.4.1            # via pylint, pylint-celery
+astroid==2.6.6            # via pylint, pylint-celery
 asttokens==2.0.5          # via -r requirements/./base.txt, stack-data
 async-timeout==4.0.2      # via -r requirements/./base.txt, aiohttp
 attrs==19.3.0             # via -r requirements/./base.txt, aiohttp, black, jsonschema, pytest
@@ -151,7 +151,7 @@ pycryptodome==3.10.1      # via -r requirements/./base.txt, pdfminer-six
 pyflakes==2.1.1           # via flake8
 pygments==2.5.2           # via -r requirements/./base.txt, ipython, sphinx
 pyjwt==2.3.0              # via -r requirements/./base.txt, djangorestframework-simplejwt, social-auth-core
-pylint==2.5.2             # via pylint-celery, pylint-django, pylint-plugin-utils
+pylint==2.7.4             # via pylint-celery, pylint-django, pylint-plugin-utils
 pylint-celery==0.3        # via -r requirements/local.in
 pylint-django==2.0.15     # via -r requirements/local.in
 pylint-plugin-utils==0.6  # via pylint-celery, pylint-django

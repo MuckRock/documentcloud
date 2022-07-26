@@ -19,6 +19,7 @@ class ChoiceField(serializers.ChoiceField):
             return value
         return self.choices.get(value, value)
 
+    # pylint: disable=inconsistent-return-statements
     def to_internal_value(self, data):
         if data == "" and self.allow_blank:
             return ""

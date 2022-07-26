@@ -16,7 +16,7 @@ class AutoCreatedField(models.DateTimeField):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("editable", False)
         kwargs.setdefault("default", now)
-        super(AutoCreatedField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class AutoLastModifiedField(AutoCreatedField):
