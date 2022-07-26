@@ -78,7 +78,7 @@ google-cloud-pubsub==1.0.2  # via -r requirements/./base.txt
 googleapis-common-protos[grpc]==1.6.0  # via -r requirements/./base.txt, google-api-core, grpc-google-iam-v1
 grpc-google-iam-v1==0.12.3  # via -r requirements/./base.txt, google-cloud-pubsub
 grpcio==1.47.0            # via -r requirements/./base.txt, google-api-core, googleapis-common-protos, grpc-google-iam-v1
-gunicorn==19.9.0          # via -r requirements/production.in
+gunicorn==20.1.0          # via -r requirements/production.in
 html2text==2020.1.16      # via -r requirements/./base.txt
 idna==2.8                 # via -r requirements/./base.txt, requests, urllib3, yarl
 ipython==8.4.0            # via -r requirements/./base.txt
