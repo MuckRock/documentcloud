@@ -24,7 +24,7 @@ class TokenPermissions(permissions.BasePermission):
             request.method in self.token_methods
             and hasattr(request, "auth")
             and request.auth is not None
-            and self.token_permissions.issubset(request.auth["permissions"])
+            and self.token_permissions.issubset(request.auth.get("permissions", []))
         )
 
 

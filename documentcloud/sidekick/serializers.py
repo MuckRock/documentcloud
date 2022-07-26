@@ -28,5 +28,5 @@ class SidekickSerializer(serializers.ModelSerializer):
         )
         if has_request_auth:
             print(request.auth)
-        if has_request_auth and "processing" in request.auth["permissions"]:
+        if has_request_auth and "processing" in request.auth.get("permissions", []):
             self.fields["status"].read_only = False

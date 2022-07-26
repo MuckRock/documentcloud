@@ -29,7 +29,7 @@ class SidekickViewSet(viewsets.ModelViewSet):
         valid_token = (
             hasattr(self.request, "auth")
             and self.request.auth is not None
-            and "processing" in self.request.auth["permissions"]
+            and "processing" in self.request.auth.get("permissions", [])
         )
         # Processing scope can access all documents
         if valid_token:

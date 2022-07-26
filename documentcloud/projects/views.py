@@ -135,7 +135,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         valid_token = (
             hasattr(self.request, "auth")
             and self.request.auth is not None
-            and "processing" in self.request.auth["permissions"]
+            and "processing" in self.request.auth.get("permissions", [])
         )
         if valid_token:
             # Processing scope can access all projects

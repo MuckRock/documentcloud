@@ -257,7 +257,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if not request or not hasattr(request, "auth") or request.auth is None:
             return False
 
-        return "processing" in request.auth["permissions"]
+        return "processing" in request.auth.get("permissions", [])
 
     def validate_file_url(self, value):
         if self.instance and value:

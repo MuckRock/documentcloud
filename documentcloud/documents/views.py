@@ -113,7 +113,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         valid_token = (
             hasattr(self.request, "auth")
             and self.request.auth is not None
-            and "processing" in self.request.auth["permissions"]
+            and "processing" in self.request.auth.get("permissions", [])
         )
         # Processing scope can access all documents
         if valid_token:
@@ -511,7 +511,7 @@ class DocumentErrorViewSet(
         valid_token = (
             hasattr(self.request, "auth")
             and self.request.auth is not None
-            and "processing" in self.request.auth["permissions"]
+            and "processing" in self.request.auth.get("permissions", [])
         )
         # Processing scope can access all documents
         if valid_token:
@@ -926,7 +926,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     @action(detail=False, methods=["post"])
     def post_process(self, request, document_pk=None):
         """Post-process after modifications are in place"""
-        if "processing" not in self.request.auth["permissions"]:
+        if "processing" not in self.request.auth.get("permissions", []):
             raise exceptions.PermissionDenied(
                 "You do not have permission to post-process modifications"
             )
