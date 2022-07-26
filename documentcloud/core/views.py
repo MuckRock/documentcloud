@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from urllib.parse import urlencode
@@ -29,6 +30,8 @@ from documentcloud.documents.choices import Access
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import fetch_file_url, solr_index
 from documentcloud.users.models import User
+
+logger = logging.getLogger(__name__)
 
 
 class FileServer(APIView):
@@ -78,7 +81,12 @@ def mailgun(request):
 
     email = request.POST["To"]
     mailkey = email.split("@", 1)[0]
-    user = User.objects.get(mailkey=mailkey)
+    logger.info("[MAILKEY] received mailkey %s", mailkey)
+    try:
+        user = User.objects.get(mailkey=mailkey)
+    except User.DoesNotExist:
+        logger.warning("[MAILKEY] mailkey %s user not found", mailkey)
+        return HttpResponse("OK")
 
     attachments = json.loads(request.POST.get("attachments", "[]"))
 
