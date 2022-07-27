@@ -299,7 +299,7 @@ class AddOnRun(models.Model):
                 jobs = resp.json()["jobs"]
                 logger.info("[FIND RUN ID] len(jobs) %s", len(jobs))
 
-                if len(jobs) > 0:
+                if len(jobs) > 0 and jobs[0] is not None:
                     # the ID is located at the second step of the first job
                     job = jobs[0]
                     steps = job["steps"]
