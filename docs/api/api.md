@@ -115,6 +115,24 @@ choices. To specify multiple parameters you may either supply a comma
 separated list of IDs &mdash; `?parameter=1,2` &mdash; or by specify the
 parameter multiple times &mdash; `?parameter=1&parameter=2`.
 
+### Rate Limits
+
+The DocumentCloud API is rate limited to 10 requests per second.  It also
+allows bursts up to 20 requests.  This means if you exceed the the 10 request
+per second limit, it will serve you up to 20 requests more quickly, while
+keeping track of your average rate.  After the 20 requests are served,
+additional requests will be rejected with an HTTP status of 503 until you again
+fall under an average of 10 requests per second.  If you use the Python
+DocumentCloud library, it will automatically throttle your requests to 10 per
+second to avoid going over the rate limit.  If you are writing custom code,
+please be mindful of the rate limits.
+
+There is also a secondary limit of 500 requests per day for anonymous users.
+If you exceed this limit, you will start receiving errors with an HTTP status
+of 429.  In order to avoid this, please register for a free account at
+<https://aacounts.muckrock.com/>.  Currently, there are no daily limits of
+registered accounts, although this may change in the future.
+
 ## Authentication
 
 Authentication happens at the MuckRock accounts server located at
