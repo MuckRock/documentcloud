@@ -2,7 +2,7 @@
 from django.db import transaction
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from rest_framework import exceptions, serializers, viewsets
+from rest_framework import exceptions, filters, serializers, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import SAFE_METHODS
 
@@ -11,11 +11,12 @@ from functools import lru_cache
 
 # Third Party
 import django_filters
-from django_filters.constants import EMPTY_VALUES
+from django_filters.rest_framework.backends import DjangoFilterBackend
 from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
+from documentcloud.core.pagination import VersionedCountPagination
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
     ProjectPermissions,
@@ -102,20 +103,31 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
-class OrderingFilter(django_filters.OrderingFilter):
-    """Always add PK to the order to ensure proper index usage
-    Postgres is picking a much slower execution path in certain cases
-    without this modification
-    """
+class OrderingFilter(filters.OrderingFilter):
 
-    def filter(self, qs, value):
-        """Add PK to all orderings"""
-        if value in EMPTY_VALUES:
-            return qs
+    filter_map = {
+        "created_at": "document__created_at",
+        "-created_at": "-document__created_at",
+    }
 
-        ordering = [self.get_ordering_value(param) for param in value]
-        ordering.append("pk")
-        return qs.order_by(*ordering)
+    def get_ordering(self, request, queryset, view):
+        param = request.query_params.get(self.ordering_param)
+
+        if param in self.filter_map:
+            return [self.filter_map[param], "pk"]
+
+        # No ordering was included
+        return self.get_default_ordering(view)
+
+    def filter_queryset(self, request, queryset, view):
+
+        ordering = self.get_ordering(request, queryset, view)
+
+        if ordering:
+            distinct = [o.lstrip("-") for o in ordering]
+            return queryset.order_by(*ordering).distinct(*distinct)
+
+        return queryset
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
@@ -128,6 +140,10 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         f"document.{e}" for e in DocumentViewSet.permit_list_expands
     ]
     permission_classes = (DjangoObjectPermissionsOrAnonReadOnly | ProjectPermissions,)
+    pagination_class = VersionedCountPagination
+    filter_backends = [OrderingFilter, DjangoFilterBackend]
+    ordering_fields = ["created_at"]
+    ordering = ["-document__created_at", "pk"]
 
     @lru_cache()
     def get_queryset(self):
@@ -151,12 +167,8 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             queryset = project.projectmembership_set.get_viewable(self.request.user)
 
-        return (
-            # adding ID to the order by here helps postgres pick an appropriate
-            # execution plan and drastically reduces run time in certain cases
-            queryset.preload(
-                self.request.user, self.request.query_params.get("expand", "")
-            )
+        return queryset.preload(
+            self.request.user, self.request.query_params.get("expand", "")
         )
 
     @lru_cache()

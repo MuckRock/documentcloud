@@ -5,6 +5,10 @@ from django.db import OperationalError, connection, transaction
 from django.utils.functional import cached_property
 from rest_framework import pagination
 from rest_framework.exceptions import NotFound
+from rest_framework.response import Response
+
+# Standard Library
+from collections import OrderedDict
 
 
 class PageNumberPagination(pagination.PageNumberPagination):
@@ -69,6 +73,39 @@ class CursorPagination(pagination.CursorPagination):
     page_size_query_param = "per_page"
 
 
+class CursorCountPagination(CursorPagination):
+    """Cursor pagination which also returns a count"""
+
+    def paginate_queryset(self, queryset, request, view=None):
+        """Do the count here"""
+        self.count = queryset.count()
+        return super().paginate_queryset(queryset, request, view)
+
+    def get_paginated_response(self, data):
+        """Add the count back in for the response"""
+        return Response(
+            OrderedDict(
+                [
+                    ("count", self.count),
+                    ("next", self.get_next_link()),
+                    ("previous", self.get_previous_link()),
+                    ("results", data),
+                ]
+            )
+        )
+
+    def _get_position_from_instance(self, instance, ordering):
+        """Allow for nested fields to be used for ordering"""
+        field_names = ordering[0].lstrip("-").split("__")
+        attr = instance
+        for field_name in field_names:
+            if isinstance(attr, dict):
+                attr = attr[field_name]
+            else:
+                attr = getattr(attr, field_name)
+        return str(attr)
+
+
 class VersionedPagination(pagination.BasePagination):
     """Proxies calls to different paginators depending on the version of the
     API in use
@@ -105,6 +142,16 @@ class VersionedPagination(pagination.BasePagination):
         else:
             paginator = self.default_paginator
         return getattr(paginator, attr)
+
+
+class VersionedCountPagination(VersionedPagination):
+    """Used for views where you want to use the cursor count pagination"""
+
+    # pylint: disable=abstract-method
+
+    def __init__(self):
+        super().__init__()
+        self.paginators["2.0"] = CursorCountPagination()
 
 
 class NoCountPaginator(Paginator):
