@@ -507,6 +507,8 @@ OEMBED_CACHE_AGE = env.int("OEMBED_CACHE_AGE", default=300)
 
 CACHE_CONTROL_MAX_AGE = env.int("CACHE_CONTROL_MAX_AGE", default=300)
 
+OEMBED_URL_REGEX = env("OEMBED_URL_REGEX", default="")
+
 # Squarelet
 # ------------------------------------------------------------------------------
 SQUARELET_DISABLE_CREATE = env.bool("SQUARELET_DISABLE_CREATE", default=True)

@@ -13,9 +13,10 @@ from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
 
-DOCCLOUD_DEBUG_REGEX = r"(dev[.])?" if settings.DEBUG else r""
 DOCCLOUD_URL_REGEX = (
-    r"https?://((www|beta|embed)[.]" + DOCCLOUD_DEBUG_REGEX + r")?documentcloud[.]org"
+    r"https?://((www|beta|embed)[.]"
+    + settings.OEMBED_URL_REGEX
+    + r")?documentcloud[.]org"
 )
 
 

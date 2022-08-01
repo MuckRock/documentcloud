@@ -28,6 +28,7 @@ CONFIG = [
                     ("DOCUMENTCLOUD_URL", "https://dev.documentcloud.org"),
                     ("SQUARELET_WHITELIST_VERIFIED_JOURNALISTS", "False"),
                     ("REQUESTS_CA_BUNDLE", "/etc/ssl/certs/ca-certificates.crt"),
+                    ("OEMBED_URL_REGEX", "(dev[.])?"),
                 ],
             },
             {
