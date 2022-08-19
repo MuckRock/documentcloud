@@ -4,6 +4,7 @@ from django.db import connection, reset_queries
 from django.test.utils import override_settings
 from rest_framework import status
 
+import pdb
 # Third Party
 import pytest
 
@@ -229,16 +230,17 @@ entity_dict = {
 
 @pytest.mark.django_db()
 class TestEntityExtraction:
+    def mock_bulk_create(self, entity_objs):
+        self.entity_objs_passed_to_bulk_create = entity_objs
+        print("entity_objs", entity_objs)
+
     def test_get_or_create_entities(self):
         """get or create entities"""
-        def mock_bulk_create(entity_objs):
-          print("entity_objs", entity_objs)
-          assert entity_objs
+        self.entity_objs_passed_to_bulk_create = None
         #entity = Entity(**entity_dict)
         #assert entity
-        _get_or_create_entities([entity_dict], bulk_create=mock_bulk_create)
-        #assert len(response_json["results"]) == size
-        # document list should never be cached
-        #assert "no-cache" in response["Cache-Control"]
-        #assert "public" not in response["Cache-Control"]
-        #assert "max-age" not in response["Cache-Control"]
+        pdb.set_trace()
+        _get_or_create_entities([entity_dict], bulk_create=self.mock_bulk_create)
+        assert self.entity_objs_passed_to_bulk_create, "Entity objects were not passed to bulk_create."
+        assert len(self.entity_objs_passed_to_bulk_create) == 1, "The number of entity objects passed to bulk_create are incorrect."
+        assert 1 == 2, "hey"
