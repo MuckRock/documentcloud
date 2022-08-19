@@ -15,7 +15,6 @@ You must first have these set up and ready to go:
 ### Software required
 
 1. [docker][docker-install]
-2. [docker-compose][docker-compose-install]
 3. [python][python-install]
 4. [invoke][invoke-install]
 5. [git][git-install]
@@ -25,21 +24,21 @@ You must first have these set up and ready to go:
 1. Install software above and Git Large File support [using these instructions](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage). 
    - Ensure you have at least an additional 11 gigabytes of hard disk space allocated to Docker for these purposes.
    - Ensure your Docker host application has at least 7gb of memory allocated, 10gb preferred. 
-   - These instructions create 3 distinct docker-compose sessions, with the Squarelet session hosting the shared central network. 
+   - These instructions create 3 distinct docker compose sessions, with the Squarelet session hosting the shared central network. 
 2. Check out the git repository - `git clone git@github.com:MuckRock/documentcloud.git`
 3. Enter the directory - `cd documentcloud`
 4. Run the dotenv initialization script - `python initialize_dotenvs.py`
    This will create files with the environment variables needed to run the development environment.
 5. Set `api.dev.documentcloud.org` and `minio.documentcloud.org` to point to localhost - `echo "127.0.0.1 api.dev.documentcloud.org minio.documentcloud.org" | sudo tee -a /etc/hosts`
-6. Run `export COMPOSE_FILE=local.yml;` in any of your command line sessions so that docker-compose finds the configuration.
-7. Run `docker-compose up`.
+6. Run `export COMPOSE_FILE=local.yml;` in any of your command line sessions so that docker compose finds the configuration.
+7. Run `docker compose up`.
 8. Enter `api.dev.documentcloud.org/` into your browser - you should see the Django API root page. **Note that `api` is before `dev` in this service URL.**
 9. In  `.envs/.local/.django` set the following environment variables:
 
 -   `SQUARELET_KEY`  to the value of Client ID from the Squarelet Client
 -   `SQUARELET_SECRET`  to the value of Client SECRET from the Squarelet Client
 - Additionally, get the value for `JWT_VERIFYING_KEY` by opening the Squarelet Django shell using `inv shell` and copying the `settings.SIMPLE_JWT['VERIFYING_KEY']` (remove the leading `b'` and the trailing `'`, leave the `\n` portions as-is)
-10. You must restart the Docker Compose session (via the command `docker-compose down` followed by `docker-compose up`) each time you change a `.django` file for it to take effect.
+10. You must restart the Docker Compose session (via the command `docker compose down` followed by `docker compose up`) each time you change a `.django` file for it to take effect.
 11. Log in using the Squarelet superuser on the locally-running [Documentcloud-frontend](https://github.com/muckrock/documentcloud-frontend) that you installed earlier at http://dev.documentcloud.org
     - `SQUARELET_WHITELIST_VERIFIED_JOURNALISTS=True` environment variable makes it so only verified journalists can *log into* DocumentCloud.
     - Use the squarelet admin [Organization page](http://dev.squarelet.local/admin/organizations/organization/) to mark your organization as a verified journalist to allow upload to DocumentCloud.
@@ -67,7 +66,6 @@ You must first have these set up and ready to go:
    
 
 [docker-install]: https://docs.docker.com/install/
-[docker-compose-install]: https://docs.docker.com/compose/install/
 [invoke-install]: http://www.pyinvoke.org/installing.html
 [python-install]: https://www.python.org/downloads/
 [git-install]: https://git-scm.com/downloads
