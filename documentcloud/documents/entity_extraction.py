@@ -58,6 +58,7 @@ def extract_entities(document):
     Mainly a wrapper with error handling to ensure document doesn't get stuck
     in a processing state.
     """
+    # DocumentCloud
     from documentcloud.documents.tasks import solr_index
 
     try:
@@ -223,7 +224,7 @@ def _get_mid_info(mids):
     return info
 
 
-def _get_or_create_entities(entities, retries=2, bulk_create=EntityOccurrence.objects.bulk_create):
+def _get_or_create_entities(entities, retries=2):
     """Get or create the entities returned from the API in the database"""
 
     entity_objs, entity_map = _get_entity_type(
