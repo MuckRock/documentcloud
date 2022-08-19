@@ -219,7 +219,7 @@ def _get_mid_info(mids):
     return info
 
 
-def _get_or_create_entities(entities, retries=2):
+def _get_or_create_entities(entities, retries=2, bulk_create=EntityOccurrence.objects.bulk_create):
     """Get or create the entities returned from the API in the database"""
 
     entity_objs, entity_map = _get_entity_type(
