@@ -5,6 +5,8 @@ from django.test.utils import override_settings
 from rest_framework import status
 
 import pdb
+import json
+
 # Third Party
 import pytest
 
@@ -20,6 +22,7 @@ entity_dict = {
   "kind": 1,
 	"type_": 1,
 	"metadata": {
+      "wikipedia_url": "https://en.wikipedia.org/wiki/Knight"
 	},
 	"salience": 0.14932491,
 	"mentions": [{
@@ -239,8 +242,20 @@ class TestEntityExtraction:
         self.entity_objs_passed_to_bulk_create = None
         #entity = Entity(**entity_dict)
         #assert entity
-        pdb.set_trace()
+        #pdb.set_trace()
+
+        # Mock
         _get_or_create_entities([entity_dict], bulk_create=self.mock_bulk_create)
         assert self.entity_objs_passed_to_bulk_create, "Entity objects were not passed to bulk_create."
         assert len(self.entity_objs_passed_to_bulk_create) == 1, "The number of entity objects passed to bulk_create are incorrect."
-        assert 1 == 2, "hey"
+        entity_obj = self.entity_objs_passed_to_bulk_create[0]
+        #pdb.set_trace()
+
+        assert entity_obj.description == ""
+        assert not entity_obj.id, "Primary key"
+        assert entity_obj.kind == 1
+        assert entity_obj.metadata == {}
+        assert entity_obj.mid == ""
+        assert entity_obj.name == "Knight"
+        assert entity_obj.wikipedia_url == "https://en.wikipedia.org/wiki/Knight"
+        #assert 1 == 2, "hey"
