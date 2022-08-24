@@ -155,13 +155,11 @@ class ReportGenerator:
         )
 
     def add_horizontal_rule(self):
-        """Adds a horizontal rule into the HTML document.
-        """
+        """Adds a horizontal rule into the HTML document."""
         self.string_io.write("<hr>")
 
     def close(self):
-        """Insert the table of contents and close the HTML document for writing.
-        """
+        """Insert the table of contents and close the HTML document for writing."""
         # Write the table of contents.
         if self.toc:
             # Write as a bulleted list.

@@ -17,10 +17,11 @@ logger.setLevel(logging.INFO)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
-    from documentcloud.common import path, access_choices
+    # DocumentCloud
+    from documentcloud.common import access_choices, path
     from documentcloud.common.environment import (
-        get_pubsub_data,
         encode_pubsub_data,
+        get_pubsub_data,
         publisher,
         storage,
     )
@@ -28,24 +29,23 @@ if env.str("ENVIRONMENT").startswith("local"):
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
-    from common import path, access_choices
+    # Third Party
+    # only initialize sentry on serverless
+    # pylint: disable=import-error
+    import sentry_sdk
+    from common import access_choices, path
     from common.environment import (
-        get_pubsub_data,
         encode_pubsub_data,
+        get_pubsub_data,
         publisher,
         storage,
     )
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
-
-    # pylint: disable=import-error
-    from tess import Tesseract
-
-    # only initialize sentry on serverless
-    # pylint: disable=import-error
-    import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
+    # pylint: disable=import-error
+    from tess import Tesseract
 
     sentry_sdk.init(
         dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration(), RedisIntegration()]
@@ -193,8 +193,7 @@ def ocr_page(doc_id, page_path, upload_text_path, access, ocr_code="eng"):
 
 @pubsub_function(REDIS, OCR_TOPIC)
 def run_tesseract(data, _context=None):
-    """Runs OCR on the images passed in, storing the extracted text.
-    """
+    """Runs OCR on the images passed in, storing the extracted text."""
     # pylint: disable=too-many-locals, too-many-statements
     overall_start = time.time()
 

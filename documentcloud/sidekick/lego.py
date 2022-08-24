@@ -108,7 +108,7 @@ def lego(u, v, y, r=0.5, A_prev=None):
     y_bar_up = (
         r * y * y_current
         - 1
-        + np.sqrt((r * y * y_current - 1) ** 2 + 4 * r * y_current ** 2)
+        + np.sqrt((r * y * y_current - 1) ** 2 + 4 * r * y_current**2)
     )
     y_bar_down = 2 * r * y_current
     y_bar = y_bar_up / y_bar_down

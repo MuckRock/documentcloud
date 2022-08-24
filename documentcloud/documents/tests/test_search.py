@@ -8,12 +8,12 @@ from datetime import datetime
 from unittest.mock import Mock
 
 # Third Party
-import pysolr
 import pytest
 import pytz
 from luqum.parser import parser
 
 # DocumentCloud
+import pysolr
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import (
@@ -441,8 +441,7 @@ class TestSearch:
         ],
     )
     def test_search_notes_content(self, user, note, viewable):
-        """Test that the proper notes are searchable for pro users
-        """
+        """Test that the proper notes are searchable for pro users"""
 
         content = NOTES[note]["content"]
         doc = NOTES[note]["document"]

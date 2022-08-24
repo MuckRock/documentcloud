@@ -250,6 +250,7 @@ class Document(models.Model):
 
     @transaction.atomic
     def destroy(self):
+        # DocumentCloud
         from documentcloud.documents.tasks import delete_document_files, solr_delete
 
         self.status = Status.deleted

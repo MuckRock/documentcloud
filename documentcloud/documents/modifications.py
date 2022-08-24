@@ -2,6 +2,7 @@
 # Django
 from django.db import transaction
 
+# Standard Library
 from collections import defaultdict
 from copy import copy
 
@@ -38,6 +39,7 @@ def post_process(document, modification_data):
     """Post process the notes and sections for the document as specified by
     modifications
     """
+    # DocumentCloud
     from documentcloud.documents.tasks import solr_index
 
     # Remove entities (no matter what)

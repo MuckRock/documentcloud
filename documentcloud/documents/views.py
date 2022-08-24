@@ -18,13 +18,13 @@ from functools import lru_cache
 
 # Third Party
 import environ
-import pysolr
 from django_filters import rest_framework as django_filters
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
+import pysolr
 from documentcloud.common.environment import httpsub
 from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter

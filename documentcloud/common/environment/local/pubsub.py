@@ -46,84 +46,98 @@ publisher = LocalPubSubClient()
 
 
 def process_pdf_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import process_file_internal
 
     return process_file_internal.delay(data)
 
 
 def document_convert_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import document_convert
 
     return document_convert.delay(data)
 
 
 def page_cache_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import cache_pages
 
     return cache_pages.delay(data)
 
 
 def extract_image_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import extract_images
 
     return extract_images.delay(data)
 
 
 def ocr_page_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import ocr_pages
 
     return ocr_pages.delay(data)
 
 
 def assemble_text_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import assemble_text
 
     return assemble_text.delay(data)
 
 
 def extract_text_position_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import text_position_extract
 
     return text_position_extract.delay(data)
 
 
 def redact_doc_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import redact_document
 
     return redact_document.delay(data)
 
 
 def modify_doc_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import modify_document
 
     return modify_document.delay(data)
 
 
 def start_import_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import start_import_process
 
     return start_import_process.delay(data)
 
 
 def import_document_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import import_doc
 
     return import_doc.delay(data)
 
 
 def finish_import_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import finish_import_process
 
     return finish_import_process.delay(data)
 
 
 def sidekick_preprocess_task(data):
+    # DocumentCloud
     from documentcloud.sidekick.tasks import sidekick_preprocess
 
     return sidekick_preprocess.delay(data)
 
 
 def retry_errors_task(data):
+    # DocumentCloud
     from documentcloud.documents.tasks import retry_errors_local
 
     return retry_errors_local.delay(data)

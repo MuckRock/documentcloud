@@ -20,64 +20,69 @@ environment = env.str("ENVIRONMENT")
 
 
 if environment == "local-minio":
-    from .minio.storage import storage
-    from .local.pubsub import publisher
-    from .local.httpsub import httpsub
+    # Local
     from .local.data import (
-        get_http_data,
-        get_pubsub_data,
         encode_pubsub_data,
         encode_response,
+        get_http_data,
+        get_pubsub_data,
     )
+    from .local.httpsub import httpsub
     from .local.processing_token import processing_auth
+    from .local.pubsub import publisher
+    from .minio.storage import storage
 
 elif environment == "local-s3":
+    # Local
     from .aws.storage import storage
-    from .local.pubsub import publisher
-    from .local.httpsub import httpsub
     from .local.data import (
-        get_http_data,
-        get_pubsub_data,
         encode_pubsub_data,
         encode_response,
+        get_http_data,
+        get_pubsub_data,
     )
+    from .local.httpsub import httpsub
     from .local.processing_token import processing_auth
+    from .local.pubsub import publisher
 
 elif environment == "local":
-    from .local.storage import storage
-    from .local.pubsub import publisher
-    from .local.httpsub import httpsub
+    # Local
     from .local.data import (
-        get_http_data,
-        get_pubsub_data,
         encode_pubsub_data,
         encode_response,
+        get_http_data,
+        get_pubsub_data,
     )
+    from .local.httpsub import httpsub
     from .local.processing_token import processing_auth
+    from .local.pubsub import publisher
+    from .local.storage import storage
 
 elif environment == "aws":
-    from .aws.storage import storage
-    from .aws.pubsub import publisher
-    from .aws.httpsub import httpsub
+    # Local
     from .aws.data import (
-        get_http_data,
-        get_pubsub_data,
         encode_pubsub_data,
         encode_response,
+        get_http_data,
+        get_pubsub_data,
     )
+    from .aws.httpsub import httpsub
     from .aws.processing_token import processing_auth
+    from .aws.pubsub import publisher
+    from .aws.storage import storage
 
 elif environment == "gcp":
-    from .gcp.storage import storage
-    from .gcp.pubsub import publisher
-    from .gcp.httpsub import httpsub
+    # Local
     from .gcp.data import (
-        get_http_data,
-        get_pubsub_data,
         encode_pubsub_data,
         encode_response,
+        get_http_data,
+        get_pubsub_data,
     )
+    from .gcp.httpsub import httpsub
     from .gcp.processing_token import processing_auth
+    from .gcp.pubsub import publisher
+    from .gcp.storage import storage
 
     raise RuntimeError("GCP environment is not currently supported")
 else:

@@ -283,7 +283,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         # wrap any lone strings in lists
         value = {k: [v] if isinstance(v, str) else v for k, v in value.items()}
 
-        key_p = re.compile(fr"^{DATA_KEY_REGEX}$")
+        key_p = re.compile(rf"^{DATA_KEY_REGEX}$")
         if not all(isinstance(k, str) and key_p.match(k) for k in value):
             raise serializers.ValidationError(
                 "`data` JSON object must have alphanumeric string keys"

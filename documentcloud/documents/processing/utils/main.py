@@ -14,31 +14,32 @@ logger = logging.getLogger(__name__)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
+    # DocumentCloud
     from documentcloud.common import redis_fields
     from documentcloud.common.environment import (
-        get_http_data,
-        publisher,
         encode_pubsub_data,
         encode_response,
+        get_http_data,
         processing_auth,
+        publisher,
     )
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
 else:
-    from common import redis_fields
-    from common.environment import (
-        get_http_data,
-        publisher,
-        encode_pubsub_data,
-        encode_response,
-        processing_auth,
-    )
-    from common.serverless import utils
-    from common.serverless.error_handling import pubsub_function
-
+    # Third Party
     # only initialize sentry on serverless
     # pylint: disable=import-error
     import sentry_sdk
+    from common import redis_fields
+    from common.environment import (
+        encode_pubsub_data,
+        encode_response,
+        get_http_data,
+        processing_auth,
+        publisher,
+    )
+    from common.serverless import utils
+    from common.serverless.error_handling import pubsub_function
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
 

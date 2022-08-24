@@ -8,12 +8,12 @@ import re
 from datetime import datetime
 
 # Third Party
-import pysolr
 from luqum.parser import ParseError, parser
 from luqum.tree import Boost, Not, Prohibit, Range, Unary, Word
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
+import pysolr
 from documentcloud.core.pagination import CursorPagination, PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.models import Document
@@ -477,7 +477,7 @@ def _handle_params(query_params, fields, dynamic_fields):
 
     for pattern in dynamic_fields:
         # allow for negated dynamic fields
-        dynamic_params = [p for p in query_params if re.match(fr"^-?{pattern}$", p)]
+        dynamic_params = [p for p in query_params if re.match(rf"^-?{pattern}$", p)]
         for param in dynamic_params:
             values = " ".join(query_params.getlist(param))
             return_list.append(f"{param}:({values})")
@@ -705,6 +705,7 @@ def _add_canonical_url(results):
 
 
 def _add_asset_url(results):
+    # DocumentCloud
     from documentcloud.documents.tasks import solr_index
 
     for result in results:
@@ -749,6 +750,7 @@ def _expand_organizations(results):
 
 
 def _expand(results, key, queryset, serializer):
+    # DocumentCloud
     from documentcloud.documents.tasks import solr_index
 
     ids = {r[key] for r in results if key in r}

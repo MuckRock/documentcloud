@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
+    # DocumentCloud
     from documentcloud.sidekick.local_tasks import sidekick_preprocess
 
 

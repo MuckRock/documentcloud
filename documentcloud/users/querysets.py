@@ -20,6 +20,7 @@ class UserQuerySet(models.QuerySet):
         """You may view other users in your organizations and projects,
         and anybody with a public document
         """
+        # DocumentCloud
         from documentcloud.documents.models import Document
 
         if user.is_authenticated:

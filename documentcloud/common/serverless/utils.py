@@ -28,6 +28,7 @@ if not env.str("ENVIRONMENT").startswith("local"):
     # not work across process boundary
     # see https://github.com/getsentry/raven-python/issues/1110#issuecomment-688923571
     # pylint: disable=import-error
+    # Third Party
     from sentry_sdk import capture_exception, capture_message, flush
 else:
 

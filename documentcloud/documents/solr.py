@@ -30,12 +30,12 @@ import logging
 import time
 
 # Third Party
-import pysolr
 import requests
-from config import celery_app
 from dateutil.parser import parse
 
 # DocumentCloud
+import pysolr
+from config import celery_app
 from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.core.utils import grouper

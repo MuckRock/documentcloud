@@ -8,4 +8,5 @@ class UsersConfig(AppConfig):
     def ready(self):
         # pylint: disable=unused-import
         # load signals
+        # DocumentCloud
         import documentcloud.users.signals

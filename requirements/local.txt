@@ -15,17 +15,16 @@ aioitertools==0.10.0      # via -r requirements/./base.txt, aiobotocore
 aiosignal==1.2.0          # via -r requirements/./base.txt, aiohttp
 alabaster==0.7.12         # via sphinx
 amqp==2.5.2               # via -r requirements/./base.txt, kombu
-appdirs==1.4.3            # via black
 argon2-cffi==19.1.0       # via -r requirements/./base.txt
 asgiref==3.4.1            # via -r requirements/./base.txt, django
 astroid==2.6.6            # via pylint, pylint-celery
 asttokens==2.0.5          # via -r requirements/./base.txt, stack-data
 async-timeout==4.0.2      # via -r requirements/./base.txt, aiohttp
-attrs==19.3.0             # via -r requirements/./base.txt, aiohttp, black, jsonschema, pytest
+attrs==19.3.0             # via -r requirements/./base.txt, aiohttp, jsonschema, pytest
 babel==2.7.0              # via sphinx
 backcall==0.1.0           # via -r requirements/./base.txt, ipython
 billiard==3.6.3.0         # via -r requirements/./base.txt, celery
-black==19.10b0            # via -r requirements/local.in
+black==22.6.0             # via -r requirements/local.in
 boto==2.49.0              # via -r requirements/./base.txt, smart-open
 boto3==1.21.21            # via -r requirements/./base.txt, aiobotocore, smart-open
 botocore==1.24.21         # via -r requirements/./base.txt, aiobotocore, boto3, s3transfer
@@ -35,7 +34,7 @@ certifi==2019.6.16        # via -r requirements/./base.txt, requests
 cffi==1.15.1              # via -r requirements/./base.txt, argon2-cffi, cryptography
 chardet==3.0.4            # via -r requirements/./base.txt, pdfminer-six
 charset-normalizer==2.1.0  # via -r requirements/./base.txt, aiohttp, requests
-click==7.1.2              # via black, pip-tools
+click==8.1.3              # via black, pip-tools
 coverage==4.5.4           # via -r requirements/local.in, django-coverage-plugin
 cpuprofile==1.0.1         # via -r requirements/./base.txt
 cryptography==35.0.0      # via -r requirements/./base.txt, social-auth-core
@@ -115,7 +114,7 @@ matplotlib-inline==0.1.3  # via -r requirements/./base.txt, ipython
 mccabe==0.6.1             # via flake8, pylint
 more-itertools==7.2.0     # via zipp
 multidict==4.7.5          # via -r requirements/./base.txt, aiohttp, yarl
-mypy-extensions==0.4.3    # via -r requirements/./base.txt, typing-inspect
+mypy-extensions==0.4.3    # via -r requirements/./base.txt, black, typing-inspect
 numba==0.55.2             # via -r requirements/./base.txt
 numpy==1.22.4             # via -r requirements/./base.txt, fasttext, numba, opencv-python, scikit-learn, scipy
 oauthlib==3.1.0           # via -r requirements/./base.txt, requests-oauthlib, social-auth-core
@@ -123,7 +122,7 @@ opencv-python==4.6.0.66   # via -r requirements/local.in
 orderedmultidict==1.0.1   # via -r requirements/./base.txt, furl
 packaging==21.3           # via -r requirements/./base.txt, deprecation, pikepdf, pytest, pytest-sugar, sphinx
 parso==0.8.3              # via -r requirements/./base.txt, jedi
-pathspec==0.6.0           # via black
+pathspec==0.9.0           # via black
 pdfminer-six==20200517    # via -r requirements/./base.txt, pdfplumber
 pdfplumber==0.5.28        # via -r requirements/./base.txt
 pebble==4.5.0             # via -r requirements/./base.txt
@@ -132,6 +131,7 @@ pickleshare==0.7.5        # via -r requirements/./base.txt, ipython
 pikepdf==5.4.0            # via -r requirements/./base.txt
 pillow==9.2.0             # via -r requirements/./base.txt, pdfplumber, pikepdf
 pip-tools==5.2.0          # via -r requirements/local.in
+platformdirs==2.5.2       # via black
 pluggy==0.12.0            # via pytest
 ply==3.11                 # via -r requirements/./base.txt, luqum
 premailer==3.0.0          # via -r requirements/./base.txt, django-premailer
@@ -172,7 +172,6 @@ pytz==2022.1              # via -r requirements/./base.txt, babel, celery, djang
 pyyaml==5.3.1             # via -r requirements/./base.txt, libcst
 rcssmin==1.0.6            # via -r requirements/./base.txt, django-compressor
 redis==3.4.1              # via -r requirements/./base.txt, django-redis, fakeredis, python-redis-lock
-regex==2019.11.1          # via black
 requests==2.28.1          # via -r requirements/./base.txt, gcsfs, google-api-core, premailer, pysolr, requests-mock, requests-oauthlib, smart-open, social-auth-core, sphinx, squarelet-auth
 requests-mock==1.9.3      # via -r requirements/local.in
 requests-oauthlib==1.2.0  # via -r requirements/./base.txt, google-auth-oauthlib, social-auth-core
@@ -183,7 +182,7 @@ rules==2.1                # via -r requirements/./base.txt
 s3transfer==0.5.2         # via -r requirements/./base.txt, boto3
 scikit-learn==1.1.1       # via -r requirements/local.in
 scipy==1.8.1              # via -r requirements/./base.txt, scikit-learn
-six==1.15.0               # via -r requirements/./base.txt, argon2-cffi, astroid, asttokens, django-appconf, django-choices, django-compressor, django-coverage-plugin, faker, fakeredis, furl, google-api-core, google-auth, grpcio, jsonschema, orderedmultidict, pip-tools, protobuf, python-dateutil, requests-mock
+six==1.15.0               # via -r requirements/./base.txt, argon2-cffi, asttokens, django-appconf, django-choices, django-compressor, django-coverage-plugin, faker, fakeredis, furl, google-api-core, google-auth, grpcio, jsonschema, orderedmultidict, pip-tools, protobuf, python-dateutil, requests-mock
 smart-open==1.8.4         # via -r requirements/./base.txt
 snowballstemmer==1.9.1    # via sphinx
 social-auth-app-django==5.0.0  # via -r requirements/./base.txt, rest-social-auth
@@ -202,10 +201,9 @@ stack-data==0.3.0         # via -r requirements/./base.txt, ipython
 termcolor==1.1.0          # via pytest-sugar
 text-unidecode==1.2       # via -r requirements/./base.txt, faker, python-slugify
 threadpoolctl==2.2.0      # via scikit-learn
-toml==0.10.2              # via black, ipdb, pylint
-tomli==2.0.1              # via pytest
+toml==0.10.2              # via ipdb, pylint
+tomli==2.0.1              # via black, pytest
 traitlets==5.3.0          # via -r requirements/./base.txt, ipython, matplotlib-inline
-typed-ast==1.5.4          # via black
 typing-extensions==3.7.4.3  # via -r requirements/./base.txt, libcst, typing-inspect
 typing-inspect==0.6.0     # via -r requirements/./base.txt, libcst
 unidecode==1.1.1          # via -r requirements/./base.txt, -r requirements/local.in

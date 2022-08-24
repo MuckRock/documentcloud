@@ -112,6 +112,7 @@ class AwsStorage:
         presigned URL with a custom domain name, instead of using an
         AWS domain.  Using the custom domain lets us use the CloudFlare CDN
         """
+        # Django
         from django.conf import settings
 
         resource_kwargs = {
@@ -192,6 +193,7 @@ class AwsStorage:
     def async_set_access(self, file_names, access):
         """Set access for given keys asynchronously"""
         # import aioboto3 locally to avoid needing it installed on lambda
+        # Third Party
         import aioboto3
 
         if self.minio:
@@ -215,6 +217,7 @@ class AwsStorage:
     def async_download(self, file_names):
         """Download given files in parallel"""
         # import aioboto3 locally to avoid needing it installed on lambda
+        # Third Party
         import aioboto3
 
         data = [io.BytesIO() for _ in file_names]
@@ -241,6 +244,7 @@ class AwsStorage:
     def async_size(self, file_names):
         """Get the size of the given files in parallel"""
         # import aioboto3 locally to avoid needing it installed on lambda
+        # Third Party
         import aioboto3
 
         async def main():

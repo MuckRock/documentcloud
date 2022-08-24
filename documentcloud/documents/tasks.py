@@ -14,11 +14,11 @@ import sys
 from datetime import date
 
 # Third Party
-import pysolr
 import redis
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
+import pysolr
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents import entity_extraction, modifications, solr
 from documentcloud.documents.choices import Access, Status
@@ -29,20 +29,21 @@ logger = logging.getLogger(__name__)
 
 if settings.ENVIRONMENT.startswith("local"):
     # pylint: disable=unused-import
+    # DocumentCloud
     from documentcloud.documents.local_tasks import (
-        process_file_internal,
-        document_convert,
-        cache_pages,
-        extract_images,
-        ocr_pages,
         assemble_text,
-        text_position_extract,
-        redact_document,
-        modify_document,
-        start_import_process,
-        import_doc,
+        cache_pages,
+        document_convert,
+        extract_images,
         finish_import_process,
+        import_doc,
+        modify_document,
+        ocr_pages,
+        process_file_internal,
+        redact_document,
         retry_errors_local,
+        start_import_process,
+        text_position_extract,
     )
 
 logger = logging.getLogger(__name__)

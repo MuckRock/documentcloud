@@ -111,9 +111,9 @@ def format(c):
             cmd="black documentcloud --exclude migrations && "
             "black config/urls.py && "
             "black config/settings && "
-            "isort -rc documentcloud && "
+            "isort documentcloud && "
             "isort config/urls.py && "
-            "isort -rc config/settings"
+            "isort config/settings"
         )
     )
 

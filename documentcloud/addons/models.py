@@ -396,6 +396,7 @@ class AddOnEvent(models.Model):
 
     def dispatch(self):
         """Run the add-on when triggered by this event"""
+        # DocumentCloud
         from documentcloud.addons.tasks import dispatch
 
         with transaction.atomic():

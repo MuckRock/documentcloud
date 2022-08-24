@@ -18,19 +18,20 @@ logger.setLevel(logging.INFO)
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
+    # DocumentCloud
     from documentcloud.common import path
     from documentcloud.common.environment import get_pubsub_data, publisher, storage
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
 else:
+    # Third Party
+    # only initialize sentry on serverless
+    # pylint: disable=import-error
+    import sentry_sdk
     from common import path
     from common.environment import get_pubsub_data, publisher, storage
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
-
-    # only initialize sentry on serverless
-    # pylint: disable=import-error
-    import sentry_sdk
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
 
@@ -127,6 +128,7 @@ def process_text(project_id, texts):
 
 def doc_embedding(project_id, language, tfidf, features, doc_svd):
     """Calculate the doc embeddings"""
+    # Third Party
     import fasttext
 
     logger.info("[SIDEKICK PREPROCESS] project_id: %s - doc embeddings", project_id)

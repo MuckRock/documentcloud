@@ -83,6 +83,7 @@ class DocumentQuerySet(models.QuerySet):
 
     def preload(self, user, expand):
         """Preload relations"""
+        # DocumentCloud
         from documentcloud.projects.models import Project
 
         queryset = self

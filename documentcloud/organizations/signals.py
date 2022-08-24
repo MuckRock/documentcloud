@@ -8,6 +8,7 @@ from documentcloud.organizations.models import Organization
 
 if hasattr(settings, "MOESIF_MIDDLEWARE"):
     # pylint: disable=import-error
+    # Third Party
     from moesifapi.moesif_api_client import MoesifAPIClient
 
     api_client = MoesifAPIClient(settings.MOESIF_MIDDLEWARE["APPLICATION_ID"]).api
