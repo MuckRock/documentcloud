@@ -72,8 +72,6 @@ class TestEntityExtraction:
         assert mock_bulk_create.call_args.args[
             0
         ], "Entity objects were not passed to bulk_create."
-        print("args", mock_bulk_create.call_args.args[0])
-        pdb.set_trace()
         assert (
             len(mock_bulk_create.call_args.args[0]) == 1
         ), "The number of entity objects passed to bulk_create are incorrect."

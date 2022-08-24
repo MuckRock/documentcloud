@@ -4,6 +4,7 @@ from django.db import connection, reset_queries
 from django.test.utils import override_settings
 from rest_framework import status
 
+
 # Third Party
 import pytest
 
@@ -1730,6 +1731,28 @@ class TestEntityAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert document.entities.count() == 0
 
+    def test_create_freestanding_entity(self, client, document, user, mocker):
+        #"""Create freestanding entities"""
+        entity_body = {
+            "name": "Knight",
+            "kind": 1,
+            "type_": 1,
+            "metadata": {"wikipedia_url": "https://en.wikipedia.org/wiki/Knight" }
+        }
+        _get_or_create_entities = mocker.patch(
+            "documentcloud.documents.entity_extraction._get_or_create_entities",
+            return_value={ "mock_mid": entity_body }
+        )
+
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/entities/freestanding",
+            entity_body,
+            format="json",
+        )
+        run_commit_hooks()
+        _get_or_create_entities.assert_called_once_with([ entity_body ])
+        assert response.status_code == status.HTTP_200_OK
 
 @pytest.mark.django_db()
 class TestOEmbed:
