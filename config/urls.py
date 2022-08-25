@@ -27,6 +27,7 @@ from documentcloud.documents.views import (
     EntityDateViewSet,
     EntityViewSet,
     LegacyEntityViewSet,
+    FreestandingEntityViewSet,
     ModificationViewSet,
     NoteViewSet,
     RedactionViewSet,
@@ -62,6 +63,7 @@ documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityViewSet)
 documents_router.register("legacy_entities", LegacyEntityViewSet)
+documents_router.register("freestanding_entities", FreestandingEntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
 documents_router.register("data", DataViewSet, basename="data")

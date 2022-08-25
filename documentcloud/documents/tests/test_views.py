@@ -1746,13 +1746,14 @@ class TestEntityAPI:
 
         client.force_authenticate(user=user)
         response = client.post(
-            "/api/entities/freestanding",
+            "/api/freestanding_entities",
             entity_body,
             format="json",
         )
         run_commit_hooks()
         _get_or_create_entities.assert_called_once_with([ entity_body ])
         assert response.status_code == status.HTTP_200_OK
+        # TODO: Assert that the entity was returned. Do another case with an existing entity.
 
 @pytest.mark.django_db()
 class TestOEmbed:
