@@ -86,7 +86,6 @@ from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
 
-import pdb
 env = environ.Env()
 logger = logging.getLogger(__name__)
 
@@ -898,41 +897,6 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             }
 
     filterset_class = Filter
-
-@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class FreestandingEntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    serializer_class = EntitySerializer
-    queryset = Entity.objects.none()
-
-    @lru_cache()
-    def get_queryset(self):
-        # TODO: Should everyone be able to view all entities?
-        return self.entities.all()
-
-    def create(self, request, *args, **kwargs):
-        pdb.set_trace()
-        """Initiate asyncrhonous creation of entities"""
-        # pylint: disable=unused-argument
-
-        with transaction.atomic():
-            # We select for update here to lock the document between checking if it is
-            # processing and starting the entity extraction to ensure another
-            # thread does not start processing this document before we mark it as
-            # processing
-
-            if entities.exists():
-                return Response(
-                    {"error": "Entities already created"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            #transaction.on_commit(
-                #lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-            #)
-
-            #transaction.on_commit(lambda: extract_entities.delay(self.document.pk))
-
-        return Response("OK")
 
 
 # Used to map modification rotations to note rotations

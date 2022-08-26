@@ -6,6 +6,8 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic.base import RedirectView
 from rest_framework import permissions
+import pdb
+
 
 # Third Party
 from rest_framework_nested.routers import NestedDefaultRouter
@@ -27,7 +29,6 @@ from documentcloud.documents.views import (
     EntityDateViewSet,
     EntityViewSet,
     LegacyEntityViewSet,
-    FreestandingEntityViewSet,
     ModificationViewSet,
     NoteViewSet,
     RedactionViewSet,
@@ -43,6 +44,7 @@ from documentcloud.projects.views import (
 from documentcloud.sidekick.routers import SidekickRouter
 from documentcloud.sidekick.views import SidekickViewSet
 from documentcloud.users.views import MessageView, UserViewSet
+from documentcloud.freestanding_entities.views import FreestandingEntityViewSet
 
 
 class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
@@ -58,12 +60,16 @@ router.register("addons", AddOnViewSet)
 router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
 
+#pdb.set_trace()
+router.register(
+  "freestanding_entities", FreestandingEntityViewSet, "freestanding_entities"
+)
+
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityViewSet)
 documents_router.register("legacy_entities", LegacyEntityViewSet)
-documents_router.register("freestanding_entities", FreestandingEntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
 documents_router.register("data", DataViewSet, basename="data")
