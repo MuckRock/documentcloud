@@ -1752,8 +1752,8 @@ class TestEntityAPI:
             format="json",
         )
 
-        print("response:", response.content)
         assert response.status_code == status.HTTP_201_CREATED
+        assert response.content == b'{"name":"Dog","kind":"unknown","metadata":{"wikipedia_url":"https://en.wikipedia.org/wiki/Dog"}}'
         _get_or_create_entities.assert_called_once_with([ entity_body ])
         # TODO: Assert that the entity was returned. Do another case with an existing entity.
 
