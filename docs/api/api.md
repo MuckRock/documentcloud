@@ -525,6 +525,7 @@ Entity kinds include
 
 - `GET /api/documents/<document_id>/entities/` - List entities for this document
 - `POST /api/documents/<document_id>/entities/` - Begin extracting entities for this document (POST body is empty)
+- `PUT /a
 - `DELETE /api/documents/<document_id>/entities/` - Delete all entities for this document
 
 #### Filters
@@ -547,44 +548,29 @@ your own entities, then later tag documents with them.
 | name          | String | The name of the entity                                         |
 | kind          | String | The [kind](#kind) of entity                                    |
 | description   | String | A short description of the entity                              |
-| mid           | String | The Google Knowledge Graph ID                                  |
-| wid           | String | The [Wikidata item ID](https://www.wikidata.org/wiki/Wikidata:Identifiers) (e.g. "Q12345")|
-| id_source     | String | "wikidata", "google", 
+| mid           | String | An string that identifies the entity uniquely in the entity tagging system you are using.|                               |
+| id_source     | String | The name of the system that is the source of the mid. It can be ["wikidata"](https://www.wikidata.org/wiki/Wikidata:Identifiers), "google" (to indicate a Google Knowledge Base id), or the name of another scheme. The mid will be assumed to be a Google Knowledge Base id if id_source is left empty.|
 | wikipedia_url | URL    | The Wikipedia URL for this entity                              |
 | metadata      | Object | Additional metadata for the entity, based on its [kind](#kind) |
+| user          | String | The user creating this entity.                                 |
 
 ##### Kind
 
-Entity kinds include
-
-- `unknown`
-- `person`
-- `location`
-- `organization`
-- `event`
-- `work_of_art`
-- `consumer_good`
-- `other`
-- `phone_number` &mdash; metadata may include number, national_prefix, area_code and extension
-- `address` &mdash; metadata may include street_number, locality, street_name, postal_code, country, broad_region, narrow_region, and sublocality
-- `date` &mdash; metadata may include year, month and day
-- `price` &mdash; metadata may include value and currency
+See entity [#kind] list for details.
 
 #### Endpoints
 
 - `GET /api/freestanding_entities/` - List entities
-- `POST /api/freestanding_entities/` - Create entities for this document (POST body should be a JSON object with the freestanding enitiy fields)
-- `PUT /api/freestanding_entities/` - Update entities (body should be a JSON object with the freestanding enitiy fields; wid or )
-- `DELETE /api/freestanding_entity/` - Delete all entities for this document
+- `POST /api/freestanding_entities/` - Create entities for this document (POST body should be a JSON object with the freestanding entity fields. mid and name are required. `user` does not need to be provided; it will be derived from the credentials.)
+- `PUT /api/freestanding_entities/` - Update entities (body should be a JSON object with the freestanding enitiy fields; mid is required.)
+- `DELETE /api/freestanding_entity/` - Delete a freestanding entity.
 
 #### Filters
 
 - `kind` &mdash; Filter for entities with the given kind (may give multiple, comma seperated)
-- `occurences` &mdash; Filter for entities with the given occurence kind (`proper` or `common`)
-- `relevance__gt` &mdash; Filter for documents with the given relevance or higher
 - `mid` &mdash; Boolean filter for entities which do or do not have a MID
 - `wikipedia_url` &mdash; Boolean filter for entities which do or do not have a Wikipedia URL
-- 
+
 ## Projects
 
 Projects are collections of documents. They can be used for organizing groups
