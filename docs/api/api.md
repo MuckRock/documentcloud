@@ -525,7 +525,7 @@ Entity kinds include
 
 - `GET /api/documents/<document_id>/entities/` - List entities for this document
 - `POST /api/documents/<document_id>/entities/` - Begin extracting entities for this document (POST body is empty)
-- `PUT /a
+- `PUT /api/documents/<document_id>/entities/` - Update the entities associated with this document.
 - `DELETE /api/documents/<document_id>/entities/` - Delete all entities for this document
 
 #### Filters
@@ -538,10 +538,11 @@ Entity kinds include
 
 ## Freestanding entities
 
-In addition to extracting entities from Google Cloud's Natural Language API, you can define
-your own entities, then later tag documents with them.
+In addition to extracting entities with Google Cloud's Natural Language API, you can use the system of your choice, like SpaCy's entity linker or one you've built yourself. If you do so, you can use these endpoints to define the entities, then later use [`PUT /api/documents/<document_id>/entities/`](#Entities#Endpoints) to tag documents with them.
 
 #### Fields
+
+These are the fields in the entity objects, which you'll use with the freestanding entity API endpoints.
 
 | Field         | Type   | Description                                                    |
 | ------------- | ------ | -------------------------------------------------------------- |
@@ -556,7 +557,7 @@ your own entities, then later tag documents with them.
 
 ##### Kind
 
-See entity [#kind] list for details.
+See entity [#Entity#Kind] list for details.
 
 #### Endpoints
 
@@ -568,7 +569,7 @@ See entity [#kind] list for details.
 #### Filters
 
 - `kind` &mdash; Filter for entities with the given kind (may give multiple, comma seperated)
-- `mid` &mdash; Boolean filter for entities which do or do not have a MID
+- `mid` &mdash; Boolean filter for entities which do or do not have a mid
 - `wikipedia_url` &mdash; Boolean filter for entities which do or do not have a Wikipedia URL
 
 ## Projects
