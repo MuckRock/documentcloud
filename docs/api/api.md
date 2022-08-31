@@ -538,7 +538,7 @@ Entity kinds include
 
 ## Freestanding entities
 
-In addition to extracting entities with Google Cloud's Natural Language API, you can use the system of your choice, like SpaCy's entity linker or one you've built yourself. If you do so, you can use these endpoints to define the entities, then later use [`PUT /api/documents/<document_id>/entities/`](#Entities#Endpoints) to tag documents with them.
+In addition to extracting entities with Google Cloud's Natural Language API, you can use the system of your choice, like SpaCy's entity linker or one you've built yourself. If you do so, you can use these endpoints to define the entities, then later use [`PUT /api/documents/<document_id>/entities/`](#endpoints-7) to tag documents with them.
 
 #### Fields
 
@@ -557,7 +557,7 @@ These are the fields in the entity objects, which you'll use with the freestandi
 
 ##### Kind
 
-See entity [#Entity#Kind] list for details.
+See [entity kind](#kind).
 
 #### Endpoints
 
