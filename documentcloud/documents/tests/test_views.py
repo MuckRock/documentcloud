@@ -1695,9 +1695,6 @@ class TestRedactionAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-
-@pytest.mark.django_db()
-class TestEntityAPI:
     def test_create(self, client, mocker):
         """Create the entities"""
         document = DocumentFactory(access=Access.private)
@@ -1732,6 +1729,8 @@ class TestEntityAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert document.entities.count() == 0
 
+@pytest.mark.django_db()
+class TestFreestandingEntityAPI:
     def test_create_freestanding_entity(self, client, document, user, mocker):
         #"""Create freestanding entities"""
         entity_body = {
@@ -1744,7 +1743,6 @@ class TestEntityAPI:
             return_value={ "mock_mid": entity_body }
         )
 
-        #pdb.set_trace()
         client.force_authenticate(user=user)
         response = client.post(
             "/api/freestanding_entities/",
