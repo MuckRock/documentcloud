@@ -1695,6 +1695,8 @@ class TestRedactionAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+@pytest.mark.django_db()
+class TestEntityAPI:
     def test_create(self, client, mocker):
         """Create the entities"""
         document = DocumentFactory(access=Access.private)
