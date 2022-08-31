@@ -103,7 +103,7 @@ def mailgun(request):
                 title=title,
                 original_extension=original_extension,
             )
-            transaction.on_commit(lambda d=document: solr_index.delay(d.pk))
+            document.index_on_commit()
             transaction.on_commit(
                 lambda a=attachment, d=document: fetch_file_url.delay(
                     a["url"],

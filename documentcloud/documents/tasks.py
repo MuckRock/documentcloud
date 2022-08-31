@@ -14,11 +14,11 @@ import sys
 from datetime import date
 
 # Third Party
+import pysolr
 import redis
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
-import pysolr
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.documents import entity_extraction, modifications, solr
 from documentcloud.documents.choices import Access, Status
@@ -71,15 +71,11 @@ def fetch_file_url(file_url, document_pk, force_ocr, auth=None):
             document.errors.create(message=exc.args[0])
             document.status = Status.error
             document.save()
-            transaction.on_commit(
-                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-            )
+            document.index_on_commit(field_updates={"status": "set"})
     else:
         document.status = Status.pending
         document.save()
-        transaction.on_commit(
-            lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-        )
+        document.index_on_commit(field_updates={"status": "set"})
         process.delay(
             document_pk,
             document.slug,
@@ -107,12 +103,10 @@ def _httpsub_submit(url, document_pk, json, task_):
     except RequestException as exc:
         if task_.request.retries >= task_.max_retries:
             with transaction.atomic():
-                Document.objects.filter(pk=document_pk).update(status=Status.error)
-                transaction.on_commit(
-                    lambda: solr_index.delay(
-                        document_pk, field_updates={"status": "set"}
-                    )
-                )
+                document = document.objects.get(pk=document_pk)
+                document.status = Status.error
+                document.save()
+                document.index_on_commit(field_updates={"status": "Set"})
                 DocumentError.objects.create(
                     document_id=document_pk,
                     message=f"Submitting for {task_.name} failed",
@@ -275,9 +269,8 @@ def finish_update_access(document_pk, status, access):
             kwargs["publication_date"] = date.today()
 
         Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
-        transaction.on_commit(
-            lambda: solr_index.delay(document_pk, field_updates=field_updates)
-        )
+        document = Document.objects.get(pk=document_pk)
+        document.index_on_commit(field_updates=field_updates)
 
 
 # new solr
@@ -377,9 +370,7 @@ def publish_scheduled_documents():
             lambda d=document: update_access.delay(d.pk, Status.success, Access.public)
         )
         # update solr
-        transaction.on_commit(
-            lambda d=document: solr_index.delay(d.pk, field_updates={"status": "set"})
-        )
+        document.index_on_commit(field_updates={"status": "set"})
 
 
 @task

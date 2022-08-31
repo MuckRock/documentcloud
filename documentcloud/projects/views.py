@@ -26,7 +26,6 @@ from documentcloud.documents.decorators import (
     conditional_cache_control,
 )
 from documentcloud.documents.models import Document
-from documentcloud.documents.tasks import solr_index
 from documentcloud.documents.views import DocumentViewSet
 from documentcloud.drf_bulk.views import BulkModelMixin
 from documentcloud.projects.choices import CollaboratorAccess
@@ -39,14 +38,12 @@ from documentcloud.projects.serializers import (
 from documentcloud.users.models import User
 
 
-def _solr_set(document_pk):
+def _solr_set(document):
     """Set the projects and projects_edit_access fields in solr after altering the
     project memberships
     """
     field_updates = {"projects": "set", "projects_edit_access": "set"}
-    transaction.on_commit(
-        lambda: solr_index.delay(document_pk, field_updates=field_updates)
-    )
+    document.index_on_commit(field_updates=field_updates)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -75,14 +72,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
         from the project on solr
         """
         # get all of the project memberships for this project
-        project_memberships = instance.projectmembership_set.all()
+        project_memberships = instance.projectmembership_set.all().select_related(
+            "document"
+        )
         # set solr dirty and updated at for all of the documents in this project
         Document.objects.filter(
             pk__in=[pm.document.pk for pm in project_memberships]
         ).update(solr_dirty=True, updated_at=timezone.now())
         # remove the documents from the project on solr
         for project_membership in project_memberships:
-            _solr_set(project_membership.document_id)
+            _solr_set(project_membership.document)
 
         super().perform_destroy(instance)
 
@@ -202,7 +201,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             pk__in=[d["document"].pk for d in validated_datas]
         ).update(solr_dirty=True, updated_at=timezone.now())
         for data in validated_datas:
-            _solr_set(data["document"].pk)
+            _solr_set(data["document"])
 
     @transaction.atomic
     def perform_update(self, serializer):
@@ -222,7 +221,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             pk__in=[d["document"].pk for d in validated_datas]
         ).update(solr_dirty=True, updated_at=timezone.now())
         for data in validated_datas:
-            _solr_set(data["document"].pk)
+            _solr_set(data["document"])
 
     @transaction.atomic
     def bulk_perform_update(self, serializer, partial):
@@ -248,16 +247,18 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 # add the project id into the data before creating
                 data["project_id"] = self.kwargs["project_pk"]
                 memberships.append(serializer.child.create(data))
-                _solr_set(data["document"].pk)
+                _solr_set(data["document"])
             else:
                 memberships.append(serializer.child.update(membership, data))
-                _solr_set(data["document"].pk)
+                _solr_set(data["document"])
 
         # delete existing memberships not present in the data
-        delete = [m for d, m in membership_mapping.items() if d not in data_mapping]
-        ProjectMembership.objects.filter(pk__in=[m.pk for m in delete]).delete()
-        for membership in delete:
-            _solr_set(membership.document_id)
+        delete = [
+            (d, m) for d, m in membership_mapping.items() if d not in data_mapping
+        ]
+        ProjectMembership.objects.filter(pk__in=[m.pk for (_, m) in delete]).delete()
+        for document, _ in delete:
+            _solr_set(document)
 
         return memberships
 
@@ -268,14 +269,14 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         )
         ProjectMembership.objects.filter(pk__in=[o.pk for o in objects]).delete()
         for obj in objects:
-            _solr_set(obj.document_id)
+            _solr_set(obj.document)
 
     @transaction.atomic
     def perform_destroy(self, instance):
         instance.document.solr_dirty = True
         instance.document.save()
         super().perform_destroy(instance)
-        _solr_set(instance.document_id)
+        _solr_set(instance.document)
 
     class Filter(django_filters.FilterSet):
         document_id__in = ModelMultipleChoiceFilter(

@@ -58,18 +58,13 @@ def extract_entities(document):
     Mainly a wrapper with error handling to ensure document doesn't get stuck
     in a processing state.
     """
-    # DocumentCloud
-    from documentcloud.documents.tasks import solr_index
-
     try:
         _extract_entities(document)
     finally:
         with transaction.atomic():
             document.status = Status.success
             document.save()
-            transaction.on_commit(
-                lambda: solr_index.delay(document.pk, field_updates={"status": "set"})
-            )
+            document.index_on_commit(field_updates={"status": "set"})
         logger.info("Extracting entities for %s finished", document)
 
 

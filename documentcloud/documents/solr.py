@@ -30,12 +30,12 @@ import logging
 import time
 
 # Third Party
+import pysolr
 import requests
+from config import celery_app
 from dateutil.parser import parse
 
 # DocumentCloud
-import pysolr
-from config import celery_app
 from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.core.utils import grouper
@@ -224,7 +224,9 @@ def reindex_single(collection_name, document_pk):
     if collection_name is None:
         # if we are indexing into the default collection, clear the dirty flag after
         # a succesful index
-        Document.objects.filter(pk=document_pk).update(solr_dirty=False)
+        Document.objects.filter(pk=document_pk).update(
+            solr_dirty=False, delayed_index=False
+        )
 
 
 def index_batch(document_pks, field_updates):
@@ -281,7 +283,9 @@ def reindex_batch(collection_name, document_pks):
     if collection_name is None:
         # if we are indexing into the default collection, clear the dirty flag after
         # a succesful index
-        Document.objects.filter(pk__in=document_pks).update(solr_dirty=False)
+        Document.objects.filter(pk__in=document_pks).update(
+            solr_dirty=False, delayed_index=False
+        )
 
 
 def batch_notes(collection_name, note_pks):

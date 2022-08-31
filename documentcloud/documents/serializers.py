@@ -70,6 +70,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "otherwise should set `force_ocr` on call to processing endpoint."
         ),
     )
+    delayed_index = serializers.BooleanField(
+        label=_("Delayed Index"),
+        write_only=True,
+        required=False,
+        help_text=Document._meta.get_field("delayed_index").help_text,
+    )
     access = ChoiceField(
         Access,
         default=Access.private,
@@ -108,6 +114,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "canonical_url",
             "created_at",
             "data",
+            "delayed_index",
             "description",
             "edit_access",
             "file_hash",
@@ -262,6 +269,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     def validate_file_url(self, value):
         if self.instance and value:
             raise serializers.ValidationError("You may not update `file_url`")
+        return value
+
+    def validate_delayed_index(self, value):
+        if self.instance and value:
+            raise serializers.ValidationError("You may not update `delayed_index`")
         return value
 
     def validate_projects(self, value):

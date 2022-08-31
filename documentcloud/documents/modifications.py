@@ -2,7 +2,6 @@
 # Django
 from django.db import transaction
 
-# Standard Library
 from collections import defaultdict
 from copy import copy
 
@@ -39,9 +38,6 @@ def post_process(document, modification_data):
     """Post process the notes and sections for the document as specified by
     modifications
     """
-    # DocumentCloud
-    from documentcloud.documents.tasks import solr_index
-
     # Remove entities (no matter what)
     document.entities.all().delete()
 
@@ -98,11 +94,8 @@ def post_process(document, modification_data):
     if "filehash" in modification_data and modification_data["filehash"]:
         document.file_hash = modification_data["filehash"]
     document.save()
-
-    transaction.on_commit(
-        lambda: solr_index.delay(
-            document.pk, field_updates={"status": "set", "page_count": "set"}
-        )
+    document.index_on_commit(
+        field_updates={"status": "set", "page_count": "set", "file_hash": "set"}
     )
 
 
