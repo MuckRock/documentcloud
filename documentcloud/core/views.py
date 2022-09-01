@@ -28,7 +28,7 @@ from documentcloud.common.extensions import EXTENSIONS
 from documentcloud.core.choices import Language
 from documentcloud.documents.choices import Access
 from documentcloud.documents.models import Document
-from documentcloud.documents.tasks import fetch_file_url, solr_index
+from documentcloud.documents.tasks import fetch_file_url
 from documentcloud.users.models import User
 
 logger = logging.getLogger(__name__)

@@ -103,7 +103,7 @@ def _httpsub_submit(url, document_pk, json, task_):
     except RequestException as exc:
         if task_.request.retries >= task_.max_retries:
             with transaction.atomic():
-                document = document.objects.get(pk=document_pk)
+                document = Document.objects.get(pk=document_pk)
                 document.status = Status.error
                 document.save()
                 document.index_on_commit(field_updates={"status": "Set"})
