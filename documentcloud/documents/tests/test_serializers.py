@@ -1,4 +1,3 @@
-# Third Party
 # Standard Library
 from unittest.mock import MagicMock
 

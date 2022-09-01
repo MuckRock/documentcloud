@@ -8,8 +8,10 @@ import functools
 from contextlib import ExitStack
 from unittest.mock import patch
 
-# DocumentCloud
+# Third Party
 from config import celery_app
+
+# DocumentCloud
 from documentcloud.common import path
 from documentcloud.common.serverless.utils import get_redis, initialize
 from documentcloud.documents.processing.tests.pipeline_tests.fake_pdf import FakePage
