@@ -201,7 +201,6 @@ class AwsStorage:
             return
 
         async def main():
-            # pylint: disable=not-async-context-manager
             session = aioboto3.Session()
             async with session.resource("s3", **self.resource_kwargs) as as3_resource:
                 tasks = []
@@ -223,7 +222,6 @@ class AwsStorage:
         data = [io.BytesIO() for _ in file_names]
 
         async def main():
-            # pylint: disable=not-async-context-manager
             session = aioboto3.Session()
             async with session.client("s3", **self.resource_kwargs) as as3_client:
                 tasks = []
@@ -248,7 +246,6 @@ class AwsStorage:
         import aioboto3
 
         async def main():
-            # pylint: disable=not-async-context-manager
             session = aioboto3.Session()
             async with session.resource("s3", **self.resource_kwargs) as as3_resource:
                 tasks = []

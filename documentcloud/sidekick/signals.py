@@ -15,5 +15,4 @@ from documentcloud.sidekick.models import Sidekick
 )
 def delete_vectors(instance, **kwargs):
     """Delete vector files when deleting a sidekick instance"""
-    # pylint: disable=unused-argument
     storage.delete(path.sidekick_document_vectors_path(instance.project_id))

@@ -27,10 +27,12 @@ logging.getLogger("pdfminer").setLevel(logging.WARNING)
 # remove this when done with import code
 # pylint: disable=too-many-lines
 
+# pylint: disable=import-error
+
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
     # DocumentCloud
-    import documentcloud.documents.processing.info_and_image.graft as graft
+    from documentcloud.documents.processing.info_and_image import graft
     from documentcloud.common import access_choices, path, redis_fields
     from documentcloud.common.environment import (
         encode_pubsub_data,
@@ -52,10 +54,9 @@ if env.str("ENVIRONMENT").startswith("local"):
     )
 else:
     # Third Party
-    # pylint: disable=import-error
     import graft
+
     # only initialize sentry on serverless
-    # pylint: disable=import-error
     import sentry_sdk
     from common import access_choices, path, redis_fields
     from common.environment import (
@@ -70,8 +71,6 @@ else:
     from pdfium import StorageHandler, Workspace
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
-
-    # pylint: enable=import-error
 
     sentry_sdk.init(
         dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration(), RedisIntegration()]
@@ -381,6 +380,7 @@ def apply_modification(workspace, new_doc, context, modification):
     import_doc_id = modification.get("id", context["doc_id"])
     import_doc_slug = modification.get("slug", context["slug"])
     import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
+    # pylint: disable=unnecessary-dunder-call
     import_doc = context["loaded_docs"].get(
         import_pdf_file,
         workspace.load_document_entirely(storage, import_pdf_file).__enter__(),

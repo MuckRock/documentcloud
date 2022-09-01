@@ -6,7 +6,6 @@ from djchoices import ChoiceItem, DjangoChoices
 
 
 class Access(DjangoChoices):
-    # pylint: disable=no-init
     # `api` specifies if this attribute should be accessible via the API
     # Free and public to all.
     public = ChoiceItem(0, _("Public"), api=True)
@@ -19,7 +18,6 @@ class Access(DjangoChoices):
 
 
 class Status(DjangoChoices):
-    # pylint: disable=no-init
     # `api` specifies if this attribute should be accessible via the API
     # The document is in a normal succesful state
     success = ChoiceItem(0, _("Success"), api=True)
@@ -36,7 +34,6 @@ class Status(DjangoChoices):
 
 
 class EntityKind(DjangoChoices):
-    # pylint: disable=no-init
     unknown = ChoiceItem(0, _("Unknown"), api=True)
     person = ChoiceItem(1, _("Person"), api=True)
     location = ChoiceItem(2, _("Location"), api=True)
@@ -53,7 +50,6 @@ class EntityKind(DjangoChoices):
 
 
 class OccurrenceKind(DjangoChoices):
-    # pylint: disable=no-init
     unknown = ChoiceItem(0, _("Unknown"), api=True)
     proper = ChoiceItem(1, _("Proper"), api=True)
     common = ChoiceItem(2, _("Common"), api=True)

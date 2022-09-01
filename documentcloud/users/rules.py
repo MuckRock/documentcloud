@@ -1,4 +1,4 @@
-# pylint: disable=unused-argument, invalid-unary-operand-type
+# pylint: disable=unused-argument
 
 # Third Party
 from rules import add_perm, always_deny, is_authenticated, predicate

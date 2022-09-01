@@ -16,6 +16,8 @@ env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# pylint: disable=import-error
+
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
     # DocumentCloud
@@ -26,7 +28,6 @@ if env.str("ENVIRONMENT").startswith("local"):
 else:
     # Third Party
     # only initialize sentry on serverless
-    # pylint: disable=import-error
     import sentry_sdk
     from common import path
     from common.environment import get_pubsub_data, publisher, storage
@@ -34,8 +35,6 @@ else:
     from common.serverless.error_handling import pubsub_function
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
-
-    # pylint: enable=import-error
 
     sentry_sdk.init(
         dsn=env("SENTRY_DSN"), integrations=[AwsLambdaIntegration(), RedisIntegration()]

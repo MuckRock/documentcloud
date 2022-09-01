@@ -15,6 +15,8 @@ env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# pylint: disable=import-error
+
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
     # DocumentCloud
@@ -31,7 +33,6 @@ if env.str("ENVIRONMENT").startswith("local"):
 else:
     # Third Party
     # only initialize sentry on serverless
-    # pylint: disable=import-error
     import sentry_sdk
     from common import access_choices, path
     from common.environment import (
@@ -44,7 +45,7 @@ else:
     from common.serverless.error_handling import pubsub_function
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
-    # pylint: disable=import-error
+
     from tess import Tesseract
 
     sentry_sdk.init(

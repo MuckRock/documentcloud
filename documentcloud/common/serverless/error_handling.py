@@ -30,6 +30,7 @@ RUN_COUNT = "runcount"
 def pubsub_function(
     redis, pubsub_topic, timeouts=DEFAULT_TIMEOUTS, skip_processing_check=False
 ):
+    # pylint: disable=unnecessary-lambda-assignment
     def decorator(func):
         def wrapper(*args, **kwargs):
             def err_handle_func(*args_, **kwargs_):

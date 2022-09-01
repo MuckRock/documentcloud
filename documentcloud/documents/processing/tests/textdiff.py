@@ -64,7 +64,7 @@ def same_text(
         report_generator.add_bold("Distances")
         report_generator.add_text(f"Levenshtein distance: {distance}")
         report_generator.add_text(
-            "Similarity score: %0.4f" % similarity,
+            f"Similarity score: {similarity:0.4f}",
             "color: green;" if passes else "font-weight: bold; color: red;",
         )
 

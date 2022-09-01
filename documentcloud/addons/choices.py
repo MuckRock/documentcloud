@@ -6,7 +6,6 @@ from djchoices import ChoiceItem, DjangoChoices
 
 
 class Event(DjangoChoices):
-    # pylint: disable=no-init
     # `api` specifies if this attribute should be accessible via the API
     disabled = ChoiceItem(0, _("Disabled"), api=True)
     hourly = ChoiceItem(1, _("Hourly"), api=True)

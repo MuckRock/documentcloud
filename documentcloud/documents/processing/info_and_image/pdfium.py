@@ -129,7 +129,7 @@ class Bitmap:
         img = PIL.Image.frombuffer(
             "RGBA", (self.width, self.height), bitmap.contents, "raw", "RGBA", 0, 1
         )
-        # pylint: disable=invalid-name
+        # pylint: disable=invalid-name, unbalanced-tuple-unpacking
         b, g, r, _a = img.split()
         img = PIL.Image.merge("RGB", (r, g, b))
         return img

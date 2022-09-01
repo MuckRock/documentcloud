@@ -50,7 +50,6 @@ class ProjectOEmbed(RichOEmbed):
         return self.oembed(**oembed)
 
     def get_context(self, project, query, extra, **kwargs):
-        # pylint: disable=unused-argument
         src = settings.DOCCLOUD_EMBED_URL + project.get_absolute_url()
         if query:
             src = f"{src}?{query}"

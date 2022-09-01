@@ -626,11 +626,8 @@ class TestDocumentAPI:
         """Test deleting multiple documents"""
         client.force_authenticate(user=user)
         documents = DocumentFactory.create_batch(4, user=user)
-        response = client.delete(
-            "/api/documents/?id__in={}".format(
-                ",".join(str(d.pk) for d in documents[:2])
-            )
-        )
+        doc_ids = ",".join(str(d.pk) for d in documents[:2])
+        response = client.delete(f"/api/documents/?id__in={doc_ids}")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         # make sure only first 2 were deleted
         for document in documents[:2]:
@@ -669,9 +666,8 @@ class TestDocumentAPI:
         client.force_authenticate(user=user)
         num = settings.REST_BULK_LIMIT + 1
         documents = DocumentFactory.create_batch(num, user=user)
-        response = client.delete(
-            "/api/documents/?id__in={}".format(",".join(str(d.pk) for d in documents))
-        )
+        doc_ids = ",".join(str(d.pk) for d in documents)
+        response = client.delete(f"/api/documents/?id__in={doc_ids}")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_process(self, client, document, mocker):

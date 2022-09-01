@@ -22,7 +22,6 @@ class UserFactory(factory.django.DjangoModelFactory):
     @factory.post_generation
     def password(self, create, extracted, **kwargs):
         """Sets password"""
-        # pylint: disable=unused-argument
         if extracted:
             self.set_password(extracted)
             if create:
@@ -30,7 +29,6 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def organizations(self, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         if create and extracted:
             for organization in extracted:
                 Membership.objects.create(user=self, organization=organization)

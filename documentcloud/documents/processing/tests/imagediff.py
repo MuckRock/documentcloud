@@ -121,7 +121,7 @@ def same_images(
                     )
 
         report_generator.add_text(
-            "Difference pixels: %s (%d or fewer desired)" % (diff_pix, threshold),
+            f"Difference pixels: {diff_pix} ({threshold} or fewer desired)",
             "color: green;" if passes else "font-weight: bold; color: red;",
         )
         report_generator.add_horizontal_rule()

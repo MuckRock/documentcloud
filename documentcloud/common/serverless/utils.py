@@ -21,13 +21,14 @@ from ..environment import encode_pubsub_data, publisher
 
 env = environ.Env()
 
+# pylint: disable=import-error
+
 if not env.str("ENVIRONMENT").startswith("local"):
     # in production, log errors to sentry
     # must capture explicitly instead of using logging integration due
     # to using pebble and multiprocessing - logging integration does
     # not work across process boundary
     # see https://github.com/getsentry/raven-python/issues/1110#issuecomment-688923571
-    # pylint: disable=import-error
     # Third Party
     from sentry_sdk import capture_exception, capture_message, flush
 else:
@@ -36,8 +37,11 @@ else:
     def capture_exception(exc):
         raise exc
 
-    capture_message = lambda m: None
-    flush = lambda: None
+    def capture_message(_msg):
+        pass
+
+    def flush():
+        pass
 
 
 # Common environment variables

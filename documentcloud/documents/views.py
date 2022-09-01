@@ -18,13 +18,13 @@ from functools import lru_cache
 
 # Third Party
 import environ
+import pysolr
 from django_filters import rest_framework as django_filters
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
-import pysolr
 from documentcloud.common.environment import httpsub
 from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
@@ -787,7 +787,6 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         """Initiate asyncrhonous creation of entities"""
-        # pylint: disable=unused-argument
         if not request.user.has_perm("documents.change_document", self.document):
             raise exceptions.PermissionDenied(
                 "You do not have permission to edit this document"
@@ -823,7 +822,6 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def bulk_destroy(self, request, *args, **kwargs):
         """Delete all entities for the document"""
-        # pylint: disable=unused-argument
         if request.user.has_perm("documents.change_document", self.document):
             self.document.entities.all().delete()
             return Response(status=status.HTTP_204_NO_CONTENT)

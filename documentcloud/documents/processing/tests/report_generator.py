@@ -25,10 +25,11 @@ class ReportGenerator:
     """
 
     def __init__(self, filename):
+        # pylint: disable=consider-using-with
         self.filename: str = filename
         # Ensure directories are in place for file to be written.
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        self.html_file: IO[str] = open(filename, "w")
+        self.html_file: IO[str] = open(filename, "w", encoding="utf8")
         self.string_io: StringIO = StringIO()
         self.toc: List[Tuple[int, str]] = []
         self.anchor_id: int = 0

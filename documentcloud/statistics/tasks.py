@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 )
 def store_statistics():
     """Store the daily statistics"""
-    # pylint: disable=too-many-statements
 
     logger.info("[STORE STATS] Begin")
 

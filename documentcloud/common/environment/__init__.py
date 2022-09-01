@@ -8,10 +8,6 @@ non-local environments.  We also keep all non-local code in this single file so 
 not need to copy multiple files into the serverless function context.
 """
 
-# We do some weird things with imports to support this abstraction, silence pylint:
-# pylint: disable=reimported, unused-import, ungrouped-imports
-
-
 # Third Party
 import environ
 

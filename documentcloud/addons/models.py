@@ -99,7 +99,7 @@ class AddOn(models.Model):
         add-on to be able to authenticate itself to the DocumentCloud API
         """
         try:
-            resp = squarelet_get("/api/refresh_tokens/{}/".format(user.uuid))
+            resp = squarelet_get(f"/api/refresh_tokens/{user.uuid}/")
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             logger.warning(

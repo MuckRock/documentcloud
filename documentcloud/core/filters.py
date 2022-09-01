@@ -42,7 +42,7 @@ class QueryArrayWidget(django_filters.widgets.BaseCSVWidget, forms.TextInput):
         if not isinstance(data, MultiValueDict):
             data = MultiValueDict(data)
 
-        values_list = data.getlist(name, data.getlist("%s[]" % name)) or []
+        values_list = data.getlist(name, data.getlist(f"{name}[]")) or []
 
         # apparently its an array, so no need to process it's values as csv
         # ?foo=1&foo=2 -> data.getlist(foo) -> foo = [1, 2]

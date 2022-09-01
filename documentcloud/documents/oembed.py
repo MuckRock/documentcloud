@@ -51,7 +51,6 @@ class DocumentOEmbed(RichOEmbed):
         return self.oembed(**oembed)
 
     def get_context(self, document, query, extra, **kwargs):
-        # pylint: disable=unused-argument
         src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
         if query:
             src = f"{src}?{query}"
@@ -111,6 +110,7 @@ class PageOEmbed(DocumentOEmbed):
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
         timestamp = int(time.time())
+        # pylint: disable=consider-using-f-string
         return {
             "page": page,
             "page_url": "{}{}#document/p{}".format(
@@ -166,6 +166,7 @@ class NoteOEmbed(RichOEmbed):
         else:
             width = self.width
         oembed = {"title": note.title, "width": width, "height": height}
+        # pylint: disable=consider-using-f-string
         context = {
             "pk": note.pk,
             "loader_src": f"{settings.DOCCLOUD_URL}/notes/loader.js",

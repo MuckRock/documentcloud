@@ -8,12 +8,12 @@ import re
 from datetime import datetime
 
 # Third Party
+import pysolr
 from luqum.parser import ParseError, parser
 from luqum.tree import Boost, Not, Prohibit, Range, Unary, Word
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
-import pysolr
 from documentcloud.core.pagination import CursorPagination, PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.models import Document
@@ -421,6 +421,7 @@ def _parse(text_query, query_params, user):
     # pull text queries from the parameters into the text query
     additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
     if additional_text:
+        # pylint: disable=consider-using-f-string
         new_query = "{} {}".format(new_query, " ".join(additional_text))
 
     # if nothing is left in the query after pulling out filters, default to *:*
@@ -459,7 +460,6 @@ def _handle_params(query_params, fields, dynamic_fields):
     items = items + [(f"-{p}", f"-{f}") for p, f in items]
     for param, field in items:
         if param in query_params:
-            # pylint: disable=protected-access
             # joining with whitespace will default to OR
             values = query_params.getlist(param)
             if field in NUMERIC_FIELDS:

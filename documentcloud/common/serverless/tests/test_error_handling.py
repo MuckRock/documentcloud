@@ -11,6 +11,7 @@ from unittest.mock import call, patch
 
 # Third Party
 import pytest
+from sharedmock.mock import SharedMock
 
 # DocumentCloud
 from documentcloud.common import redis_fields
@@ -26,7 +27,6 @@ from documentcloud.documents.processing.info_and_image.pdfium import (
     StorageHandler,
     Workspace,
 )
-from sharedmock.mock import SharedMock
 
 # Since redis is used in the SharedMock calls, it needs to be pickle-able
 # in order to be sent across the process boundary.  FakeRedis and Mock's both
@@ -36,7 +36,7 @@ from sharedmock.mock import SharedMock
 redis = {redis_fields.is_running(1): b"1"}
 
 
-def communicate_data(*args):  # pylint: disable=unused-argument
+def communicate_data(*args):
     """A simple method to inspect for data communicated in test methods"""
 
 

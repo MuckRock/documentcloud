@@ -18,7 +18,7 @@ pdfs = os.path.join(base_dir, "pdfs")
 images = os.path.join(base_dir, "images")
 texts = os.path.join(base_dir, "texts")
 
-with open(os.path.join(texts, "pg2.txt"), "r") as pg2_file:
+with open(os.path.join(texts, "pg2.txt"), "r", encoding="utf8") as pg2_file:
     page2_text = pg2_file.read()
 
 desired_texts = [None, page2_text, None]
@@ -40,7 +40,7 @@ class PDFProcessorTest(ReportTestCase):
                 for i in range(doc.page_count):
                     page = doc.load_page(i)
                     # Render each page.
-                    new_fn = "doc_3_pg{}.png".format(i)
+                    new_fn = f"doc_3_pg{i}.png"
                     new_path = os.path.join(directory, new_fn)
                     bmp = page.get_bitmap(1000, None)
                     bmp.render(storage, new_path, Access.private, "png")

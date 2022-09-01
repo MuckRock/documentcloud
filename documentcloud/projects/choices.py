@@ -6,7 +6,6 @@ from djchoices import ChoiceItem, DjangoChoices
 
 
 class CollaboratorAccess(DjangoChoices):
-    # pylint: disable=no-init
     # `api` specifies if this attribute should be accessible via the API
     # This collaborator has read access
     view = ChoiceItem(0, _("View"), api=True)

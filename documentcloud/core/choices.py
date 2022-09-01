@@ -6,7 +6,6 @@ from djchoices import ChoiceItem, DjangoChoices
 
 
 class Language(DjangoChoices):
-    # pylint: disable=no-init
     afrikaans = ChoiceItem("afr", _("Afrikaans"), ocr_code="afr")
     amharic = ChoiceItem("amh", _("Amharic"), ocr_code="amh")
     arabic = ChoiceItem("ara", _("Arabic"), ocr_code="ara")

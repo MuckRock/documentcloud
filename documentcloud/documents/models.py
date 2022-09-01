@@ -242,7 +242,6 @@ class Document(models.Model):
 
     def save(self, *args, **kwargs):
         """Mark this model's solr index as being out of date on every save"""
-        # pylint: disable=signature-differs
         if not self.slug:
             self.slug = slugify(self.title)
         self.solr_dirty = True
@@ -676,7 +675,6 @@ class Note(models.Model):
 
     def save(self, *args, **kwargs):
         """Mark this model's solr index as being out of date on every save"""
-        # pylint: disable=signature-differs
         self.solr_dirty = True
         super().save(*args, **kwargs)
 

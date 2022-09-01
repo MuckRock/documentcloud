@@ -22,7 +22,6 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def members(self, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         if create and extracted:
             for user in extracted:
                 Membership.objects.create(user=user, organization=self)
@@ -49,7 +48,7 @@ class EntitlementFactory(factory.django.DjangoModelFactory):
         model = "squarelet_auth_organizations.Entitlement"
         django_get_or_create = ("name",)
 
-    name = factory.Sequence(lambda n: "Entitlement %d" % n)
+    name = factory.Sequence(lambda n: f"Entitlement {n}")
     slug = factory.LazyAttribute(lambda obj: slugify(obj.name))
     resources = {
         "minimum_users": 1,

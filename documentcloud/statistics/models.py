@@ -16,7 +16,6 @@ from django.utils.translation import gettext_lazy as _
 class Statistics(models.Model):
     """Nightly statistics"""
 
-    # pylint: disable=invalid-name
     date = models.DateField(
         unique=True, help_text=_("The date these statistics were taken")
     )

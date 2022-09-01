@@ -38,7 +38,6 @@ class FileServer(APIView):
     permission_classes = (AllowAny,)
 
     def get(self, request, *args, **kwargs):
-        # pylint: disable=unused-argument
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
@@ -64,8 +63,8 @@ def account_logout(request):
             "id_token_hint": request.session["id_token"],
             "post_logout_redirect_uri": url,
         }
-        redirect_url = "{}/openid/end-session?{}".format(
-            settings.SQUARELET_URL, urlencode(params)
+        redirect_url = (
+            f"{settings.SQUARELET_URL}/openid/end-session?{urlencode(params)}"
         )
     else:
         redirect_url = url
@@ -123,7 +122,7 @@ def _verify(post):
     signature = post.get("signature", "")
     signature_ = hmac.new(
         key=settings.MAILGUN_API_KEY.encode("utf8"),
-        msg="{}{}".format(timestamp, token).encode("utf8"),
+        msg=f"{timestamp}{token}".encode("utf8"),
         digestmod=hashlib.sha256,
     ).hexdigest()
     return signature == signature_ and int(timestamp) + 300 > time.time()

@@ -18,12 +18,10 @@ class ProjectFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def documents(project, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         ProjectFactory._documents(project, create, extracted, edit_access=False)
 
     @factory.post_generation
     def edit_documents(project, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         ProjectFactory._documents(project, create, extracted, edit_access=True)
 
     @staticmethod
@@ -36,7 +34,6 @@ class ProjectFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def admin_collaborators(project, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         if create:
             # Make the owner an admin collaborator by default
             extracted = extracted or []
@@ -47,21 +44,18 @@ class ProjectFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def edit_collaborators(project, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         ProjectFactory._collaborators(
             project, create, extracted, CollaboratorAccess.edit
         )
 
     @factory.post_generation
     def collaborators(project, create, extracted, **kwargs):
-        # pylint: disable=unused-argument
         ProjectFactory._collaborators(
             project, create, extracted, CollaboratorAccess.view
         )
 
     @staticmethod
     def _collaborators(project, create, extracted, access):
-        # pylint: disable=unused-argument
         if create and extracted:
             for user in extracted:
                 Collaboration.objects.create(user=user, project=project, access=access)
