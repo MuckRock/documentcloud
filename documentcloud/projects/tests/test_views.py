@@ -421,7 +421,7 @@ class TestProjectMembershipAPI:
 
     def test_update_bulk(self, client, user, mocker):
         """Test replacing the document set in a project"""
-        mock_solr_index = mocker.patch("documentcloud.projects.views.solr_index")
+        mock_solr_index = mocker.patch("documentcloud.documents.tasks.solr_index")
         old_documents = DocumentFactory.create_batch(5, user=user)
         new_documents = old_documents[:2] + DocumentFactory.create_batch(3, user=user)
         project = ProjectFactory(user=user, documents=old_documents)

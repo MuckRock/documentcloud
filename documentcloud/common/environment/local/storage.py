@@ -27,11 +27,12 @@ class LocalStorageFile:
         self.handle = None
 
     def __enter__(self):
+        # pylint: disable=unspecified-encoding
         # Ensure that the path exists if writing
         if self.mode.startswith("w"):
             path = Path(self.filename)
             path.parent.mkdir(parents=True, exist_ok=True)
-        self.handle = open(self.filename, self.mode, encoding="utf8")
+        self.handle = open(self.filename, self.mode)
         return self.handle
 
     def __exit__(self, exception_type, exception_value, traceback):
