@@ -961,20 +961,21 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
         return Response("OK", status=status.HTTP_200_OK)
 
+
 class FreestandingEntityViewSet(viewsets.ModelViewSet):
     serializer_class = EntitySerializer
     queryset = Entity.objects.none()
 
     @lru_cache()
     def get_queryset(self):
-        #pdb.set_trace()
+        # pdb.set_trace()
         # TODO: Should everyone be able to view all entities?
         return Entity.objects.all()
 
     def perform_create(self, serializer):
-        #pdb.set_trace()
+        # pdb.set_trace()
         """Initiate asyncrhonous creation of entities"""
         print("data", self.request.data)
-        entity_map = _get_or_create_entities([ self.request.data ])
+        entity_map = _get_or_create_entities([self.request.data])
         # pylint: disable=unused-argument
         return Response(entity_map)

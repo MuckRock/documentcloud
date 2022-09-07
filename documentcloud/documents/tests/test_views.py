@@ -34,18 +34,19 @@ from documentcloud.users.tests.factories import UserFactory
 
 # pylint: disable=too-many-lines, too-many-public-methods
 
+
 @pytest.mark.django_db()
 class TestFreestandingEntityAPI:
     def test_create_freestanding_entity(self, client, document, user, mocker):
-        #"""Create freestanding entities"""
+        # """Create freestanding entities"""
         entity_body = {
             "name": "Dog",
             "kind": "unknown",
-            "metadata": {"wikipedia_url": "https://en.wikipedia.org/wiki/Dog" }
+            "metadata": {"wikipedia_url": "https://en.wikipedia.org/wiki/Dog"},
         }
         _get_or_create_entities = mocker.patch(
             "documentcloud.documents.entity_extraction._get_or_create_entities",
-            return_value={ "mock_mid": entity_body }
+            return_value={"mock_mid": entity_body},
         )
 
         client.force_authenticate(user=user)
@@ -56,8 +57,12 @@ class TestFreestandingEntityAPI:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.content == b'{"name":"Dog","kind":"unknown","metadata":{"wikipedia_url":"https://en.wikipedia.org/wiki/Dog"}}'
-        _get_or_create_entities.assert_called_once_with([ entity_body ])
+        assert (
+            response.content
+            == b'{"name":"Dog","kind":"unknown","metadata":{"wikipedia_url":"https://en.wikipedia.org/wiki/Dog"}}'
+        )
+        _get_or_create_entities.assert_called_once_with([entity_body])
+
 
 @pytest.mark.django_db()
 class TestDocumentAPI:
@@ -1717,6 +1722,7 @@ class TestRedactionAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+
 @pytest.mark.django_db()
 class TestEntityAPI:
     def test_create(self, client, mocker):
@@ -1752,6 +1758,7 @@ class TestEntityAPI:
         response = client.delete(f"/api/documents/{document.pk}/entities/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert document.entities.count() == 0
+
 
 @pytest.mark.django_db()
 class TestOEmbed:
