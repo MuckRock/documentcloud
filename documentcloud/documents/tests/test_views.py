@@ -34,6 +34,30 @@ from documentcloud.users.tests.factories import UserFactory
 
 # pylint: disable=too-many-lines, too-many-public-methods
 
+@pytest.mark.django_db()
+class TestFreestandingEntityAPI:
+    def test_create_freestanding_entity(self, client, document, user, mocker):
+        #"""Create freestanding entities"""
+        entity_body = {
+            "name": "Dog",
+            "kind": "unknown",
+            "metadata": {"wikipedia_url": "https://en.wikipedia.org/wiki/Dog" }
+        }
+        _get_or_create_entities = mocker.patch(
+            "documentcloud.documents.entity_extraction._get_or_create_entities",
+            return_value={ "mock_mid": entity_body }
+        )
+
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/freestanding_entities/",
+            entity_body,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.content == b'{"name":"Dog","kind":"unknown","metadata":{"wikipedia_url":"https://en.wikipedia.org/wiki/Dog"}}'
+        _get_or_create_entities.assert_called_once_with([ entity_body ])
 
 @pytest.mark.django_db()
 class TestDocumentAPI:

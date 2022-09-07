@@ -85,6 +85,7 @@ from documentcloud.drf_bulk.views import BulkModelMixin
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
+from documentcloud.documents.entity_extraction import _get_or_create_entities
 
 env = environ.Env()
 logger = logging.getLogger(__name__)
@@ -959,3 +960,21 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         post_process.delay(document_pk, request.data)
 
         return Response("OK", status=status.HTTP_200_OK)
+
+class FreestandingEntityViewSet(viewsets.ModelViewSet):
+    serializer_class = EntitySerializer
+    queryset = Entity.objects.none()
+
+    @lru_cache()
+    def get_queryset(self):
+        #pdb.set_trace()
+        # TODO: Should everyone be able to view all entities?
+        return Entity.objects.all()
+
+    def perform_create(self, serializer):
+        #pdb.set_trace()
+        """Initiate asyncrhonous creation of entities"""
+        print("data", self.request.data)
+        entity_map = _get_or_create_entities([ self.request.data ])
+        # pylint: disable=unused-argument
+        return Response(entity_map)

@@ -33,6 +33,7 @@ from documentcloud.documents.views import (
     NoteViewSet,
     RedactionViewSet,
     SectionViewSet,
+    FreestandingEntityViewSet
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.organizations.views import OrganizationViewSet
@@ -44,7 +45,6 @@ from documentcloud.projects.views import (
 from documentcloud.sidekick.routers import SidekickRouter
 from documentcloud.sidekick.views import SidekickViewSet
 from documentcloud.users.views import MessageView, UserViewSet
-from documentcloud.freestanding_entities.views import FreestandingEntityViewSet
 
 
 class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
@@ -60,10 +60,6 @@ router.register("addons", AddOnViewSet)
 router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
 
-#pdb.set_trace()
-router.register(
-  "freestanding_entities", FreestandingEntityViewSet, "freestanding_entities"
-)
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
@@ -76,6 +72,9 @@ documents_router.register("data", DataViewSet, basename="data")
 documents_router.register("redactions", RedactionViewSet, basename="redactions")
 documents_router.register(
     "modifications", ModificationViewSet, basename="modifications"
+)
+router.register(
+  "freestanding_entities", FreestandingEntityViewSet, "freestanding_entities"
 )
 
 projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
