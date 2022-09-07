@@ -6,8 +6,6 @@ from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic.base import RedirectView
 from rest_framework import permissions
-import pdb
-
 
 # Third Party
 from rest_framework_nested.routers import NestedDefaultRouter
