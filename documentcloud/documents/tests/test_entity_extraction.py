@@ -1,20 +1,8 @@
-# Django
-from django.conf import settings
-from django.db import connection, reset_queries
-from django.test.utils import override_settings
-from rest_framework import status
-
-# Standard Library
-import json
-import pdb
-
 # Third Party
 import pytest
 
 # DocumentCloud
-from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.entity_extraction import _get_or_create_entities
-from documentcloud.documents.models import Entity
 
 # pylint: disable=too-many-lines, too-many-public-methods
 
