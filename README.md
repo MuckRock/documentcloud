@@ -65,6 +65,8 @@ You must first have these set up and ready to go:
 16. You can run the tests with `inv test`.
 - If you want to run a subset of the tests, you can specify the directory containing the test you want with the `path` switch like so: `inv test --path documentcloud/documents`.
     - You can specify a single file in `--path` if you only want to run the tests in that file.
+    - To run the tests only in a specific class, add `::className` to the end of the path you pprovide. e.g. `inv test --path documentcloud/documents/views.py::DocumentViewSet`
+    - Run a specific method by tacking `::methodname` onto the file and path.
 - If you want to run the tests in the debugger (which will automatically break on a raised error), add `--ipdb` to the `inv` command.
 
 
