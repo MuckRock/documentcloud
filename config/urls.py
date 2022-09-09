@@ -71,9 +71,7 @@ documents_router.register("redactions", RedactionViewSet, basename="redactions")
 documents_router.register(
     "modifications", ModificationViewSet, basename="modifications"
 )
-router.register(
-  "freestanding_entities", FreestandingEntityViewSet, "freestanding_entities"
-)
+router.register("entities", FreestandingEntityViewSet, "entities")
 
 projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
