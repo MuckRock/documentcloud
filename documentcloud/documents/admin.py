@@ -73,18 +73,9 @@ class EntityAdmin(admin.ModelAdmin):
     """Entity Admin"""
 
     list_display = ("name", "kind", "mid", "wikipedia_url")
-    list_filter = ("kind")
+    list_filter = ("kind",)
     search_fields = ("name", "mid", "description", "wikipedia_url")
     show_full_result_count = False
     paginator = LargeTablePaginator
     ordering = ("pk",)
     fields = ("name", "kind", "mid", "description", "wikipedia_url")
-
-    @transaction.atomic
-    def save_model(self, request, obj, form, change):
-        super().save(request, obj, form, change)
-        transaction.on_commit(
-            lambda: solr_index.delay(
-                obj.pk, field_updates={f: "set" for f in form.changed_data}
-            )
-        )
