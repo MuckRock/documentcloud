@@ -649,7 +649,7 @@ class SectionViewSet(viewsets.ModelViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class LegacyEntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class LegacyEntityOccurrenceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = LegacyEntitySerializer
     queryset = LegacyEntity.objects.none()
 
@@ -804,7 +804,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class EntityOccurrenceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = EntityOccurrenceSerializer
     queryset = EntityOccurrence.objects.none()
 
@@ -962,7 +962,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response("OK", status=status.HTTP_200_OK)
 
 
-class FreestandingEntityViewSet(viewsets.ModelViewSet):
+class EntityViewSet(viewsets.ModelViewSet):
     serializer_class = EntitySerializer
     queryset = Entity.objects.none()
 
