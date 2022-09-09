@@ -72,15 +72,13 @@ class DocumentAdmin(admin.ModelAdmin):
 class EntityAdmin(admin.ModelAdmin):
     """Entity Admin"""
 
-    list_display = ("name", "kind", "mid", "description", "wikipedia_url")
-    list_filter = ("kind", "description")
-    search_fields = ("name", "kind", "mid", "description", "wikipedia_url")
+    list_display = ("name", "kind", "mid", "wikipedia_url")
+    list_filter = ("kind")
+    search_fields = ("name", "mid", "description", "wikipedia_url")
     show_full_result_count = False
     paginator = LargeTablePaginator
     ordering = ("pk",)
     fields = ("name", "kind", "mid", "description", "wikipedia_url")
-
-    readonly_fields = ()
 
     @transaction.atomic
     def save_model(self, request, obj, form, change):
@@ -90,6 +88,3 @@ class EntityAdmin(admin.ModelAdmin):
                 obj.pk, field_updates={f: "set" for f in form.changed_data}
             )
         )
-
-    def delete_model(self, request, obj):
-        obj.destroy()
