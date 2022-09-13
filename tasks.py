@@ -243,7 +243,7 @@ def update_solr_config(c):
     Be sure to bring the container down and up again after updating
     """
     template = (
-        "docker cp config/solr/{old_file} documentcloud_documentcloud_{container}:"
+        "docker cp config/solr/{old_file} documentcloud-documentcloud_{container}:"
         "/var/solr/data/{collection}/{new_file}"
     )
 
@@ -252,8 +252,8 @@ def update_solr_config(c):
         ("solrconfig.local.xml", "solrconfig.xml"),
     ]:
         for container, collection in [
-            ("solr_1", "documentcloud"),
-            ("test_solr_1", "documentcloud_test"),
+            ("solr-1", "documentcloud"),
+            ("test_solr-1", "documentcloud_test"),
         ]:
             c.run(
                 template.format(
