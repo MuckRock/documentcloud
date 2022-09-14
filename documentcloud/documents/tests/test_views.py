@@ -45,7 +45,7 @@ class TestFreestandingEntityAPI:
             "metadata": {"wikipedia_url": "https://en.wikipedia.org/wiki/Dog"},
         }
         _get_or_create_entities = mocker.patch(
-            "documentcloud.documents.entity_extraction._get_or_create_entities",
+            "documentcloud.documents.views._get_or_create_entities",
             return_value={"mock_mid": entity_body},
         )
 
