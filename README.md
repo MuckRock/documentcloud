@@ -39,9 +39,9 @@ You must first have these set up and ready to go:
 -   `SQUARELET_SECRET`  to the value of Client SECRET from the Squarelet Client
 - Additionally, get the value for `JWT_VERIFYING_KEY` by opening the Squarelet Django shell using `inv shell` and copying the `settings.SIMPLE_JWT['VERIFYING_KEY']` (remove the leading `b'` and the trailing `'`, leave the `\n` portions as-is)
 10. You must restart the Docker Compose session (via the command `docker compose down` followed by `docker compose up`) each time you change a `.django` file for it to take effect.
-11. Log in using the Squarelet superuser on the locally-running [Documentcloud-frontend](https://github.com/muckrock/documentcloud-frontend) that you installed earlier at http://dev.documentcloud.org
+11. Log in using the Squarelet superuser on the locally-running [Documentcloud-frontend](https://github.com/muckrock/documentcloud-frontend) that you installed earlier at https://dev.documentcloud.org
     - `SQUARELET_WHITELIST_VERIFIED_JOURNALISTS=True` environment variable makes it so only verified journalists can *log into* DocumentCloud.
-    - Use the squarelet admin [Organization page](http://dev.squarelet.local/admin/organizations/organization/) to mark your organization as a verified journalist to allow upload to DocumentCloud.
+    - Use the squarelet admin [Organization page](https://dev.squarelet.com/admin/organizations/organization/) to mark your organization as a verified journalist to allow upload to DocumentCloud.
     - **Make your Squarelet superuser also a superuser on DocumentCloud Django:** Run `inv shell` in the DocumentCloud folder and use these commands (no indent):
       ```
       tempUser = User.objects.all()[0]
@@ -50,10 +50,10 @@ You must first have these set up and ready to go:
       tempUser.is_staff = True
       tempUser.save()
       ```
-12. Go to [Django admin for DocumentCloud](http://api.dev.documentcloud.org/admin) and add the required static [flat page](http://api.dev.documentcloud.org/admin/flatpages/flatpage/) called `/tipofday/`. It can be blank. Do not prefix the URL with `/pages/`. Specifying the `Site` as `example.com` is alright.
+12. Go to [Django admin for DocumentCloud](https://api.dev.documentcloud.org/admin) and add the required static [flat page](https://api.dev.documentcloud.org/admin/flatpages/flatpage/) called `/tipofday/`. It can be blank. Do not prefix the URL with `/pages/`. Specifying the `Site` as `example.com` is alright.
 13. Create an initial Minio bucket to simulate AWS S3 locally: 
       - Reference your DocumentCloud `.django` file for these variables: 
-      - Visit the `MINIO_URL` with a browser, likely at [this address](http://minio.documentcloud.org:9000), and login with the minio `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY`
+      - Visit the `MINIO_URL` with a browser, likely at [this address](https://minio.documentcloud.org:9000), and login with the minio `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY`
       - At the bottom right corner click the round plus button and then click the first circle that appears above it to "create bucket".
       - Create a bucket called `documents`
 14. Upload a document:
