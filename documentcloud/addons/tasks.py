@@ -39,11 +39,15 @@ def find_run_id(uuid):
         run.save(update_fields=["run_id", "status"])
     else:
         # if we fail to find the run ID, try again
-        find_run_id.retry(
-            args=[uuid],
-            countdown=min(2**find_run_id.request.retries, 30),
-            max_retries=10,
-        )
+        try:
+            find_run_id.retry(
+                args=[uuid],
+                countdown=min(2**find_run_id.request.retries, 30),
+                max_retries=10,
+            )
+        except MaxRetriesExceededError:
+            logger.error("Failed to find run ID: %s", uuid)
+            AddOnRun.objects.filter(uuid=uuid).update(status="failure")
 
 
 @task
