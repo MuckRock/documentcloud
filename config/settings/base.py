@@ -564,3 +564,8 @@ GITHUB_APP_PRIVATE_KEY = env.str("GITHUB_APP_PRIVATE_KEY", multiline=True, defau
 # Mailgun
 # ------------------------------------------------------------------------------
 MAILGUN_API_KEY = env("MAILGUN_API_KEY", default="")
+
+# Add On Dashboard
+# ------------------------------------------------------------------------------
+ADDON_DASH_LIMIT = env.int("ADDON_DASH_LIMIT", default=20)
+ADDON_DASH_FAIL_LIMIT = env.int("ADDON_DASH_FAIL_LIMIT", default=5)

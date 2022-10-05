@@ -1,9 +1,13 @@
 # Django
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
 from django.db.models import Q
-from django.db.models.expressions import Exists, OuterRef, Value
+from django.db.models.aggregates import Count
+from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
 from django.http.response import HttpResponse, HttpResponseForbidden
+from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -15,6 +19,7 @@ import hashlib
 import hmac
 import json
 import logging
+from datetime import timedelta
 from functools import lru_cache
 
 # Third Party
@@ -237,3 +242,30 @@ def github_webhook(request):
         logger.info("[GITHUB WEBHOOK] renamed %s to %s", old_name, new_name)
 
     return HttpResponse()
+
+
+@staff_member_required
+def dashboard(request):
+    timezone.activate("America/New_York")
+    start = timezone.now() - timedelta(days=30)
+    start_filter = Q(runs__created_at__gte=start)
+    context = {
+        "start": start,
+        "fail_limit": settings.ADDON_DASH_FAIL_LIMIT,
+        "addons": AddOn.objects.annotate(run_count=Count("runs", filter=start_filter))
+        .annotate(
+            success_count=Count("runs", filter=Q(runs__status="success") & start_filter)
+        )
+        .annotate(
+            fail_count=Count("runs", filter=Q(runs__status="failure") & start_filter)
+        )
+        .annotate(
+            fail_rate=Case(
+                When(run_count=0, then=0),
+                default=(F("fail_count") * Value(100)) / F("run_count"),
+            )
+        )
+        .annotate(user_count=Count("runs__user", distinct=True, filter=start_filter))
+        .order_by("-run_count")[: settings.ADDON_DASH_LIMIT],
+    }
+    return render(request, "addons/dashboard.html", context)

@@ -15,6 +15,7 @@ from documentcloud.addons.views import (
     AddOnEventViewSet,
     AddOnRunViewSet,
     AddOnViewSet,
+    dashboard,
     github_webhook,
 )
 from documentcloud.core.views import FileServer, account_logout, mailgun
@@ -96,6 +97,7 @@ urlpatterns = [
     path("mailgun/", mailgun, name="mailgun"),
     path("pages/", include("django.contrib.flatpages.urls")),
     path("robots.txt", include("robots.urls")),
+    path("addons/dashboard/", dashboard, name="addon-dashboard"),
 ]
 
 if "debug_toolbar" in settings.INSTALLED_APPS:
