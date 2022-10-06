@@ -53,6 +53,7 @@ staticfiles/
 
 # Sphinx documentation
 docs/_build/
+docs/lambda.png
 
 # PyBuilder
 target/
