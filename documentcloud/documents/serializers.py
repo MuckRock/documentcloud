@@ -104,6 +104,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         help_text=_("The canonical URL to access this document"),
     )
 
+    hide_from_google = serializers.BooleanField(
+        label=_("Hide from Google"),
+        required=False,
+        help_text=Document._meta.get_field("hide_from_google").help_text,
+    )
+
     class Meta:
         model = Document
         list_serializer_class = BulkListSerializer
@@ -120,6 +126,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "file_hash",
             "file_url",
             "force_ocr",
+            "hide_from_google",
             "language",
             "organization",
             "original_extension",
