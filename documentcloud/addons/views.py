@@ -1,6 +1,7 @@
 # Django
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import transaction
 from django.db.models import Q
 from django.db.models.aggregates import Count
@@ -254,18 +255,22 @@ def dashboard(request):
         "fail_limit": settings.ADDON_DASH_FAIL_LIMIT,
         "addons": AddOn.objects.annotate(run_count=Count("runs", filter=start_filter))
         .annotate(
-            success_count=Count("runs", filter=Q(runs__status="success") & start_filter)
-        )
-        .annotate(
-            fail_count=Count("runs", filter=Q(runs__status="failure") & start_filter)
-        )
-        .annotate(
+            success_count=Count(
+                "runs", filter=Q(runs__status="success") & start_filter
+            ),
+            fail_count=Count("runs", filter=Q(runs__status="failure") & start_filter),
             fail_rate=Case(
                 When(run_count=0, then=0),
                 default=(F("fail_count") * Value(100)) / F("run_count"),
-            )
+            ),
+            user_count=Count("runs__user", distinct=True, filter=start_filter),
+            user_string=StringAgg(
+                "runs__user__name",
+                "\n",
+                distinct=True,
+                filter=start_filter,
+            ),
         )
-        .annotate(user_count=Count("runs__user", distinct=True, filter=start_filter))
         .order_by("-run_count")[: settings.ADDON_DASH_LIMIT],
     }
     return render(request, "addons/dashboard.html", context)
