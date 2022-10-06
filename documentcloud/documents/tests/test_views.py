@@ -832,6 +832,26 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_hide_from_google(self, client, document):
+        """Test updating a document to be unindexed"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"hide_from_google": True}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.hide_from_google == True
+
+    def test_update_unhide_from_google(self, client, document):
+        """Test updating a document to be unindexed"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"hide_from_google": False}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.hide_from_google == False
+
 
 @pytest.mark.django_db()
 class TestDocumentErrorAPI:
