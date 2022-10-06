@@ -10,38 +10,70 @@
 
     <div class="container">
       <h1 class="my-5">Add-On Dashboard</h1>
-      <p>From: {{ start|date }}, {{ start|time }}</p>
-      <table class="table table-striped table-hover">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Unique Users</th>
-            <th>Total Runs</th>
-            <th>Successful Runs</th>
-            <th>Failed Runs</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for addon in addons %}
-            <tr{% if addon.fail_rate > fail_limit %} class="table-danger"{% endif %}>
-              <td>
-                <a
-                  href="https://github.com/{{ addon.repository }}/actions"
-                  target="_blank"
-                  >
-                  {{ addon }}
-                </a>
-              </td>
-              <td>
-                <abbr title="{{ addon.user_string }}">{{ addon.user_count }}</abbr>
-              </td>
-              <td>{{ addon.run_count }}</td>
-              <td>{{ addon.success_count }}</td>
-              <td>{{ addon.fail_count }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+      <ul class="nav nav-tabs" id=myTab" role="tablist">
+        {% for addon_group in addons %}
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link{% if forloop.first %} active{% endif %}"
+              id="tabs-{{ addon_group.days }}"
+              data-bs-toggle="tab"
+              data-bs-target="#tab-pane-{{ addon_group.days }}"
+              type="button"
+              role="tab"
+              aria-controls="tab-pane-{{ addon_group.days }}"
+              aria-selected="true">
+               Last {{ addon_group.days }} days
+            </button>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="tab-content" id="myTabContent">
+        {% for addon_group in addons %}
+          <div
+            class="tab-pane fade{% if forloop.first %} show active{% endif %}"
+            id="tab-pane-{{ addon_group.days }}"
+            role="tabpanel"
+            aria-labelledby="tab-{{ addon_group.days }}"
+            tabindex="0">
+
+            <p class="my-3">From: {{ addon_group.start|date }}, {{ addon_group.start|time }}</p>
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Unique Users</th>
+                  <th>Total Runs</th>
+                  <th>Successful Runs</th>
+                  <th>Failed Runs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for addon in addon_group.addons %}
+                  <tr{% if addon.fail_rate > fail_limit %} class="table-danger"{% endif %}>
+                    <td>
+                      <a
+                        href="https://github.com/{{ addon.repository }}/actions"
+                        target="_blank"
+                        >
+                        {{ addon }}
+                      </a>
+                    </td>
+                    <td>
+                      <abbr title="{{ addon.user_string }}">{{ addon.user_count }}</abbr>
+                    </td>
+                    <td>{{ addon.run_count }}</td>
+                    <td>{{ addon.success_count }}</td>
+                    <td>{{ addon.fail_count }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endfor %}
+
+      </div>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3" crossorigin="anonymous"></script>

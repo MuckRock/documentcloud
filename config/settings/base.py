@@ -569,3 +569,4 @@ MAILGUN_API_KEY = env("MAILGUN_API_KEY", default="")
 # ------------------------------------------------------------------------------
 ADDON_DASH_LIMIT = env.int("ADDON_DASH_LIMIT", default=20)
 ADDON_DASH_FAIL_LIMIT = env.int("ADDON_DASH_FAIL_LIMIT", default=5)
+ADDON_DASH_DAYS = env.list("ADDON_DASH_DAYS", default=[30, 7])

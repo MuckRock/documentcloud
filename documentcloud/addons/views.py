@@ -248,29 +248,38 @@ def github_webhook(request):
 @staff_member_required
 def dashboard(request):
     timezone.activate("America/New_York")
-    start = timezone.now() - timedelta(days=30)
-    start_filter = Q(runs__created_at__gte=start)
-    context = {
-        "start": start,
-        "fail_limit": settings.ADDON_DASH_FAIL_LIMIT,
-        "addons": AddOn.objects.annotate(run_count=Count("runs", filter=start_filter))
-        .annotate(
-            success_count=Count(
-                "runs", filter=Q(runs__status="success") & start_filter
-            ),
-            fail_count=Count("runs", filter=Q(runs__status="failure") & start_filter),
-            fail_rate=Case(
-                When(run_count=0, then=0),
-                default=(F("fail_count") * Value(100)) / F("run_count"),
-            ),
-            user_count=Count("runs__user", distinct=True, filter=start_filter),
-            user_string=StringAgg(
-                "runs__user__name",
-                "\n",
-                distinct=True,
-                filter=start_filter,
-            ),
+    context = {"fail_limit": settings.ADDON_DASH_FAIL_LIMIT, "addons": []}
+    days = settings.ADDON_DASH_DAYS
+    for day in days:
+        start = timezone.now() - timedelta(days=day)
+        start_filter = Q(runs__created_at__gte=start)
+        context["addons"].append(
+            {
+                "days": day,
+                "start": start,
+                "addons": AddOn.objects.annotate(
+                    run_count=Count("runs", filter=start_filter)
+                )
+                .annotate(
+                    success_count=Count(
+                        "runs", filter=Q(runs__status="success") & start_filter
+                    ),
+                    fail_count=Count(
+                        "runs", filter=Q(runs__status="failure") & start_filter
+                    ),
+                    fail_rate=Case(
+                        When(run_count=0, then=0),
+                        default=(F("fail_count") * Value(100)) / F("run_count"),
+                    ),
+                    user_count=Count("runs__user", distinct=True, filter=start_filter),
+                    user_string=StringAgg(
+                        "runs__user__name",
+                        "\n",
+                        distinct=True,
+                        filter=start_filter,
+                    ),
+                )
+                .order_by("-run_count")[: settings.ADDON_DASH_LIMIT],
+            }
         )
-        .order_by("-run_count")[: settings.ADDON_DASH_LIMIT],
-    }
     return render(request, "addons/dashboard.html", context)
