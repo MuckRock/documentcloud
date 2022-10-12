@@ -840,7 +840,7 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.hide_from_google is True
+        assert document.hide_from_google
 
     def test_update_unhide_from_google(self, client, document):
         """Test updating a document to be unindexed"""
@@ -850,7 +850,7 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         document.refresh_from_db()
-        assert document.hide_from_google is False
+        assert not document.hide_from_google
 
 
 @pytest.mark.django_db()
