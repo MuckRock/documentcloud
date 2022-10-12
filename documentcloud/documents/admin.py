@@ -11,7 +11,14 @@ from documentcloud.documents.models import Document
 class DocumentAdmin(admin.ModelAdmin):
     """Document Admin"""
 
-    list_display = ("title", "user", "organization", "access", "status")
+    list_display = (
+        "title",
+        "user",
+        "organization",
+        "access",
+        "status",
+        "hide_from_google",
+    )
     list_filter = ("access", "status", "language")
     search_fields = ("title", "user__username", "organization__name")
     show_full_result_count = False
@@ -35,6 +42,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "page_spec",
         "solr_dirty",
         "data",
+        "hide_from_google",
     )
     readonly_fields = (
         "slug",
@@ -51,7 +59,7 @@ class DocumentAdmin(admin.ModelAdmin):
 
     @transaction.atomic
     def save_model(self, request, obj, form, change):
-        super().save(request, obj, form, change)
+        super().save_model(request, obj, form, change)
         obj.index_on_commit(field_updates={f: "set" for f in form.changed_data})
 
     def delete_model(self, request, obj):
