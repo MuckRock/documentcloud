@@ -190,8 +190,8 @@ class Document(models.Model):
         ),
     )
 
-    hide_from_google = models.BooleanField(
-        _("hide from google"),
+    noindex = models.BooleanField(
+        _("noindex"),
         default=False,
         help_text=_("Ask Google to not index this document"),
     )

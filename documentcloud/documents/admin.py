@@ -17,7 +17,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "organization",
         "access",
         "status",
-        "hide_from_google",
+        "noindex",
     )
     list_filter = ("access", "status", "language")
     search_fields = ("title", "user__username", "organization__name")
@@ -42,7 +42,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "page_spec",
         "solr_dirty",
         "data",
-        "hide_from_google",
+        "noindex",
     )
     readonly_fields = (
         "slug",
