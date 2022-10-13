@@ -253,7 +253,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
             "y2": word["Geometry"]["BoundingBox"]["Top"]
             + word["Geometry"]["BoundingBox"]["Height"],
             "confidence": word["Confidence"],
-            "type": word["TextType"],
+            "type": word.get("TextType", ""),
         }
         for word in response["Blocks"]
         if word["BlockType"] == "WORD"
