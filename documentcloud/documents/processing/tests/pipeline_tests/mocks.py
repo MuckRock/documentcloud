@@ -81,7 +81,9 @@ def page_extracted(page_number):
     pass
 
 
-def page_ocrd(doc_id, page_path, upload_text_path, access, language):
+def page_ocrd(
+    doc_id, ocr_engine, page_path, upload_text_path, access, language, slug, page_number
+):
     pass
 
 
@@ -217,8 +219,19 @@ def update_pagespec(doc_id):
     pagespec_written()
 
 
-def ocr_page(doc_id, page_path, upload_text_path, access, language):
-    page_ocrd(doc_id, page_path, upload_text_path, access, language)
+def ocr_page(
+    doc_id, ocr_engine, page_path, upload_text_path, access, language, slug, page_number
+):
+    page_ocrd(
+        doc_id,
+        ocr_engine,
+        page_path,
+        upload_text_path,
+        access,
+        language,
+        slug,
+        page_number,
+    )
     return ("", b"")  # empty text and pdf contents
 
 

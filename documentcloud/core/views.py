@@ -109,6 +109,7 @@ def mailgun(request):
                     a["url"],
                     d.pk,
                     force_ocr=False,
+                    ocr_engine="tess4",
                     auth=("api", settings.MAILGUN_API_KEY),
                 )
             )

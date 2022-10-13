@@ -157,9 +157,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if bulk:
             file_urls = [d.pop("file_url", None) for d in serializer.validated_data]
             force_ocrs = [d.pop("force_ocr", False) for d in serializer.validated_data]
+            ocr_engines = [
+                d.pop("ocr_engines", "tess4") for d in serializer.validated_data
+            ]
         else:
             file_urls = [serializer.validated_data.pop("file_url", None)]
             force_ocrs = [serializer.validated_data.pop("force_ocr", False)]
+            ocr_engines = [serializer.validated_data.pop("ocr_engine", "tess4")]
 
         documents = serializer.save(
             user=self.request.user, organization=self.request.user.organization
@@ -168,12 +172,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if not bulk:
             documents = [documents]
 
-        for document, file_url, force_ocr in zip(documents, file_urls, force_ocrs):
+        for document, file_url, force_ocr, ocr_engine in zip(
+            documents, file_urls, force_ocrs, ocr_engines
+        ):
             document.index_on_commit()
             if file_url is not None:
                 transaction.on_commit(
-                    lambda d=document, fu=file_url, fo=force_ocr: fetch_file_url.delay(
-                        fu, d.pk, fo
+                    lambda d=document, fu=file_url, fo=force_ocr, oe=ocr_engine: fetch_file_url.delay(
+                        fu, d.pk, fo, oe
                     )
                 )
 
@@ -188,11 +194,17 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if error:
             return Response({"error": error}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            serializer = ProcessDocumentSerializer(document, data=request.data)
+            serializer = ProcessDocumentSerializer(
+                document, data=request.data, context=self.get_serializer_context()
+            )
             serializer.is_valid(raise_exception=True)
             document.status = Status.pending
             document.save()
-            self._process(document, serializer.validated_data["force_ocr"])
+            self._process(
+                document,
+                serializer.validated_data["force_ocr"],
+                serializer.validated_data["ocr_engine"],
+            )
             return Response("OK", status=status.HTTP_200_OK)
 
     @transaction.atomic
@@ -204,7 +216,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             data = request.data
         serializer = ProcessDocumentSerializer(
-            self.filter_queryset(self.get_queryset()), data=data, many=True, bulk=True
+            self.filter_queryset(self.get_queryset()),
+            data=data,
+            context=self.get_serializer_context(),
+            many=True,
+            bulk=True,
         )
         serializer.is_valid(raise_exception=True)
 
@@ -223,9 +239,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         force_ocr = {
             d["id"]: d.get("force_ocr", False) for d in serializer.validated_data
         }
+        ocr_engine = {
+            d["id"]: d.get("ocr_engine", "tess4") for d in serializer.validated_data
+        }
 
         for document in documents:
-            self._process(document, force_ocr[document.pk])
+            self._process(document, force_ocr[document.pk], ocr_engine[document.pk])
         documents.update(status=Status.pending)
         return Response("OK", status=status.HTTP_200_OK)
 
@@ -240,7 +259,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         return None
 
-    def _process(self, document, force_ocr):
+    def _process(self, document, force_ocr, ocr_engine):
         """Process a document after you have uploaded the file"""
         transaction.on_commit(
             lambda: process.delay(
@@ -249,6 +268,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 document.access,
                 Language.get_choice(document.language).ocr_code,
                 force_ocr,
+                ocr_engine,
                 document.original_extension,
             )
         )

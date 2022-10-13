@@ -27,6 +27,12 @@ class OrganizationFactory(factory.django.DjangoModelFactory):
                 Membership.objects.create(user=user, organization=self)
 
 
+class ProfessionalOrganizationFactory(OrganizationFactory):
+    entitlement = factory.SubFactory(
+        "documentcloud.organizations.tests.factories.ProfessionalEntitlementFactory"
+    )
+
+
 class MembershipFactory(factory.django.DjangoModelFactory):
     """A factory for creating Membership test objects."""
 

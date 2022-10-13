@@ -15,20 +15,15 @@ digraph Lambda {
     assemble_page_text -> send_complete;
 
     send_modification_post_processing [shape="diamond"];
-    extract_text_position -> send_modification_post_processing;
+    extract_text_position -> send_modification_post_processing [label="Modify"];
 
     subgraph cluster_ocr {
-        run_tesseract -> extract_text_position [style="bold"];
-        run_textract [color="red"];
-        textract [shape="Msquare", color="red"];
-        fetch_textract [color="red"];
-        run_textract -> textract -> fetch_textract [style="dotted", color="red"];
-        fetch_textract -> assemble_page_text [color="red"];
+        run_tesseract -> extract_text_position [label="Tesseract", style="bold"];
+        run_tesseract -> assemble_page_text [label="Textract", style="bold"];
         label = "ocr";
     }
 
     extract_image -> run_tesseract [label="No text", style="bold"];
-    process_page_cache -> run_textract [label="No text & premium", color="red"];
 
     subgraph cluster_doc_conv {
         run_document_conversion -> process_pdf;

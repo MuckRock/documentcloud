@@ -561,6 +561,7 @@ def process_page_cache(data, _context=None):
     ocr_code = data.get("ocr_code", "eng")
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
+    ocr_engine = data.get("ocr_engine", "tess4")
     org_id = data.get("org_id", "")
     page_modification = data.get("page_modification", None)
 
@@ -598,6 +599,7 @@ def process_page_cache(data, _context=None):
                             "pages": pages,
                             "partial": dirty,
                             "force_ocr": force_ocr,
+                            "ocr_engine": ocr_engine,
                             "page_count": page_count,
                             "org_id": org_id,
                             "page_modification": page_modification,
@@ -628,6 +630,7 @@ def process_pdf(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     force_ocr = data.get("force_ocr", False)
+    ocr_engine = data.get("ocr_engine", "tess4")
     ocr_code = data.get("ocr_code", "eng")
     page_modification = data.get("page_modification", None)
 
@@ -662,6 +665,7 @@ def process_pdf(data, _context=None):
                 "access": access,
                 "ocr_code": ocr_code,
                 "force_ocr": force_ocr,
+                "ocr_engine": ocr_engine,
                 "page_modification": page_modification,
             }
         ),
@@ -722,6 +726,7 @@ def extract_image(data, _context=None):
     page_numbers = data["pages"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
+    ocr_engine = data.get("ocr_engine", "tess4")
     page_modification = data.get("page_modification", None)
 
     logger.info(
@@ -749,6 +754,7 @@ def extract_image(data, _context=None):
                     "ocr_code": ocr_code,
                     "partial": partial,
                     "force_ocr": force_ocr,
+                    "ocr_engine": ocr_engine,
                     "page_modification": page_modification,
                 }
             ),

@@ -37,6 +37,15 @@ from documentcloud.users.models import User
 logger = logging.getLogger(__name__)
 
 DATA_VALUE_LENGTH = 300
+OCR_ENGINES = [("tess4", "tess4"), ("textract", "textract")]
+TEXTRACT_LANGUAGES = [
+    Language.english,
+    Language.spanish_castilian,
+    Language.italian,
+    Language.portuguese,
+    Language.french,
+    Language.german,
+]
 
 
 class PageNumberValidationMixin:
@@ -69,6 +78,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "Force OCR on this document.  Only use if `file_url` is set, "
             "otherwise should set `force_ocr` on call to processing endpoint."
         ),
+    )
+    ocr_engine = serializers.ChoiceField(
+        label=_("OCR Engine"),
+        choices=OCR_ENGINES,
+        write_only=True,
+        required=False,
+        help_text=_("Choose the OCR engine"),
     )
     delayed_index = serializers.BooleanField(
         label=_("Delayed Index"),
@@ -121,6 +137,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "file_url",
             "force_ocr",
             "language",
+            "ocr_engine",
             "organization",
             "original_extension",
             "page_count",
@@ -167,14 +184,14 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         context = kwargs.get("context", {})
         request = context.get("request")
         view = context.get("view")
-        user = request and request.user
+        self.user = request and request.user
         is_document = isinstance(self.instance, Document)
         is_list = isinstance(self.instance, (list, QuerySet))
 
-        self._init_readonly(request, view, user)
-        self._init_projects_queryset(user)
-        self._init_presigned_url(request, user, is_document, is_list)
-        self._init_change_ownership(request, user, is_document, is_list)
+        self._init_readonly(request, view, self.user)
+        self._init_projects_queryset(self.user)
+        self._init_presigned_url(request, self.user, is_document, is_list)
+        self._init_change_ownership(request, self.user, is_document, is_list)
 
     def _init_readonly(self, request, view, user):
         """Dynamically alter read only status of fields"""
@@ -288,6 +305,15 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             raise serializers.ValidationError("You may not update `force_ocr`")
         return value
 
+    def validate_ocr_engine(self, value):
+        if self.instance and value:
+            raise serializers.ValidationError("You may not update `ocr_engine`")
+        if value == "textract" and self.user.feature_level < 1:
+            raise serializers.ValidationError(
+                "`textract` is only available to Professional accounts"
+            )
+        return value
+
     def validate_data(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError("`data` must be a JSON object")
@@ -325,6 +351,18 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if attrs.get("force_ocr") and "file_url" not in attrs:
             raise serializers.ValidationError(
                 "`force_ocr` may only be used if `file_url` is set"
+            )
+        if attrs.get("ocr_engine") and "file_url" not in attrs:
+            raise serializers.ValidationError(
+                "`ocr_engine` may only be used if `file_url` is set"
+            )
+        if (
+            attrs.get("ocr_engine") == "textract"
+            and attrs.get("language") not in TEXTRACT_LANGUAGES
+        ):
+            raise serializers.ValidationError(
+                "`textract` only supports the following languages: "
+                f"{TEXTRACT_LANGUAGES}"
             )
         return attrs
 
@@ -634,16 +672,53 @@ class ProcessDocumentSerializer(serializers.Serializer):
     force_ocr = serializers.BooleanField(
         label=_("Force OCR"), default=False, help_text=_("Force OCR on this document")
     )
+    ocr_engine = serializers.ChoiceField(
+        label=_("OCR Engine"),
+        choices=OCR_ENGINES,
+        default="tess4",
+        help_text=_("Choose the OCR engine"),
+    )
     id = serializers.IntegerField(
         label=_("ID"), help_text=_("ID of the document to process")
     )
 
     def __init__(self, *args, **kwargs):
-        bulk = kwargs.pop("bulk", False)
+        self.bulk = kwargs.pop("bulk", False)
         super().__init__(*args, **kwargs)
-        if not bulk:
+        if not self.bulk:
             # ID field is only for bulk process
             del self.fields["id"]
+
+    def validate_ocr_engine(self, value):
+        request = self.context.get("request")
+        user = request and request.user
+
+        if value == "textract" and user.feature_level < 1:
+            raise serializers.ValidationError(
+                "`textract` is only available to Professional accounts"
+            )
+
+        return value
+
+    def validate(self, attrs):
+        view = self.context.get("view")
+        if attrs.get("ocr_engine") == "textract":
+            try:
+                if self.bulk:
+                    document = Document.objects.get(pk=attrs["id"])
+                else:
+                    document = Document.objects.get(pk=view.kwargs["pk"])
+
+                if document.language not in TEXTRACT_LANGUAGES:
+                    raise serializers.ValidationError(
+                        "`textract` only supports the following languages: "
+                        f"{TEXTRACT_LANGUAGES}"
+                    )
+            except Document.DoesNotExist:
+                # document not found, proper exception will be raised in view
+                pass
+
+        return attrs
 
     class Meta:
         list_serializer_class = BulkListSerializer

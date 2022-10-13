@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 # Third Party
+import boto3
 import environ
 from cpuprofile import profile_cpu
 from PIL import Image
@@ -61,6 +62,9 @@ OCR_TOPIC = publisher.topic_path(
 TEXT_POSITION_EXTRACT_TOPIC = publisher.topic_path(
     "documentcloud",
     env.str("TEXT_POSITION_EXTRACT_TOPIC", default="text-position-extraction"),
+)
+ASSEMBLE_TEXT_TOPIC = publisher.topic_path(
+    "documentcloud", env.str("ASSEMBLE_TEXT_TOPIC", default="assemble-text")
 )
 TEXT_POSITION_BATCH = env.int(
     "TEXT_POSITION_BATCH", 3
@@ -129,12 +133,22 @@ def download_language_pack(ocr_code):
     download_tmp_file(f"{ocr_code}{OCR_DATA_EXTENSION}")
 
 
-def ocr_page(doc_id, page_path, upload_text_path, access, ocr_code="eng"):
+def ocr_page(
+    doc_id,
+    ocr_engine,
+    page_path,
+    upload_text_path,
+    access,
+    ocr_code,
+    slug,
+    page_number,
+):
     """Internal method to run OCR on a single page.
 
     Returns:
         The page text.
     """
+    # pylint: disable=too-many-arguments
     # Download the requisite language data
     logger.info("[OCR PAGE] doc_id %s", doc_id)
     download_language_pack(ocr_code)
@@ -162,34 +176,98 @@ def ocr_page(doc_id, page_path, upload_text_path, access, ocr_code="eng"):
 
     logger.info("[OCR PAGE] image resized doc_id %s", doc_id)
 
-    # Use Tesseract OCR to render a text-only PDF and txt file
-    tess = Tesseract(ocr_code)
-    text = ""
-    pdf_contents = b""
     try:
-        tess.create_renderer(tmp_files["pdf"], tmp_files["text"])
-        tess.render(tmp_files["img"])
-        tess.destroy_renderer()
-
-        logger.info("[OCR PAGE] rendered doc_id %s", doc_id)
-
-        # Get txt and text-only pdf file contents
-        with open(tmp_files["pdf"] + ".pdf", "rb") as pdf_file:
-            pdf_contents = pdf_file.read()
-        with storage.open(upload_text_path, "w", access=access) as new_text_file:
-            with open(tmp_files["text"] + ".txt", "r", encoding="utf-8") as text_file:
-                # Store text locally to return (gets used by Redis later)
-                text = text_file.read()
-                # Also upload text file to s3
-                new_text_file.write(text)
-        logger.info("[OCR PAGE] data stored doc_id %s", doc_id)
+        if ocr_engine == "textract":
+            return ocr_page_textract(
+                doc_id, tmp_files, upload_text_path, access, slug, page_number
+            )
+        else:
+            return ocr_page_tesseract(
+                doc_id, ocr_code, tmp_files, upload_text_path, access
+            )
     finally:
         logger.info("[OCR PAGE] cleanup doc_id %s", doc_id)
         os.remove(tmp_files["pdf"])
         os.remove(tmp_files["text"])
         os.remove(tmp_files["img"])
 
+
+def ocr_page_tesseract(doc_id, ocr_code, tmp_files, upload_text_path, access):
+    """Use Tesseract OCR to render a text-only PDF and txt file"""
+    tess = Tesseract(ocr_code)
+    text = ""
+    pdf_contents = b""
+
+    tess.create_renderer(tmp_files["pdf"], tmp_files["text"])
+    tess.render(tmp_files["img"])
+    tess.destroy_renderer()
+
+    logger.info("[OCR PAGE] rendered doc_id %s", doc_id)
+
+    # Get txt and text-only pdf file contents
+    with open(tmp_files["pdf"] + ".pdf", "rb") as pdf_file:
+        pdf_contents = pdf_file.read()
+    with storage.open(upload_text_path, "w", access=access) as new_text_file:
+        with open(tmp_files["text"] + ".txt", "r", encoding="utf-8") as text_file:
+            # Store text locally to return (gets used by Redis later)
+            text = text_file.read()
+            # Also upload text file to s3
+            new_text_file.write(text)
+    logger.info("[OCR PAGE] data stored doc_id %s", doc_id)
+
     return text, pdf_contents
+
+
+def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_number):
+    """Use Textract OCR to render a txt file"""
+    with open(tmp_files["img"], "rb") as document:
+        image_bytes = bytearray(document.read())
+
+    textract = boto3.client("textract", region_name="us-east-1")
+
+    response = textract.detect_document_text(Document={"Bytes": image_bytes})
+
+    logger.info("[OCR PAGE] textract doc_id %s", doc_id)
+
+    lines = []
+    for item in response["Blocks"]:
+        if item["BlockType"] == "LINE":
+            lines.append(item["Text"])
+
+    text = "\n".join(lines)
+
+    with storage.open(upload_text_path, "w", access=access) as new_text_file:
+        # upload text file to s3
+        new_text_file.write(text)
+
+    logger.info("[OCR PAGE] data stored doc_id %s", doc_id)
+
+    # extract text position
+    words = [
+        {
+            "text": word["Text"],
+            "x1": word["Geometry"]["BoundingBox"]["Left"],
+            "x2": word["Geometry"]["BoundingBox"]["Left"]
+            + word["Geometry"]["BoundingBox"]["Width"],
+            "y1": word["Geometry"]["BoundingBox"]["Top"],
+            "y2": word["Geometry"]["BoundingBox"]["Top"]
+            + word["Geometry"]["BoundingBox"]["Height"],
+            "confidence": word["Confidence"],
+            "type": word["TextType"],
+        }
+        for word in response["Blocks"]
+        if word["BlockType"] == "WORD"
+    ]
+    # Write the json positional words file
+    storage.simple_upload(
+        path.page_text_position_path(doc_id, slug, page_number),
+        json.dumps(words).encode("utf-8"),
+        access=access,
+    )
+
+    logger.info("[OCR PAGE] textract extracted text position  stored doc_id %s", doc_id)
+
+    return text, b""
 
 
 @pubsub_function(REDIS, OCR_TOPIC)
@@ -206,10 +284,12 @@ def run_tesseract(data, _context=None):
     paths_and_numbers = data["paths_and_numbers"]
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
+    ocr_engine = data.get("ocr_engine", "tess4")
+
     if force_ocr:
-        ocr_version = f"{OCR_VERSION}_force"
+        ocr_version = f"{ocr_engine}_force"
     else:
-        ocr_version = OCR_VERSION
+        ocr_version = ocr_engine
 
     logger.info(
         "[RUN TESSERACT] doc_id %s ocr_code %s ocr_version %s page_numbers %s",
@@ -259,21 +339,42 @@ def run_tesseract(data, _context=None):
         if not queue:
             return
 
-        # Trigger text position extraction pipeline
-        publisher.publish(
-            TEXT_POSITION_EXTRACT_TOPIC,
-            encode_pubsub_data(
-                {
-                    "paths_and_numbers": queue,
-                    "doc_id": doc_id,
-                    "slug": slug,
-                    "access": access,
-                    "ocr_code": ocr_code,
-                    "partial": partial,
-                    "in_memory": True,
-                }
-            ),
-        )
+        if ocr_engine == "textract":
+            # textract also extracts text position, so skip to assemble text
+            for page_number in queue:
+                # Check if all text positions have been extracted
+                text_positions_finished = utils.register_text_position_extracted(
+                    REDIS, doc_id, page_number
+                )
+            if text_positions_finished:
+                # Move on to assembling/grafting the text back into the pdf
+                publisher.publish(
+                    ASSEMBLE_TEXT_TOPIC,
+                    encode_pubsub_data(
+                        {
+                            "doc_id": doc_id,
+                            "slug": slug,
+                            "access": access,
+                            "partial": partial,
+                        }
+                    ),
+                )
+        else:
+            # Trigger text position extraction pipeline
+            publisher.publish(
+                TEXT_POSITION_EXTRACT_TOPIC,
+                encode_pubsub_data(
+                    {
+                        "paths_and_numbers": queue,
+                        "doc_id": doc_id,
+                        "slug": slug,
+                        "access": access,
+                        "ocr_code": ocr_code,
+                        "partial": partial,
+                        "in_memory": True,
+                    }
+                ),
+            )
 
         queue.clear()
 
@@ -302,7 +403,16 @@ def run_tesseract(data, _context=None):
             page_number,
             start_time,
         )
-        text, pdf_contents = ocr_page(doc_id, image_path, text_path, access, ocr_code)
+        text, pdf_contents = ocr_page(
+            doc_id,
+            ocr_engine,
+            image_path,
+            text_path,
+            access,
+            ocr_code,
+            slug,
+            page_number,
+        )
 
         elapsed_time = time.time() - start_time
         elapsed_times.append(elapsed_time)

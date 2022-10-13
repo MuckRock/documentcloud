@@ -26,6 +26,7 @@ from documentcloud.documents.tests.factories import (
     SectionFactory,
 )
 from documentcloud.organizations.serializers import OrganizationSerializer
+from documentcloud.organizations.tests.factories import ProfessionalOrganizationFactory
 from documentcloud.projects.models import ProjectMembership
 from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.serializers import UserSerializer
@@ -147,6 +148,50 @@ class TestDocumentAPI:
         assert Document.objects.filter(pk=response_json["id"]).exists()
         assert "presigned_url" not in response_json
 
+    def test_create_file_url_bad_ocr_engine(self, client, user):
+        """Non-premium user cannot set ocr engine to textract"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/documents/",
+            {
+                "title": "Test",
+                "file_url": "http://www.example.com/test.pdf",
+                "ocr_engine": "textract",
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_file_url_good_ocr_engine(self, client, user):
+        """Non-premium user can set ocr engine to tess4"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/documents/",
+            {
+                "title": "Test",
+                "file_url": "http://www.example.com/test.pdf",
+                "ocr_engine": "tess4",
+            },
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = response.json()
+        assert Document.objects.filter(pk=response_json["id"]).exists()
+
+    def test_create_file_url_bad_ocr_engine_language(self, client):
+        """Textract can only be used with supported languages"""
+        org = ProfessionalOrganizationFactory()
+        user = UserFactory(organizations=[org])
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/documents/",
+            {
+                "title": "Test",
+                "file_url": "http://www.example.com/test.pdf",
+                "ocr_engine": "textract",
+                "language": "ara",
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_create_direct(self, client, user):
         """Create a document and upload the file directly"""
         client.force_authenticate(user=user)
@@ -215,6 +260,16 @@ class TestDocumentAPI:
             format="json",
         )
         # this check is currently disabled
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_ocr_engine(self, client, user):
+        """OCR engine may only be set if file_url is set"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/documents/",
+            {"title": "Test", "ocr_engine": "tess4"},
+            format="json",
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_create(self, client, user, django_assert_num_queries):
@@ -366,6 +421,15 @@ class TestDocumentAPI:
         response = client.patch(
             f"/api/documents/{document.pk}/",
             {"file_url": "https://www.example.com/2.pdf"},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_bad_ocr_engine(self, client, document):
+        """You may not update the ocr_engine"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"ocr_engine": "textract"},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -696,6 +760,51 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.status == Status.pending
 
+    def test_process_ocr_engine_free(self, client, document, mocker):
+        """Must have a paid account to use Textract"""
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/process/", {"ocr_engine": "textract"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_process_ocr_engine(self, client, mocker):
+        """Test setting ocr_engine"""
+        org = ProfessionalOrganizationFactory()
+        user = UserFactory(organizations=[org])
+        document = DocumentFactory(user=user)
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/{document.pk}/process/", {"ocr_engine": "textract"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.status == Status.pending
+
+    def test_process_ocr_engine_bad_lang(self, client, mocker):
+        """Textract does not support all languages"""
+        org = ProfessionalOrganizationFactory()
+        user = UserFactory(organizations=[org])
+        document = DocumentFactory(user=user, language="ara")
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=user)
+        response = client.post(
+            f"/api/documents/{document.pk}/process/",
+            {"ocr_engine": "textract"},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_process_bad(self, client, user, document, mocker):
         """Test processing a document you do not have edit permissions to"""
         # pretend the file exists
@@ -717,6 +826,20 @@ class TestDocumentAPI:
         response = client.post(f"/api/documents/{document.pk}/process/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_process_force_ocr(self, client, document, mocker):
+        """Test processing a document and force ocr"""
+        # pretend the file exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/process/", {"force_ocr": True}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.status == Status.pending
+
     def test_bulk_process(self, client, user, mocker, django_assert_num_queries):
         """Test processing multiple documents"""
         # pretend the files exists
@@ -731,6 +854,26 @@ class TestDocumentAPI:
                 [{"id": d.pk} for d in documents],
                 format="json",
             )
+        assert response.status_code == status.HTTP_200_OK
+        for document in documents:
+            document.refresh_from_db()
+            assert document.status == Status.pending
+
+    def test_bulk_process_ocr_engine(self, client, mocker):
+        """Test processing multiple documents with textract"""
+        org = ProfessionalOrganizationFactory()
+        user = UserFactory(organizations=[org])
+        # pretend the files exists
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        documents = DocumentFactory.create_batch(2, user=user)
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/documents/process/",
+            [{"id": d.pk, "ocr_engine": "textract"} for d in documents],
+            format="json",
+        )
         assert response.status_code == status.HTTP_200_OK
         for document in documents:
             document.refresh_from_db()

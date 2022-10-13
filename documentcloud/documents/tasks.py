@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 @task(autoretry_for=(HTTPError,), retry_backoff=30)
-def fetch_file_url(file_url, document_pk, force_ocr, auth=None):
+def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
     if auth is not None:
@@ -82,6 +82,7 @@ def fetch_file_url(file_url, document_pk, force_ocr, auth=None):
             document.access,
             document.language,
             force_ocr,
+            ocr_engine,
             document.original_extension,
         )
 
@@ -127,7 +128,9 @@ def _httpsub_submit(url, document_pk, json, task_):
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
-def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
+def process(
+    document_pk, slug, access, ocr_code, force_ocr, ocr_engine, extension="pdf"
+):
     """Start the processing"""
     _httpsub_submit(
         settings.DOC_PROCESSING_URL,
@@ -140,6 +143,7 @@ def process(document_pk, slug, access, ocr_code, force_ocr, extension="pdf"):
             "ocr_code": ocr_code,
             "method": "process_pdf",
             "force_ocr": force_ocr,
+            "ocr_engine": ocr_engine,
         },
         process,
     )
