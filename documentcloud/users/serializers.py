@@ -28,6 +28,7 @@ class UserSerializer(FlexFieldsModelSerializer):
         fields = [
             "id",
             "avatar_url",
+            "feature_level",
             "is_staff",
             "name",
             "organization",
@@ -50,8 +51,11 @@ class UserSerializer(FlexFieldsModelSerializer):
         super().__init__(*args, **kwargs)
         context = kwargs.get("context", {})
         request = context.get("request")
+        view = context.get("view")
         if not (request and request.user.is_staff):
             self.fields.pop("is_staff")
+        if not view or view.kwargs.get("pk") != "me":
+            self.fields.pop("feature_level")
 
     def validate_organization(self, value):
         organization = Organization.objects.filter(pk=value).first()
