@@ -104,12 +104,6 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         help_text=_("The canonical URL to access this document"),
     )
 
-    noindex = serializers.BooleanField(
-        label=_("Do not index in search engines and DocumentCloud search"),
-        required=False,
-        help_text=Document._meta.get_field("noindex").help_text,
-    )
-
     class Meta:
         model = Document
         list_serializer_class = BulkListSerializer
