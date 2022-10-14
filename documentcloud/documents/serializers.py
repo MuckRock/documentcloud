@@ -105,7 +105,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
     )
 
     noindex = serializers.BooleanField(
-        label=_("Hide from Google"),
+        label=_("Do not index in search engines and DocumentCloud search"),
         required=False,
         help_text=Document._meta.get_field("noindex").help_text,
     )
