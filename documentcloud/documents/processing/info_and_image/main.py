@@ -41,6 +41,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         storage,
     )
     from documentcloud.common.serverless import utils
+    from documentcloud.common.serverless.utils import REDIS_TTL
     from documentcloud.common.serverless.error_handling import (
         pubsub_function,
         pubsub_function_import,
@@ -66,6 +67,7 @@ else:
         storage,
     )
     from common.serverless import utils
+    from common.serverless.utils import REDIS_TTL
     from common.serverless.error_handling import pubsub_function, pubsub_function_import
     from graft_adapter import GraftContext
     from pdfium import StorageHandler, Workspace
@@ -178,12 +180,14 @@ def initialize_redis_page_data(doc_id, page_count):
         pipeline.multi()
 
         # Set the page count field
-        pipeline.set(redis_fields.page_count(doc_id), page_count)
+        pipeline.set(redis_fields.page_count(doc_id), page_count, ex=REDIS_TTL)
 
         # Set pages and texts remaining to page count
-        pipeline.set(redis_fields.images_remaining(doc_id), page_count)
-        pipeline.set(redis_fields.texts_remaining(doc_id), page_count)
-        pipeline.set(redis_fields.text_positions_remaining(doc_id), page_count)
+        pipeline.set(redis_fields.images_remaining(doc_id), page_count, ex=REDIS_TTL)
+        pipeline.set(redis_fields.texts_remaining(doc_id), page_count, ex=REDIS_TTL)
+        pipeline.set(
+            redis_fields.text_positions_remaining(doc_id), page_count, ex=REDIS_TTL
+        )
 
         # Set Redis bit arrays flooded to 0 to track each page
         pipeline.delete(image_bits_field)
@@ -192,6 +196,9 @@ def initialize_redis_page_data(doc_id, page_count):
         pipeline.setbit(image_bits_field, page_count - 1, 0)
         pipeline.setbit(text_bits_field, page_count - 1, 0)
         pipeline.setbit(text_position_bits_field, page_count - 1, 0)
+        pipeline.expire(image_bits_field, REDIS_TTL)
+        pipeline.expire(text_bits_field, REDIS_TTL)
+        pipeline.expire(text_position_bits_field, REDIS_TTL)
 
         # Remove any existing dimensions that may be lingering
         if existing_dimensions is not None:
@@ -222,12 +229,14 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
     text_position_bits_field = redis_fields.text_position_bits(doc_id)
 
     pipeline = REDIS.pipeline()
-    pipeline.set(redis_fields.page_count(doc_id), page_count)
+    pipeline.set(redis_fields.page_count(doc_id), page_count, ex=REDIS_TTL)
 
     # Set images/texts remaining equal to number of dirty pages
-    pipeline.set(redis_fields.images_remaining(doc_id), len(dirty_pages))
-    pipeline.set(redis_fields.texts_remaining(doc_id), len(dirty_pages))
-    pipeline.set(redis_fields.text_positions_remaining(doc_id), len(dirty_pages))
+    pipeline.set(redis_fields.images_remaining(doc_id), len(dirty_pages), ex=REDIS_TTL)
+    pipeline.set(redis_fields.texts_remaining(doc_id), len(dirty_pages), ex=REDIS_TTL)
+    pipeline.set(
+        redis_fields.text_positions_remaining(doc_id), len(dirty_pages), ex=REDIS_TTL
+    )
 
     # Set Redis bit arrays flooded to 1 to track each page.
     # Just the dirty pages will be set to 0 to indicate
@@ -239,6 +248,9 @@ def initialize_partial_redis_page_data(doc_id, page_count, dirty_pages):
         pipeline.setbit(image_bits_field, i, 0 if i in dirty_pages else 1)
         pipeline.setbit(text_bits_field, i, 0 if i in dirty_pages else 1)
         pipeline.setbit(text_position_bits_field, i, 0 if i in dirty_pages else 1)
+    pipeline.expire(image_bits_field, REDIS_TTL)
+    pipeline.expire(text_bits_field, REDIS_TTL)
+    pipeline.expire(text_position_bits_field, REDIS_TTL)
 
     # Remove any existing page text
     pipeline.delete(redis_fields.page_text(doc_id))
@@ -566,7 +578,7 @@ def process_page_cache(data, _context=None):
         cached = pdf_file.cache
 
         # Set the file hash in Redis to go out with the next update
-        REDIS.set(redis_fields.file_hash(doc_id), pdf_file.sha1)
+        REDIS.set(redis_fields.file_hash(doc_id), pdf_file.sha1, ex=REDIS_TTL)
 
         # Create an index file that stores the memory locations of each page of the
         # PDF file.
@@ -781,8 +793,12 @@ def extract_image(data, _context=None):
                     # Update the page dimensions in Redis atomically
                     pipeline = REDIS.pipeline()
                     pipeline.sadd(redis_fields.dimensions(doc_id), page_dimension)
+                    pipeline.expire(redis_fields.dimensions(doc_id), REDIS_TTL)
                     pipeline.sadd(
                         redis_fields.page_dimension(doc_id, page_dimension), page_number
+                    )
+                    pipeline.expire(
+                        redis_fields.page_dimension(doc_id, page_dimension), REDIS_TTL
                     )
                     pipeline.execute()
 
@@ -1178,7 +1194,7 @@ def start_import(data, _context=None):
             csvreader = csv.reader(csvfile)
             next(csvreader)  # discard headers
             num_docs = sum(1 for _ in csvreader)
-        REDIS.set(redis_fields.import_docs_remaining(org_id), num_docs)
+        REDIS.set(redis_fields.import_docs_remaining(org_id), num_docs, ex=REDIS_TTL)
 
     for doc_id, slug, access in doc_ids:
         logger.info("[START IMPORT] org_id %s doc_id %s slug %s", org_id, doc_id, slug)

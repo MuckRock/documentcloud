@@ -55,6 +55,7 @@ REDIS_HEALTH_CHECK_INTERVAL = env.int("REDIS_HEALTH_CHECK_INTERVAL", default=10)
 RETRY_ERROR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("RETRY_ERROR_TOPIC", default="retry-error-topic")
 )
+REDIS_TTL = env.int("REDIS_TTL", default=86400)
 
 
 def get_redis():
@@ -188,7 +189,7 @@ def send_modification_post_processing(redis, doc_id, json_):
 
 def initialize(redis, doc_id):
     """Sets up Redis for processing"""
-    redis.set(redis_fields.is_running(doc_id), 1)
+    redis.set(redis_fields.is_running(doc_id), 1, ex=REDIS_TTL)
 
 
 def still_processing(redis, doc_id):
@@ -301,6 +302,7 @@ def write_page_text(redis, doc_id, page_number, page_text, ocr, ocr_code="eng"):
         f"{page_number}",
         json.dumps({"text": page_text, "ocr": ocr, "ocr_code": ocr_code}),
     )
+    redis.expire(redis_fields.page_text(doc_id), REDIS_TTL)
 
 
 def write_page_text_pdf(redis, doc_id, page_number, page_text_pdf_contents):
@@ -308,6 +310,7 @@ def write_page_text_pdf(redis, doc_id, page_number, page_text_pdf_contents):
     redis.hset(
         redis_fields.page_text_pdf(doc_id), f"{page_number}", page_text_pdf_contents
     )
+    redis.expire(redis_fields.page_text_pdf(doc_id), REDIS_TTL)
 
 
 def get_all_page_text(redis, doc_id):
@@ -337,8 +340,11 @@ def get_all_page_text(redis, doc_id):
 def initialize_text_positions(redis, doc_id, page_count):
     """Initialize text position data in Redis."""
     pipeline = redis.pipeline()
-    pipeline.set(redis_fields.text_positions_remaining(doc_id), page_count)
+    pipeline.set(
+        redis_fields.text_positions_remaining(doc_id), page_count, ex=REDIS_TTL
+    )
     text_position_bit_field = redis_fields.text_position_bits(doc_id)
     pipeline.delete(text_position_bit_field)
     pipeline.setbit(text_position_bit_field, page_count - 1, 0)
+    pipeline.expire(text_position_bit_field, REDIS_TTL)
     pipeline.execute()
