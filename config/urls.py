@@ -13,6 +13,7 @@ from rest_framework_nested.routers import NestedDefaultRouter
 # DocumentCloud
 from documentcloud.addons.views import (
     AddOnEventViewSet,
+    AddOnRunFileServer,
     AddOnRunViewSet,
     AddOnViewSet,
     dashboard,
@@ -92,6 +93,11 @@ urlpatterns = [
     path("squarelet/", include("squarelet_auth.urls", namespace="squarelet_auth")),
     path(
         "files/documents/<int:pk>/<path:path>", FileServer.as_view(), name="file_server"
+    ),
+    path(
+        "files/addon-runs/<uuid:uuid>/",
+        AddOnRunFileServer.as_view(),
+        name="addon-run-file",
     ),
     path("github-webhook/", github_webhook, name="github-webhook"),
     path("mailgun/", mailgun, name="mailgun"),

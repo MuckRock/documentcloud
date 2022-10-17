@@ -6,14 +6,21 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
-from django.http.response import HttpResponse, HttpResponseForbidden
-from django.shortcuts import render
+from django.http.response import (
+    Http404,
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseRedirect,
+    JsonResponse,
+)
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # Standard Library
 import hashlib
@@ -42,6 +49,7 @@ from documentcloud.addons.serializers import (
     AddOnSerializer,
 )
 from documentcloud.addons.tasks import dispatch, update_config
+from documentcloud.common.environment import storage
 
 logger = logging.getLogger(__name__)
 
@@ -283,3 +291,21 @@ def dashboard(request):
             }
         )
     return render(request, "addons/dashboard.html", context)
+
+
+class AddOnRunFileServer(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        addon_run = get_object_or_404(
+            AddOnRun.objects.get_viewable(request.user), uuid=kwargs["uuid"]
+        )
+        if addon_run.file_name:
+            url = storage.presign_url(addon_run.file_path(), "get_object")
+        else:
+            raise Http404
+
+        if request.META.get("HTTP_ACCEPT", "").startswith("application/json"):
+            return JsonResponse({"location": url})
+        else:
+            return HttpResponseRedirect(url)
