@@ -192,6 +192,29 @@ class TestAddOnRunAPI:
         run.refresh_from_db()
         assert run.progress == progress
 
+    def test_update_rate(self, client):
+        """Test updating a add-on run"""
+        run = AddOnRunFactory()
+        client.force_authenticate(user=run.user)
+        progress = 50
+        response = client.patch(
+            f"/api/addon_runs/{run.uuid}/", {"rating": 1, "comment": "Great!"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        run.refresh_from_db()
+        assert run.rating == 1
+        assert run.comment == "Great!"
+
+    def test_update_rate_bad(self, client):
+        """Rating must be -1, 0 or 1"""
+        run = AddOnRunFactory()
+        client.force_authenticate(user=run.user)
+        progress = 50
+        response = client.patch(
+            f"/api/addon_runs/{run.uuid}/", {"rating": 2, "comment": "Great!"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_update_bad_progress(self, client):
         """Progress must be between 0 and 100"""
         run = AddOnRunFactory()

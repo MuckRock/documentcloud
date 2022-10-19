@@ -250,6 +250,23 @@ class AddOnRun(models.Model):
         ),
     )
 
+    rating = models.SmallIntegerField(
+        _("rating"),
+        help_text=_("A rating from the user on how this run went"),
+        default=0,
+        choices=[
+            (-1, "Thumbs Down"),
+            (0, ""),
+            (1, "Thumbs Up"),
+        ],
+    )
+    comment = models.CharField(
+        _("comment"),
+        max_length=255,
+        help_text=_("A comment from the user on how this run went"),
+        default="",
+    )
+
     created_at = AutoCreatedField(
         _("created at"), help_text=_("Timestamp of when the add-on was ran")
     )

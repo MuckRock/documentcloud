@@ -132,6 +132,8 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             "file_name",
             "dismissed",
             "parameters",
+            "rating",
+            "comment",
             "created_at",
             "updated_at",
         ]
