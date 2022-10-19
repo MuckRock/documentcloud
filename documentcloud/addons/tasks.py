@@ -63,6 +63,7 @@ def set_run_status(uuid):
 @task
 def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=None):
     # pylint: disable=too-many-arguments
+    logger.info("[DISPATCH] uuid %s", uuid)
     addon = AddOn.objects.get(pk=addon_id)
     user = User.objects.get(pk=user_id)
 
@@ -71,7 +72,8 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=Non
         find_run_id.delay(uuid)
     except RequestException as exc:
         try:
-            dispatch.retry(exc=exc, max_retries=3, countdown=10)
+            logger.info("[DISPATCH] retry uuid %s exc %s", uuid, exc)
+            dispatch.retry(max_retries=3, countdown=10)
         except MaxRetriesExceededError:
             logger.error("Failed to dispatch: %s", uuid)
             AddOnRun.objects.filter(uuid=uuid).update(status="failure")
