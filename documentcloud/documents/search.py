@@ -28,6 +28,7 @@ FILTER_FIELDS = {
     "id": "id",
     "document": "id",
     "access": "access",
+    "noindex": "noindex",
     "status": "status",
     "language": "language",
     "organization": "organization",
@@ -501,7 +502,7 @@ def _access_filter(user):
             access_filter += f" OR (projects_edit_access:({projects}))"
         return ["!access:invisible", access_filter]
     else:
-        return ["filter(access:public AND status:(success readable))"]
+        return ["filter(access:public AND status:(success readable) AND !noindex:true)"]
 
 
 def _paginate(query_params, user):  # pylint: disable=inconsistent-return-statements
@@ -604,6 +605,9 @@ def _format_response(results, query_params, user, escaped, page_data):
 
     expands = query_params.get("expand", "").split(",")
     count = results.hits
+
+    for result in results:
+        print("result:", result)
 
     results = _add_canonical_url(
         _add_asset_url(_format_notes(_format_data(_format_highlights(results))))
