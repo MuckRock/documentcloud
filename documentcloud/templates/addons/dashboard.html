@@ -47,6 +47,8 @@
                   <th>Successful Runs</th>
                   <th>Failed Runs</th>
                   <th>Timed Out Runs</th>
+                  <th>Thumbs Up</th>
+                  <th>Thumbs Down</th>
                 </tr>
               </thead>
               <tbody>
@@ -67,6 +69,16 @@
                     <td>{{ addon.success_count }}</td>
                     <td>{{ addon.fail_count }}</td>
                     <td>{{ addon.cancelled_count }}</td>
+                    <td>
+                      <abbr title="{{ addon.up_comments}}">
+                        {{ addon.up_count }}
+                      </abbr>
+                    </td>
+                    <td>
+                      <abbr title="{{ addon.down_comments}}">
+                        {{ addon.down_count }}
+                      </abbr>
+                    </td>
                   </tr>
                 {% endfor %}
               </tbody>

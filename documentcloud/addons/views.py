@@ -283,6 +283,20 @@ def dashboard(request):
                         default=((F("fail_count") + F("cancelled_count")) * Value(100))
                         / F("run_count"),
                     ),
+                    up_count=Count("runs", filter=Q(runs__rating=1) & start_filter),
+                    down_count=Count("runs", filter=Q(runs__rating=-1) & start_filter),
+                    up_comments=StringAgg(
+                        "runs__comment",
+                        "\n",
+                        distinct=True,
+                        filter=Q(runs__rating=1) & start_filter,
+                    ),
+                    down_comments=StringAgg(
+                        "runs__comment",
+                        "\n",
+                        distinct=True,
+                        filter=Q(runs__rating=-1) & start_filter,
+                    ),
                     user_count=Count("runs__user", distinct=True, filter=start_filter),
                     user_string=StringAgg(
                         "runs__user__name",
