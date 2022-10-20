@@ -275,9 +275,13 @@ def dashboard(request):
                     fail_count=Count(
                         "runs", filter=Q(runs__status="failure") & start_filter
                     ),
+                    cancelled_count=Count(
+                        "runs", filter=Q(runs__status="cancelled") & start_filter
+                    ),
                     fail_rate=Case(
                         When(run_count=0, then=0),
-                        default=(F("fail_count") * Value(100)) / F("run_count"),
+                        default=((F("fail_count") + F("cancelled_count")) * Value(100))
+                        / F("run_count"),
                     ),
                     user_count=Count("runs__user", distinct=True, filter=start_filter),
                     user_string=StringAgg(

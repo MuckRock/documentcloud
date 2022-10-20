@@ -335,6 +335,15 @@ class AddOnRun(models.Model):
         if status == "completed":
             # if we are completed, use the conclusion as the status
             status = resp.json()["conclusion"]
+            if status == "failure":
+                # if we failed, check the job status to check for 'cancelled'
+                # which means it timed out
+                resp = requests.get(
+                    resp.json()["jobs_url"], headers=self.addon.api_headers
+                )
+                if resp.status_code == 200 and len(resp.json()["jobs"]) > 0:
+                    status = resp.json()["jobs"][0]["conclusion"]
+
         logger.info("[SET STATUS] %s - %s", self.uuid, self.status)
         self.status = status
         self.save(update_fields=["status"])
