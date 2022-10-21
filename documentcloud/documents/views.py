@@ -379,12 +379,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 all_keys = old_data_keys | data.keys()
                 for key in all_keys:
                     validated_data[f"data_{key}"] = None
-            field_updates = {f: "set" for f in validated_data}
-            if "noindex" in field_updates:
-                del field_updates["noindex"]
-                field_updates["noindex_b"] = "set"
-            kwargs = {"field_updates": field_updates}
-            print("Updating solr with kwargs:", kwargs)
+
+            kwargs = {"field_updates": {f: "set" for f in validated_data}}
 
         document.index_on_commit(**kwargs)
 

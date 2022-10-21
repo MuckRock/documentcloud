@@ -431,7 +431,7 @@ class Document(models.Model):
             "related_article": self.related_article,
             "publish_at": format_date(self.publish_at),
             "published_url": self.published_url,
-            "noindex_b": self.noindex,
+            "noindex": self.noindex,
             **pages,
             **data,
         }
