@@ -156,6 +156,7 @@
     <field name="title" type="text_general" uninvertible="true" indexed="true" stored="true" multiValued="false"/>
     <field name="updated_at" type="pdate" uninvertible="true" indexed="true" stored="true"/>
     <field name="user" type="pint" uninvertible="true" indexed="true" stored="true"/>
+    <field name="noindex" type="boolean" uninvertible="true" indexed="true" stored="true"/>
 
     <field name="title_sort" type="string" indexed="true" stored="false" uninvertible="false" docValues="true" />
     <field name="source_sort" type="string" indexed="true" stored="false" uninvertible="false" docValues="true" />

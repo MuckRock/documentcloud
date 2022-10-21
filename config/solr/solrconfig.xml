@@ -1726,6 +1726,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   title
                   updated_at
                   user
+                  noindex
                   edit_access:
                     or(
                       and(
