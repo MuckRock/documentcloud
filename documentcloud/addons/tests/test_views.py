@@ -196,7 +196,6 @@ class TestAddOnRunAPI:
         """Test updating a add-on run"""
         run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
-        progress = 50
         response = client.patch(
             f"/api/addon_runs/{run.uuid}/", {"rating": 1, "comment": "Great!"}
         )
@@ -209,7 +208,6 @@ class TestAddOnRunAPI:
         """Rating must be -1, 0 or 1"""
         run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
-        progress = 50
         response = client.patch(
             f"/api/addon_runs/{run.uuid}/", {"rating": 2, "comment": "Great!"}
         )
