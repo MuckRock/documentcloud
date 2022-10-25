@@ -31,6 +31,9 @@ class ProfessionalOrganizationFactory(OrganizationFactory):
     entitlement = factory.SubFactory(
         "documentcloud.organizations.tests.factories.ProfessionalEntitlementFactory"
     )
+    ai_credits_per_month = 2000
+    monthly_ai_credits = 2000
+    number_ai_credits = 200
 
 
 class MembershipFactory(factory.django.DjangoModelFactory):
@@ -58,8 +61,8 @@ class EntitlementFactory(factory.django.DjangoModelFactory):
     slug = factory.LazyAttribute(lambda obj: slugify(obj.name))
     resources = {
         "minimum_users": 1,
-        "base_pages": 0,
-        "pages_per_user": 0,
+        "base_ai_credits": 0,
+        "ai_credits_per_user": 0,
         "feature_level": 0,
     }
 
@@ -76,8 +79,8 @@ class ProfessionalEntitlementFactory(EntitlementFactory):
     name = "Professional"
     resources = {
         "minimum_users": 1,
-        "base_pages": 200,
-        "pages_per_user": 0,
+        "base_ai_credits": 2000,
+        "ai_credits_per_user": 0,
         "feature_level": 1,
     }
 
@@ -88,7 +91,7 @@ class OrganizationEntitlementFactory(EntitlementFactory):
     name = "Organization"
     resources = {
         "minimum_users": 5,
-        "base_pages": 500,
-        "pages_per_user": 50,
+        "base_ai_credits": 5000,
+        "ai_credits_per_user": 500,
         "feature_level": 2,
     }

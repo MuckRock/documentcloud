@@ -515,8 +515,8 @@ OEMBED_URL_REGEX = env("OEMBED_URL_REGEX", default="")
 SQUARELET_DISABLE_CREATE = env.bool("SQUARELET_DISABLE_CREATE", default=True)
 SQUARELET_RESOURCE_FIELDS = {
     "minimum_users": 1,
-    "base_pages": 0,
-    "pages_per_user": 0,
+    "base_ai_credits": 0,
+    "ai_credits_per_user": 0,
     "feature_level": 0,
 }
 

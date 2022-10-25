@@ -61,3 +61,10 @@ class SidekickPermissions(TokenPermissions):
 
     token_permissions = {"processing"}
     token_methods = ["PUT", "PATCH"]
+
+
+class OrganizationAICreditsPermissions(TokenPermissions):
+    """Alow the processing functions to reach organization AI credit routes"""
+
+    token_permissions = {"processing"}
+    token_methods = ["POST"]

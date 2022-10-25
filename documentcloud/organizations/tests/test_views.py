@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from rest_framework import status
 
 # Standard Library
@@ -59,3 +60,39 @@ class TestOrganizationAPI:
         organization = OrganizationFactory(private=True)
         response = client.get(f"/api/organizations/{organization.pk}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_ai_credits(self, client, pro_organization):
+        """Test charging AI credits"""
+        response = client.post(
+            f"/api/organizations/{pro_organization.pk}/ai_credits/",
+            {"ai_credits": 2100},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"monthly": 2000, "regular": 100}
+
+    def test_ai_credits_bad_auth(self, client, pro_organization):
+        """Test charging AI credits with bad authentication"""
+        response = client.post(
+            f"/api/organizations/{pro_organization.pk}/ai_credits/",
+            {"ai_credits": 100},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_ai_credits_bad_credits(self, client, pro_organization):
+        """Test charging AI credits with invalid credit value"""
+        response = client.post(
+            f"/api/organizations/{pro_organization.pk}/ai_credits/",
+            {"ai_credits": -1},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_ai_credits_too_many_credits(self, client, pro_organization):
+        """Test charging AI credits over the limit"""
+        response = client.post(
+            f"/api/organizations/{pro_organization.pk}/ai_credits/",
+            {"ai_credits": 3000},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

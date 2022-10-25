@@ -1,4 +1,5 @@
 # Django
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 # DocumentCloud
@@ -15,3 +16,19 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "name": {"read_only": True},
             "slug": {"read_only": True},
         }
+
+
+class AICreditSerializer(serializers.Serializer):
+    """Serializer for the AI credit endpoint"""
+
+    # pylint: disable=abstract-method
+
+    ai_credits = serializers.IntegerField(
+        label=_("AI Credits"),
+        help_text=_("Amount of AI credits to charge to the organization"),
+    )
+
+    def validate_ai_credits(self, value):
+        if value < 0:
+            raise serializers.ValidationError("AI credits may not be negative")
+        return value

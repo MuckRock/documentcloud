@@ -13,11 +13,11 @@ class OrganizationAdmin(SAOrganizationAdmin):
     """Organization Admin"""
 
     fields = SAOrganizationAdmin.fields + (
-        "pages_per_month",
-        "monthly_pages",
-        "number_pages",
+        "ai_credits_per_month",
+        "monthly_ai_credits",
+        "number_ai_credits",
         "language",
         "document_language",
     )
-    readonly_fields = SAOrganizationAdmin.readonly_fields + ("pages_per_month",)
+    readonly_fields = SAOrganizationAdmin.readonly_fields + ("ai_credits_per_month",)
     list_select_related = ("entitlement",)
