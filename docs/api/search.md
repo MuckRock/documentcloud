@@ -35,7 +35,7 @@ Proximity searches allow you to search for multiple words within a certain dista
 
 Range searches allow you to search for fields that fall within a certain range. For example, `pages:[2 TO 20]` will search for all documents with 2 to 20 pages, inclusive. You can use `{` and `}` for exclusive ranges, as well as mix and match them. Although this is most useful on numeric and date [fields](#fields), it will also work on text fields: `[a TO c]` will match all text alphabetically between a and c.
 
-You can also use `*` for either end of the range to make it open ended. For example, `pages:[100 TO *]` will find all documents with at least 100 pages.
+You can also use `*` for either end of the range to make it open ended. For example, `pages:[100 TO *]` will find all documents with at least 100 pages, while `pages:[* to 20]` will find all documents with at most 20 pages.
 
 ### Boosting
 
@@ -55,11 +55,12 @@ You can use parentheses to group terms, allowing for complex queries, such as `(
 
 ### Specifying Dates and Times
 
-Date times must be fully specified in the form `YYYY-MM-DDThh:mm:ssZ` where YYYY is the year, MM is the month, DD is the day, hh is the hour, mm is the minutes, and ss is the seconds. T is the literal T character and Z is the literal Z character. These are always expressed in UTC time. You may optionally include fractional seconds (`YYYY-MM-DDThh:mm:ss.fZ`).
+Date times must be fully specified in the form `"YYYY-MM-DDThh:mm:ssZ"` where YYYY is the year, MM is the month, DD is the day, hh is the hour, mm is the minutes, and ss is the seconds. T is the literal T character and Z is the literal Z character. These are always expressed in UTC time. You may optionally include fractional seconds (`"YYYY-MM-DDThh:mm:ss.fZ"`).  You must quote these for them to work in search queries.
+
 You may also use `NOW` to stand in for the current time. This is most useful when combined with date time math, which allows you to add or subtract time in the following units:
 `YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND`. For example `NOW+1DAY` would be one day from now. `NOW-2MONTHS` would be 2 months in the past.
 
-You may also use `/` to round to the closest time unit. For example, `NOW/HOUR` is the beginning of the current hour. These can be combined: `NOW-1YEAR+2MONTHS/MONTH` would be the beginning of the month, 2 months past one year ago. These are useful with ranged searches: `[NOW-1MONTH TO *]` would be all dates past one month ago.
+You may also use `/` to round to the closest time unit. For example, `NOW/HOUR` is the beginning of the current hour. These can be combined: `NOW-1YEAR+2MONTHS/MONTH` would be the beginning of the month, 2 months past one year ago. These are useful with [ranged](#ranges) searches: `[NOW-1MONTH TO *]` would be all dates in the past month.
 
 ### Sorting
 
