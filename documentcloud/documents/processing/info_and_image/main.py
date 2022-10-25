@@ -10,11 +10,13 @@ import logging
 import pickle
 import time
 from random import randint
+from urllib.parse import urljoin
 
 # Third Party
 import environ
 import pdfplumber
 import redis
+import requests
 from botocore.exceptions import ClientError
 from listcrunch import crunch_collection
 from PIL import Image
@@ -584,6 +586,17 @@ def process_page_cache(data, _context=None):
         # Create an index file that stores the memory locations of each page of the
         # PDF file.
         write_cache(path.index_path(doc_id, slug), cached)
+
+        # check AI credits if using premium OCR engine
+        if ocr_engine == "textract":
+            resp = requests.post(
+                urljoin(utils.API_CALLBACK, f"organizations/{org_id}/ai_credits/"),
+                json={"ai_credits": page_count},
+                timeout=30,
+                headers={"Authorization": f"processing-token {utils.PROCESSING_TOKEN}"},
+            )
+            if resp.status_code != 200:
+                ocr_engine = "tess4"
 
         # Method to publish image batches
         def pub(pages):

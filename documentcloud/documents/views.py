@@ -261,7 +261,20 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _process(self, document, force_ocr, ocr_engine):
         """Process a document after you have uploaded the file"""
-        transaction.on_commit(lambda: process.delay(document, force_ocr, ocr_engine))
+        transaction.on_commit(
+            lambda: process.delay(
+                {
+                    "id": document.pk,
+                    "slug": document.slug,
+                    "extension": document.original_extension,
+                    "access": document.access,
+                    "language": document.language,
+                    "organization_id": document.organization_id,
+                },
+                force_ocr,
+                ocr_engine,
+            )
+        )
         document.index_on_commit(field_updates={"status": "set"})
 
     @process.mapping.delete

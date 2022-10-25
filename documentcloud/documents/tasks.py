@@ -77,7 +77,18 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
         document.status = Status.pending
         document.save()
         document.index_on_commit(field_updates={"status": "set"})
-        process.delay(document, force_ocr, ocr_engine)
+        process.delay(
+            {
+                "id": document.pk,
+                "slug": document.slug,
+                "extension": document.original_extension,
+                "access": document.access,
+                "language": document.language,
+                "organization_id": document.organization_id,
+            },
+            force_ocr,
+            ocr_engine,
+        )
 
 
 def _httpsub_submit(url, document_pk, json, task_):
@@ -125,16 +136,16 @@ def process(document, force_ocr, ocr_engine):
     """Start the processing"""
     _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        document.pk,
+        document["id"],
         {
-            "doc_id": document.pk,
-            "slug": document.slug,
-            "extension": document.extension,
-            "access": document.access,
-            "ocr_code": Language.get_choice(document.language).ocr_code,
+            "doc_id": document["id"],
+            "slug": document["slug"],
+            "extension": document["extension"],
+            "access": document["access"],
+            "ocr_code": Language.get_choice(document["language"]).ocr_code,
             "method": "process_pdf",
             "force_ocr": force_ocr,
-            "org_id": document.organization_id,
+            "org_id": document["organization_id"],
             "ocr_engine": ocr_engine,
         },
         process,
