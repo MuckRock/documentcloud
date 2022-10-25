@@ -73,8 +73,8 @@ grpc-google-iam-v1==0.12.3  # via google-cloud-pubsub
 grpcio==1.47.0            # via google-api-core, googleapis-common-protos, grpc-google-iam-v1
 html2text==2020.1.16      # via -r requirements/base.in
 idna==2.8                 # via requests, yarl
-ipython==8.4.0            # via -r requirements/base.in
-jedi==0.16.0              # via ipython
+ipython==8.5.0            # via -r requirements/base.in
+jedi==0.18.1              # via ipython
 jmespath==0.9.4           # via boto3, botocore
 jsonschema==3.2.0         # via -r requirements/base.in
 kombu==4.6.8              # via celery
@@ -102,7 +102,7 @@ pikepdf==5.4.0            # via -r requirements/base.in
 pillow==9.2.0             # via -r requirements/base.in, pdfplumber, pikepdf
 ply==3.11                 # via luqum
 premailer==3.0.0          # via django-premailer
-prompt-toolkit==3.0.30    # via ipython
+prompt-toolkit==3.0.31    # via ipython
 proto-plus==1.13.0        # via google-cloud-language
 protobuf==3.14.0          # via google-api-core, googleapis-common-protos, proto-plus
 ptyprocess==0.6.0         # via pexpect

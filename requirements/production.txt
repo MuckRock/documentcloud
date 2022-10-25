@@ -81,9 +81,9 @@ grpcio==1.47.0            # via -r requirements/./base.txt, google-api-core, goo
 gunicorn==20.1.0          # via -r requirements/production.in
 html2text==2020.1.16      # via -r requirements/./base.txt
 idna==2.8                 # via -r requirements/./base.txt, requests, urllib3, yarl
-ipython==8.4.0            # via -r requirements/./base.txt
+ipython==8.5.0            # via -r requirements/./base.txt
 isodatetimehandler==1.0.2  # via moesifapi, moesifdjango
-jedi==0.16.0              # via -r requirements/./base.txt, ipython
+jedi==0.18.1              # via -r requirements/./base.txt, ipython
 jmespath==0.9.4           # via -r requirements/./base.txt, boto3, botocore
 jsonpickle==2.0.0         # via moesifapi, moesifdjango
 jsonschema==3.2.0         # via -r requirements/./base.txt
@@ -116,7 +116,7 @@ pikepdf==5.4.0            # via -r requirements/./base.txt
 pillow==9.2.0             # via -r requirements/./base.txt, pdfplumber, pikepdf
 ply==3.11                 # via -r requirements/./base.txt, luqum
 premailer==3.0.0          # via -r requirements/./base.txt, django-premailer
-prompt-toolkit==3.0.30    # via -r requirements/./base.txt, ipython
+prompt-toolkit==3.0.31    # via -r requirements/./base.txt, ipython
 proto-plus==1.13.0        # via -r requirements/./base.txt, google-cloud-language
 protobuf==3.14.0          # via -r requirements/./base.txt, google-api-core, googleapis-common-protos, proto-plus
 psutil==5.7.3             # via scout-apm
