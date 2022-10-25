@@ -193,7 +193,9 @@ class Document(models.Model):
     noindex = models.BooleanField(
         _("noindex"),
         default=False,
-        help_text=_("Ask Google to not index this document"),
+        help_text=_(
+            "Ask search engines and DocumentCloud search to not index this document"
+        ),
     )
 
     # legacy fields
