@@ -5,6 +5,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
+from urllib.parse import urljoin
 
 # Third Party
 import boto3
@@ -285,6 +286,17 @@ def run_tesseract(data, _context=None):
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
     ocr_engine = data.get("ocr_engine", "tess4")
+    org_id = data.get("org_id", None)
+
+    if ocr_engine == "textract":
+        resp = utils.requests_retry_session().post(
+            urljoin(utils.API_CALLBACK, f"/organizations/{org_id}/ai_credits/"),
+            json={"ai_credits": len(paths_and_numbers)},
+            timeout=30,
+            headers={"Authorization": f"processing-token {utils.PROCESSING_TOKEN}"},
+        )
+        if resp.status != 200:
+            ocr_engine = "tess4"
 
     if force_ocr:
         ocr_version = f"{ocr_engine}_force"

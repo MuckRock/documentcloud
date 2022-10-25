@@ -9,3 +9,4 @@ pebble==4.5.0
 redis==3.4.1
 requests==2.22.0
 sentry-sdk==0.14.0
+urllib3==1.26.12

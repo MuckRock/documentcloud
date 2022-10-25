@@ -562,7 +562,7 @@ def process_page_cache(data, _context=None):
     dirty = data.get("dirty")
     force_ocr = data.get("force_ocr", False)
     ocr_engine = data.get("ocr_engine", "tess4")
-    org_id = data.get("org_id", "")
+    org_id = data.get("org_id", None)
     page_modification = data.get("page_modification", None)
 
     logger.info("[PROCESS PAGE CACHE] doc_id %s", doc_id)
@@ -633,6 +633,7 @@ def process_pdf(data, _context=None):
     ocr_engine = data.get("ocr_engine", "tess4")
     ocr_code = data.get("ocr_code", "eng")
     page_modification = data.get("page_modification", None)
+    org_id = data.get("org_id", None)
 
     logger.info("[PROCESS PDF] doc_id %s", doc_id)
 
@@ -666,6 +667,7 @@ def process_pdf(data, _context=None):
                 "ocr_code": ocr_code,
                 "force_ocr": force_ocr,
                 "ocr_engine": ocr_engine,
+                "org_id": org_id,
                 "page_modification": page_modification,
             }
         ),
@@ -727,6 +729,7 @@ def extract_image(data, _context=None):
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
     force_ocr = data["force_ocr"]
     ocr_engine = data.get("ocr_engine", "tess4")
+    org_id = data.get("org_id", None)
     page_modification = data.get("page_modification", None)
 
     logger.info(
@@ -755,6 +758,7 @@ def extract_image(data, _context=None):
                     "partial": partial,
                     "force_ocr": force_ocr,
                     "ocr_engine": ocr_engine,
+                    "org_id": org_id,
                     "page_modification": page_modification,
                 }
             ),

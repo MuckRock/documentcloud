@@ -14,6 +14,8 @@ import furl
 import redis as _redis
 import requests
 from redis.lock import Lock
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Local
 from .. import redis_fields
@@ -125,6 +127,30 @@ def request(redis, method, url, json_):
         publisher.publish(RETRY_ERROR_TOPIC, encode_pubsub_data({}))
 
     return response
+
+
+def requests_retry_session(
+    retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None
+):
+    """
+    Automatic retries for HTTP requests
+    See: https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+
+    This is used for AI credit requests, which we expect may return 400 and which
+    we cannot wait for longer retries
+    """
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
 
 
 def send_update(redis, doc_id, json_):

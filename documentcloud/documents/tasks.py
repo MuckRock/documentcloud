@@ -20,6 +20,7 @@ from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
 from documentcloud.common.environment import httpsub, storage
+from documentcloud.core.choices import Language
 from documentcloud.documents import entity_extraction, modifications, solr
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError
@@ -76,15 +77,7 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
         document.status = Status.pending
         document.save()
         document.index_on_commit(field_updates={"status": "set"})
-        process.delay(
-            document_pk,
-            document.slug,
-            document.access,
-            document.language,
-            force_ocr,
-            ocr_engine,
-            document.original_extension,
-        )
+        process.delay(document, force_ocr, ocr_engine)
 
 
 def _httpsub_submit(url, document_pk, json, task_):
@@ -128,21 +121,20 @@ def _httpsub_submit(url, document_pk, json, task_):
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
-def process(
-    document_pk, slug, access, ocr_code, force_ocr, ocr_engine, extension="pdf"
-):
+def process(document, force_ocr, ocr_engine):
     """Start the processing"""
     _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        document_pk,
+        document.pk,
         {
-            "doc_id": document_pk,
-            "slug": slug,
-            "extension": extension,
-            "access": access,
-            "ocr_code": ocr_code,
+            "doc_id": document.pk,
+            "slug": document.slug,
+            "extension": document.extension,
+            "access": document.access,
+            "ocr_code": Language.get_choice(document.language).ocr_code,
             "method": "process_pdf",
             "force_ocr": force_ocr,
+            "org_id": document.organization_id,
             "ocr_engine": ocr_engine,
         },
         process,
