@@ -6,6 +6,7 @@ from rest_framework import status
 # Standard Library
 import json
 import uuid
+from unittest.mock import Mock
 
 # Third Party
 import pytest
@@ -89,7 +90,10 @@ class TestUserAPI:
         response = client.get("/api/users/me/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
-        serializer = UserSerializer(user)
+        context = {"request": Mock(), "view": Mock()}
+        context["request"].user.is_staff = False
+        context["view"].kwargs = {"pk": "me"}
+        serializer = UserSerializer(user, context=context)
         assert response_json == serializer.data
         assert "is_staff" not in response_json
 

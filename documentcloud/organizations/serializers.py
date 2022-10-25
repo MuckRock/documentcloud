@@ -9,13 +9,35 @@ from documentcloud.organizations.models import Organization
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ["id", "avatar_url", "individual", "name", "slug", "uuid"]
+        fields = [
+            "id",
+            "avatar_url",
+            "individual",
+            "monthly_ai_credits",
+            "name",
+            "number_ai_credits",
+            "slug",
+            "uuid",
+        ]
         extra_kwargs = {
             "avatar_url": {"read_only": True},
             "individual": {"read_only": True},
             "name": {"read_only": True},
             "slug": {"read_only": True},
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        context = kwargs.get("context", {})
+        request = context.get("request")
+        user = request and request.user
+        is_org = isinstance(self.instance, Organization)
+        if not (
+            is_org and user and user.is_authenticated and self.instance.has_member(user)
+        ):
+            # only members may see AI credits
+            del self.fields["monthly_ai_credits"]
+            del self.fields["number_ai_credits"]
 
 
 class AICreditSerializer(serializers.Serializer):
