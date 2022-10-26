@@ -606,9 +606,6 @@ def _format_response(results, query_params, user, escaped, page_data):
     expands = query_params.get("expand", "").split(",")
     count = results.hits
 
-    for result in results:
-        print("result:", result)
-
     results = _add_canonical_url(
         _add_asset_url(_format_notes(_format_data(_format_highlights(results))))
     )
