@@ -62,7 +62,7 @@ django-timezone-field==4.2.1  # via -r requirements/./base.txt, django-celery-be
 djangorestframework==3.12.4  # via -r requirements/./base.txt, djangorestframework-simplejwt, drf-nested-routers, rest-social-auth
 djangorestframework-simplejwt==4.8.0  # via -r requirements/./base.txt
 dogslow==1.2              # via -r requirements/./base.txt
-drf-flex-fields==0.6.1    # via -r requirements/./base.txt
+drf-flex-fields==1.0.0    # via -r requirements/./base.txt
 drf-nested-routers==0.91  # via -r requirements/./base.txt
 ecdsa==0.13.2             # via -r requirements/./base.txt, python-jose
 executing==0.8.3          # via -r requirements/./base.txt, stack-data

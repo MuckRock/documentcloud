@@ -26,18 +26,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "slug": {"read_only": True},
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        context = kwargs.get("context", {})
-        request = context.get("request")
+    def to_representation(self, instance):
+        request = self.context and self.context.get("request")
         user = request and request.user
-        is_org = isinstance(self.instance, Organization)
+        is_org = isinstance(instance, Organization)
         if not (
-            is_org and user and user.is_authenticated and self.instance.has_member(user)
+            is_org and user and user.is_authenticated and instance.has_member(user)
         ):
             # only members may see AI credits
-            del self.fields["monthly_ai_credits"]
-            del self.fields["number_ai_credits"]
+            self.fields.pop("monthly_ai_credits", None)
+            self.fields.pop("number_ai_credits", None)
+        return super().to_representation(instance)
 
 
 class AICreditSerializer(serializers.Serializer):

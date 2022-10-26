@@ -6,7 +6,7 @@ from rest_framework import status
 # Standard Library
 import json
 import uuid
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 # Third Party
 import pytest
@@ -90,7 +90,7 @@ class TestUserAPI:
         response = client.get("/api/users/me/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
-        context = {"request": Mock(), "view": Mock()}
+        context = {"request": MagicMock(), "view": MagicMock()}
         context["request"].user.is_staff = False
         context["view"].kwargs = {"pk": "me"}
         serializer = UserSerializer(user, context=context)
