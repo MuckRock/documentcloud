@@ -27,15 +27,19 @@ class OrganizationSerializer(serializers.ModelSerializer):
         }
 
     def to_representation(self, instance):
-        request = self.context and self.context.get("request")
-        user = request and request.user
-        is_org = isinstance(instance, Organization)
-        if not (
-            is_org and user and user.is_authenticated and instance.has_member(user)
-        ):
-            # only members may see AI credits
-            self.fields.pop("monthly_ai_credits", None)
-            self.fields.pop("number_ai_credits", None)
+        """Check if this instance should display AI credits"""
+        if "monthly_ai_credits" in self.fields:
+            # skip checks if we have already removed the fields
+            request = self.context and self.context.get("request")
+            user = request and request.user
+            is_org = isinstance(instance, Organization)
+            if not (
+                is_org and user and user.is_authenticated and instance.has_member(user)
+            ):
+                # only members may see AI credits
+                self.fields.pop("monthly_ai_credits")
+                self.fields.pop("number_ai_credits")
+
         return super().to_representation(instance)
 
 

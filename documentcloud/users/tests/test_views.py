@@ -112,7 +112,12 @@ class TestUserAPI:
         response = client.get("/api/users/me/", {"expand": "organization"})
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
-        organization_serializer = OrganizationSerializer(user.organization)
+        context = {"request": MagicMock(), "view": MagicMock()}
+        context["request"].user = user
+        serializer = UserSerializer(user, context=context)
+        organization_serializer = OrganizationSerializer(
+            user.organization, context=context
+        )
         assert response_json["organization"] == organization_serializer.data
 
     def test_retrieve_me_anonymous(self, client):
