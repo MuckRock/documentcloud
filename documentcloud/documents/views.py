@@ -178,9 +178,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             document.index_on_commit()
             if file_url is not None:
                 transaction.on_commit(
-                    lambda d=document, fu=file_url, fo=force_ocr, oe=ocr_engine: fetch_file_url.delay(
+                    # fmt: off
+                    lambda d=document, fu=file_url, fo=force_ocr, oe=ocr_engine:
+                    fetch_file_url.delay(
                         fu, d.pk, fo, oe
                     )
+                    # fmt: on
                 )
 
     @transaction.atomic

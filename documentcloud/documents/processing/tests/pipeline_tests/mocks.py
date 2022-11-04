@@ -84,6 +84,7 @@ def page_extracted(page_number):
 def page_ocrd(
     doc_id, ocr_engine, page_path, upload_text_path, access, language, slug, page_number
 ):
+    # pylint: disable=too-many-arguments
     pass
 
 
@@ -222,6 +223,7 @@ def update_pagespec(doc_id):
 def ocr_page(
     doc_id, ocr_engine, page_path, upload_text_path, access, language, slug, page_number
 ):
+    # pylint: disable=too-many-arguments
     page_ocrd(
         doc_id,
         ocr_engine,

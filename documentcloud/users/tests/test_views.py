@@ -114,7 +114,6 @@ class TestUserAPI:
         response_json = json.loads(response.content)
         context = {"request": MagicMock(), "view": MagicMock()}
         context["request"].user = user
-        serializer = UserSerializer(user, context=context)
         organization_serializer = OrganizationSerializer(
             user.organization, context=context
         )

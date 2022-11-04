@@ -826,20 +826,6 @@ class TestDocumentAPI:
         response = client.post(f"/api/documents/{document.pk}/process/")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_process_force_ocr(self, client, document, mocker):
-        """Test processing a document and force ocr"""
-        # pretend the file exists
-        mocker.patch(
-            "documentcloud.common.environment.storage.exists", return_value=True
-        )
-        client.force_authenticate(user=document.user)
-        response = client.post(
-            f"/api/documents/{document.pk}/process/", {"force_ocr": True}
-        )
-        assert response.status_code == status.HTTP_200_OK
-        document.refresh_from_db()
-        assert document.status == Status.pending
-
     def test_bulk_process(self, client, user, mocker, django_assert_num_queries):
         """Test processing multiple documents"""
         # pretend the files exists
