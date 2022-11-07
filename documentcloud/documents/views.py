@@ -25,6 +25,8 @@ from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
+from documentcloud.addons.choices import Event
+from documentcloud.addons.models import AddOnEvent
 from documentcloud.common.environment import httpsub
 from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
@@ -362,6 +364,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._update_access(instance, old_access, validated_data)
             self._update_solr(instance, old_processing, old_data_key, validated_data)
             self._update_cache(instance, old_processing)
+            self._run_addons(instance, old_processing)
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
@@ -414,6 +417,22 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         """Invalidate the cache when finished processing a detructive operation"""
         if old_processing and not document.processing and document.cache_dirty:
             transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
+
+    def _run_addons(self, document, old_processing):
+        """Run upload add-ons once the document is succesfully processed"""
+        if old_processing and document.status == Status.success:
+            events = AddOnEvent.objects.filter(
+                event=Event.upload,
+                user=document.user,
+            )
+            if events:
+                logger.info(
+                    "[DISPATCHING EVENTS] upload doc: %s events: %d",
+                    document.pk,
+                    len(events),
+                )
+            for event in events:
+                event.dispatch(document_pk=document.pk)
 
     @action(detail=False, methods=["get"])
     def search(self, request):

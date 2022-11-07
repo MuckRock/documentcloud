@@ -420,10 +420,15 @@ class AddOnEvent(models.Model):
     def __str__(self):
         return f"Event: {self.addon_id} - {self.event}"
 
-    def dispatch(self):
+    def dispatch(self, document_pk=None):
         """Run the add-on when triggered by this event"""
         # DocumentCloud
         from documentcloud.addons.tasks import dispatch
+
+        if document_pk is None:
+            documents = []
+        else:
+            documents = [document_pk]
 
         with transaction.atomic():
             run = AddOnRun.objects.create(
@@ -434,7 +439,7 @@ class AddOnEvent(models.Model):
                     run.addon_id,
                     run.uuid,
                     self.user_id,
-                    [],
+                    documents,
                     "",
                     self.parameters,
                     self.id,
