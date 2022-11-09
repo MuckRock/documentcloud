@@ -366,7 +366,7 @@ REST_FRAMEWORK = {
         "documentcloud.core.authentication.ProcessingTokenAuthentication",
     ),
     "DEFAULT_VERSIONING_CLASS": "documentcloud.core.versioning.QueryParameterVersioning",
-    "DEFAULT_VERSION": "1.0",
+    "DEFAULT_VERSION": env("REST_FRAMEWORK_DEFAULT_VERSION", default="1.0"),
     "ALLOWED_VERSIONS": ["1.0", "2.0"],
 }
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)

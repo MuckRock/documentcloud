@@ -114,8 +114,10 @@ class VersionedPagination(pagination.BasePagination):
     # pylint: disable=abstract-method
 
     def __init__(self):
-        self.default_paginator = PageNumberPagination()
-        self.paginators = {"1.0": self.default_paginator, "2.0": CursorPagination()}
+        self.paginators = {"1.0": PageNumberPagination(), "2.0": CursorPagination()}
+        self.default_paginator = self.paginators[
+            settings.REST_FRAMEWORK["DEFAULT_VERSION"]
+        ]
 
     def paginate_queryset(self, queryset, request, view=None):
         self.request = request
