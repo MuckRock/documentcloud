@@ -42,14 +42,14 @@ Lists response will be of the form
 
 ```
 {
-    "count": <count>,
     "next": <next url if applicable>,
     "previous": <previous url if applicable>,
     "results": <list of results>
 }
 ```
 
-with a 200 status code.
+with a 200 status code.  The document search route will also include a `count`
+key, with a total count of all documents returned by the search.
 
 Getting a single resource, creating and updating will return just the object.
 Create uses a 201 status code and get and update will return 200.
@@ -70,28 +70,30 @@ All list views accept a `per_page` parameter, which specifies how many
 resources to list per page. It is `25` by default and may be set up to `100`
 for authenticated users. For anonymous users it is restricted to `25`. You
 may register for a free account at <https://accounts.muckrock.com/> to use the
-`100` limit. You may view subsequent pages by using the `next` URL, or by
-specifying a `page` parameter directly.
+`100` limit. You may view subsequent pages by using the `next` URL.
 
 #### Cursor Based Pagination
 
 Page offset pagination does not scale well to a large number of pages.  For
-improved performance, DocumentCloud will be switching to a cursor based
+improved performance, DocumentCloud uses a cursor based
 pagination system.  Instead of a `page` parameter, there is a `cursor`
 parameter, which accepts an opaque `cursor` which specifies the last value
 seen.  To use this system, you must use the `next` and `previous` links as
 returned by the API, as random access is not available.  This system also
-restricts arbitrary ordering of the results, accept for the document search
-route, which will still allow re-ordering with cursor based pagination.  The
-`per_page` parameter will also continue to work.  To opt in to this system now
-and get increased performance, add the query parameter `version=2.0` to all of
-your API queries.  The latest version of the python library is already using
-this version.  In the future, the default version will be switched to cursor
-pagination, and some time after that page offset based pagination will be
-disabled completely.  If you do not set the page parameter manually, it is
-likely you will not have to make any changes to your scripts.  If you do set
-the `page` parameter, you will need to switch to using the `next` and
-`previous` links.
+restricts arbitrary ordering of the results, except for the document search
+route, which will still allow re-ordering with cursor based pagination.
+
+If the cursor based pagination breaks your workflow, you may continue to use
+the old page-offset based pagination system for now.  In the future, this will
+be disabled completely, and you will be forced to use the cursor based
+pagination.  To use the page-offset based pagination, which also has a top
+level `count` key with a total count of the objects returned for all list
+queries, add a `version=1.0` query parameter to your API queries.  Be aware
+that this will make your queries less performant, possibly to the point of them
+being unusable.  This should only be used as a stop-gap solution while you
+update your workflow to use the new cursor based pagination.  Please reach out
+to [info@documentcloud.org](mailto:info@documentcloud.org) if you need
+assistance moving to the new version.
 
 ### Sub Resources
 
