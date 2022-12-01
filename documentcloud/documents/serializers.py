@@ -136,6 +136,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "file_hash",
             "file_url",
             "force_ocr",
+            "noindex",
             "language",
             "ocr_engine",
             "organization",

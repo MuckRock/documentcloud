@@ -190,6 +190,14 @@ class Document(models.Model):
         ),
     )
 
+    noindex = models.BooleanField(
+        _("noindex"),
+        default=False,
+        help_text=_(
+            "Ask search engines and DocumentCloud search to not index this document"
+        ),
+    )
+
     # legacy fields
 
     calais_id = models.CharField(
@@ -425,6 +433,7 @@ class Document(models.Model):
             "related_article": self.related_article,
             "publish_at": format_date(self.publish_at),
             "published_url": self.published_url,
+            "noindex": self.noindex,
             **pages,
             **data,
         }

@@ -405,6 +405,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 all_keys = old_data_keys | data.keys()
                 for key in all_keys:
                     validated_data[f"data_{key}"] = None
+
             kwargs = {"field_updates": {f: "set" for f in validated_data}}
 
         document.index_on_commit(**kwargs)

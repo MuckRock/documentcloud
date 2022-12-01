@@ -961,6 +961,22 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_noindex(self, client, document):
+        """Test updating a document to be unindexed"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"noindex": True})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.noindex
+
+    def test_update_unnoindex(self, client, document):
+        """Test updating a document to be unindexed"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"noindex": False})
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert not document.noindex
+
 
 @pytest.mark.django_db()
 class TestDocumentErrorAPI:
