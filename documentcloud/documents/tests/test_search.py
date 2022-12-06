@@ -11,6 +11,7 @@ from unittest.mock import Mock
 import pysolr
 import pytest
 import pytz
+from furl import furl
 from luqum.parser import parser
 
 # DocumentCloud
@@ -160,7 +161,9 @@ class TestSearch:
     def test_search_page(self):
         """Test fetching a given page of results"""
 
-        response = self.search("page=2")
+        response = self.search("")
+        url = furl(response["next"])
+        response = self.search(url.querystr)
         self.assert_documents(response["results"], slice_=slice(10, 20))
 
     def test_search_per_page(self):
