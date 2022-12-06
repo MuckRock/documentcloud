@@ -68,3 +68,21 @@ class OrganizationAICreditsPermissions(TokenPermissions):
 
     token_permissions = {"processing"}
     token_methods = ["POST"]
+
+    def _has_token_permission(self, request):
+        return (
+            request.method in self.token_methods
+            and hasattr(request, "auth")
+            and request.auth is not None
+            and self.token_permissions.issubset(request.auth.get("permissions", []))
+        )
+
+    def has_permission(self, request, view):
+        return self._has_token_permission(request) or request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        # if it has a processing token, always return True
+        if self._has_token_permission(request):
+            return True
+        # if not, they must be a member of this organization
+        return obj.has_member(request.user)

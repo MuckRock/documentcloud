@@ -23,9 +23,7 @@ from documentcloud.organizations.serializers import (
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.none()
-    permission_classes = (
-        DjangoObjectPermissionsOrAnonReadOnly | OrganizationAICreditsPermissions,
-    )
+    permission_classes = (DjangoObjectPermissionsOrAnonReadOnly,)
 
     def get_queryset(self):
         self.valid_token = (
@@ -38,13 +36,14 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             return Organization.objects.get_viewable(self.request.user)
 
-    @action(detail=True, methods=["post"])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[OrganizationAICreditsPermissions],
+    )
     def ai_credits(self, request, pk=None):
         """Charge AI credits to the organization"""
         # pylint: disable=unused-argument
-        if not self.valid_token:
-            # only the lambda processing should be allowed to charge AI credits for now
-            raise PermissionDenied()
         organization = self.get_object()
         serializer = AICreditSerializer(
             data=request.data, context=self.get_serializer_context()

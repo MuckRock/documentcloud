@@ -10,7 +10,10 @@ import pytest
 
 # DocumentCloud
 from documentcloud.organizations.serializers import OrganizationSerializer
-from documentcloud.organizations.tests.factories import OrganizationFactory
+from documentcloud.organizations.tests.factories import (
+    OrganizationFactory,
+    ProfessionalOrganizationFactory,
+)
 
 
 @pytest.mark.django_db()
@@ -71,11 +74,32 @@ class TestOrganizationAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"monthly": 2000, "regular": 100}
 
-    def test_ai_credits_bad_auth(self, client, pro_organization):
-        """Test charging AI credits with bad authentication"""
+    def test_ai_credits_user(self, client, user):
+        """Test charging AI credits as a user"""
+        client.force_authenticate(user=user)
+        organization = ProfessionalOrganizationFactory(members=[user])
+        response = client.post(
+            f"/api/organizations/{organization.pk}/ai_credits/",
+            {"ai_credits": 1},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"monthly": 1, "regular": 0}
+
+    def test_ai_credits_no_auth(self, client, pro_organization):
+        """Test charging AI credits with no authentication"""
         response = client.post(
             f"/api/organizations/{pro_organization.pk}/ai_credits/",
             {"ai_credits": 100},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_ai_credits_bad_user(self, client, user):
+        """Test charging AI credits as a user not in the organization"""
+        client.force_authenticate(user=user)
+        organization = ProfessionalOrganizationFactory()
+        response = client.post(
+            f"/api/organizations/{organization.pk}/ai_credits/",
+            {"ai_credits": 1},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
