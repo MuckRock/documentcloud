@@ -205,6 +205,7 @@ documents](#project-documents).
 | title               | String       | Required           | The document's title                                                                                                                                             |
 | updated_at          | Date Time    | Read Only          | Time stamp when the document was last updated                                                                                                                    |
 | user                | Integer      | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                           |
+| noindex                | Bool      | Not required          | Ask search engines and DocumentCloud search to not index this document                                                                                                           |
 
 [Expandable fields](#expandable-fields): user, organization, projects, sections, notes
 
