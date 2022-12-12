@@ -929,13 +929,14 @@ The static assets for a document are loaded from different URLs depending on
 its [access level](#access-levels). Append the following to the `asset_url`
 returned to load the static asset:
 
-| Asset      | Path                                                          | Description                                                     |
-| ---------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| Document   | documents/\<id\>/\<slug\>.pdf                                 | The original document                                           |
-| Full Text  | documents/\<id\>/\<slug\>.txt                                 | The full text of the document, obtained from the PDF or via OCR |
-| JSON Text  | documents/\<id\>/\<slug\>.txt.json                            | The text of the document, in a custom JSON format (see below)   |
-| Page Text  | documents/\<id\>/pages/\<slug\>-p\<page number\>.txt          | The text for each page in the document                          |
-| Page Image | documents/\<id\>/pages/\<slug\>-p\<page number\>-\<size\>.gif | An image of each page in the document, in various sizes         |
+| Asset          | Path                                                           | Description                                                     |
+| ----------     | -------------------------------------------------------------  | --------------------------------------------------------------- |
+| Document       | documents/\<id\>/\<slug\>.pdf                                  | The original document                                           |
+| Full Text      | documents/\<id\>/\<slug\>.txt                                  | The full text of the document, obtained from the PDF or via OCR |
+| JSON Text      | documents/\<id\>/\<slug\>.txt.json                             | The text of the document, in a custom JSON format (see below)   |
+| Page Text      | documents/\<id\>/pages/\<slug\>-p\<page number\>.txt           | The text for each page in the document                          |
+| Page Positions | documents/\<id\>/pages/\<slug\>-p\<page number\>.position.json | The position of text on each page, in a custom JSON format      |
+| Page Image     | documents/\<id\>/pages/\<slug\>-p\<page number\>-\<size\>.gif  | An image of each page in the document, in various sizes         |
 
 \<size\> may be one of `large`, `normal`, `small`, or `thumbnail`
 
@@ -952,6 +953,19 @@ have a `page` key, which is a 0-indexed page number. There is a `contents` key
 which contains the text for the page. There is an `ocr` key, which is the
 version of OCR software used to obtain the text. Finally there is an `updated`
 key, which is a Unix time stamp of when this page was last updated.
+
+#### Position JSON Format
+
+The position JSON file constains position information for each word of text on
+the page.  It is an optional file, which may be generated depending on the type
+of OCR run on the document.  If it exists, it will be a JSON array, which
+contains a JSON object for each word of text.  The object for each word will
+have the following fields:
+
+* `text` - The text for the current word
+* `x1`, `x2`, `y1`, `y2` - The coordinates of the bounding box for this word on
+  the page.  Each value will be between 0 and 1 and represents a percentage of
+  the width or height of the page.
 
 ### Expandable Fields
 
