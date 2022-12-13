@@ -57,6 +57,13 @@ class PageNumberValidationMixin:
         return value
 
 
+class PageSerializer(serializers.Serializer):
+    """Serializer for page text"""
+
+    page_number = serializers.IntegerField(min_value=0)
+    text = serializers.CharField(allow_blank=True)
+
+
 class DocumentSerializer(FlexFieldsModelSerializer):
 
     presigned_url = serializers.SerializerMethodField(
@@ -120,6 +127,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         help_text=_("The canonical URL to access this document"),
     )
 
+    pages = PageSerializer(required=False, write_only=True, many=True)
+
     class Meta:
         model = Document
         list_serializer_class = BulkListSerializer
@@ -143,6 +152,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "original_extension",
             "page_count",
             "page_spec",
+            "pages",
             "presigned_url",
             "projects",
             "publish_at",
