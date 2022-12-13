@@ -75,6 +75,7 @@ from documentcloud.documents.tasks import (
     process,
     process_cancel,
     redact,
+    set_page_text,
     solr_delete_note,
     solr_index_note,
     update_access,
@@ -319,6 +320,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_validate_access(self, instances, validated_datas):
         """Validate access after instances have been filtered"""
+        # XXX check for page text updates here also
         for instance, validated_data in zip(instances, validated_datas):
             # disallow any access change while processing
             if "access" in validated_data and instance.processing:
@@ -365,6 +367,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._update_solr(instance, old_processing, old_data_key, validated_data)
             self._update_cache(instance, old_processing)
             self._run_addons(instance, old_processing)
+            self._set_page_text(instance, validated_data)
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
@@ -433,6 +436,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 )
             for event in events:
                 event.dispatch(document_pk=document.pk)
+
+    def _set_page_text(self, document, validated_data):
+        if "pages" in validated_data:
+            set_page_text.delay(document.pk, validated_data["pages"])
 
     @action(detail=False, methods=["get"])
     def search(self, request):

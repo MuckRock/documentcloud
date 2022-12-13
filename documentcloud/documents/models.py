@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 import json
 import logging
 import sys
+import time
 import uuid
 
 # Third Party
@@ -379,6 +380,51 @@ class Document(models.Model):
             )
             return {"pages": [], "updated": None}
 
+    def set_page_text(self, page_text_infos):
+        # get the json text
+        json_text = self.get_all_page_text()
+
+        # set the individual text pages
+        timestamp = int(round(time.time() * 1000))
+        json_text["updated"] = timestamp
+        if len(json_text["pages"]) < self.page_count:
+            json_text["pages"].extend(
+                [{} for _ in range(self.page_count - len(json_text["pages"]))]
+            )
+        file_names = []
+        file_contents = []
+        for page_text_info in page_text_infos:
+            page = page_text_info["page_number"]
+            text = page_text_info["text"]
+            ocr = page_text_info.get("ocr")
+            file_names.append(path.page_text_path(self.pk, self.slug, page))
+            file_contents.append(text.encode("utf8"))
+            # overwrite the text in the JSON format
+            json_text["pages"][page] = {
+                "page": page,
+                "contents": text,
+                "ocr": ocr,
+                "updated": timestamp,
+            }
+
+        # set the full text
+        concatenated_text = b"\n\n".join(
+            [p["contents"].encode("utf-8") for p in json_text["pages"]]
+        )
+        file_names.append(path.text_path(self.pk, self.slug))
+        file_contents.append(concatenated_text)
+
+        # set the json text
+        file_names.append(path.json_text_path(self.pk, self.slug))
+        file_contents.append(json.dumps(json_text).encode("utf-8"))
+
+        # upload the text to S3
+        logger.info("[SET PAGE TEXT] upload %d", self.pk)
+        # reverse the lists to upload the larger files first
+        storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
+
+        return json_text
+
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
 
@@ -547,7 +593,7 @@ class Page(models.Model):
         verbose_name=_("document"),
         to="documents.Document",
         on_delete=models.CASCADE,
-        related_name="pages",
+        related_name="+",
         help_text=_("The document this page belongs to"),
     )
     page_number = models.PositiveIntegerField(

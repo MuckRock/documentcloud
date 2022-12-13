@@ -92,6 +92,44 @@ class AwsStorage:
         with io.BytesIO(contents) as mem_file:
             self.s3_client.upload_fileobj(mem_file, bucket, key, ExtraArgs=extra_args)
 
+    def async_upload(
+        self, file_names, contents, content_types=None, access=access_choices.PRIVATE
+    ):
+        """Upload given files in parallel"""
+        # import aioboto3 locally to avoid needing it installed on lambda
+        # Third Party
+        import aioboto3
+
+        if content_types is None:
+            content_types = [None for _ in range(len(file_names))]
+
+        async def main():
+            session = aioboto3.Session()
+            async with session.client("s3", **self.resource_kwargs) as as3_client:
+                tasks = []
+                for file_name, content, content_type in zip(
+                    file_names, contents, content_types
+                ):
+                    bucket, key = self.bucket_key(file_name)
+                    extra_args = {"ACL": ACLS[access]}
+                    if content_type is None:
+                        # attempt to guess content type if not specified
+                        content_type = mimetypes.guess_type(file_name)[0]
+                    if content_type is not None:
+                        # set content type if we have one
+                        extra_args["ContentType"] = content_type
+
+                    tasks.append(
+                        as3_client.upload_fileobj(
+                            io.BytesIO(content), bucket, key, ExtraArgs=extra_args
+                        )
+                    )
+
+                await asyncio.gather(*tasks)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+
     def presign_url(self, file_name, method_name, use_custom_domain=False):
 
         if (
