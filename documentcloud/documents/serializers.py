@@ -60,8 +60,10 @@ class PageNumberValidationMixin:
 class PageSerializer(serializers.Serializer):
     """Serializer for page text"""
 
+    # pylint: disable=abstract-method
     page_number = serializers.IntegerField(min_value=0)
     text = serializers.CharField(allow_blank=True)
+    ocr = serializers.CharField(required=False, max_length=20)
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):

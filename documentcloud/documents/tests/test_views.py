@@ -545,6 +545,20 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.user != user
 
+    def test_update_text(self, client, document):
+        """Test updating a documents text"""
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {
+                "pages": [
+                    {"page_number": 0, "text": "Page 1 text"},
+                    {"page_number": 1, "text": "Page 2 text"},
+                ]
+            },
+        )
+        assert response.status_code == status.HTTP_200_OK
+
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
