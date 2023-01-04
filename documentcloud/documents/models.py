@@ -395,9 +395,17 @@ class Document(models.Model):
         elif isinstance(index_text, dict):
             page_text = index_text
 
+        def page_filter(text):
+            # S3 returns a null byte at the end of the text file
+            text = text.replace("\x00", "")
+            # "${" causes some very odd bug to trigger in Solr
+            # Punctuation is not indexed anyway, so we will just remove it
+            text = text.replace("${", "")
+            return text
+
         if index_text:
             pages = {
-                f"page_no_{i}": p["contents"]
+                f"page_no_{i}": page_filter(p["contents"])
                 for i, p in enumerate(page_text["pages"], start=1)
             }
         else:
