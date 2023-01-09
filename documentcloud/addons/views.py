@@ -141,6 +141,9 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
                 )
             )
 
+    def perform_destroy(self, instance):
+        instance.cancel()
+
     class Filter(django_filters.FilterSet):
         class Meta:
             model = AddOnRun

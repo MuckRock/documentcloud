@@ -229,10 +229,11 @@ class TestAddOnRunAPI:
         response = client.patch(f"/api/addon_runs/{run.uuid}/", {"addon": addon.pk})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_destroy(self, client):
-        """A add-on run may not be destroyed"""
+    def test_destroy(self, client, mocker):
+        """Destroying an addon run cancels it"""
+        cancel = mocker.patch.object(AddOnRun, "cancel")
         run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
         response = client.delete(f"/api/addon_runs/{run.uuid}/")
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert AddOnRun.objects.filter(pk=run.pk).exists()
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert cancel.called_once()
