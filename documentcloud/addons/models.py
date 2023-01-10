@@ -398,17 +398,20 @@ class AddOnRun(models.Model):
 
         if not self.run_id:
             logger.info("[CANCEL] %s - no run id", self.uuid)
-            return None
+            return "retry"
 
         if not self.status in ["queued", "in_progress"]:
             logger.info("[CANCEL] %s - uncancelable status: %s", self.uuid, self.status)
-            return None
+            return "fail"
 
         resp = requests.post(
             f"{self.addon.api_url}/actions/runs/{self.run_id}/cancel",
             headers=self.addon.api_headers,
         )
-        return resp
+        if resp.status_code == 202:
+            return "succeed"
+        else:
+            return "fail"
 
     def file_path(self, file_name=None):
         if file_name is None:

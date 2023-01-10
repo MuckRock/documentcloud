@@ -48,7 +48,7 @@ from documentcloud.addons.serializers import (
     AddOnRunSerializer,
     AddOnSerializer,
 )
-from documentcloud.addons.tasks import dispatch, update_config
+from documentcloud.addons.tasks import cancel, dispatch, update_config
 from documentcloud.common.environment import storage
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             )
 
     def perform_destroy(self, instance):
-        instance.cancel()
+        cancel.delay(instance.uuid)
 
     class Filter(django_filters.FilterSet):
         class Meta:

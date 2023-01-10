@@ -79,6 +79,20 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=Non
             AddOnRun.objects.filter(uuid=uuid).update(status="failure")
 
 
+@task
+def cancel(uuid):
+    logger.info("[CANCEL] uuid %s", uuid)
+    run = AddOnRun.objects.get(uuid=uuid)
+    result = run.cancel()
+    logger.info("[CANCEL] uuid %s result %s", uuid, result)
+    if result == "retry":
+        cancel.retry(
+            args=[uuid],
+            countdown=min(2**cancel.request.retries, 30),
+            max_retries=10,
+        )
+
+
 @task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
