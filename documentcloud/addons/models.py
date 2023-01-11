@@ -129,23 +129,46 @@ class AddOn(models.Model):
     def github_token(self):
         return self.github_installation.token
 
+    @property
+    def version(self):
+        """Introduce a version for the payload delivery"""
+        return self.parameters.get("version", 1)
+
     def dispatch(self, uuid, user, documents, query, parameters, event_id):
         """Activate the GitHub Action for this add-on"""
         # pylint: disable=too-many-arguments
         tokens = self.get_tokens(user)
-        payload = {
-            "token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "base_uri": settings.DOCCLOUD_API_URL + "/api/",
-            "id": str(uuid),
-            "addon_id": self.pk,
-            "documents": documents,
-            "query": query,
-            "data": parameters,
-            "user": user.pk,
-            "organization": user.organization.pk,
-            "event_id": event_id,
-        }
+        # There is a key limit of 10, to work around this, we nest inside another
+        # JSON object.  To remain backward compatible, we introduce a version
+        if self.version == 2:
+            payload = {
+                "payload": {
+                    "token": tokens["access_token"],
+                    "refresh_token": tokens["refresh_token"],
+                    "base_uri": settings.DOCCLOUD_API_URL + "/api/",
+                    "id": str(uuid),
+                    "addon_id": self.pk,
+                    "documents": documents,
+                    "query": query,
+                    "data": parameters,
+                    "user": user.pk,
+                    "organization": user.organization.pk,
+                    "event_id": event_id,
+                },
+            }
+        else:
+            payload = {
+                "token": tokens["access_token"],
+                "refresh_token": tokens["refresh_token"],
+                "base_uri": settings.DOCCLOUD_API_URL + "/api/",
+                "id": str(uuid),
+                "documents": documents,
+                "query": query,
+                "data": parameters,
+                "user": user.pk,
+                "organization": user.organization.pk,
+                "event_id": event_id,
+            }
         resp = requests.post(
             f"{self.api_url}/dispatches",
             headers=self.api_headers,
