@@ -320,6 +320,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_validate_access(self, instances, validated_datas):
         """Validate access after instances have been filtered"""
+        # XXX check for page text updates here also
         for instance, validated_data in zip(instances, validated_datas):
             # disallow any access change while processing
             if "access" in validated_data and instance.processing:
@@ -437,10 +438,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 event.dispatch(document_pk=document.pk)
 
     def _set_page_text(self, document, validated_data):
-        # XXX remove prints
-        print("spt", validated_data)
         if "pages" in validated_data:
-            print("spt setting text")
             set_page_text.delay(document.pk, validated_data["pages"])
 
     @action(detail=False, methods=["get"])

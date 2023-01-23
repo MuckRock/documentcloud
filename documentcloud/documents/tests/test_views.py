@@ -545,8 +545,9 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.user != user
 
-    def test_update_text(self, client, document):
+    def test_update_text(self, client):
         """Test updating a documents text"""
+        document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
         response = client.patch(
             f"/api/documents/{document.pk}/",
@@ -556,8 +557,25 @@ class TestDocumentAPI:
                     {"page_number": 1, "text": "Page 2 text"},
                 ]
             },
+            format="json",
         )
         assert response.status_code == status.HTTP_200_OK
+
+    def test_update_text_bad_page(self, client):
+        """Test updating a documents text with a bad page number"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {
+                "pages": [
+                    {"page_number": 0, "text": "Page 1 text"},
+                    {"page_number": 3, "text": "Page 2 text"},
+                ]
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""

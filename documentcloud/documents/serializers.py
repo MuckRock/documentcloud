@@ -57,6 +57,18 @@ class PageNumberValidationMixin:
         return value
 
 
+class PositionSerializer(serializers.Serializer):
+    """Serializer for word positions on a page"""
+
+    # pylint: disable=abstract-method
+    text = serializers.CharField()
+    x1 = serializers.FloatField(min_value=0, max_value=1)
+    x2 = serializers.FloatField(min_value=0, max_value=1)
+    y1 = serializers.FloatField(min_value=0, max_value=1)
+    y2 = serializers.FloatField(min_value=0, max_value=1)
+    metadata = serializers.JSONField(required=False)
+
+
 class PageSerializer(serializers.Serializer):
     """Serializer for page text"""
 
@@ -64,6 +76,7 @@ class PageSerializer(serializers.Serializer):
     page_number = serializers.IntegerField(min_value=0)
     text = serializers.CharField(allow_blank=True)
     ocr = serializers.CharField(required=False, max_length=20)
+    positions = PositionSerializer(required=False, many=True)
 
 
 class DocumentSerializer(FlexFieldsModelSerializer):
@@ -358,6 +371,14 @@ class DocumentSerializer(FlexFieldsModelSerializer):
                 "of top level object properties"
             )
 
+        return value
+
+    def validate_pages(self, value):
+        for page in value:
+            if page["page_number"] >= self.instance.page_count:
+                raise serializers.ValidationError(
+                    f"`page_number` must be less than {self.instance.page_count}"
+                )
         return value
 
     def validate(self, attrs):

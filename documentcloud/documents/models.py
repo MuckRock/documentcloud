@@ -381,27 +381,25 @@ class Document(models.Model):
             return {"pages": [], "updated": None}
 
     def set_page_text(self, page_text_infos):
-        # XXX support put/patch full/partial style updates
         # get the json text
         json_text = self.get_all_page_text()
 
         # set the individual text pages
         timestamp = int(round(time.time() * 1000))
         json_text["updated"] = timestamp
+        if len(json_text["pages"]) < self.page_count:
+            json_text["pages"].extend(
+                [{} for _ in range(self.page_count - len(json_text["pages"]))]
+            )
+        file_names = []
+        file_contents = []
         for page_text_info in page_text_infos:
             page = page_text_info["page_number"]
             text = page_text_info["text"]
             ocr = page_text_info.get("ocr")
-            # upload the text to S3
-            # XXX upload these in parallel?
-            logger.info("[SET PAGE TEXT] upload %d - page %d", self.pk, page)
-            storage.simple_upload(
-                path.page_text_path(self.pk, self.slug, page),
-                text.encode("utf8"),
-                access=self.access,
-            )
+            file_names.append(path.page_text_path(self.pk, self.slug, page))
+            file_contents.append(text.encode("utf8"))
             # overwrite the text in the JSON format
-            # XXX check pages is long enough
             json_text["pages"][page] = {
                 "page": page,
                 "contents": text,
@@ -413,18 +411,17 @@ class Document(models.Model):
         concatenated_text = b"\n\n".join(
             [p["contents"].encode("utf-8") for p in json_text["pages"]]
         )
-        logger.info("[SET PAGE TEXT] upload %d - full text")
-        storage.simple_upload(
-            path.text_path(self.pk, self.slug), concatenated_text, access=self.access
-        )
+        file_names.append(path.text_path(self.pk, self.slug))
+        file_contents.append(concatenated_text)
 
         # set the json text
-        logger.info("[SET PAGE TEXT] upload %d - json text")
-        storage.simple_upload(
-            path.json_text_path(self.pk, self.slug),
-            json.dumps(json_text).encode("utf-8"),
-            access=self.access,
-        )
+        file_names.append(path.json_text_path(self.pk, self.slug))
+        file_contents.append(json.dumps(json_text).encode("utf-8"))
+
+        # upload the text to S3
+        logger.info("[SET PAGE TEXT] upload %d", self.pk)
+        # reverse the lists to upload the larger files first
+        storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
 
         return json_text
 

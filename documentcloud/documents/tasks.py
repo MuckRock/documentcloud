@@ -281,22 +281,30 @@ def finish_update_access(document_pk, status, access):
 @task
 def set_page_text(document_pk, page_text_infos):
     """Update the text information for a document"""
+    # pylint: disable=broad-except
     document = Document.objects.get(pk=document_pk)
     logger.info("[SET PAGE TEXT] %d - setting status to readable", document_pk)
-    document.status = Status.readable
-    document.save()
+    with transaction.atomic():
+        document.status = Status.readable
+        document.save()
+        document.index_on_commit(field_updates={"status": "set"})
+    kwargs = {"field_updates": {}}
     try:
         json_text = document.set_page_text(page_text_infos)
-        # XXX error handling
+    except Exception as exc:
+        logger.exception(
+            "[SET PAGE TEXT] %d - exception: %s", document_pk, exc, exc_info=exc
+        )
+    else:
+        field_updates = {f"page_no_{i['page_number']}": "set" for i in page_text_infos}
+        kwargs = {"field_updates": field_updates, "index_text": json_text}
     finally:
         with transaction.atomic():
             logger.info("[SET PAGE TEXT] %d - setting status to success", document_pk)
             document.status = Status.success
             document.save()
-            field_updates = {
-                f"page_no_{i['page_number']}": "set" for i in page_text_infos
-            }
-            document.index_on_commit(field_updates=field_updates, index_text=json_text)
+            kwargs["field_updates"]["status"] = "set"
+            document.index_on_commit(**kwargs)
 
 
 # new solr
