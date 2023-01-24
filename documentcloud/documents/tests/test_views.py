@@ -577,6 +577,50 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_update_text_positions(self, client):
+        """Test updating a documents text and positions"""
+        document = DocumentFactory(page_count=2)
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {
+                "pages": [
+                    {
+                        "page_number": 0,
+                        "text": "Page 1 text",
+                        "positions": [
+                            {
+                                "text": "Page",
+                                "x1": 0.1,
+                                "x2": 0.2,
+                                "y1": 0.1,
+                                "y2": 0.2,
+                                "metadata": {"type": "word"},
+                            },
+                            {
+                                "text": "1",
+                                "x1": 0.3,
+                                "x2": 0.4,
+                                "y1": 0.1,
+                                "y2": 0.2,
+                                "metadata": {"type": "word"},
+                            },
+                            {
+                                "text": "text",
+                                "x1": 0.5,
+                                "x2": 0.6,
+                                "y1": 0.1,
+                                "y2": 0.2,
+                                "metadata": {"type": "word"},
+                            },
+                        ],
+                    },
+                ]
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
