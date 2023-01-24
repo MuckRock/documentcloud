@@ -406,6 +406,14 @@ class Document(models.Model):
                 "ocr": ocr,
                 "updated": timestamp,
             }
+            if page_text_info.get("positions"):
+                file_names.append(
+                    path.page_text_position_path(self.pk, self.slug, page)
+                )
+                positions = [
+                    {**p.pop("metadata", {}), **p} for p in page_text_info["positions"]
+                ]
+                file_contents.append(json.dumps(positions).encode("utf-8"))
 
         # set the full text
         concatenated_text = b"\n\n".join(
