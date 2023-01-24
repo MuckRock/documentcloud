@@ -318,15 +318,21 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         if len(self.request.GET["id__in"].split(",")) != queryset.count():
             raise serializers.ValidationError("Could not find all objects to delete")
 
-    def _update_validate_access(self, instances, validated_datas):
-        """Validate access after instances have been filtered"""
-        # XXX check for page text updates here also
+    def _update_validate_processing(self, instances, validated_datas):
+        """
+        Validate properties which cannot be edit while processing
+        after instances have been filtered
+        """
         for instance, validated_data in zip(instances, validated_datas):
-            # disallow any access change while processing
-            if "access" in validated_data and instance.processing:
-                raise serializers.ValidationError(
-                    _("You may not update `access` while the document is processing")
-                )
+            # disallow access and page text changes while processing
+            for prop in ("access", "pages"):
+                if prop in validated_data and instance.processing:
+                    raise serializers.ValidationError(
+                        _(
+                            f"You may not update `{prop}` while the document "
+                            "is processing"
+                        )
+                    )
 
     @transaction.atomic
     def perform_update(self, serializer):
@@ -346,7 +352,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             validated_datas = [serializer.validated_data]
             instances = [serializer.instance]
 
-        self._update_validate_access(instances, validated_datas)
+        self._update_validate_processing(instances, validated_datas)
 
         old_accesses = [i.access for i in instances]
         old_processings = [i.processing for i in instances]
