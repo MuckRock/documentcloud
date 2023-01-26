@@ -373,7 +373,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._update_solr(instance, old_processing, old_data_key, validated_data)
             self._update_cache(instance, old_processing)
             self._run_addons(instance, old_processing)
-            self._set_page_text(instance, validated_data)
+            self._set_page_text(instance, validated_data.get("pages"))
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
@@ -443,9 +443,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             for event in events:
                 event.dispatch(document_pk=document.pk)
 
-    def _set_page_text(self, document, validated_data):
-        if "pages" in validated_data:
-            set_page_text.delay(document.pk, validated_data["pages"])
+    def _set_page_text(self, document, pages):
+        if pages is not None:
+            set_page_text.delay(document.pk, pages)
 
     @action(detail=False, methods=["get"])
     def search(self, request):
