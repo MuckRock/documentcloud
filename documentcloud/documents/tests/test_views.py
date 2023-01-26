@@ -545,21 +545,22 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.user != user
 
-    def test_update_text(self, client):
+    def test_update_text(self, client, mocker):
         """Test updating a documents text"""
+        mock_set_page_text = mocker.patch("documentcloud.documents.views.set_page_text")
         document = DocumentFactory(page_count=2)
         client.force_authenticate(user=document.user)
+        pages = [
+            {"page_number": 0, "text": "Page 1 text"},
+            {"page_number": 1, "text": "Page 2 text"},
+        ]
         response = client.patch(
             f"/api/documents/{document.pk}/",
-            {
-                "pages": [
-                    {"page_number": 0, "text": "Page 1 text"},
-                    {"page_number": 1, "text": "Page 2 text"},
-                ]
-            },
+            {"pages": pages},
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
+        mock_set_page_text.delay.assert_called_once_with(document.pk, pages)
 
     def test_update_text_bad_page(self, client):
         """Test updating a documents text with a bad page number"""
