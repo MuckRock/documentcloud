@@ -69,6 +69,8 @@ SORT_MAP = {
     "-title": "title_sort desc, id desc",
     "source": "source_sort asc, id desc",
     "-source": "source_sort desc, id desc",
+    "id": "id asc",
+    "-id": "id desc",
 }
 SOLR = pysolr.Solr(
     settings.SOLR_URL,
