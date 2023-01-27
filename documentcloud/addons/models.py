@@ -140,8 +140,11 @@ class AddOn(models.Model):
         tokens = self.get_tokens(user)
         # There is a key limit of 10, to work around this, we nest inside another
         # JSON object.  To remain backward compatible, we introduce a version
+        # Version 2 places the ID at the top level so Github Actions can still
+        # find it in a backward compatible manner
         if self.version == 2:
             payload = {
+                "id": str(uuid),
                 "payload": {
                     "token": tokens["access_token"],
                     "refresh_token": tokens["refresh_token"],
