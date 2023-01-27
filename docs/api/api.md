@@ -192,9 +192,9 @@ documents](#project-documents).
 | noindex              | Bool         | Not required       | Ask search engines and DocumentCloud search to not index this document                                                                                           |
 | organization         | Integer      | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                                                           |
 | original_extension   | String       | Default: `pdf`     | The original file extension of the document you are seeking to upload. It must be a [supported file type](#supported-file-types)                                 |
-| pages                | JSON         | Write Only         | Allows you to set page text via the API.  See [set page text](#set-page-text) for more information.                                                              |
 | page_count           | Integer      | Read Only          | The number of pages in this document                                                                                                                             |
 | page_spec            | Integer      | Read Only          | [The dimensions for all pages in the document](#page-spec)                                                                                                       |
+| pages                | JSON         | Write Only         | Allows you to set page text via the API.  See [set page text](#set-page-text) for more information.                                                              |
 | presigned_url        | URL          | Read Only          | The pre-signed URL to [directly](#direct-file-upload-flow) `PUT` the PDF file to                                                                                 |
 | projects             | List:Integer | Create Only        | The IDs of the [projects](#projects) this document belongs to - this may be set on creation, but may not be updated. See [project documents](#project-documents) |
 | publish_at           | Date Time    | Not Required       | A timestamp when to automatically make this document public                                                                                                      |
@@ -967,6 +967,80 @@ have the following fields:
 * `x1`, `x2`, `y1`, `y2` - The coordinates of the bounding box for this word on
   the page.  Each value will be between 0 and 1 and represents a percentage of
   the width or height of the page.
+
+
+#### Set Page Text
+
+The format to set the page text is similar to the text formats described above.
+The `pages` field may be set to a JSON array of page objects, with the
+following fields:
+
+| Field                | Type                  | Options      | Description                                                                  |
+| -------------------- | --------------------- | ------------ | ---------------------------------------------------------------------------- |
+| page_number          | Integer               | Required     | The page number you would like to set the page text for, zero indexed        |
+| text                 | String                | Required     | The updated text for the given page                                          |
+| ocr                  | String                | Not Required | An optional identifier for the OCR engine used to generate this text         |
+| positions            | Array of JSON Objects | Not Required | Optionally set the position of each word of text, see next table for details |
+
+The `position` field in each `pages` object is a JSON array of position
+objects, with the following fields:
+
+| Field    | Type   | Options      | Description                                                      |
+| -------- | ------ | ------------ | ---------------------------------------------------------------- |
+| text     | String | Required     | A single word on the page                                        |
+| x1       | Float  | Required     | Left most coordinate of the word, as a percentage of page size   |
+| x2       | Float  | Required     | Right most coordinate of the word, as a percentage of page size  |
+| y1       | Float  | Required     | Top most coordinate of the word, as a percentage of page size    |
+| y2       | Float  | Required     | Bottom most coordinate of the word, as a percentage of page size |
+| metadata | JSON   | Not Required | Any extra metadata that you would like to store with this word   |
+
+Example JSON setting just the page text:
+
+```
+[
+    {"page_number": 0, "text": "Page 1 text"},
+    {"page_number": 1, "text": "Page 2 text"}
+]
+```
+
+Example JSON setting the page text and word positions:
+
+```
+[
+    {
+        "page_number": 0,
+        "text": "Page 1 text",
+        "ocr": "my-ocr-engine",
+        "positions": [
+            {
+                "text": "Page",
+                "x1": 0.1,
+                "x2": 0.2,
+                "y1": 0.1,
+                "y2": 0.2,
+                "metadata": {"type": "word"}
+            },
+            {
+                "text": "1",
+                "x1": 0.3,
+                "x2": 0.4,
+                "y1": 0.1,
+                "y2": 0.2,
+                "metadata": {"type": "word"}
+            },
+            {
+                "text": "text",
+                "x1": 0.5,
+                "x2": 0.6,
+                "y1": 0.1,
+                "y2": 0.2,
+                "metadata": {"type": "word"}
+            }
+        ]
+    }
+]
+```
+
 
 ### Expandable Fields
 
