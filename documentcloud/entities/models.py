@@ -22,7 +22,7 @@ class Entity(models.Model):
     # A dictionary with language codes as keys.
     wikipedia_url = models.JSONField()
     owner = models.ForeignKey(
-        "users.User", related_name="entities", on_delete=models.CASCADE
+        "users.User", related_name="entities", on_delete=models.PROTECT
     )
     description = models.JSONField()
     created_at = AutoCreatedField(
