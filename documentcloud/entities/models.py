@@ -1,5 +1,7 @@
 from django.db import models
+from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from wikidata.client import Client
+from django.utils.translation import gettext_lazy as _
 
 
 class Entity(models.Model):
@@ -18,9 +20,14 @@ class Entity(models.Model):
         "users.User", related_name="entities", on_delete=models.CASCADE
     )
     description = models.JSONField()
-    # use documents
-    created_at = models.DateTimeField(auto_now=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    created_at = AutoCreatedField(
+        _("created at"),
+        db_index=True,
+        help_text=_("Timestamp of when the entity was created"),
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"), help_text=_("Timestamp of when the entitywas last updated")
+    )
     access = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="Public")
 
     def save(self, *args, **kwargs):
