@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic.base import RedirectView
+from documentcloud.entities.views import EntityViewSet
 from rest_framework import permissions
 
 # Third Party
@@ -26,7 +27,6 @@ from documentcloud.documents.views import (
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
-    EntityViewSet,
     LegacyEntityViewSet,
     ModificationViewSet,
     NoteViewSet,
@@ -57,6 +57,8 @@ router.register("users", UserViewSet)
 router.register("addons", AddOnViewSet)
 router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
+router.register("entities", EntityViewSet)
+
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
