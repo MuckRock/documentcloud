@@ -1,7 +1,14 @@
+# Django
 from django.db import models
-from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
-from wikidata.client import Client
 from django.utils.translation import gettext_lazy as _
+
+# Third Party
+from wikidata.client import Client
+
+# DocumentCloud
+from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+
+# Local
 from .choices import EntityAccess
 
 

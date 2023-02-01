@@ -1,5 +1,8 @@
-from .models import Entity
+# Django
 from rest_framework import serializers
+
+# Local
+from .models import Entity
 
 
 class EntitySerializer(serializers.HyperlinkedModelSerializer):
