@@ -5,7 +5,6 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic.base import RedirectView
-from documentcloud.entities.views import EntityViewSet
 from rest_framework import permissions
 
 # Third Party
@@ -34,6 +33,7 @@ from documentcloud.documents.views import (
     SectionViewSet,
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
+from documentcloud.entities.views import EntityViewSet
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,

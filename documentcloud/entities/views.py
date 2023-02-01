@@ -1,13 +1,15 @@
-from documentcloud.entities.permissions import IsOwnerOrReadOnly
-from .models import Entity
-from rest_framework import viewsets
-from rest_framework import permissions
-from .serializers import (
-    EntitySerializer,
-)
+# Django
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+
+# DocumentCloud
+from documentcloud.entities.permissions import IsOwnerOrReadOnly
+
+# Local
+from .models import Entity
+from .serializers import EntitySerializer
 
 
 class EntityViewSet(viewsets.ModelViewSet):
