@@ -41,8 +41,7 @@ class Entity(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.wikidata_id:
-            # Unnecessary?
-            raise "Missing wikidata_id in entity."
+            raise ValueError("Missing wikidata_id in entity.")
 
         if not self.wikipedia_url:
             self.wikipedia_url = self.get_url_for_wikidata_id()
