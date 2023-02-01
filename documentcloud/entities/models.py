@@ -2,13 +2,11 @@ from django.db import models
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from wikidata.client import Client
 from django.utils.translation import gettext_lazy as _
+from .choices import EntityAccess
 
 
 class Entity(models.Model):
     wd_entity = None
-
-    ACCESS_CHOICES = [("Public", 0), ("Private", 1)]
-    # reuse access from documents
 
     # A dictionary with language codes as keys.
     name = models.CharField(max_length=500)
@@ -28,7 +26,11 @@ class Entity(models.Model):
     updated_at = AutoLastModifiedField(
         _("updated at"), help_text=_("Timestamp of when the entitywas last updated")
     )
-    access = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="Public")
+    access = models.IntegerField(
+        _("access"),
+        choices=EntityAccess.choices,
+        help_text=_("Designates who may access this entity."),
+    )
 
     def save(self, *args, **kwargs):
         if not self.wikidata_id:
