@@ -31,12 +31,3 @@ class EntityViewSet(viewsets.ModelViewSet):
                 IsOwnerOrReadOnly,
             ]
         return [permission() for permission in permission_classes]
-
-
-@api_view(["GET"])
-def api_root(request, format=None):
-    return Response(
-        {
-            "entities": reverse("entity-list", request=request, format=format),
-        }
-    )
