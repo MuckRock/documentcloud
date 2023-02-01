@@ -46,16 +46,19 @@ class Entity(models.Model):
         if not self.wikipedia_url:
             self.wikipedia_url = self.get_url_for_wikidata_id()
 
-        if not self.name or not self.localized_names:
+        if not self.localized_names:
             self.localized_names = self.get_names_for_wikidata_id()
-            # English bias here. TODO: How can this be addressed?
-            self.name = self.localized_names["en"]
-            if not self.name:
-                keys = self.localized_names.keys()
-                if len(keys) > 0:
-                    self.name = self.localized_names[keys[0]]
-                else:
-                    self.name = "Unknown"
+            if not self.localized_names:
+                raise ValueError("Wikidata entry has no names.")
+                # TODO: Convert error to a log.
+
+        # English bias here. TODO: How can this be addressed?
+        self.name = self.localized_names.get("en")
+        if not self.name:
+            if self.localized_names:
+                self.name = list(self.localized_names.values())[0]
+            else:
+                self.name = "Unknown"
 
         if not self.description:
             self.description = self.get_description_for_wikidata_id()
