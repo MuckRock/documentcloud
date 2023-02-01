@@ -9,7 +9,7 @@ from wikidata.client import Client
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 
 # Local
-from .choices import EntityAccess
+from documentcloud.entities.choices import EntityAccess
 
 
 class Entity(models.Model):
