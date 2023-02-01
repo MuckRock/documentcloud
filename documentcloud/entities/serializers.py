@@ -1,6 +1,5 @@
 from .models import Entity
 from rest_framework import serializers
-from django.contrib.auth.models import User, Group
 
 
 class EntitySerializer(serializers.HyperlinkedModelSerializer):
@@ -11,6 +10,7 @@ class EntitySerializer(serializers.HyperlinkedModelSerializer):
     owner = serializers.ReadOnlyField(source="owner.username")
     wikipedia_url = serializers.ReadOnlyField()
     name = serializers.ReadOnlyField()
+    localized_names = serializers.ReadOnlyField()
     description = serializers.ReadOnlyField()
 
     class Meta:
@@ -20,6 +20,7 @@ class EntitySerializer(serializers.HyperlinkedModelSerializer):
             "wikidata_id",
             "wikipedia_url",
             "name",
+            "localized_names",
             "owner",
             "description",
             "created_at",
@@ -27,15 +28,3 @@ class EntitySerializer(serializers.HyperlinkedModelSerializer):
             "access",
         ]
         # TODO: wikidata_id should be read-only, but only after creation.
-
-
-class UserSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = User
-        fields = ["id", "username", "entities"]
-
-
-class GroupSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Group
-        fields = ["url", "name"]

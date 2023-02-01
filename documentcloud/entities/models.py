@@ -9,7 +9,8 @@ class Entity(models.Model):
     # reuse access from documents
 
     # A dictionary with language codes as keys.
-    name = models.JSONField()
+    name = models.CharField(max_length=500)
+    localized_names = models.JSONField()
     wikidata_id = models.CharField(max_length=16)
     # A dictionary with language codes as keys.
     wikipedia_url = models.JSONField()
@@ -30,8 +31,16 @@ class Entity(models.Model):
         if not self.wikipedia_url:
             self.wikipedia_url = self.get_url_for_wikidata_id()
 
-        if not self.name:
-            self.name = self.get_name_for_wikidata_id()
+        if not self.name or not self.localized_names:
+            self.localized_names = self.get_names_for_wikidata_id()
+            # English bias here. TODO: How can this be addressed?
+            self.name = self.localized_names["en"]
+            if not self.name:
+                keys = self.localized_names.keys()
+                if len(keys) > 0:
+                    self.name = self.localized_names[keys[0]]
+                else:
+                    self.name = "Unknown"
 
         if not self.description:
             self.description = self.get_description_for_wikidata_id()
@@ -39,6 +48,7 @@ class Entity(models.Model):
         super().save(*args, **kwargs)
 
     def get_wikidata_entity(self):
+        # TODO: Handle 404
         if not self.wd_entity:
             client = Client()
             self.wd_entity = client.get(self.wikidata_id, load=True)
@@ -49,7 +59,7 @@ class Entity(models.Model):
         # TODO: Use a library that gets this safely.
         return wd_entity.data["sitelinks"]
 
-    def get_name_for_wikidata_id(self):
+    def get_names_for_wikidata_id(self):
         return self.get_wikidata_entity().label.texts
 
     def get_description_for_wikidata_id(self):
