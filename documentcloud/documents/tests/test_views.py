@@ -36,6 +36,32 @@ from documentcloud.users.tests.factories import UserFactory
 
 
 @pytest.mark.django_db()
+class TestFreestandingEntityAPI:
+    def test_create_freestanding_entity(self, client, document, user, mocker):
+        # """Create freestanding entities"""
+        entity_body = {
+            "name": "Dog",
+            "kind": "unknown",
+            "metadata": {"wikipedia_url": "https://en.wikipedia.org/wiki/Dog"},
+        }
+        _get_or_create_entities = mocker.patch(
+            "documentcloud.documents.views._get_or_create_entities",
+            return_value={"mock_mid": entity_body},
+        )
+
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/entities/",
+            entity_body,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json() == entity_body
+        _get_or_create_entities.assert_called_once_with([entity_body])
+
+
+@pytest.mark.django_db()
 class TestDocumentAPI:
     def test_list(self, client):
         """List documents"""

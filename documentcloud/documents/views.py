@@ -47,6 +47,7 @@ from documentcloud.documents.models import (
     DocumentError,
     EntityDate,
     EntityOccurrence,
+    Entity,
     LegacyEntity,
     Note,
     Section,
@@ -59,6 +60,7 @@ from documentcloud.documents.serializers import (
     DocumentSerializer,
     EntityDateSerializer,
     EntityOccurrenceSerializer,
+    EntitySerializer,
     LegacyEntitySerializer,
     ModificationSpecSerializer,
     NoteSerializer,
@@ -84,6 +86,7 @@ from documentcloud.drf_bulk.views import BulkModelMixin
 from documentcloud.organizations.models import Organization
 from documentcloud.projects.models import Project
 from documentcloud.users.models import User
+from documentcloud.documents.entity_extraction import _get_or_create_entities
 
 env = environ.Env()
 logger = logging.getLogger(__name__)
@@ -659,7 +662,7 @@ class SectionViewSet(viewsets.ModelViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class LegacyEntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class LegacyEntityOccurrenceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = LegacyEntitySerializer
     queryset = LegacyEntity.objects.none()
 
@@ -814,7 +817,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class EntityOccurrenceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = EntityOccurrenceSerializer
     queryset = EntityOccurrence.objects.none()
 
@@ -970,3 +973,18 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         post_process.delay(document_pk, request.data)
 
         return Response("OK", status=status.HTTP_200_OK)
+
+
+class EntityViewSet(viewsets.ModelViewSet):
+    serializer_class = EntitySerializer
+    queryset = Entity.objects.none()
+
+    @lru_cache()
+    def get_queryset(self):
+        # TODO: Should everyone be able to view all entities?
+        return Entity.objects.all()
+
+    def perform_create(self, serializer):
+        entity_map = _get_or_create_entities([self.request.data])
+        # pylint: disable=unused-argument
+        return Response(entity_map)

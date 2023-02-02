@@ -58,6 +58,9 @@ def extract_entities(document):
     Mainly a wrapper with error handling to ensure document doesn't get stuck
     in a processing state.
     """
+    # DocumentCloud
+    from documentcloud.documents.tasks import solr_index
+
     try:
         _extract_entities(document)
     finally:

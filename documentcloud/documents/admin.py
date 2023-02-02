@@ -4,7 +4,8 @@ from django.db import transaction
 
 # DocumentCloud
 from documentcloud.core.pagination import LargeTablePaginator
-from documentcloud.documents.models import Document
+from documentcloud.documents.models import Document, Entity
+from documentcloud.documents.tasks import solr_index
 
 
 @admin.register(Document)
@@ -44,6 +45,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "data",
         "noindex",
     )
+
     readonly_fields = (
         "slug",
         "user",
@@ -64,3 +66,16 @@ class DocumentAdmin(admin.ModelAdmin):
 
     def delete_model(self, request, obj):
         obj.destroy()
+
+
+@admin.register(Entity)
+class EntityAdmin(admin.ModelAdmin):
+    """Entity Admin"""
+
+    list_display = ("name", "kind", "mid", "wikipedia_url")
+    list_filter = ("kind",)
+    search_fields = ("name", "mid", "description", "wikipedia_url")
+    show_full_result_count = False
+    paginator = LargeTablePaginator
+    ordering = ("pk",)
+    fields = ("name", "kind", "mid", "description", "wikipedia_url")
