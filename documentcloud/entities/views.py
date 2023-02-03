@@ -18,6 +18,8 @@ class EntityViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
+        # Don't set if public
+        # Put in serializer, get rid of this.
         serializer.save(owner=self.request.user)
 
     def get_permissions(self):

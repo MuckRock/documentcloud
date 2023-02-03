@@ -11,7 +11,7 @@ from documentcloud.entities.choices import EntityAccess
 
 
 class EntityFactory(factory.django.DjangoModelFactory):
-    name = factory.Sequence(lambda n: f"Entity {n}")
+    name = factory.Sequence(lambda n: f"User {n}")
     localized_names = factory.Sequence(lambda n: {"en": "test {n}", "es": "prueba {n}"})
     wikidata_id = factory.Sequence(lambda n: "Q{n}")
     wikipedia_url = factory.Sequence(
