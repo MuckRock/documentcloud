@@ -1,23 +1,18 @@
 # Django
 from rest_framework import serializers
 
+# Third Party
+from rest_flex_fields import FlexFieldsModelSerializer
+
 # Local
 from .models import Entity
 
-# Use FlexField
 
-
-class EntitySerializer(serializers.HyperlinkedModelSerializer):
+class EntitySerializer(FlexFieldsModelSerializer):
     # entities = serializers.PrimaryKeyRelatedField(
     #     many=True, queryset=Entity.objects.all()
     # )
-    # Use document's serializer
     # Return a full user object like in documents.
-    owner = serializers.ReadOnlyField(source="owner.username")
-    wikipedia_url = serializers.ReadOnlyField()
-    name = serializers.ReadOnlyField()
-    localized_names = serializers.ReadOnlyField()
-    description = serializers.ReadOnlyField()
     # Make access readonly, set it via wikidata_id check.
     # validator to make sure wikidata_id is never changed.
 
@@ -35,4 +30,17 @@ class EntitySerializer(serializers.HyperlinkedModelSerializer):
             "updated_at",
             "access",
         ]
-        # TODO: wikidata_id should be read-only, but only after creation.
+        extra_kwargs = {
+            "created_at": {"read_only": True},
+            "updated_at": {"read_only": True},
+            # "wikidata_id": {"read_only": True},
+            "wikipedia_url": {"read_only": True},
+            "name": {"read_only": True},
+            "localized_names": {"read_only": True},
+            "description": {"read_only": True},
+            "owner": {"read_only": True},
+            "access": {"read_only": True},
+        }
+        expandable_fields = {
+            "owner": ("documentcloud.users.UserSerializer", {}),
+        }

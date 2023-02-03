@@ -1,12 +1,12 @@
 # Django
-from documentcloud.core.tests import run_commit_hooks
 from rest_framework import status
 
 # Third Party
-import pytest
 import factory
+import pytest
 
 # DocumentCloud
+from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.tests.factories import DocumentFactory
 
 # pylint: disable=too-many-lines, too-many-public-methods
