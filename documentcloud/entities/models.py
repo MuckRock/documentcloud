@@ -2,12 +2,9 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-
 # DocumentCloud
-from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.common.wikidata import EasyWikidataEntity
-
-# Local
+from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.entities.choices import EntityAccess
 
 
@@ -45,6 +42,8 @@ class Entity(models.Model):
     def save(self, *args, **kwargs):
         if not self.wikidata_id:
             raise ValueError("Missing wikidata_id in entity.")
+
+        self.access = EntityAccess.public
 
         if not self.wd_entity:
             self.wd_entity = EasyWikidataEntity(self.wikidata_id)
