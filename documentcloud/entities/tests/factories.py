@@ -20,7 +20,9 @@ class EntityFactory(factory.django.DjangoModelFactory):
             "es": "https://es.wikipedia.org/wiki/{n}",
         }
     )
-    owner = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
+    # Assuming entity is public for now.
+    owner = None
+    # owner = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
     description = factory.Sequence(
         lambda n: {"en": "{n} is good.", "es": "{n} es bueno."}
     )
