@@ -19,7 +19,7 @@ class Entity(models.Model):
     wikipedia_url = models.JSONField()
     # Public entities should have a null owner.
     owner = models.ForeignKey(
-        "users.User", related_name="entities", on_delete=models.PROTECT
+        "users.User", related_name="entities", on_delete=models.PROTECT, null=True
     )
     description = models.JSONField()
     created_at = AutoCreatedField(
@@ -41,9 +41,12 @@ class Entity(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.wikidata_id:
+            # TODO: Call save_private here instead.
             raise ValueError("Missing wikidata_id in entity.")
 
         self.access = EntityAccess.public
+
+        self.owner = None
 
         if not self.wd_entity:
             self.establish_wd_entity(self.wikidata_id)
