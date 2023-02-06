@@ -27,10 +27,3 @@ class EntityFactory(factory.django.DjangoModelFactory):
     created_at = factory.LazyFunction(datetime.datetime.utcnow)
     updated_at = factory.LazyFunction(datetime.datetime.utcnow)
     access = EntityAccess.public
-
-
-class EntityFactory(factory.django.DjangoModelFactory):
-    name = factory.Sequence(lambda n: f"Entity #{n}")
-
-    class Meta:
-        model = "entities.Entity"

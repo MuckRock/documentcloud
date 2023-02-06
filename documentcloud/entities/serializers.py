@@ -1,5 +1,4 @@
 # Django
-from rest_framework import serializers
 
 # Third Party
 from rest_flex_fields import FlexFieldsModelSerializer
@@ -33,7 +32,7 @@ class EntitySerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
-            # "wikidata_id": {"read_only": True},
+            "wikidata_id": {"required": True},
             "wikipedia_url": {"read_only": True},
             "name": {"read_only": True},
             "localized_names": {"read_only": True},
