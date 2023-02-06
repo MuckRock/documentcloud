@@ -46,7 +46,7 @@ class Entity(models.Model):
         self.access = EntityAccess.public
 
         if not self.wd_entity:
-            self.wd_entity = EasyWikidataEntity(self.wikidata_id)
+            self.establish_wd_entity(self.wikidata_id)
 
         if not self.wikipedia_url:
             self.wikipedia_url = self.wd_entity.get_urls()
@@ -70,5 +70,8 @@ class Entity(models.Model):
 
         super().save(*args, **kwargs)
 
-    def set_wd_entity(self, new_wd_entity):
-        self.wd_entity = new_wd_entity
+    def get_wd_entity(self, wikidata_id):
+        return EasyWikidataEntity(wikidata_id)
+
+    def establish_wd_entity(self, wikidata_id):
+        self.wd_entity = self.get_wd_entity(wikidata_id)

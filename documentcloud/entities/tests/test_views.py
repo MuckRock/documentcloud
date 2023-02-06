@@ -14,38 +14,34 @@ from documentcloud.documents.tests.factories import DocumentFactory
 
 @pytest.mark.django_db()
 class TestEntityAPI:
-    class EasyWikidataEntity:
-        client = None
-
-        def __init__(self, source_wd_entity):
-            self.source_wd_entity = source_wd_entity
-            pass
-
-        def get_urls(self):
-            return self.entity.data.get("sitelinks")
-
-        def get_names(self):
-            return self.entity.label.texts
-
-        def get_description(self):
-            return self.entity.description.texts
-
     def test_create(self, client, mocker):
+        class MockWikidataEntity:
+            def get_urls(self):
+                return {
+                    "en": "https://en.wikipedia.org/wiki/test",
+                    "es": "https://es.wikipedia.org/wiki/test",
+                }
+
+            def get_names(self):
+                return {"en": "test", "es": "prueba"}
+
+            def get_description(self):
+                return {"en": "merit assessment", "es": "evaluación de méritos"}
+
         """Create the entities"""
-        print("hey")
-        # TODO: Find a setup/teardown place for this.
-        # entity = EntityFactory()
-        # entity.set_wd_entity()
-        # owner = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
         # TODO: Create this through EntityFactory.
         owner = DocumentFactory().user
         client.force_authenticate(user=owner)
-        # print("wikidata_id?", dir(entity))
+        # TODO: Is there a setup/teardown place for this?
+        mocker.patch(
+            "documentcloud.entities.models.Entity.get_wd_entity",
+            lambda ignored, also_ignored: MockWikidataEntity(),
+        )
         response = client.post(
             f"/api/entities/", {"wikidata_id": "Q1050827", "access": 0}
         )
         run_commit_hooks()
-        assert response.status_code == status.HTTP_201_OK
+        assert response.status_code == status.HTTP_201_CREATED
 
     def test_create_404(self, client, user):
         """Return a 404 if the user cannot view the document"""
