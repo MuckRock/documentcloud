@@ -8,6 +8,7 @@ import pytest
 # DocumentCloud
 from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.tests.factories import DocumentFactory, EntityFactory
+from documentcloud.entities.choices import EntityAccess
 
 # pylint: disable=too-many-lines, too-many-public-methods
 
@@ -37,11 +38,10 @@ class TestEntityAPI:
             "documentcloud.entities.models.Entity.get_wd_entity",
             lambda ignored, also_ignored: MockWikidataEntity(),
         )
-        response = client.post(
-            f"/api/entities/", {"wikidata_id": "Q1050827", "access": 0}
-        )
+        response = client.post(f"/api/entities/", {"wikidata_id": "Q1050827"})
         run_commit_hooks()
         assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["access"] == EntityAccess.public
 
     def test_delete(self, client):
         entity = EntityFactory()
