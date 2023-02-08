@@ -1,5 +1,8 @@
 # Django
 
+# Django
+from rest_framework import serializers
+
 # Third Party
 from rest_flex_fields import FlexFieldsModelSerializer
 
@@ -11,9 +14,12 @@ class EntitySerializer(FlexFieldsModelSerializer):
     # entities = serializers.PrimaryKeyRelatedField(
     #     many=True, queryset=Entity.objects.all()
     # )
-    # Return a full user object like in documents.
-    # Make access readonly, set it via wikidata_id check.
-    # validator to make sure wikidata_id is never changed.
+    def validate_wikidata_id(self, value):
+        if self.instance and self.instance.wikidata_id != value:
+            raise serializers.ValidationError(
+                {"wikidata_id": "Once created, wikidata_id cannot be changed."}
+            )
+        return value
 
     class Meta:
         model = Entity
