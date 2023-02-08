@@ -15,7 +15,7 @@ from documentcloud.entities.choices import EntityAccess
 
 @pytest.mark.django_db()
 class TestEntityAPI:
-    def test_create(self, client, mocker):
+    def test_create_and_update(self, client, mocker):
         class MockWikidataEntity:
             def get_urls(self):
                 return {
@@ -42,6 +42,11 @@ class TestEntityAPI:
         run_commit_hooks()
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["access"] == EntityAccess.public
+
+        put_response = client.put(
+            f"/api/entities/{response.data['id']}/", {"wikidata_id": "Q9999999"}
+        )
+        assert put_response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_delete(self, client):
         entity = EntityFactory()
