@@ -149,6 +149,7 @@ class AddOn(models.Model):
                     "token": tokens["access_token"],
                     "refresh_token": tokens["refresh_token"],
                     "base_uri": settings.DOCCLOUD_API_URL + "/api/",
+                    "auth_uri": settings.SQUARELET_URL + "/api/",
                     "id": str(uuid),
                     "addon_id": self.pk,
                     "documents": documents,
