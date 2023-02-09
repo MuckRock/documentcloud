@@ -13,9 +13,20 @@ from .serializers import EntitySerializer
 
 
 class EntityViewSet(viewsets.ModelViewSet):
-    queryset = Entity.objects.all()
     serializer_class = EntitySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = Entity.objects.all()
+        wikidata_id = self.request.query_params.get("wikidata_id")
+        name = self.request.query_params.get("name")
+
+        if wikidata_id:
+            queryset = queryset.filter(wikidata_id=wikidata_id)
+        if name:
+            queryset = queryset.filter(name=name)
+
+        return queryset
 
     # def perform_create(self, serializer):
     #     # Don't set if public
