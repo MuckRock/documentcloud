@@ -11,9 +11,6 @@ from .models import Entity
 
 
 class EntitySerializer(FlexFieldsModelSerializer):
-    # entities = serializers.PrimaryKeyRelatedField(
-    #     many=True, queryset=Entity.objects.all()
-    # )
     def validate_wikidata_id(self, value):
         if self.instance and self.instance.wikidata_id != value:
             raise serializers.ValidationError(
