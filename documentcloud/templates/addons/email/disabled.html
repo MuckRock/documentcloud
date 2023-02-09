@@ -1,0 +1,16 @@
+{% extends "core/email/base.html" %}
+
+{% block body %}
+
+  <p>
+    Your scheduled run of the Add-On {{ run.addon.name }} has not run
+    succesfully the last five times it was ran.  We have therefore disabled the
+    scheduled run.  You may debug the issue
+    <a href="https://github.com/{{ run.addon.repository }}/actions/runs/{{ run.run_id }}/">
+      using the GitHub logs.
+    </a>  Once fixed, you may re-enable it from the Add-On menu on
+    DocumentCloud.  If you need assistance debugging, please ask on
+    <a href="https://www.muckrock.com/slack/">our Slack channel.</a>
+  </p>
+
+{% endblock body %}

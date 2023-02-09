@@ -24,6 +24,7 @@ from documentcloud.addons.querysets import (
     AddOnRunQuerySet,
 )
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+from documentcloud.core.mail import send_mail
 from documentcloud.documents.choices import Access
 
 logger = logging.getLogger(__name__)
@@ -392,6 +393,22 @@ class AddOnRun(models.Model):
         logger.info("[SET STATUS] %s - %s", self.uuid, self.status)
         self.status = status
         self.save(update_fields=["status"])
+
+        fail_statuses = ["failure", "cancelled"]
+        if status in fail_statuses and all(
+            r.status in fail_statuses
+            for r in self.event.runs.order_by("-created_at")[:5]
+        ):
+            logger.info("[SET STATUS] disabling %s - %s", self.uuid, self.status)
+            # disable the event
+            self.event.event = Event.disabled
+            self.event.save()
+            send_mail(
+                subject="Your scheduled Add-On run has been disabled",
+                user=self.event.user,
+                template="addons/email/disabled.html",
+                extra_context={"run": self},
+            )
 
     def cancel(self):
         """Cancel the run if it is still running"""
