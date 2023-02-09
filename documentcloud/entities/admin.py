@@ -20,7 +20,16 @@ class DocumentAdmin(admin.ModelAdmin):
         "access",
     )
     list_filter = ("access", "owner", "created_at", "updated_at")
-    search_fields = ("title", "localized_names", "wikidata_id", "wikipedia_url", "owner", "description", "created_at", "updated_at")
+    search_fields = (
+        "title",
+        "localized_names",
+        "wikidata_id",
+        "wikipedia_url",
+        "owner",
+        "description",
+        "created_at",
+        "updated_at",
+    )
     show_full_result_count = False
     paginator = LargeTablePaginator
     ordering = ("pk",)
