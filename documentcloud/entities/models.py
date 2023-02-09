@@ -36,6 +36,8 @@ class Entity(models.Model):
         help_text=_("Designates who may access this entity."),
     )
 
+    metadata = models.JSONField(null=True)
+
     # def __init__(self, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
 
