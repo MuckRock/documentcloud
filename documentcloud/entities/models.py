@@ -85,3 +85,34 @@ class Entity(models.Model):
 
     def establish_wd_entity(self, wikidata_id):
         self.wd_entity = self.get_wd_entity(wikidata_id)
+
+
+# TODO: Find a better name or replace the old EntityOccurrence
+class EntityOccurrence2(models.Model):
+    """Where a given entity appears in a given document"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="entities",
+        help_text=_("The document this entity belongs to"),
+    )
+
+    entity = models.ForeignKey(
+        verbose_name=_("entity"),
+        to="entities.Entity",
+        on_delete=models.CASCADE,
+        related_name="+",
+        help_text=_("The entity which appears in the document"),
+    )
+
+    relevance = models.FloatField(
+        _("relevance"), default=0.0, help_text=_("The relevance of this entity")
+    )
+
+    occurrences = models.JSONField(
+        _("occurrences"),
+        default=dict,
+        help_text=_("Extra data asociated with this entity"),
+    )

@@ -5,11 +5,12 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 # DocumentCloud
+from documentcloud.entities.models import Entity, EntityOccurrence2
 from documentcloud.entities.permissions import IsOwnerOrReadOnly
-
-# Local
-from .models import Entity
-from .serializers import EntitySerializer
+from documentcloud.entities.serializers import (
+    EntityOccurrence2Serializer,
+    EntitySerializer,
+)
 
 
 class EntityViewSet(viewsets.ModelViewSet):
@@ -28,19 +29,28 @@ class EntityViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    # def perform_create(self, serializer):
-    #     # Don't set if public
-    #     # Put in serializer, get rid of this.
-    #     serializer.save(owner=self.request.user)
 
-    # def get_permissions(self):
-    #     """
-    #     Instantiates and returns the list of permissions that this view requires.
-    #     """
-    #     permission_classes = self.permission_classes
-    #     if self.action in ["update", "partial_update", "delete"]:
-    #         permission_classes = [
-    #             permissions.IsAuthenticatedOrReadOnly,
-    #             IsOwnerOrReadOnly,
-    #         ]
-    #     return [permission() for permission in permission_classes]
+class EntityOccurrence2ViewSet(viewsets.ModelViewSet):
+    serializer_class = EntityOccurrence2Serializer
+
+    querystring_key_to_filter_key_dict = {
+        "entity_name": "entity__name",
+        "wikidata_id": "entity__wikidata_id",
+        "entity": "entity__id",
+        "document": "document__id",
+    }
+
+    def get_queryset(self):
+        queryset = EntityOccurrence2.objects.all()
+        filter_kwargs = {}
+        for key in EntityOccurrence2ViewSet.querystring_key_to_filter_key_dict.keys():
+            value = self.request.query_params.get(key)
+            if value:
+                filter_kwargs[
+                    EntityOccurrence2ViewSet.querystring_key_to_filter_key_dict[key]
+                ] = value
+
+        if len(filter_kwargs.values) > 0:
+            queryset = queryset.filter(**filter_kwargs)
+
+        return queryset

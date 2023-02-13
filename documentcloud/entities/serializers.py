@@ -1,13 +1,12 @@
 # Django
-
-# Django
 from rest_framework import serializers
+from django.utils.translation import gettext_lazy as _
 
 # Third Party
 from rest_flex_fields import FlexFieldsModelSerializer
 
-# Local
-from .models import Entity
+# DocumentCloud
+from documentcloud.entities.models import Entity, EntityOccurrence2
 
 
 class EntitySerializer(FlexFieldsModelSerializer):
@@ -46,3 +45,14 @@ class EntitySerializer(FlexFieldsModelSerializer):
         expandable_fields = {
             "owner": ("documentcloud.users.UserSerializer", {}),
         }
+
+
+class EntityOccurrence2Serializer(serializers.ModelSerializer):
+    entity = EntitySerializer()
+    occurrences = serializers.SerializerMethodField(
+        label=_("Occurrences"),
+        help_text=EntityOccurrence2._meta.get_field("occurrences").help_text,
+    )
+
+    class Meta:
+        model = EntityOccurrence2
