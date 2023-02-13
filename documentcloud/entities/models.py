@@ -2,10 +2,15 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+# Standard Library
+import logging
+
 # DocumentCloud
 from documentcloud.common.wikidata import EasyWikidataEntity
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.entities.choices import EntityAccess
+
+logger = logging.getLogger(__name__)
 
 
 class Entity(models.Model):
@@ -59,8 +64,8 @@ class Entity(models.Model):
         if not self.localized_names:
             self.localized_names = self.wd_entity.get_names()
             if not self.localized_names:
+                logger.warn("Wikidata entry for %s has no names.", self.wikidata_id)
                 raise ValueError("Wikidata entry has no names.")
-                # TODO: Convert error to a log.
 
         # English bias here. TODO: How can this be addressed?
         self.name = self.localized_names.get("en")
