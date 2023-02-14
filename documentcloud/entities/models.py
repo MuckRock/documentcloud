@@ -23,7 +23,7 @@ class Entity(models.Model):
     name = models.CharField(max_length=500, blank=True)
     localized_names = models.JSONField(default=dict)
     # Unique key?
-    wikidata_id = models.CharField(max_length=16, unique=True)
+    wikidata_id = models.CharField(max_length=16, unique=True, blank=True, null=True)
     # A dictionary with language codes as keys.
     wikipedia_url = models.JSONField(default=dict)
     # Public entities should have a null owner.

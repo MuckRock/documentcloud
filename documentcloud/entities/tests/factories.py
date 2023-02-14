@@ -23,13 +23,20 @@ class EntityFactory(factory.django.DjangoModelFactory):
     )
     # Assuming entity is public for now.
     user = None
-    # owner = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
     description = factory.Sequence(
         lambda n: {"en": f"{n} is good.", "es": f"{n} es bueno."}
     )
     created_at = factory.LazyFunction(datetime.datetime.utcnow)
     updated_at = factory.LazyFunction(datetime.datetime.utcnow)
     access = EntityAccess.public
+
+    class Meta:
+        model = "entities.Entity"
+
+
+class PrivateEntityFactory(EntityFactory):
+    user = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
+    wikidata_id = None
 
     class Meta:
         model = "entities.Entity"

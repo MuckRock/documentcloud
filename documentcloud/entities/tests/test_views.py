@@ -9,7 +9,8 @@ from documentcloud.core.tests import run_commit_hooks
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity
 from documentcloud.entities.serializers import EntitySerializer
-from documentcloud.entities.tests.factories import EntityFactory
+from documentcloud.entities.tests.factories import EntityFactory, PrivateEntityFactory
+from documentcloud.users.serializers import UserSerializer
 
 
 class MockWikidataEntity:
@@ -69,6 +70,16 @@ class TestEntityAPI:
         response_json = response.json()
         serializer = EntitySerializer(entity)
         assert response_json == serializer.data
+
+    def test_retrieve_expand_user(self, client):
+        """Test retrieving an entity with an expanded user"""
+        entity = PrivateEntityFactory()
+        client.force_authenticate(user=entity.user)
+        response = client.get(f"/api/entities/{entity.pk}/", {"expand": "user"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        user_serializer = UserSerializer(entity.user)
+        assert response_json["user"] == user_serializer.data
 
     def test_create(self, client, user, mocker):
         """Test creating an entity"""
