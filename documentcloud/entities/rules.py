@@ -1,3 +1,5 @@
+"""Permissions for entities"""
+
 # pylint: disable=unused-argument
 
 
