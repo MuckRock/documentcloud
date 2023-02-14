@@ -82,6 +82,21 @@ class TestEntityAPI:
         assert response.data["access"] == EntityAccess.public
         assert response.data["name"] == "test"
 
+    def test_create_bad_public_values(self, client, user):
+        """Test creating a public entity trying to set extra fields"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/entities/", {"wikidata_id": "Q1050827", "name": "Name"}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_private(self, client, user):
+        """Test creating a private entity"""
+        client.force_authenticate(user=user)
+        response = client.post("/api/entities/", {"name": "Name"})
+        # Creating private entities is currently not allowed
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_bulk_create(self, client, user, mocker, django_assert_num_queries):
         """Create multiple entities"""
         client.force_authenticate(user=user)

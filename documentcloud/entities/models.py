@@ -20,7 +20,7 @@ class Entity(models.Model):
 
     wd_entity = None
     # A dictionary with language codes as keys.
-    name = models.CharField(max_length=500)
+    name = models.CharField(max_length=500, blank=True)
     localized_names = models.JSONField(default=dict)
     # Unique key?
     wikidata_id = models.CharField(max_length=16, unique=True)
