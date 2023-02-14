@@ -9,11 +9,15 @@ import logging
 from documentcloud.common.wikidata import EasyWikidataEntity
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.entities.choices import EntityAccess
+from documentcloud.entities.querysets import EntityQuerySet
 
 logger = logging.getLogger(__name__)
 
 
 class Entity(models.Model):
+
+    objects = EntityQuerySet.as_manager()
+
     wd_entity = None
     # A dictionary with language codes as keys.
     name = models.CharField(max_length=500)
