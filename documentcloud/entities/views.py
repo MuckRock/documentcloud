@@ -1,21 +1,17 @@
 # Django
-from rest_framework import permissions, viewsets
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from rest_framework import viewsets
 
 # DocumentCloud
-from documentcloud.entities.models import Entity, EntityOccurrence2
-from documentcloud.entities.permissions import IsOwnerOrReadOnly
+from documentcloud.entities.choices import EntityAccess
+from documentcloud.entities.models import Entity, EntityOccurrence
 from documentcloud.entities.serializers import (
-    EntityOccurrence2Serializer,
+    EntityOccurrenceSerializer,
     EntitySerializer,
 )
 
 
 class EntityViewSet(viewsets.ModelViewSet):
     serializer_class = EntitySerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
         queryset = Entity.objects.all()
@@ -29,9 +25,18 @@ class EntityViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def perform_create(self, serializer):
+        if serializer.validated_data.get("access") == EntityAccess.private:
+            # set the user on prviate entities
+            entity = serializer.save(user=self.request.user)
+        else:
+            # lookup wikidata on public entities
+            entity = serializer.save()
+            entity.lookup_wikidata()
 
-class EntityOccurrence2ViewSet(viewsets.ModelViewSet):
-    serializer_class = EntityOccurrence2Serializer
+
+class EntityOccurrenceViewSet(viewsets.ModelViewSet):
+    serializer_class = EntityOccurrenceSerializer
 
     querystring_key_to_filter_key_dict = {
         "entity_name": "entity__name",
@@ -41,13 +46,13 @@ class EntityOccurrence2ViewSet(viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
-        queryset = EntityOccurrence2.objects.all()
+        queryset = EntityOccurrence.objects.all()
         filter_kwargs = {}
-        for key in EntityOccurrence2ViewSet.querystring_key_to_filter_key_dict.keys():
+        for key in EntityOccurrenceViewSet.querystring_key_to_filter_key_dict.keys():
             value = self.request.query_params.get(key)
             if value:
                 filter_kwargs[
-                    EntityOccurrence2ViewSet.querystring_key_to_filter_key_dict[key]
+                    EntityOccurrenceViewSet.querystring_key_to_filter_key_dict[key]
                 ] = value
 
         if len(filter_kwargs.values) > 0:

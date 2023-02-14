@@ -3,13 +3,10 @@ from wikidata.client import Client
 
 
 class EasyWikidataEntity:
-    client = None
-
     def __init__(self, wikidata_id):
-        if not self.client:
-            self.client = Client()
+        client = Client()
         # TODO: Handle 404
-        self.entity = self.client.get(wikidata_id, load=True)
+        self.entity = client.get(wikidata_id, load=True)
 
     def get_raw_wikidata_entity(self):
         return self.entity
