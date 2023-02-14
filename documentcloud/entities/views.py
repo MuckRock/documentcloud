@@ -1,6 +1,9 @@
 # Django
 from rest_framework import viewsets
 
+# Third Party
+from django_filters import rest_framework as django_filters
+
 # DocumentCloud
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity, EntityOccurrence
@@ -14,16 +17,7 @@ class EntityViewSet(viewsets.ModelViewSet):
     serializer_class = EntitySerializer
 
     def get_queryset(self):
-        queryset = Entity.objects.all()
-        wikidata_id = self.request.query_params.get("wikidata_id")
-        name = self.request.query_params.get("name")
-
-        if wikidata_id:
-            queryset = queryset.filter(wikidata_id=wikidata_id)
-        if name:
-            queryset = queryset.filter(name=name)
-
-        return queryset
+        return Entity.objects.get_viewable(self.request.user)
 
     def perform_create(self, serializer):
         if serializer.validated_data.get("access") == EntityAccess.private:
@@ -33,6 +27,16 @@ class EntityViewSet(viewsets.ModelViewSet):
             # lookup wikidata on public entities
             entity = serializer.save()
             entity.lookup_wikidata()
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = Entity
+            fields = {
+                "wikidata_id": ["exact"],
+                "name": ["exact"],
+            }
+
+    filterset_class = Filter
 
 
 class EntityOccurrenceViewSet(viewsets.ModelViewSet):
