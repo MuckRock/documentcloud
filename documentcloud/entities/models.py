@@ -37,7 +37,7 @@ class Entity(models.Model):
         help_text=_("Timestamp of when the entity was created"),
     )
     updated_at = AutoLastModifiedField(
-        _("updated at"), help_text=_("Timestamp of when the entitywas last updated")
+        _("updated at"), help_text=_("Timestamp of when the entity was last updated")
     )
     access = models.IntegerField(
         _("access"),
@@ -50,6 +50,9 @@ class Entity(models.Model):
         default=dict, help_text=_("Extra data about this entity")
     )
 
+    def __str__(self):
+        return self.name
+
     def lookup_wikidata(self):
         """Fill in information from Wikidata"""
         if not self.wikidata_id:
@@ -57,21 +60,8 @@ class Entity(models.Model):
         if not self.wd_entity:
             self.wd_entity = EasyWikidataEntity(self.wikidata_id)
 
-        self.wikipedia_url = self.wd_entity.get_urls()
-        self.localized_names = self.wd_entity.get_names()
-        if not self.localized_names:
-            logger.warning("Wikidata entry for %s has no names.", self.wikidata_id)
-            # raise ValueError("Wikidata entry has no names.")
-
-        # English bias here. TODO: How can this be addressed?
-        self.name = self.localized_names.get("en")
-        if not self.name:
-            if self.localized_names:
-                self.name = list(self.localized_names.values())[0]
-            else:
-                self.name = "Unknown"
-
-        self.description = self.wd_entity.get_description()
+        for attr, value in self.wd_entity.get_values().items():
+            setattr(self, attr, value)
 
 
 class EntityOccurrence(models.Model):

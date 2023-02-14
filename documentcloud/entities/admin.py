@@ -14,8 +14,6 @@ class EntityAdmin(admin.ModelAdmin):
         "name",
         "wikidata_id",
         "user",
-        "created_at",
-        "updated_at",
         "access",
     )
     list_filter = ("access",)

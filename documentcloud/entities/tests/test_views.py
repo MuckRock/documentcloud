@@ -5,6 +5,7 @@ from rest_framework import status
 import pytest
 
 # DocumentCloud
+from documentcloud.common.wikidata import EasyWikidataEntity
 from documentcloud.core.tests import run_commit_hooks
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity
@@ -13,7 +14,7 @@ from documentcloud.entities.tests.factories import EntityFactory, PrivateEntityF
 from documentcloud.users.serializers import UserSerializer
 
 
-class MockWikidataEntity:
+class MockWikidataEntity(EasyWikidataEntity):
     def __init__(self, wikidata_id):
         self.wikidata_id = wikidata_id
 
@@ -101,6 +102,12 @@ class TestEntityAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_non_unique(self, client, user, entity):
+        """Test creating a duplicate entity"""
+        client.force_authenticate(user=user)
+        response = client.post("/api/entities/", {"wikidata_id": entity.wikidata_id})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_create_private(self, client, user):
         """Test creating a private entity"""
         client.force_authenticate(user=user)
@@ -115,7 +122,7 @@ class TestEntityAPI:
             "documentcloud.entities.models.EasyWikidataEntity",
             MockWikidataEntity,
         )
-        with django_assert_num_queries(8):
+        with django_assert_num_queries(11):
             response = client.post(
                 "/api/entities/",
                 [
