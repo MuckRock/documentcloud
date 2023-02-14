@@ -1,10 +1,11 @@
 # Django
-from rest_framework import viewsets
+from rest_framework import serializers, viewsets
 
 # Third Party
 from django_filters import rest_framework as django_filters
 
 # DocumentCloud
+from documentcloud.drf_bulk.views import BulkCreateModelMixin
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity, EntityOccurrence
 from documentcloud.entities.serializers import (
@@ -13,8 +14,9 @@ from documentcloud.entities.serializers import (
 )
 
 
-class EntityViewSet(viewsets.ModelViewSet):
+class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     serializer_class = EntitySerializer
+    queryset = Entity.objects.none()
 
     def get_queryset(self):
         return Entity.objects.get_viewable(self.request.user)
@@ -27,6 +29,24 @@ class EntityViewSet(viewsets.ModelViewSet):
             # lookup wikidata on public entities
             entity = serializer.save()
             entity.lookup_wikidata()
+
+    def bulk_perform_create(self, serializer):
+        first = serializer.validated_data[0]
+        if not all(
+            d.get("access") == first.get("access") for d in serializer.validated_data
+        ):
+            raise serializers.ValidationError(
+                "Bulk entity creation must all have same `access`"
+            )
+        if first.get("access") == EntityAccess.private:
+            # set the user on prviate entities
+            entity = serializer.save(user=self.request.user)
+        else:
+            # lookup wikidata on public entities
+            entities = serializer.save()
+            # TODO: do bulk lookups more efficiently (or in the background)
+            for entity in entities:
+                entity.lookup_wikidata()
 
     class Filter(django_filters.FilterSet):
         class Meta:
