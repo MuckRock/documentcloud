@@ -28,7 +28,11 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
         else:
             # lookup wikidata on public entities
             entity = serializer.save()
-            entity.lookup_wikidata()
+            try:
+                entity.lookup_wikidata()
+                entity.save()
+            except ValueError:
+                raise serializers.ValidationError("Invalid `wikidata_id`")
 
     def bulk_perform_create(self, serializer):
         first = serializer.validated_data[0]
@@ -46,7 +50,11 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
             entities = serializer.save()
             # TODO: do bulk lookups more efficiently (or in the background)
             for entity in entities:
-                entity.lookup_wikidata()
+                try:
+                    entity.lookup_wikidata()
+                    entity.save()
+                except ValueError:
+                    raise serializers.ValidationError("Invalid `wikidata_id`")
 
     class Filter(django_filters.FilterSet):
         class Meta:
