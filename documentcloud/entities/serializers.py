@@ -1,12 +1,12 @@
 # Django
-from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
+from rest_framework import serializers
 
 # Third Party
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
-from documentcloud.entities.models import Entity, EntityOccurrence2
+from documentcloud.entities.models import Entity, EntityOccurrence
 
 
 class EntitySerializer(FlexFieldsModelSerializer):
@@ -25,7 +25,7 @@ class EntitySerializer(FlexFieldsModelSerializer):
             "wikipedia_url",
             "name",
             "localized_names",
-            "owner",
+            "user",
             "description",
             "created_at",
             "updated_at",
@@ -39,20 +39,20 @@ class EntitySerializer(FlexFieldsModelSerializer):
             "name": {"read_only": True},
             "localized_names": {"read_only": True},
             "description": {"read_only": True},
-            "owner": {"read_only": True},
+            "user": {"read_only": True},
             "access": {"read_only": True},
         }
         expandable_fields = {
-            "owner": ("documentcloud.users.UserSerializer", {}),
+            "user": ("documentcloud.users.UserSerializer", {}),
         }
 
 
-class EntityOccurrence2Serializer(serializers.ModelSerializer):
+class EntityOccurrenceSerializer(serializers.ModelSerializer):
     entity = EntitySerializer()
     occurrences = serializers.SerializerMethodField(
         label=_("Occurrences"),
-        help_text=EntityOccurrence2._meta.get_field("occurrences").help_text,
+        help_text=EntityOccurrence._meta.get_field("occurrences").help_text,
     )
 
     class Meta:
-        model = EntityOccurrence2
+        model = EntityOccurrence
