@@ -7,6 +7,7 @@ import pytest
 # DocumentCloud
 from documentcloud.core.tests import run_commit_hooks
 from documentcloud.entities.choices import EntityAccess
+from documentcloud.entities.models import Entity
 from documentcloud.entities.serializers import EntitySerializer
 from documentcloud.entities.tests.factories import EntityFactory
 
@@ -81,6 +82,29 @@ class TestEntityAPI:
         assert response.data["access"] == EntityAccess.public
         assert response.data["name"] == "test"
 
+    def test_bulk_create(self, client, user, mocker, django_assert_num_queries):
+        """Create multiple entities"""
+        client.force_authenticate(user=user)
+        mocker.patch(
+            "documentcloud.entities.models.EasyWikidataEntity",
+            MockWikidataEntity,
+        )
+        with django_assert_num_queries(8):
+            response = client.post(
+                "/api/entities/",
+                [
+                    {"wikidata_id": "Q1"},
+                    {"wikidata_id": "Q2"},
+                    {"wikidata_id": "Q3"},
+                ],
+                format="json",
+            )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert (
+            Entity.objects.filter(pk__in=[e["id"] for e in response.json()]).count()
+            == 3
+        )
+
     def test_update(self, client, entity, user):
         """Public entities may not be updated"""
         client.force_authenticate(user=user)
@@ -89,7 +113,7 @@ class TestEntityAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_delete(self, client, entity, user):
+    def test_destroy(self, client, entity, user):
         """Public entities may not be deleted"""
         client.force_authenticate(user=user)
         response = client.delete(f"/api/entities/{entity.pk}/")
