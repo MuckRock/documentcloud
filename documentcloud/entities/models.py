@@ -18,11 +18,9 @@ class Entity(models.Model):
 
     objects = EntityQuerySet.as_manager()
 
-    wd_entity = None
-    # A dictionary with language codes as keys.
     name = models.CharField(max_length=500, blank=True)
+    # A dictionary with language codes as keys.
     localized_names = models.JSONField(default=dict)
-    # Unique key?
     wikidata_id = models.CharField(max_length=16, unique=True, blank=True, null=True)
     # A dictionary with language codes as keys.
     wikipedia_url = models.JSONField(default=dict)
@@ -57,10 +55,10 @@ class Entity(models.Model):
         """Fill in information from Wikidata"""
         if not self.wikidata_id:
             return
-        if not self.wd_entity:
-            self.wd_entity = EasyWikidataEntity(self.wikidata_id)
 
-        for attr, value in self.wd_entity.get_values().items():
+        wd_entity = EasyWikidataEntity(self.wikidata_id)
+
+        for attr, value in wd_entity.get_values().items():
             setattr(self, attr, value)
 
 

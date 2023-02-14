@@ -48,6 +48,11 @@ class EntitySerializer(FlexFieldsModelSerializer):
                 )
             attrs["access"] = EntityAccess.public
         else:
+            # private entity, name is required
+            if "name" not in attrs:
+                raise serializers.ValidationError(
+                    "Name is required for private entities"
+                )
             attrs["access"] = EntityAccess.private
 
         return attrs
