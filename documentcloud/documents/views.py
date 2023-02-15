@@ -825,7 +825,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        return self.document.entities.all()
+        return self.document.legacy_entities_2.all()
 
     def create(self, request, *args, **kwargs):
         """Initiate asyncrhonous creation of entities"""
@@ -846,7 +846,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     {"error": "Already processing"}, status=status.HTTP_400_BAD_REQUEST
                 )
 
-            if document.entities.exists():
+            if document.legacy_entities_2.exists():
                 return Response(
                     {"error": "Entities already created"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -863,7 +863,7 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def bulk_destroy(self, request, *args, **kwargs):
         """Delete all entities for the document"""
         if request.user.has_perm("documents.change_document", self.document):
-            self.document.entities.all().delete()
+            self.document.legacy_entities_2.all().delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             raise exceptions.PermissionDenied(

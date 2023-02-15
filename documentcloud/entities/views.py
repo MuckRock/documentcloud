@@ -1,56 +1,122 @@
 # Django
-from rest_framework import permissions, viewsets
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from django.utils.decorators import method_decorator
+from rest_framework import exceptions, serializers, viewsets
+from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import SAFE_METHODS
+
+# Standard Library
+from functools import lru_cache
+
+# Third Party
+from django_filters import rest_framework as django_filters
 
 # DocumentCloud
-from documentcloud.entities.models import Entity, EntityOccurrence2
-from documentcloud.entities.permissions import IsOwnerOrReadOnly
+from documentcloud.documents.decorators import conditional_cache_control
+from documentcloud.documents.models import Document
+from documentcloud.drf_bulk.views import BulkCreateModelMixin
+from documentcloud.entities.choices import EntityAccess
+from documentcloud.entities.models import Entity, EntityOccurrence
 from documentcloud.entities.serializers import (
-    EntityOccurrence2Serializer,
+    EntityOccurrenceSerializer,
     EntitySerializer,
 )
 
 
-class EntityViewSet(viewsets.ModelViewSet):
+class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     serializer_class = EntitySerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    queryset = Entity.objects.none()
 
     def get_queryset(self):
-        queryset = Entity.objects.all()
-        wikidata_id = self.request.query_params.get("wikidata_id")
-        name = self.request.query_params.get("name")
+        return Entity.objects.get_viewable(self.request.user)
 
-        if wikidata_id:
-            queryset = queryset.filter(wikidata_id=wikidata_id)
-        if name:
-            queryset = queryset.filter(name=name)
+    def perform_create(self, serializer):
+        if serializer.validated_data.get("access") == EntityAccess.private:
+            # set the user on prviate entities
+            entity = serializer.save(user=self.request.user)
+        else:
+            # lookup wikidata on public entities
+            entity = serializer.save()
+            try:
+                entity.lookup_wikidata()
+                entity.save()
+            except ValueError:
+                raise serializers.ValidationError("Invalid `wikidata_id`")
 
-        return queryset
+    def bulk_perform_create(self, serializer):
+        first = serializer.validated_data[0]
+        if not all(
+            d.get("access") == first.get("access") for d in serializer.validated_data
+        ):
+            raise serializers.ValidationError(
+                "Bulk entity creation must all have same `access`"
+            )
+        if first.get("access") == EntityAccess.private:
+            # set the user on prviate entities
+            entity = serializer.save(user=self.request.user)
+        else:
+            # lookup wikidata on public entities
+            entities = serializer.save()
+            # TODO: do bulk lookups more efficiently (or in the background)
+            for entity in entities:
+                try:
+                    entity.lookup_wikidata()
+                    entity.save()
+                except ValueError:
+                    raise serializers.ValidationError("Invalid `wikidata_id`")
+
+    class Filter(django_filters.FilterSet):
+        class Meta:
+            model = Entity
+            fields = {
+                "wikidata_id": ["exact"],
+                "name": ["exact"],
+            }
+
+    filterset_class = Filter
 
 
-class EntityOccurrence2ViewSet(viewsets.ModelViewSet):
-    serializer_class = EntityOccurrence2Serializer
+@method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
+class EntityOccurrenceViewSet(viewsets.ModelViewSet):
+    serializer_class = EntityOccurrenceSerializer
+    queryset = EntityOccurrence.objects.none()
+    lookup_field = "entity_id"
+    permit_list_expands = ["entity"]
 
-    querystring_key_to_filter_key_dict = {
-        "entity_name": "entity__name",
-        "wikidata_id": "entity__wikidata_id",
-        "entity": "entity__id",
-        "document": "document__id",
-    }
-
+    @lru_cache()
     def get_queryset(self):
-        queryset = EntityOccurrence2.objects.all()
-        filter_kwargs = {}
-        for key in EntityOccurrence2ViewSet.querystring_key_to_filter_key_dict.keys():
-            value = self.request.query_params.get(key)
-            if value:
-                filter_kwargs[
-                    EntityOccurrence2ViewSet.querystring_key_to_filter_key_dict[key]
-                ] = value
+        self.document = get_object_or_404(
+            Document.objects.get_viewable(self.request.user),
+            pk=self.kwargs["document_pk"],
+        )
+        # TODO do we need to filter out private entities here?
+        return self.document.entities.all()
 
-        if len(filter_kwargs.values) > 0:
-            queryset = queryset.filter(**filter_kwargs)
+    @lru_cache()
+    def check_edit_document(self):
+        if not self.request.user.has_perm("documents.change_document", self.document):
+            raise exceptions.PermissionDenied(
+                "You do not have permission to edit entities on this document"
+            )
 
-        return queryset
+    def check_permissions(self, request):
+        """Add an additional check that you can edit the document before
+        allowing the user to change an entity within a document
+        """
+        super().check_permissions(request)
+        if request.method not in SAFE_METHODS:
+            self.check_edit_document()
+
+    def perform_create(self, serializer):
+        """Specify the document"""
+        document = Document.objects.get(pk=self.kwargs["document_pk"])
+        serializer.save(document=document)
+
+    class Filter(django_filters.FilterSet):
+        wikidata_id = django_filters.CharFilter(field_name="entity__wikidata_id")
+        name = django_filters.CharFilter(field_name="entity__name")
+
+        class Meta:
+            model = EntityOccurrence
+            fields = []
+
+    filterset_class = Filter

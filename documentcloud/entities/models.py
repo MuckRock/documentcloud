@@ -9,86 +9,60 @@ import logging
 from documentcloud.common.wikidata import EasyWikidataEntity
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.entities.choices import EntityAccess
+from documentcloud.entities.querysets import EntityQuerySet
 
 logger = logging.getLogger(__name__)
 
 
 class Entity(models.Model):
-    wd_entity = None
+
+    objects = EntityQuerySet.as_manager()
+
+    name = models.CharField(max_length=500, blank=True)
     # A dictionary with language codes as keys.
-    name = models.CharField(max_length=500)
-    localized_names = models.JSONField()
-    # Unique key?
-    wikidata_id = models.CharField(max_length=16, unique=True)
+    localized_names = models.JSONField(default=dict)
+    wikidata_id = models.CharField(max_length=16, unique=True, blank=True, null=True)
     # A dictionary with language codes as keys.
-    wikipedia_url = models.JSONField()
+    wikipedia_url = models.JSONField(default=dict)
     # Public entities should have a null owner.
-    owner = models.ForeignKey(
+    user = models.ForeignKey(
         "users.User", related_name="entities", on_delete=models.PROTECT, null=True
     )
-    description = models.JSONField()
+    description = models.JSONField(default=dict)
     created_at = AutoCreatedField(
         _("created at"),
         db_index=True,
         help_text=_("Timestamp of when the entity was created"),
     )
     updated_at = AutoLastModifiedField(
-        _("updated at"), help_text=_("Timestamp of when the entitywas last updated")
+        _("updated at"), help_text=_("Timestamp of when the entity was last updated")
     )
     access = models.IntegerField(
         _("access"),
         choices=EntityAccess.choices,
+        default=EntityAccess.public,
         help_text=_("Designates who may access this entity."),
     )
 
-    metadata = models.JSONField(null=True)
+    metadata = models.JSONField(
+        default=dict, help_text=_("Extra data about this entity")
+    )
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
+    def __str__(self):
+        return self.name
 
-    def save(self, *args, **kwargs):
+    def lookup_wikidata(self):
+        """Fill in information from Wikidata"""
         if not self.wikidata_id:
-            # TODO: Call save_private here instead.
-            raise ValueError("Missing wikidata_id in entity.")
+            return
 
-        self.access = EntityAccess.public
+        wd_entity = EasyWikidataEntity(self.wikidata_id)
 
-        self.owner = None
-
-        if not self.wd_entity:
-            self.establish_wd_entity(self.wikidata_id)
-
-        if not self.wikipedia_url:
-            self.wikipedia_url = self.wd_entity.get_urls()
-
-        if not self.localized_names:
-            self.localized_names = self.wd_entity.get_names()
-            if not self.localized_names:
-                logger.warn("Wikidata entry for %s has no names.", self.wikidata_id)
-                raise ValueError("Wikidata entry has no names.")
-
-        # English bias here. TODO: How can this be addressed?
-        self.name = self.localized_names.get("en")
-        if not self.name:
-            if self.localized_names:
-                self.name = list(self.localized_names.values())[0]
-            else:
-                self.name = "Unknown"
-
-        if not self.description:
-            self.description = self.wd_entity.get_description()
-
-        super().save(*args, **kwargs)
-
-    def get_wd_entity(self, wikidata_id):
-        return EasyWikidataEntity(wikidata_id)
-
-    def establish_wd_entity(self, wikidata_id):
-        self.wd_entity = self.get_wd_entity(wikidata_id)
+        for attr, value in wd_entity.get_values().items():
+            setattr(self, attr, value)
 
 
-# TODO: Find a better name or replace the old EntityOccurrence
-class EntityOccurrence2(models.Model):
+class EntityOccurrence(models.Model):
     """Where a given entity appears in a given document"""
 
     document = models.ForeignKey(
@@ -107,6 +81,7 @@ class EntityOccurrence2(models.Model):
         help_text=_("The entity which appears in the document"),
     )
 
+    # TODO should we replace this with a metadata field?
     relevance = models.FloatField(
         _("relevance"), default=0.0, help_text=_("The relevance of this entity")
     )
@@ -114,5 +89,11 @@ class EntityOccurrence2(models.Model):
     occurrences = models.JSONField(
         _("occurrences"),
         default=dict,
-        help_text=_("Extra data asociated with this entity"),
+        help_text=_("Locations of entity in this document"),
     )
+
+    class Meta:
+        unique_together = [("document", "entity")]
+
+    def __str__(self):
+        return self.entity.name
