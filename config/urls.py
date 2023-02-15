@@ -18,6 +18,7 @@ from documentcloud.addons.views import (
     AddOnViewSet,
     dashboard,
     github_webhook,
+    scraper_dashboard,
 )
 from documentcloud.core.views import FileServer, account_logout, mailgun
 from documentcloud.documents.views import (
@@ -104,6 +105,9 @@ urlpatterns = [
     path("pages/", include("django.contrib.flatpages.urls")),
     path("robots.txt", include("robots.urls")),
     path("addons/dashboard/", dashboard, name="addon-dashboard"),
+    path(
+        "addons/dashboard/scraper/", scraper_dashboard, name="addon-scraper-dashboard"
+    ),
 ]
 
 if "debug_toolbar" in settings.INSTALLED_APPS:

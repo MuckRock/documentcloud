@@ -27,11 +27,13 @@ import hashlib
 import hmac
 import json
 import logging
+from collections import defaultdict
 from datetime import timedelta
 from functools import lru_cache
 
 # Third Party
 from django_filters import rest_framework as django_filters
+from furl import furl
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded
 
@@ -312,6 +314,22 @@ def dashboard(request):
             }
         )
     return render(request, "addons/dashboard.html", context)
+
+
+@staff_member_required
+def scraper_dashboard(request):
+    scraper = get_object_or_404(AddOn, pk=105)
+    data = scraper.runs.values("event__parameters__site").annotate(
+        success=Count("id", filter=Q(status="success")),
+        failure=Count("id", filter=Q(status__in=("failure", "cancelled"))),
+    )
+    hosts = defaultdict(lambda: {"success": 0, "failure": 0})
+    for datum in data:
+        url = furl(datum["event__parameters__site"])
+        hosts[url.host]["success"] += datum["success"]
+        hosts[url.host]["failure"] += datum["failure"]
+    context = {"hosts": hosts}
+    return render(request, "addons/scraper.html", context)
 
 
 class AddOnRunFileServer(APIView):

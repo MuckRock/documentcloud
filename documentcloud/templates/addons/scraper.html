@@ -1,0 +1,32 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scraper Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="container">
+      <table class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>Success Count</th>
+            <th>Failure Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for host, values in hosts.items %}
+            <tr>
+              <td>{{ host }}</td>
+              <td>{{ values.success }}</td>
+              <td>{{ values.failure }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>
