@@ -26,6 +26,7 @@ from documentcloud.documents.views import (
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
+    EntityViewSet as LegacyEntity2ViewSet,
     LegacyEntityViewSet,
     ModificationViewSet,
     NoteViewSet,
@@ -33,7 +34,7 @@ from documentcloud.documents.views import (
     SectionViewSet,
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
-from documentcloud.entities.views import EntityViewSet
+from documentcloud.entities.views import EntityOccurrenceViewSet, EntityViewSet
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
@@ -63,7 +64,8 @@ router.register("entities", EntityViewSet, basename="entities")
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
-# documents_router.register("entities", EntityViewSet)
+documents_router.register("entities", EntityOccurrenceViewSet)
+documents_router.register("legacy_entities_2", LegacyEntity2ViewSet)
 documents_router.register("legacy_entities", LegacyEntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)

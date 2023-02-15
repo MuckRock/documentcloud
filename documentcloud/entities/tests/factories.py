@@ -26,8 +26,6 @@ class EntityFactory(factory.django.DjangoModelFactory):
     description = factory.Sequence(
         lambda n: {"en": f"{n} is good.", "es": f"{n} es bueno."}
     )
-    created_at = factory.LazyFunction(datetime.datetime.utcnow)
-    updated_at = factory.LazyFunction(datetime.datetime.utcnow)
     access = EntityAccess.public
 
     class Meta:
@@ -40,3 +38,13 @@ class PrivateEntityFactory(EntityFactory):
 
     class Meta:
         model = "entities.Entity"
+
+
+class EntityOccurrenceFactory(factory.django.DjangoModelFactory):
+    document = factory.SubFactory(
+        "documentcloud.documents.tests.factories.DocumentFactory"
+    )
+    entity = factory.SubFactory("documentcloud.entities.tests.factories.EntityFactory")
+
+    class Meta:
+        model = "entities.EntityOccurrence"
