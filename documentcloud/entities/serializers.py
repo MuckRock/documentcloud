@@ -1,11 +1,11 @@
 # Django
-from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 # Third Party
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
+from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity, EntityOccurrence
 
@@ -58,12 +58,22 @@ class EntitySerializer(FlexFieldsModelSerializer):
         return attrs
 
 
-class EntityOccurrenceSerializer(serializers.ModelSerializer):
-    entity = EntitySerializer()
-    occurrences = serializers.SerializerMethodField(
-        label=_("Occurrences"),
-        help_text=EntityOccurrence._meta.get_field("occurrences").help_text,
-    )
-
+class EntityOccurrenceSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = EntityOccurrence
+        list_serializer_class = BulkListSerializer
+        update_lookup_field = "document"
+        fields = ["entity", "relevance", "occurrences"]
+        extra_kwargs = {
+            "entity": {
+                "queryset": Entity.objects.none(),
+                "style": {"base_template": "input.html"},
+            }
+        }
+        expandable_fields = {"entity": ("documentcloud.entities.EntitySerializer", {})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user and "entity" in self.fields:
+            self.fields["entity"].queryset = Entity.objects.get_viewable(request.user)

@@ -81,6 +81,7 @@ class EntityOccurrence(models.Model):
         help_text=_("The entity which appears in the document"),
     )
 
+    # TODO should we replace this with a metadata field?
     relevance = models.FloatField(
         _("relevance"), default=0.0, help_text=_("The relevance of this entity")
     )
@@ -90,3 +91,9 @@ class EntityOccurrence(models.Model):
         default=dict,
         help_text=_("Locations of entity in this document"),
     )
+
+    class Meta:
+        unique_together = [("document", "entity")]
+
+    def __str__(self):
+        return self.entity.name
