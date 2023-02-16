@@ -328,7 +328,7 @@ def scraper_dashboard(request):
         url = furl(datum["event__parameters__site"])
         hosts[url.host]["success"] += datum["success"]
         hosts[url.host]["failure"] += datum["failure"]
-    context = {"hosts": hosts}
+    context = {"hosts": dict(hosts)}
     return render(request, "addons/scraper.html", context)
 
 
