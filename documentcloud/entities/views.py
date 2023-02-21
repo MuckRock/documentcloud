@@ -76,7 +76,7 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-class EntityOccurrenceViewSet(viewsets.ModelViewSet):
+class EntityOccurrenceViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     serializer_class = EntityOccurrenceSerializer
     queryset = EntityOccurrence.objects.none()
     lookup_field = "entity_id"
