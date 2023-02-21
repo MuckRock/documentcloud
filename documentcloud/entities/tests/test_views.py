@@ -226,6 +226,19 @@ class TestEntityOccurrenceAPI:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_create_bulk(self, client, document):
+        """Test creating multiple entity occurrences"""
+        client.force_authenticate(user=document.user)
+        entities = EntityFactory.create_batch(3)
+        response = client.post(
+            f"/api/documents/{document.pk}/entities/",
+            [{"entity": e.pk} for e in entities],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        document.refresh_from_db()
+        assert document.entities.count() == 3
+
     def test_update(self, client, entity_occurrence):
         """Update an entity occurrence"""
         client.force_authenticate(user=entity_occurrence.document.user)
