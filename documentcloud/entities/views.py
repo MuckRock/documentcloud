@@ -68,7 +68,7 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
         class Meta:
             model = Entity
             fields = {
-                "wikidata_id": ["exact"],
+                "wikidata_id": ["exact", "in"],
                 "name": ["exact"],
             }
 
