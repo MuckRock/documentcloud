@@ -6,6 +6,7 @@ import pytest
 
 # DocumentCloud
 from documentcloud.common.wikidata import EasyWikidataEntity
+from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity
 from documentcloud.entities.serializers import (
@@ -210,11 +211,24 @@ class TestEntityOccurrenceAPI:
         serializer = EntityOccurrenceSerializer(entity_occurrence)
         assert response_json == serializer.data
 
-    def test_create(self, client, document, entity):
+    def test_create(self, client, entity):
         """Test creating an entity occurrence"""
+        document = DocumentFactory.create(page_count=3)
         client.force_authenticate(user=document.user)
         response = client.post(
-            f"/api/documents/{document.pk}/entities/", {"entity": entity.pk}
+            f"/api/documents/{document.pk}/entities/",
+            {
+                "entity": entity.pk,
+                "occurrences": [
+                    {
+                        "page": 0,
+                        "offset": 100,
+                        "page_offset": 100,
+                        "content": entity.name,
+                    }
+                ],
+            },
+            format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -225,6 +239,25 @@ class TestEntityOccurrenceAPI:
             f"/api/documents/{document.pk}/entities/", {"entity": entity.pk}
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_create_bad_occurrence(self, client, document, entity):
+        """Test creating an entity occurrence with bad data"""
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/entities/",
+            {
+                "entity": entity.pk,
+                "occurrences": [
+                    {
+                        "page": 100,
+                        "offset": "foo",
+                        "foo": "bar",
+                    }
+                ],
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_bulk(self, client, document):
         """Test creating multiple entity occurrences"""
