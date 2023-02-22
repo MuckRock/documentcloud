@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
+from documentcloud.documents.models import Document
 from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity, EntityOccurrence
@@ -58,11 +59,35 @@ class EntitySerializer(FlexFieldsModelSerializer):
         return attrs
 
 
+class OccurrenceSerializer(serializers.Serializer):
+    """Serializer to validate the occurrences field of an EntityOccurrence"""
+
+    page = serializers.IntegerField(min_value=0)
+    offset = serializers.IntegerField(min_value=0)
+    page_offset = serializers.IntegerField(min_value=0)
+    content = serializers.CharField(max_length=200)
+
+    def validate_page(self, value):
+        view = self.context.get("view")
+        if not view:
+            return value
+        document = Document.objects.get(pk=view.kwargs["document_pk"])
+        if value >= document.page_count:
+            raise serializers.ValidationError(
+                f"Page number greater then document page count: {document.page_count}"
+            )
+
+        return value
+
+
 class EntityOccurrenceSerializer(FlexFieldsModelSerializer):
+
+    occurrences = OccurrenceSerializer(many=True, required=False)
+
     class Meta:
         model = EntityOccurrence
         list_serializer_class = BulkListSerializer
-        update_lookup_field = "document"
+        update_lookup_field = "entity"
         fields = ["entity", "relevance", "occurrences"]
         extra_kwargs = {
             "entity": {
