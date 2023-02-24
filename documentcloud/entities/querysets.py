@@ -1,7 +1,6 @@
 """Custom querysets for entities app"""
 
 # Django
-from django.db import models
 from django.db.models import Q
 
 # Third Party

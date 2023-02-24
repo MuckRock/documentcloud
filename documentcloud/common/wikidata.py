@@ -1,12 +1,11 @@
 # Django
 from django.conf import settings
 
-# Third Party
-import requests
-
 # DocumentCloud
 from documentcloud.documents.entity_extraction import requests_retry_session
-from documentcloud.entities.models import EntityTranslation
+from documentcloud.entities.models import (  # pylint: disable=no-name-in-module
+    EntityTranslation,
+)
 
 
 class WikidataEntities:
@@ -24,7 +23,7 @@ class WikidataEntities:
             entities = [entities]
         self.entities = entities
 
-        wikidata_ids = [e.wikidata_id for e in entitiy]
+        wikidata_ids = [e.wikidata_id for e in entities]
         resp = requests_retry_session().get(
             self.url,
             params={
@@ -32,8 +31,8 @@ class WikidataEntities:
                 "action": self.action,
                 "ids": "|".join(wikidata_ids),
                 "props": "sitelinks/urls|labels|descriptions",
-                "languages": "|".join(langs),
-                "sitefilter": "|".join([f"{l}wiki" for l in langs]),
+                "languages": "|".join(self.langs),
+                "sitefilter": "|".join([f"{l}wiki" for l in self.langs]),
             },
         )
         resp.raise_for_status()

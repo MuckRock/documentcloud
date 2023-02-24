@@ -1,6 +1,5 @@
 # Django
 from django.db.models import prefetch_related_objects
-from django.utils import translation
 from django.utils.decorators import method_decorator
 from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
@@ -19,7 +18,7 @@ from documentcloud.documents.decorators import conditional_cache_control
 from documentcloud.documents.models import Document
 from documentcloud.drf_bulk.views import BulkCreateModelMixin
 from documentcloud.entities.choices import EntityAccess
-from documentcloud.entities.models import Entity, EntityOccurrence, EntityTranslation
+from documentcloud.entities.models import Entity, EntityOccurrence
 from documentcloud.entities.serializers import (
     EntityOccurrenceSerializer,
     EntitySerializer,

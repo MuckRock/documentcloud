@@ -63,6 +63,8 @@ class EntitySerializer(FlexFieldsModelSerializer):
 class OccurrenceSerializer(serializers.Serializer):
     """Serializer to validate the occurrences field of an EntityOccurrence"""
 
+    # pylint: disable=abstract-method
+
     page = serializers.IntegerField(min_value=0)
     offset = serializers.IntegerField(min_value=0)
     page_offset = serializers.IntegerField(min_value=0)
