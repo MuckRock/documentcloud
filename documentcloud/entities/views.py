@@ -11,6 +11,7 @@ from functools import lru_cache
 
 # Third Party
 from django_filters import rest_framework as django_filters
+from requests.exceptions import RequestException
 
 # DocumentCloud
 from documentcloud.common.wikidata import WikidataEntities
@@ -56,10 +57,16 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
             if not bulk:
                 entities = [entities]
 
-            # XXX check for errors
-            wikidata = WikidataEntities(entities)
-            wikidata.create_translations()
-            prefetch_related_objects(entities, "translations")
+            try:
+                wikidata = WikidataEntities(entities)
+                wikidata.create_translations()
+                prefetch_related_objects(entities, "translations")
+            except ValueError as exc:
+                raise serializers.ValidationError(exc.args[0])
+            except RequestException:
+                raise serializers.ValidationError(
+                    "Error contacting Wikidata.  Please try again later."
+                )
 
     class Filter(django_filters.FilterSet):
         name = django_filters.CharFilter(field_name="translations__name")

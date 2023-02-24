@@ -5,6 +5,7 @@ from django.conf import settings
 import requests
 
 # DocumentCloud
+from documentcloud.documents.entity_extraction import requests_retry_session
 from documentcloud.entities.models import EntityTranslation
 
 
@@ -24,7 +25,7 @@ class WikidataEntities:
         self.entities = entities
 
         wikidata_ids = [e.wikidata_id for e in entitiy]
-        resp = requests.get(
+        resp = requests_retry_session().get(
             self.url,
             params={
                 "format": "json",
@@ -35,9 +36,10 @@ class WikidataEntities:
                 "sitefilter": "|".join([f"{l}wiki" for l in langs]),
             },
         )
-        # XXX check response code
-        # XXX check for invalid wikidata IDs
+        resp.raise_for_status()
         self.data = resp.json()
+        if "error" in self.data:
+            raise ValueError(self.data["error"]["info"])
 
     def get_name(self, wikidata_id, lang):
         return self.data["entities"][wikidata_id]["labels"].get(lang, "")
