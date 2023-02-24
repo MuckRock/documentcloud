@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
+from documentcloud.documents.fields import ChoiceField
 from documentcloud.documents.models import Document
 from documentcloud.drf_bulk.serializers import BulkListSerializer
 from documentcloud.entities.choices import EntityAccess
@@ -12,6 +13,12 @@ from documentcloud.entities.models import Entity, EntityOccurrence
 
 
 class EntitySerializer(FlexFieldsModelSerializer):
+    access = ChoiceField(
+        EntityAccess,
+        read_only=True,
+        help_text=Entity._meta.get_field("access").help_text,
+    )
+
     class Meta:
         model = Entity
         list_serializer_class = BulkListSerializer
@@ -28,7 +35,6 @@ class EntitySerializer(FlexFieldsModelSerializer):
             "wikipedia_url",
         ]
         extra_kwargs = {
-            "access": {"read_only": True},
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
