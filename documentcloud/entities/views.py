@@ -1,4 +1,6 @@
 # Django
+from django.db.models import prefetch_related_objects
+from django.utils import translation
 from django.utils.decorators import method_decorator
 from rest_framework import exceptions, serializers, viewsets
 from rest_framework.generics import get_object_or_404
@@ -11,11 +13,12 @@ from functools import lru_cache
 from django_filters import rest_framework as django_filters
 
 # DocumentCloud
+from documentcloud.common.wikidata import WikidataEntities
 from documentcloud.documents.decorators import conditional_cache_control
 from documentcloud.documents.models import Document
 from documentcloud.drf_bulk.views import BulkCreateModelMixin
 from documentcloud.entities.choices import EntityAccess
-from documentcloud.entities.models import Entity, EntityOccurrence
+from documentcloud.entities.models import Entity, EntityOccurrence, EntityTranslation
 from documentcloud.entities.serializers import (
     EntityOccurrenceSerializer,
     EntitySerializer,
@@ -30,46 +33,41 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
         return Entity.objects.get_viewable(self.request.user)
 
     def perform_create(self, serializer):
-        if serializer.validated_data.get("access") == EntityAccess.private:
-            # set the user on prviate entities
-            entity = serializer.save(user=self.request.user)
-        else:
-            # lookup wikidata on public entities
-            entity = serializer.save()
-            try:
-                entity.lookup_wikidata()
-                entity.save()
-            except ValueError:
-                raise serializers.ValidationError("Invalid `wikidata_id`")
 
-    def bulk_perform_create(self, serializer):
-        first = serializer.validated_data[0]
-        if not all(
-            d.get("access") == first.get("access") for d in serializer.validated_data
-        ):
-            raise serializers.ValidationError(
-                "Bulk entity creation must all have same `access`"
-            )
+        bulk = hasattr(serializer, "many") and serializer.many
+        if bulk:
+            first = serializer.validated_data[0]
+            if not all(
+                d.get("access") == first.get("access")
+                for d in serializer.validated_data
+            ):
+                raise serializers.ValidationError(
+                    "Bulk entity creation must all have same `access`"
+                )
+        else:
+            first = serializer.validated_data
+
         if first.get("access") == EntityAccess.private:
             # set the user on prviate entities
-            entity = serializer.save(user=self.request.user)
+            entities = serializer.save(user=self.request.user)
         else:
             # lookup wikidata on public entities
             entities = serializer.save()
-            # TODO: do bulk lookups more efficiently (or in the background)
-            for entity in entities:
-                try:
-                    entity.lookup_wikidata()
-                    entity.save()
-                except ValueError:
-                    raise serializers.ValidationError("Invalid `wikidata_id`")
+            if not bulk:
+                entities = [entities]
+
+            # XXX check for errors
+            wikidata = WikidataEntities(entities)
+            wikidata.create_translations()
+            prefetch_related_objects(entities, "translations")
 
     class Filter(django_filters.FilterSet):
+        name = django_filters.CharFilter(field_name="translations__name")
+
         class Meta:
             model = Entity
             fields = {
                 "wikidata_id": ["exact", "in"],
-                "name": ["exact"],
             }
 
     filterset_class = Filter
@@ -113,7 +111,7 @@ class EntityOccurrenceViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
 
     class Filter(django_filters.FilterSet):
         wikidata_id = django_filters.CharFilter(field_name="entity__wikidata_id")
-        name = django_filters.CharFilter(field_name="entity__name")
+        name = django_filters.CharFilter(field_name="entity__translations__name")
 
         class Meta:
             model = EntityOccurrence

@@ -5,7 +5,7 @@ from rest_framework import status
 import pytest
 
 # DocumentCloud
-from documentcloud.common.wikidata import EasyWikidataEntity
+from documentcloud.common.wikidata import WikidataEntities
 from documentcloud.documents.tests.factories import DocumentFactory
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.models import Entity
@@ -21,21 +21,31 @@ from documentcloud.entities.tests.factories import (
 from documentcloud.users.serializers import UserSerializer
 
 
-class MockWikidataEntity(EasyWikidataEntity):
-    def __init__(self, wikidata_id):
-        self.wikidata_id = wikidata_id
-
-    def get_urls(self):
-        return {
-            "en": "https://en.wikipedia.org/wiki/test",
-            "es": "https://es.wikipedia.org/wiki/test",
-        }
-
-    def get_names(self):
-        return {"en": "test", "es": "prueba"}
-
-    def get_description(self):
-        return {"en": "merit assessment", "es": "evaluación de méritos"}
+class MockWikidataEntities(WikidataEntities):
+    def __init__(self, entities):
+        if not isinstance(entities, list):
+            entities = [entities]
+        self.entities = entities
+        self.data = {"entities": {}}
+        for entity in entities:
+            self.data["entities"][entity.wikidata_id] = {
+                "labels": {
+                    "en": f"{entity.wikidata_id} Name",
+                    "es": f"{entity.wikidata_id} Nombre",
+                },
+                "descriptions": {
+                    "en": f"{entity.wikidata_id} Description",
+                    "es": f"{entity.wikidata_id} Descipción",
+                },
+                "sitelinks": {
+                    "enwiki": {
+                        "url": f"https://en.wikipedia.org/wiki/{entity.wikidata_id}"
+                    },
+                    "eswiki": {
+                        "url": f"https://es.wikipedia.org/wiki/{entity.wikidata_id}"
+                    },
+                },
+            }
 
 
 @pytest.mark.django_db()
@@ -79,6 +89,22 @@ class TestEntityAPI:
         serializer = EntitySerializer(entity)
         assert response_json == serializer.data
 
+    def test_retrieve_i18n(self, client, entity):
+        """Test retrieving an entity in another language"""
+        entity.description = "In English"
+        entity.save()
+        entity.set_current_language("es")
+        entity.description = "En Español"
+        entity.save()
+
+        response = client.get(f"/api/entities/{entity.pk}/")
+        response_json = response.json()
+        assert response_json["description"] == "In English"
+
+        response = client.get(f"/api/entities/{entity.pk}/", HTTP_ACCEPT_LANGUAGE="es")
+        response_json = response.json()
+        assert response_json["description"] == "En Español"
+
     def test_retrieve_expand_user(self, client):
         """Test retrieving an entity with an expanded user"""
         entity = PrivateEntityFactory()
@@ -93,19 +119,22 @@ class TestEntityAPI:
         """Test creating an entity"""
         client.force_authenticate(user=user)
         mocker.patch(
-            "documentcloud.entities.models.EasyWikidataEntity",
-            MockWikidataEntity,
+            "documentcloud.entities.views.WikidataEntities",
+            MockWikidataEntities,
         )
-        response = client.post("/api/entities/", {"wikidata_id": "Q1050827"})
+        wikidata_id = "Q1050827"
+        response = client.post("/api/entities/", {"wikidata_id": wikidata_id})
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["access"] == EntityAccess.public
-        assert response.data["name"] == "test"
+        assert response.data["name"] == f"{wikidata_id} Name"
 
     def test_create_bad_public_values(self, client, user):
         """Test creating a public entity trying to set extra fields"""
         client.force_authenticate(user=user)
         response = client.post(
-            "/api/entities/", {"wikidata_id": "Q1050827", "name": "Name"}
+            "/api/entities/",
+            {"wikidata_id": "Q1050827", "metadata": {"foo": "bar"}},
+            format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -126,10 +155,10 @@ class TestEntityAPI:
         """Create multiple entities"""
         client.force_authenticate(user=user)
         mocker.patch(
-            "documentcloud.entities.models.EasyWikidataEntity",
-            MockWikidataEntity,
+            "documentcloud.entities.views.WikidataEntities",
+            MockWikidataEntities,
         )
-        with django_assert_num_queries(11):
+        with django_assert_num_queries(8):
             response = client.post(
                 "/api/entities/",
                 [

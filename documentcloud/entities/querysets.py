@@ -4,11 +4,14 @@
 from django.db import models
 from django.db.models import Q
 
+# Third Party
+from parler.managers import TranslatableQuerySet
+
 # DocumentCloud
 from documentcloud.entities.choices import EntityAccess
 
 
-class EntityQuerySet(models.QuerySet):
+class EntityQuerySet(TranslatableQuerySet):
     """Custom queryset for entities"""
 
     def get_viewable(self, user):

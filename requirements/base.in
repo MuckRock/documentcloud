@@ -14,7 +14,6 @@ unidecode
 markdown
 html2text
 jsonschema
-wikidata
 
 # Django
 # ------------------------------------------------------------------------------
@@ -35,6 +34,7 @@ django-debug-toolbar
 django-cprofile-middleware
 django-robots
 django-ipware
+django-parler
 
 # Django REST Framework
 djangorestframework
@@ -45,6 +45,7 @@ djangorestframework_simplejwt
 drf-nested-routers
 cryptography # support RS256 for JWT
 drf-flex-fields
+django-parler-rest
 
 # Cloud providers
 gcsfs

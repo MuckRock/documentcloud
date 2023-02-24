@@ -1,13 +1,16 @@
 # Django
 from django.contrib import admin
 
+# Third Party
+from parler.admin import TranslatableAdmin
+
 # DocumentCloud
 from documentcloud.core.pagination import LargeTablePaginator
 from documentcloud.entities.models import Entity
 
 
 @admin.register(Entity)
-class EntityAdmin(admin.ModelAdmin):
+class EntityAdmin(TranslatableAdmin):
     """Entity Admin"""
 
     list_display = (
@@ -18,16 +21,14 @@ class EntityAdmin(admin.ModelAdmin):
     )
     list_filter = ("access",)
     search_fields = (
-        "name",
+        "translations__name",
         "wikidata_id",
-        "description",
     )
     show_full_result_count = False
     paginator = LargeTablePaginator
     ordering = ("pk",)
     fields = (
         "name",
-        "localized_names",
         "wikidata_id",
         "wikipedia_url",
         "user",
@@ -38,7 +39,6 @@ class EntityAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         "name",
-        "localized_names",
         "wikidata_id",
         "wikipedia_url",
         "user",

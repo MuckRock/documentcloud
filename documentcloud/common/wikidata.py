@@ -1,30 +1,72 @@
+# Django
+from django.conf import settings
+
 # Third Party
-from wikidata.client import Client
-from wikidata.entity import EntityState
+import requests
+
+# DocumentCloud
+from documentcloud.entities.models import EntityTranslation
 
 
-class EasyWikidataEntity:
-    def __init__(self, wikidata_id):
-        client = Client()
-        self.entity = client.get(wikidata_id, load=True)
-        if self.entity.state != EntityState.loaded:
-            raise ValueError("Wikidata ID does not exist")
+class WikidataEntities:
+    """Use the API directly to allow for more control"""
 
-    def get_urls(self):
-        return self.entity.data.get("sitelinks")
+    # https://www.wikidata.org/w/api.php?action=help&modules=wbgetentities
 
-    def get_names(self):
-        return self.entity.label.texts
+    url = "https://www.wikidata.org/w/api.php"
+    action = "wbgetentities"
+    langs = [l["code"] for l in settings.PARLER_LANGUAGES[settings.SITE_ID]]
 
-    def get_description(self):
-        return self.entity.description.texts
+    def __init__(self, entities):
 
-    def get_values(self):
-        localized_name = self.get_names()
-        name = localized_name.get("en", next(iter(localized_name.values())))
-        return {
-            "wikipedia_url": self.get_urls(),
-            "localized_names": localized_name,
-            "name": name,
-            "description": self.get_description(),
-        }
+        if not isinstance(entities, list):
+            entities = [entities]
+        self.entities = entities
+
+        wikidata_ids = [e.wikidata_id for e in entitiy]
+        resp = requests.get(
+            self.url,
+            params={
+                "format": "json",
+                "action": self.action,
+                "ids": "|".join(wikidata_ids),
+                "props": "sitelinks/urls|labels|descriptions",
+                "languages": "|".join(langs),
+                "sitefilter": "|".join([f"{l}wiki" for l in langs]),
+            },
+        )
+        # XXX check response code
+        # XXX check for invalid wikidata IDs
+        self.data = resp.json()
+
+    def get_name(self, wikidata_id, lang):
+        return self.data["entities"][wikidata_id]["labels"].get(lang, "")
+
+    def get_description(self, wikidata_id, lang):
+        return self.data["entities"][wikidata_id]["descriptions"].get(lang, "")
+
+    def get_url(self, wikidata_id, lang):
+        return (
+            self.data["entities"][wikidata_id]["sitelinks"]
+            .get(f"{lang}wiki", {})
+            .get("url", "")
+        )
+
+    def create_translations(self):
+        """
+        Create all the translations for the given entities in all active languages
+        in one SQL statement
+        """
+        translations = []
+        for entity in self.entities:
+            for lang in self.langs:
+                translations.append(
+                    EntityTranslation(
+                        master=entity,
+                        language_code=lang,
+                        name=self.get_name(entity.wikidata_id, lang),
+                        description=self.get_description(entity.wikidata_id, lang),
+                        wikipedia_url=self.get_url(entity.wikidata_id, lang),
+                    )
+                )
+        EntityTranslation.objects.bulk_create(translations)

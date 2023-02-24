@@ -14,12 +14,12 @@ from documentcloud.entities.models import Entity, EntityOccurrence
 class EntitySerializer(FlexFieldsModelSerializer):
     class Meta:
         model = Entity
+        list_serializer_class = BulkListSerializer
         fields = [
             "access",
             "created_at",
             "description",
             "id",
-            "localized_names",
             "metadata",
             "name",
             "updated_at",
@@ -41,6 +41,7 @@ class EntitySerializer(FlexFieldsModelSerializer):
         }
 
     def validate(self, attrs):
+        print(attrs)
         if "wikidata_id" in attrs:
             # public entity, no other fields may be set
             if len(attrs) > 1:

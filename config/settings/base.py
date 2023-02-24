@@ -2,6 +2,9 @@
 Base settings to build other settings files upon.
 """
 
+# Django
+from django.utils.translation import gettext_lazy as _
+
 # Standard Library
 import os
 from tempfile import NamedTemporaryFile
@@ -31,7 +34,7 @@ DEBUG = env.bool("DJANGO_DEBUG", False)
 # In Windows, this must be set to your system time zone.
 TIME_ZONE = "UTC"
 # https://docs.djangoproject.com/en/dev/ref/settings/#language-code
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
 # https://docs.djangoproject.com/en/dev/ref/settings/#site-id
 SITE_ID = 1
 # https://docs.djangoproject.com/en/dev/ref/settings/#use-i18n
@@ -574,3 +577,29 @@ MAILGUN_API_KEY = env("MAILGUN_API_KEY", default="")
 ADDON_DASH_LIMIT = env.int("ADDON_DASH_LIMIT", default=20)
 ADDON_DASH_FAIL_LIMIT = env.int("ADDON_DASH_FAIL_LIMIT", default=5)
 ADDON_DASH_DAYS = env.list("ADDON_DASH_DAYS", default=[30, 7])
+
+# django-parler
+# ------------------------------------------------------------------------------
+INSTALLED_APPS += ["parler"]
+PARLER_LANGUAGES = {
+    SITE_ID: (
+        {"code": "en"},
+        {"code": "es"},
+        {"code": "fr"},
+        {"code": "de"},
+        {"code": "ru"},
+        {"code": "uk"},
+    ),
+    "default": {
+        "fallbacks": ["en"],
+        "hide_untranslated": False,
+    },
+}
+LANGUAGES = (
+    ("en", _("English")),
+    ("es", _("Spanish")),
+    ("fr", _("French")),
+    ("de", _("German")),
+    ("ru", _("Russian")),
+    ("uk", _("Ukrainian")),
+)

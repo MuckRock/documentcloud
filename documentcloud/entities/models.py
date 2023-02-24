@@ -1,12 +1,15 @@
 # Django
+from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
 import logging
 
+# Third Party
+from parler.models import TranslatableModel, TranslatedFields
+
 # DocumentCloud
-from documentcloud.common.wikidata import EasyWikidataEntity
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.entities.choices import EntityAccess
 from documentcloud.entities.querysets import EntityQuerySet
@@ -14,21 +17,23 @@ from documentcloud.entities.querysets import EntityQuerySet
 logger = logging.getLogger(__name__)
 
 
-class Entity(models.Model):
+class Entity(TranslatableModel):
 
     objects = EntityQuerySet.as_manager()
 
-    name = models.CharField(max_length=500, blank=True)
-    # A dictionary with language codes as keys.
-    localized_names = models.JSONField(default=dict)
-    wikidata_id = models.CharField(max_length=16, unique=True, blank=True, null=True)
-    # A dictionary with language codes as keys.
-    wikipedia_url = models.JSONField(default=dict)
+    translations = TranslatedFields(
+        name=models.CharField(_("name"), max_length=500, blank=True),
+        wikipedia_url=models.URLField(_("wikipedia url"), max_length=500, blank=True),
+        description=models.TextField(_("description"), blank=True),
+    )
+
+    wikidata_id = models.CharField(
+        _("wikidata id"), max_length=16, unique=True, blank=True, null=True
+    )
     # Public entities should have a null owner.
     user = models.ForeignKey(
         "users.User", related_name="entities", on_delete=models.PROTECT, null=True
     )
-    description = models.JSONField(default=dict)
     created_at = AutoCreatedField(
         _("created at"),
         db_index=True,
@@ -45,21 +50,14 @@ class Entity(models.Model):
     )
 
     metadata = models.JSONField(
-        default=dict, help_text=_("Extra data about this entity")
+        _("metadata"), default=dict, help_text=_("Extra data about this entity")
     )
 
+    class Meta:
+        verbose_name_plural = "entities"
+
     def __str__(self):
-        return self.name
-
-    def lookup_wikidata(self):
-        """Fill in information from Wikidata"""
-        if not self.wikidata_id:
-            return
-
-        wd_entity = EasyWikidataEntity(self.wikidata_id)
-
-        for attr, value in wd_entity.get_values().items():
-            setattr(self, attr, value)
+        return self.wikidata_id
 
 
 class EntityOccurrence(models.Model):

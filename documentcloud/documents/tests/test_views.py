@@ -1864,7 +1864,7 @@ class TestEntityAPI:
             "documentcloud.documents.views.extract_entities.delay"
         )
         client.force_authenticate(user=document.user)
-        response = client.post(f"/api/documents/{document.pk}/entities/")
+        response = client.post(f"/api/documents/{document.pk}/legacy_entities_2/")
         run_commit_hooks()
         assert response.status_code == status.HTTP_200_OK
         extract_entities.assert_called_once_with(document.pk)
@@ -1873,23 +1873,23 @@ class TestEntityAPI:
         """Return a 404 if the user cannot view the document"""
         document = DocumentFactory(access=Access.private)
         client.force_authenticate(user=user)
-        response = client.post(f"/api/documents/{document.pk}/entities/")
+        response = client.post(f"/api/documents/{document.pk}/legacy_entities_2/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_create_403(self, client, document, user):
         """Return a 403 if the user cannot edit the document"""
         client.force_authenticate(user=user)
-        response = client.post(f"/api/documents/{document.pk}/entities/")
+        response = client.post(f"/api/documents/{document.pk}/legacy_entities_2/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_delete(self, client):
         document = DocumentFactory(access=Access.private)
         EntityOccurrenceFactory(document=document)
         client.force_authenticate(user=document.user)
-        assert document.entities.count() == 1
-        response = client.delete(f"/api/documents/{document.pk}/entities/")
+        assert document.legacy_entities_2.count() == 1
+        response = client.delete(f"/api/documents/{document.pk}/legacy_entities_2/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert document.entities.count() == 0
+        assert document.legacy_entities_2.count() == 0
 
 
 @pytest.mark.django_db()
