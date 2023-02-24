@@ -30,12 +30,12 @@ class MockWikidataEntities(WikidataEntities):
         for entity in entities:
             self.data["entities"][entity.wikidata_id] = {
                 "labels": {
-                    "en": f"{entity.wikidata_id} Name",
-                    "es": f"{entity.wikidata_id} Nombre",
+                    "en": {"value": f"{entity.wikidata_id} Name"},
+                    "es": {"value": f"{entity.wikidata_id} Nombre"},
                 },
                 "descriptions": {
-                    "en": f"{entity.wikidata_id} Description",
-                    "es": f"{entity.wikidata_id} Descipción",
+                    "en": {"value": f"{entity.wikidata_id} Description"},
+                    "es": {"value": f"{entity.wikidata_id} Descipción"},
                 },
                 "sitelinks": {
                     "enwiki": {
