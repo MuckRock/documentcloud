@@ -125,7 +125,7 @@ class TestEntityAPI:
         wikidata_id = "Q1050827"
         response = client.post("/api/entities/", {"wikidata_id": wikidata_id})
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["access"] == EntityAccess.public
+        assert response.data["access"] == "public"
         assert response.data["name"] == f"{wikidata_id} Name"
 
     def test_create_bad_public_values(self, client, user):
