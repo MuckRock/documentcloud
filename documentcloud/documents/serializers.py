@@ -15,6 +15,7 @@ from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
 from documentcloud.common.environment import storage
+from documentcloud.common.path import doc_revision_path
 from documentcloud.core.choices import Language
 from documentcloud.core.utils import slugify
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
@@ -28,6 +29,7 @@ from documentcloud.documents.models import (
     EntityOccurrence,
     LegacyEntity,
     Note,
+    Revision,
     Section,
 )
 from documentcloud.drf_bulk.serializers import BulkListSerializer
@@ -173,6 +175,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "publish_at",
             "published_url",
             "related_article",
+            "revision_control",
             "slug",
             "source",
             "status",
@@ -192,6 +195,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "publish_at": {"required": False},
             "published_url": {"required": False},
             "related_article": {"required": False},
+            "revision_control": {"required": False},
             "slug": {"read_only": True},
             "source": {"required": False},
             "updated_at": {"read_only": True},
@@ -203,6 +207,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "projects": ("documentcloud.projects.ProjectSerializer", {"many": True}),
             "sections": ("documentcloud.documents.SectionSerializer", {"many": True}),
             "notes": ("documentcloud.documents.NoteSerializer", {"many": True}),
+            "revisions": ("documentcloud.documents.RevisionSerializer", {"many": True}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -218,6 +223,20 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         self._init_projects_queryset(self.user)
         self._init_presigned_url(request, self.user, is_document, is_list)
         self._init_change_ownership(request, self.user, is_document, is_list)
+
+    @property
+    def _expandable_fields(self):
+        """Revisions are only expandable if you have edit access to the document"""
+        expandable_fields = super()._expandable_fields
+        request = self.context.get("request")
+        if (
+            not request
+            or not self.instance
+            or not request.user.has_perm("documents.change_document", self.instance)
+        ):
+            expandable_fields = expandable_fields.copy().pop("revisions")
+
+        return expandable_fields
 
     def _init_readonly(self, request, view, user):
         """Dynamically alter read only status of fields"""
@@ -337,6 +356,13 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if value == "textract" and self.user.feature_level < 1:
             raise serializers.ValidationError(
                 "`textract` is only available to Professional accounts"
+            )
+        return value
+
+    def validate_revision_control(self, value):
+        if value and self.user.feature_level < 1:
+            raise serializers.ValidationError(
+                "`revision_control` is only available to Professional accounts"
             )
         return value
 
@@ -784,3 +810,21 @@ class EntityOccurrenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = EntityOccurrence
         fields = ["entity", "relevance", "occurrences"]
+
+
+class RevisionSerializer(serializers.ModelSerializer):
+
+    url = serializers.SerializerMethodField(
+        label=_("URL"),
+        read_only=True,
+    )
+
+    class Meta:
+        model = Revision
+        fields = ["version", "user", "created_at", "comment", "url"]
+
+    def get_url(self, obj):
+        return (
+            f"{settings.DOCCLOUD_API_URL}/files/documents/{obj.document.pk}/"
+            f"revisions/{obj.version:04d}-{obj.document.slug}.pdf"
+        )

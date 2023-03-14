@@ -727,7 +727,6 @@ def _highlight_notes(response, text_query):
     while True:
         results = SOLR_NOTES.search(query, **kwargs)
         for id_, highlight in results.highlighting.items():
-            print(id_, highlight)
             note_highlights[parents[id_]][id_] = highlight
         if results.hits > kwargs["rows"] + kwargs["start"]:
             kwargs["start"] += kwargs["rows"]
