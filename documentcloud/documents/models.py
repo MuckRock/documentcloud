@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.db.models import Q, UniqueConstraint
+from django.db.models.aggregates import Max
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -196,6 +197,15 @@ class Document(models.Model):
         default=False,
         help_text=_(
             "Ask search engines and DocumentCloud search to not index this document"
+        ),
+    )
+
+    revision_control = models.BooleanField(
+        _("revision control"),
+        default=False,
+        help_text=_(
+            "Enable revision control for this document - a copy of the PDF will "
+            "be kept before any destructive action is taken"
         ),
     )
 
@@ -550,6 +560,19 @@ class Document(models.Model):
         if not self.delayed_index:
             transaction.on_commit(lambda: solr_index.delay(self.pk, **kwargs))
 
+    def create_revision(self, user_pk, comment, copy=False):
+        """Create a new revision"""
+        if self.revision_control:
+            current_version = self.revisions.aggregate(max=Max("version"))["max"]
+            version = 1 if current_version is None else current_version + 1
+            revision = self.revisions.create(
+                user_id=user_pk,
+                version=version,
+                comment=comment,
+            )
+            if copy:
+                revision.copy()
+
 
 class DeletedDocument(models.Model):
     """If a document is deleted, keep track of it here"""
@@ -808,6 +831,46 @@ class Section(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Revision(models.Model):
+    """A saved version of the document made before it was edited"""
+
+    document = models.ForeignKey(
+        verbose_name=_("document"),
+        to="documents.Document",
+        on_delete=models.CASCADE,
+        related_name="revisions",
+    )
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="revisions",
+    )
+    created_at = AutoCreatedField(
+        _("created at"),
+    )
+    version = models.PositiveIntegerField(
+        _("version"),
+        default=0,
+    )
+    comment = models.CharField(
+        _("comment"),
+        max_length=255,
+    )
+
+    class Meta:
+        unique_together = [("document", "version")]
+        ordering = ("version",)
+
+    def copy(self):
+        """Copy the current PDF to this revision"""
+        destination = path.doc_revision_path(
+            self.document.pk, self.document.slug, self.version
+        )
+        if not storage.exists(destination):
+            storage.copy(self.document.doc_path, destination)
 
 
 class LegacyEntity(models.Model):

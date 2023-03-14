@@ -17,7 +17,6 @@ class SidekickSerializer(serializers.ModelSerializer):
         fields = ["status"]
 
     def __init__(self, *args, **kwargs):
-        print("here")
         super().__init__(*args, **kwargs)
 
         # Allow writing to status from processing lambda
@@ -26,7 +25,5 @@ class SidekickSerializer(serializers.ModelSerializer):
         has_request_auth = (
             request and hasattr(request, "auth") and request.auth is not None
         )
-        if has_request_auth:
-            print(request.auth)
         if has_request_auth and "processing" in request.auth.get("permissions", []):
             self.fields["status"].read_only = False

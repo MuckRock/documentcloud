@@ -179,6 +179,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             documents, file_urls, force_ocrs, ocr_engines
         ):
             document.index_on_commit()
+            document.create_revision(self.request.user.pk, "Initial", copy=True)
             if file_url is not None:
                 transaction.on_commit(
                     # fmt: off
@@ -269,14 +270,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         """Process a document after you have uploaded the file"""
         transaction.on_commit(
             lambda: process.delay(
-                {
-                    "id": document.pk,
-                    "slug": document.slug,
-                    "extension": document.original_extension,
-                    "access": document.access,
-                    "language": document.language,
-                    "organization_id": document.organization_id,
-                },
+                document.pk,
+                self.request.user.pk,
                 force_ocr,
                 ocr_engine,
             )
@@ -357,6 +352,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         old_accesses = [i.access for i in instances]
         old_processings = [i.processing for i in instances]
         old_data_keys = [i.data.keys() for i in instances]
+        old_revision_controls = [i.revision_control for i in instances]
         super().perform_update(serializer)
 
         # refresh from database after performing update
@@ -365,8 +361,20 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             instances = [serializer.instance]
 
-        for instance, validated_data, old_access, old_processing, old_data_key in zip(
-            instances, validated_datas, old_accesses, old_processings, old_data_keys
+        for (
+            instance,
+            validated_data,
+            old_access,
+            old_processing,
+            old_data_key,
+            old_revision_control,
+        ) in zip(
+            instances,
+            validated_datas,
+            old_accesses,
+            old_processings,
+            old_data_keys,
+            old_revision_controls,
         ):
 
             self._update_access(instance, old_access, validated_data)
@@ -374,6 +382,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._update_cache(instance, old_processing)
             self._run_addons(instance, old_processing)
             self._set_page_text(instance, validated_data.get("pages"))
+            self._create_revision(instance, old_processing, old_revision_control)
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
@@ -446,6 +455,22 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def _set_page_text(self, document, pages):
         if pages is not None:
             set_page_text.delay(document.pk, pages)
+
+    def _create_revision(self, document, old_processing, old_revision_control):
+        # create an intial revision when revision control is turned on
+        if not old_revision_control and document.revision_control:
+            document.create_revision(self.request.user.pk, "Initial", copy=True)
+
+        # if revision control is turned on and we finished processing succesfully,
+        # copy the PDF to the latest revision
+        if (
+            document.revision_control
+            and old_processing
+            and document.status == Status.success
+        ):
+            last_revision = document.revisions.last()
+            if last_revision:
+                last_revision.copy()
 
     @action(detail=False, methods=["get"])
     def search(self, request):
@@ -805,9 +830,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
         redact.delay(
             document.pk,
-            document.slug,
-            document.access,
-            Language.get_choice(document.language).ocr_code,
+            self.request.user.pk,
             serializer.data,
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -951,9 +974,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
         modify.delay(
             document.pk,
-            document.page_count,
-            document.slug,
-            document.access,
+            self.request.user.pk,
             serializer.data,
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)

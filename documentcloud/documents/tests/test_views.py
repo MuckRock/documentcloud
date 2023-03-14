@@ -8,6 +8,7 @@ from rest_framework import status
 import pytest
 
 # DocumentCloud
+from documentcloud.common import path
 from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError, Note, Section
@@ -1054,6 +1055,77 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert not document.noindex
 
+    def test_revision_control(self, client, document, mocker):
+        """Test revision control"""
+        mock_copy = mocker.patch("documentcloud.common.environment.storage.copy")
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=False
+        )
+
+        # revision control cannot be turned on by non-paid users
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"revision_control": True}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        # turn revision control on
+        ProfessionalOrganizationFactory(members=[document.user])
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"revision_control": True}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        # turning revision control on creates an initial revision
+        assert document.revisions.count() == 1
+        assert document.revisions.last().comment == "Initial"
+        mock_copy.assert_called_with(
+            document.doc_path,
+            path.doc_revision_path(document.pk, document.slug, 1),
+        )
+
+        # create another revision
+        document.refresh_from_db()
+        document.create_revision(document.user.pk, "Testing")
+        document.status = Status.pending
+        document.save()
+        assert document.revisions.count() == 2
+        assert document.revisions.last().comment == "Testing"
+
+        # creating the revision does not copy yet
+        mock_copy.assert_called_with(
+            document.doc_path,
+            path.doc_revision_path(document.pk, document.slug, 1),
+        )
+        # patching the document to success copies the document
+        client.force_authenticate(user=None)
+        response = client.patch(
+            f"/api/documents/{document.pk}/",
+            {"status": "success"},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        mock_copy.assert_called_with(
+            document.doc_path,
+            path.doc_revision_path(document.pk, document.slug, 2),
+        )
+
+        # view the revisions
+        client.force_authenticate(user=document.user)
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "revisions,sections,notes"}
+        )
+        assert len(response.json()["revisions"]) == 2
+        revision_url = response.json()["revisions"][0]["url"]
+        response = client.get(revision_url)
+        assert response.status_code == status.HTTP_302_FOUND
+
+        # non-editors may not see revisions
+        client.force_authenticate(user=None)
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "revisions"})
+        assert "revisions" not in response.json()
+        response = client.get(revision_url)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 @pytest.mark.django_db()
 class TestDocumentErrorAPI:
@@ -1817,7 +1889,6 @@ class TestOEmbed:
         note_url = f"{page_url}/a{note.pk}"
 
         urls = [doc_url, page_url, note_url]
-        print(urls)
 
         for url in urls:
             response = client.get("/api/oembed/", {"url": url})
