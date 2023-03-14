@@ -70,15 +70,7 @@ def get_solr_connection(collection_name):
 
 def document_size(solr_document):
     """Size of a single solr document"""
-    # len("<add><doc></doc></add>") == 22
-    # len('<field name=""></field>') == 23
-    # Encode the key and value into unicode
-    # This gives a close approximation of the length of the XML document to be sent
-    # to Solr, but is much faster than doing the actual XML conversion
-    return 22 + sum(
-        23 + len(str(k).encode("utf8") + str(v).encode("utf8"))
-        for k, v in solr_document.items()
-    )
+    return len(json.dumps(solr_document))
 
 
 def _solr_admin_request(method, url, data, name, retry=0):
