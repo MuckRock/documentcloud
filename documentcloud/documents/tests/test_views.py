@@ -1774,9 +1774,7 @@ class TestRedactionAPI:
             f"/api/documents/{document.pk}/redactions/", data, format="json"
         )
         assert response.status_code == status.HTTP_201_CREATED
-        mock_redact.delay.assert_called_once_with(
-            document.pk, document.slug, document.access, document.language, data
-        )
+        mock_redact.delay.assert_called_once_with(document.pk, document.user_id, data)
 
     def test_create_anonymous(self, client):
         """You cannot create redactions if you are not logged in"""
