@@ -869,7 +869,11 @@ class Revision(models.Model):
         destination = path.doc_revision_path(
             self.document.pk, self.document.slug, self.version
         )
-        if not storage.exists(destination):
+        if storage.exists(destination):
+            logger.warning(
+                "[REVISION] Copy to destination already exists: %s", destination
+            )
+        else:
             storage.copy(self.document.doc_path, destination)
 
 
