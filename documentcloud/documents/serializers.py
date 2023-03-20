@@ -9,6 +9,7 @@ from rest_framework.relations import ManyRelatedField
 # Standard Library
 import logging
 import re
+from copy import deepcopy
 
 # Third Party
 from rest_flex_fields import FlexFieldsModelSerializer
@@ -234,7 +235,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             or not self.instance
             or not request.user.has_perm("documents.change_document", self.instance)
         ):
-            expandable_fields = expandable_fields.copy().pop("revisions")
+            expandable_fields = deepcopy(expandable_fields)
+            expandable_fields.pop("revisions")
 
         return expandable_fields
 
