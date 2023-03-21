@@ -110,7 +110,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
 
         class Meta:
             model = AddOn
-            fields = []
+            fields = ["featured", "default"]
 
     filterset_class = Filter
 

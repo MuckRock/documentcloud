@@ -83,6 +83,15 @@ class AddOn(models.Model):
         _("updated at"), help_text=_("Timestamp of when the add-on was last updated")
     )
 
+    default = models.BooleanField(
+        _("default"), default=False, help_text=_("This add-on is enabled by default")
+    )
+    featured = models.BooleanField(
+        _("featured"),
+        default=False,
+        help_text=_("This add-on is featured in the browse add-on dialog"),
+    )
+
     error = models.BooleanField(
         _("error"),
         help_text=_("There was an error with the configuration file"),

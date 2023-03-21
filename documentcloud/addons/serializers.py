@@ -87,6 +87,8 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "updated_at",
             "active_w",
             "active",
+            "default",
+            "featured",
         ]
         extra_kwargs = {
             "organization": {"read_only": True},
@@ -95,6 +97,8 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "parameters": {"read_only": True},
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
+            "default": {"read_only": True},
+            "featured": {"read_only": True},
         }
 
 

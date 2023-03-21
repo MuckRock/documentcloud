@@ -35,9 +35,18 @@ class PrettyJSONWidget(widgets.Textarea):
 
 @admin.register(AddOn)
 class AddOnAdmin(admin.ModelAdmin):
-    list_display = ["name", "user", "organization", "repository", "access", "removed"]
+    list_display = [
+        "name",
+        "user",
+        "organization",
+        "repository",
+        "access",
+        "removed",
+        "featured",
+        "default",
+    ]
     list_select_related = ["github_account__user", "organization"]
-    list_filter = ["access", "removed"]
+    list_filter = ["access", "removed", "featured", "default"]
     autocomplete_fields = ["organization"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     search_fields = ["name", "repository"]
@@ -52,6 +61,8 @@ class AddOnAdmin(admin.ModelAdmin):
         "access",
         "error",
         "removed",
+        "featured",
+        "default",
     ]
 
     def get_urls(self):

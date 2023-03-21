@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -7,6 +8,7 @@ from django.dispatch import receiver
 from squarelet_auth.organizations.models import Membership
 
 # DocumentCloud
+from documentcloud.addons.models import AddOn
 from documentcloud.users.models import User
 
 if hasattr(settings, "MOESIF_MIDDLEWARE"):
@@ -34,3 +36,12 @@ if hasattr(settings, "MOESIF_MIDDLEWARE"):
         except Membership.DoesNotExist:
             pass
         api_client.update_user(data)
+
+
+@receiver(user_logged_in, dispatch_uid="documentcloud.user.signals.default_addons")
+def default_addons(sender, user, request, **kwargs):
+    """Activate default add-ons for user on login if they do not have any add-ons
+    activated"""
+
+    if not user.active_addons.exists():
+        user.active_addons.set(AddOn.objects.filter(default=True))
