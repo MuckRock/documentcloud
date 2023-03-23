@@ -42,6 +42,7 @@ if hasattr(settings, "MOESIF_MIDDLEWARE"):
 def default_addons(sender, user, request, **kwargs):
     """Activate default add-ons for user on login if they do not have any add-ons
     activated"""
+    # pylint: disable=unused-argument
 
     if not user.active_addons.exists():
         user.active_addons.set(AddOn.objects.filter(default=True))
