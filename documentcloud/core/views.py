@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.db import transaction
 from django.http.response import (
+    Http404,
     HttpResponse,
     HttpResponseForbidden,
     HttpResponseRedirect,
@@ -41,7 +42,15 @@ class FileServer(APIView):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
-        if not document.public:
+
+        revisions = kwargs["path"].startswith("revisions/")
+        # do not show revisions to anyone without change permissions
+        if revisions and not request.user.has_perm(
+            "documents.change_document", document
+        ):
+            raise Http404
+
+        if not document.public or revisions:
             url = document.path + kwargs["path"]
             url = storage.presign_url(url, "get_object", use_custom_domain=True)
         else:

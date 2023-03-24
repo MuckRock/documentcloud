@@ -97,6 +97,10 @@ def post_process(document, modification_data):
     document.index_on_commit(
         field_updates={"status": "set", "page_count": "set", "file_hash": "set"}
     )
+    if document.revision_control:
+        last_revision = document.revisions.last()
+        if last_revision:
+            last_revision.copy()
 
 
 def _build_page_map(document, modifications):

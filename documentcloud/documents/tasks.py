@@ -19,6 +19,7 @@ import redis
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
+from documentcloud.common import path
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.documents import entity_extraction, modifications, solr
@@ -76,14 +77,8 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
         document.save()
         document.index_on_commit(field_updates={"status": "set"})
         process.delay(
-            {
-                "id": document.pk,
-                "slug": document.slug,
-                "extension": document.original_extension,
-                "access": document.access,
-                "language": document.language,
-                "organization_id": document.organization_id,
-            },
+            document.pk,
+            document.user.pk,
             force_ocr,
             ocr_engine,
         )
@@ -130,24 +125,26 @@ def _httpsub_submit(url, document_pk, json, task_):
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
-def process(document, force_ocr, ocr_engine):
+def process(document_pk, user_pk, force_ocr, ocr_engine):
     """Start the processing"""
+    document = Document.objects.get(pk=document_pk)
     _httpsub_submit(
         settings.DOC_PROCESSING_URL,
-        document["id"],
+        document.pk,
         {
-            "doc_id": document["id"],
-            "slug": document["slug"],
-            "extension": document["extension"],
-            "access": document["access"],
-            "ocr_code": Language.get_choice(document["language"]).ocr_code,
+            "doc_id": document.pk,
+            "slug": document.slug,
+            "extension": document.original_extension,
+            "access": document.access,
+            "ocr_code": Language.get_choice(document.language).ocr_code,
             "method": "process_pdf",
+            "org_id": document.organization_id,
             "force_ocr": force_ocr,
-            "org_id": document["organization_id"],
             "ocr_engine": ocr_engine,
         },
         process,
     )
+    document.create_revision(user_pk, "Processing")
 
 
 @task(
@@ -155,21 +152,23 @@ def process(document, force_ocr, ocr_engine):
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
-def redact(document_pk, slug, access, ocr_code, redactions):
+def redact(document_pk, user_pk, redactions):
     """Start the redacting"""
+    document = Document.objects.get(pk=document_pk)
     _httpsub_submit(
         settings.DOC_PROCESSING_URL,
         document_pk,
         {
             "method": "redact_doc",
             "doc_id": document_pk,
-            "slug": slug,
-            "access": access,
-            "ocr_code": ocr_code,
+            "slug": document.slug,
+            "access": document.access,
+            "ocr_code": Language.get_choice(document.language).ocr_code,
             "redactions": redactions,
         },
         redact,
     )
+    document.create_revision(user_pk, "Redacting")
 
 
 @task(
@@ -177,21 +176,23 @@ def redact(document_pk, slug, access, ocr_code, redactions):
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
-def modify(document_pk, page_count, slug, access, modification_data):
+def modify(document_pk, user_pk, modification_data):
     """Start the modification job"""
+    document = Document.objects.get(pk=document_pk)
     _httpsub_submit(
         settings.DOC_PROCESSING_URL,
         document_pk,
         {
             "method": "modify_doc",
             "doc_id": document_pk,
-            "page_count": page_count,
-            "slug": slug,
-            "access": access,
+            "page_count": document.page_count,
+            "slug": document.slug,
+            "access": document.access,
             "modifications": modification_data,
         },
         modify,
     )
+    document.create_revision(user_pk, "Modifying")
 
 
 @task(
@@ -240,6 +241,9 @@ def update_access(document_pk, status, access):
     )
 
     files = storage.list(document.path)
+    # do not ever make revision PDFs public
+    revision_prefix = f"{document.path}revisions/"
+    files = [f for f in files if not f.startswith(revision_prefix)]
     tasks = []
     for i in range(0, len(files), settings.UPDATE_ACCESS_CHUNK_SIZE):
         tasks.append(

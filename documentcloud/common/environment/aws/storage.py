@@ -315,5 +315,11 @@ class AwsStorage:
             objects = objects.limit(limit)
         return [f"{bucket.name}/{o.key}" for o in objects]
 
+    def copy(self, src, dst, acl="private"):
+        dst_bucket, dst_key = self.bucket_key(dst)
+        self.s3_client.copy_object(
+            CopySource=src, Bucket=dst_bucket, Key=dst_key, ACL=acl
+        )
+
 
 storage = AwsStorage()
