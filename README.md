@@ -62,7 +62,9 @@ You must first have these set up and ready to go:
       - If you get an error on your console about signatures, fix minio as above.
       - If you get an error on your console about tipofday not found, add the static page as above.
 15. Develop DocumentCloud and its frontend!
-
+16. You can run the tests with `inv test`.
+- If you want to run a subset of the tests, you can specify the directory containing the test you want with the `path` switch like so: `inv test --path documentcloud/documents`.
+    - You can specify a single file in `--path` if you only want to run the tests in that file.
    
 
 [docker-install]: https://docs.docker.com/install/

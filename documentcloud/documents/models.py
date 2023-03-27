@@ -942,7 +942,7 @@ class EntityOccurrence(models.Model):
         verbose_name=_("document"),
         to="documents.Document",
         on_delete=models.CASCADE,
-        related_name="entities",
+        related_name="legacy_entities_2",
         help_text=_("The document this entity belongs to"),
     )
 

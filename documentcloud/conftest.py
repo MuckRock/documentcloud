@@ -11,6 +11,10 @@ from documentcloud.documents.tests.factories import (
     NoteFactory,
     SectionFactory,
 )
+from documentcloud.entities.tests.factories import (
+    EntityFactory,
+    EntityOccurrenceFactory,
+)
 from documentcloud.organizations.tests.factories import (
     OrganizationFactory,
     ProfessionalOrganizationFactory,
@@ -70,3 +74,13 @@ def organization():
 @pytest.fixture
 def pro_organization():
     return ProfessionalOrganizationFactory()
+
+
+@pytest.fixture
+def entity():
+    return EntityFactory()
+
+
+@pytest.fixture
+def entity_occurrence():
+    return EntityOccurrenceFactory()
