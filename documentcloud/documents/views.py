@@ -28,7 +28,6 @@ from rest_flex_fields.utils import split_levels
 from documentcloud.addons.choices import Event
 from documentcloud.addons.models import AddOnEvent
 from documentcloud.common.environment import httpsub
-from documentcloud.core.choices import Language
 from documentcloud.core.filters import ChoicesFilter, ModelMultipleChoiceFilter
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,

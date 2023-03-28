@@ -19,7 +19,6 @@ import redis
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
-from documentcloud.common import path
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.documents import entity_extraction, modifications, solr

@@ -16,7 +16,6 @@ from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
 from documentcloud.common.environment import storage
-from documentcloud.common.path import doc_revision_path
 from documentcloud.core.choices import Language
 from documentcloud.core.utils import slugify
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
