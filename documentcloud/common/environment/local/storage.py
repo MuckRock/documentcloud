@@ -11,6 +11,7 @@ from django.conf import settings
 
 # Standard Library
 import os
+import shutil
 from pathlib import Path
 
 # Third Party
@@ -68,6 +69,9 @@ class LocalStorage:
 
     def delete(self, file_prefix):
         """To be mocked in tests"""
+
+    def copy(self, src, dst, acl="private"):
+        shutil.copy(src, dst)
 
 
 storage = LocalStorage()
