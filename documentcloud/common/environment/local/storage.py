@@ -61,7 +61,8 @@ class LocalStorage:
         with self.open(filename, "wb") as local_file:
             local_file.write(contents)
 
-    def presign_url(self, file_name, _method_name):
+    def presign_url(self, file_name, _method_name, use_custom_domain=False):
+        # pylint: disable=unused-argument
         return file_name
 
     def exists(self, file_name):
@@ -71,6 +72,7 @@ class LocalStorage:
         """To be mocked in tests"""
 
     def copy(self, src, dst, acl="private"):
+        # pylint: disable=unused-argument
         shutil.copy(src, dst)
 
 
