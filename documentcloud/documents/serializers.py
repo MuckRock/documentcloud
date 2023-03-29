@@ -232,6 +232,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         if (
             not request
             or not self.instance
+            or not isinstance(self.instance, Document)
             or not request.user.has_perm("documents.change_document", self.instance)
         ):
             expandable_fields = deepcopy(expandable_fields)

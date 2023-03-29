@@ -137,6 +137,20 @@ class TestDocumentAPI:
         assert num_queries == len(connection.queries)
         assert len(response.json()["results"]) == size + small_size
 
+    def test_list_auth(self, client, user):
+        """List documents while authed with expand"""
+        client.force_authenticate(user=user)
+        size = 10
+        DocumentFactory.create_batch(size)
+        response = client.get("/api/documents/", {"expand": "user,organization"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert len(response_json["results"]) == size
+        # document list should never be cached
+        assert "no-cache" in response["Cache-Control"]
+        assert "public" not in response["Cache-Control"]
+        assert "max-age" not in response["Cache-Control"]
+
     def test_create_file_url(self, client, user):
         """Upload a document with a file and a title"""
         client.force_authenticate(user=user)
