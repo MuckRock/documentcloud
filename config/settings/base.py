@@ -239,7 +239,7 @@ CACHES = {
         },
     }
 }
-if REDIS_URL.startswith("rediss:"):
+if env("REDIS_URL").startswith("rediss:"):
     CACHES["default"]["OPTIONS"]["CONNECTION_POOL_KWARGS"] = {"ssl_cert_reqs": None}
 DEFAULT_CACHE_TIMEOUT = 15 * 60
 
