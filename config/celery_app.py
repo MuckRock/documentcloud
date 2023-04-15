@@ -9,7 +9,7 @@ import ssl
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
-if settings.CELERY_BROKER_URL:
+if settings.CELERY_BROKER_URL.startswith("rediss:"):
     app = Celery(
         "documentcloud",
         broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
