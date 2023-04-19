@@ -1,4 +1,5 @@
--r cloud-requirements.txt
+boto3==1.26.115
+smart-open==1.8.4
 
 Pillow==6.0.0
 cpuprofile==1.0.1

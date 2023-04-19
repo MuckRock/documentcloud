@@ -9,6 +9,7 @@ from pathlib import Path
 # Third Party
 import boto3
 import environ
+from botocore.client import Config
 from cpuprofile import profile_cpu
 from PIL import Image
 
@@ -223,7 +224,11 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
     with open(tmp_files["img"], "rb") as document:
         image_bytes = bytearray(document.read())
 
-    textract = boto3.client("textract", region_name="us-east-1")
+    textract = boto3.client(
+        "textract",
+        region_name="us-east-1",
+        config=Config(retries={"max_attempts": 10, "mode": "adaptive"}),
+    )
 
     response = textract.detect_document_text(Document={"Bytes": image_bytes})
 
