@@ -42,7 +42,7 @@ def find_run_id(uuid):
         try:
             find_run_id.retry(
                 args=[uuid],
-                countdown=min(2**find_run_id.request.retries, 30),
+                countdown=2**find_run_id.request.retries,
                 max_retries=10,
             )
         except MaxRetriesExceededError:
