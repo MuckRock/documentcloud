@@ -463,7 +463,7 @@ def download_modification_page_text(context):
     """Download necessary page text for modifications in parallel"""
     page_text_json = []
     page_text_urls = list(context["page_text_download_urls"])
-    logger.info("[DLMPT] %s %s", page_text_urls, storage.async_download(page_text_urls))
+    logger.info("[DLMPT] %s", page_text_urls)
     page_text_download_files = [
         json.loads(contents) for contents in storage.async_download(page_text_urls)
     ]
@@ -1129,23 +1129,36 @@ def modify_doc(data, _context=None):
     with Workspace() as workspace:
         new_doc = workspace.new_document()
         # Apply each modification to create a new document
+
+        logger.info("[MODIFY DOC] doc_id %s applying modifications", doc_id)
+
         for modification in modifications:
             apply_modification(workspace, new_doc, modify_context, modification)
+
+        logger.info("[MODIFY DOC] doc_id %s closing docs", doc_id)
 
         # Close all open handles
         close_all_docs()
 
+        logger.info("[MODIFY DOC] doc_id %s downloading page text", doc_id)
+
         # Download all the page text in parallel
         page_text_json = download_modification_page_text(modify_context)
+
+        logger.info("[MODIFY DOC] doc_id %s rotating", doc_id)
 
         # Run a second pass through all modifications to perform rotations.
         modify_context["current_page_index"] = 0
         for modification in modifications:
             apply_rotation_modification(new_doc, modify_context, modification)
 
+        logger.info("[MODIFY DOC] doc_id %s overwrite pdf", doc_id)
+
         # Overwrite PDF file with newly constructed modified PDF file
         doc_path = path.doc_path(doc_id, slug)
         new_doc.save(storage, doc_path, access)
+
+        logger.info("[MODIFY DOC] doc_id %s overwrite text json file", doc_id)
 
         # Assemble full json structure and write to file
         full_page_text_json = {"updated": millis(), "pages": page_text_json}
@@ -1156,11 +1169,17 @@ def modify_doc(data, _context=None):
             access=access,
         )
 
+        logger.info("[MODIFY DOC] doc_id %s overwrite text file", doc_id)
+
         # Write concatenated text file as well
         write_concatenated_text_file(doc_id, slug, access, page_text_json)
 
+        logger.info("[MODIFY DOC] doc_id %s delete old page files", doc_id)
+
         # Delete old page files
         storage.delete(path.pages_path(doc_id))
+
+        logger.info("[MODIFY DOC] doc_id %s process new pdf", doc_id)
 
         # Kick off processing tasks to
         #  * extract new index file for PDF and ensure PDF file is within size limits
@@ -1183,6 +1202,8 @@ def modify_doc(data, _context=None):
                 }
             ),
         )
+
+    logger.info("[MODIFY DOC] doc_id %s done", doc_id)
 
     return "Ok"
 
