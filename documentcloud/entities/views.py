@@ -92,7 +92,7 @@ class EntityOccurrenceViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
             Document.objects.get_viewable(self.request.user),
             pk=self.kwargs["document_pk"],
         )
-        # TODO do we need to filter out private entities here?
+        # do we need to filter out private entities here?
         return self.document.entities.all()
 
     @lru_cache()

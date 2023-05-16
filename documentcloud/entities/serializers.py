@@ -38,7 +38,7 @@ class EntitySerializer(FlexFieldsModelSerializer):
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
-            # TODO remove this as being required to allow private entities to be
+            # remove this as being required to allow private entities to be
             # created
             "wikidata_id": {"required": True},
         }
