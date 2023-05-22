@@ -386,6 +386,7 @@ def write_concatenated_text_file(doc_id, slug, access, page_jsons):
 
 def apply_modification(workspace, new_doc, context, modification):
     """Insert pages specified by a modification into a new document"""
+    logger.info("[APPLY MODIFICATIONS]")
     page_range = modification["page"]
     page_length = modification["page_length"]
     page_spec = modification["page_spec"]
@@ -395,6 +396,7 @@ def apply_modification(workspace, new_doc, context, modification):
     import_doc_slug = modification.get("slug", context["slug"])
     import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
     # pylint: disable=unnecessary-dunder-call
+    logger.info("[APPLY MODIFICATIONS] load doc %s", import_pdf_file)
     import_doc = context["loaded_docs"].get(
         import_pdf_file,
         workspace.load_document_entirely(storage, import_pdf_file).__enter__(),
@@ -403,10 +405,17 @@ def apply_modification(workspace, new_doc, context, modification):
     context["loaded_docs"][import_pdf_file] = import_doc
 
     # Import the actual PDF pages
+    logger.info("[APPLY MODIFICATIONS] load pages")
     new_doc.import_pages(import_doc, page_range, context["current_page_index"])
 
     # Extract the page text for the imported pages
+    logger.info(
+        "[APPLY MODIFICATIONS] load pages page length %s page spec %s",
+        page_length,
+        page_spec,
+    )
     for i in range(page_length):
+        logger.info("[APPLY MODIFICATIONS] load pages i %d", i)
         # Get the page number
         if isinstance(page_spec[0], list):
             # Dealing with a page range.
@@ -422,6 +431,7 @@ def apply_modification(workspace, new_doc, context, modification):
             page = page_spec[0]
             page_spec = page_spec[1:]
 
+        logger.info("[APPLY MODIFICATIONS] load pages page %s", page)
         # Now, grab the json text paths of the affected document and
         # plan downloading the json text files in parallel
         json_file_path = path.json_text_path(import_doc_id, import_doc_slug)
@@ -434,6 +444,7 @@ def apply_modification(workspace, new_doc, context, modification):
             }
         )
 
+    logger.info("[APPLY MODIFICATIONS] done load pages")
     context["current_page_index"] += page_length
 
 
