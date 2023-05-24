@@ -397,24 +397,12 @@ def apply_modification(workspace, new_doc, context, modification):
     import_doc_slug = modification.get("slug", context["slug"])
     import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
     logger.info("[APPLY MODIFICATIONS] load doc %s", import_pdf_file)
-    import_doc = context["loaded_docs"].get(
-        import_pdf_file,
-        workspace.load_document_entirely(storage, import_pdf_file),
-    )
-    # Add to loaded docs cache
-    context["loaded_docs"][import_pdf_file] = import_doc
-    logger.info("[APPLY MODIFICATIONS] loaded docs:")
-    for key, value in context["loaded_docs"].items():
-        logger.info(
-            "[APPLY MODIFICATIONS] %s size %d loaded fonts %s",
-            key,
-            value.size,
-            value.loaded_fonts,
-        )
+    import_doc = workspace.load_document_entirely(storage, import_pdf_file)
 
     # Import the actual PDF pages
     logger.info("[APPLY MODIFICATIONS] load pages")
     new_doc.import_pages(import_doc, page_range, context["current_page_index"])
+    import_doc.close()
 
     # Extract the page text for the imported pages
     logger.info(
@@ -1135,15 +1123,10 @@ def modify_doc(data, _context=None):
     modify_context = {
         "doc_id": doc_id,
         "slug": slug,
-        "loaded_docs": {},  # Cache doc handles so docs are never loaded twice
         "current_page_index": 0,
         "page_text_todo": [],
         "page_text_download_urls": set(),
     }
-
-    def close_all_docs():
-        for doc in modify_context["loaded_docs"].values():
-            doc.close()
 
     with Workspace() as workspace:
         new_doc = workspace.new_document()
@@ -1153,11 +1136,6 @@ def modify_doc(data, _context=None):
 
         for modification in modifications:
             apply_modification(workspace, new_doc, modify_context, modification)
-
-        logger.info("[MODIFY DOC] doc_id %s closing docs", doc_id)
-
-        # Close all open handles
-        close_all_docs()
 
         logger.info("[MODIFY DOC] doc_id %s downloading page text", doc_id)
 
