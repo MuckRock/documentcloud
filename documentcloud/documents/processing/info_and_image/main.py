@@ -386,6 +386,7 @@ def write_concatenated_text_file(doc_id, slug, access, page_jsons):
 
 def apply_modification(workspace, new_doc, context, modification):
     """Insert pages specified by a modification into a new document"""
+    # pylint: disable=too-many-locals
     logger.info("[APPLY MODIFICATIONS]")
     page_range = modification["page"]
     page_length = modification["page_length"]
