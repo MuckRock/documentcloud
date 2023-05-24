@@ -395,14 +395,21 @@ def apply_modification(workspace, new_doc, context, modification):
     import_doc_id = modification.get("id", context["doc_id"])
     import_doc_slug = modification.get("slug", context["slug"])
     import_pdf_file = path.doc_path(import_doc_id, import_doc_slug)
-    # pylint: disable=unnecessary-dunder-call
     logger.info("[APPLY MODIFICATIONS] load doc %s", import_pdf_file)
     import_doc = context["loaded_docs"].get(
         import_pdf_file,
-        workspace.load_document_entirely(storage, import_pdf_file).__enter__(),
+        workspace.load_document_entirely(storage, import_pdf_file),
     )
     # Add to loaded docs cache
     context["loaded_docs"][import_pdf_file] = import_doc
+    logger.info("[APPLY MODIFICATIONS] loaded docs:")
+    for key, value in context["loaded_docs"].items():
+        logger.info(
+            "[APPLY MODIFICATIONS] %s size %d loaded fonts %s",
+            key,
+            value.size,
+            value.loaded_fonts,
+        )
 
     # Import the actual PDF pages
     logger.info("[APPLY MODIFICATIONS] load pages")
