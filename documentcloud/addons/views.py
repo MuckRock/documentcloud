@@ -101,6 +101,11 @@ class AddOnViewSet(viewsets.ModelViewSet):
     class Filter(django_filters.FilterSet):
         active = django_filters.BooleanFilter(field_name="active", label="Active")
         query = django_filters.CharFilter(method="query_filter", label="Query")
+        category = django_filters.CharFilter(
+            field_name="parameters",
+            lookup_expr="categories__contains",
+            label="Category",
+        )
 
         def query_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
