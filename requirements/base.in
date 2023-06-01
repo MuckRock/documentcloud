@@ -14,6 +14,7 @@ unidecode
 markdown
 html2text
 jsonschema
+bleach
 
 # Django
 # ------------------------------------------------------------------------------
