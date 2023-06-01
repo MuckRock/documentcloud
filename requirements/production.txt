@@ -60,6 +60,8 @@ billiard==3.6.4.0
     # via
     #   -r requirements/./base.txt
     #   celery
+bleach==6.0.0
+    # via -r requirements/./base.txt
 boto==2.49.0
     # via
     #   -r requirements/./base.txt
@@ -564,6 +566,7 @@ six==1.15.0
     #   apscheduler
     #   argon2-cffi
     #   asttokens
+    #   bleach
     #   django-appconf
     #   django-choices
     #   furl
@@ -647,6 +650,10 @@ wcwidth==0.1.8
     # via
     #   -r requirements/./base.txt
     #   prompt-toolkit
+webencodings==0.5.1
+    # via
+    #   -r requirements/./base.txt
+    #   bleach
 wrapt==1.11.2
     # via
     #   -r requirements/./base.txt
