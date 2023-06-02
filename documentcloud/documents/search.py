@@ -11,7 +11,7 @@ from datetime import datetime
 # Third Party
 import pysolr
 from luqum.parser import ParseError, parser
-from luqum.tree import Boost, Not, Prohibit, Range, Unary, Word
+from luqum.tree import BaseOperation, Boost, Group, Not, Prohibit, Range, Unary, Word
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
@@ -369,6 +369,26 @@ class FilterExtractor(LuceneTreeTransformer):
             self.replace_node(parents[-1], None, parents[-2])
         elif len(parents) == 1 and isinstance(parents[-1], (Boost, Unary)):
             raise RemoveRootError
+
+
+class NoteExtractor(LuceneTreeTransformer):
+    """Extract all search fields (even text ones) from a query, to leave a text
+    query that is suitable for searching notes
+    """
+
+    def visit(self, node, parents=None):
+        new_node = super().visit(node, parents)
+        if (
+            isinstance(new_node, (Group, BaseOperation, Unary))
+            and not any(node.children)
+            and parents
+        ):
+            self.replace_node(new_node, None, parents[-1])
+            return None
+        return new_node
+
+    def visit_search_field(self, _node, _parents):
+        return None
 
 
 class AnonymousTransformer(LuceneTreeTransformer):
@@ -818,7 +838,15 @@ def _add_note_query(text_query, user):
             )
         )
     )
-    escaped_text_query = text_query.replace('"', '\\"')
+
+    tree = parser.parse(text_query)
+    note_extractor = NoteExtractor()
+    tree = note_extractor.visit(tree)
+    if tree is None:
+        return text_query
+    note_query = str(tree)
+    escaped_note_query = note_query.replace('"', '\\"')
+
     return_query = (
         # the original query to search for in documents
         f"({text_query}) "
@@ -827,7 +855,7 @@ def _add_note_query(text_query, user):
         f"""
         _query_:"{{!join from=document_s fromIndex=notes to=id score=total
             v='+type:note +(access:public OR user:{user.pk})
-               +(title:({escaped_text_query}) description:({escaped_text_query}))'
+               +(title:({escaped_note_query}) description:({escaped_note_query}))'
         }}"
         """
         # search through notes which are organization access
@@ -844,7 +872,7 @@ def _add_note_query(text_query, user):
             )
             +{{!join from=document_s fromIndex=notes to=id score=total
                 v='+type:note +(access:organization)
-                   +(title:({escaped_text_query}) description:({escaped_text_query}))'}}
+                   +(title:({escaped_note_query}) description:({escaped_note_query}))'}}
             "
         """
     )
