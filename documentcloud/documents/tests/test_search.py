@@ -21,6 +21,7 @@ from documentcloud.documents.search import (
     BooleanDetector,
     DateValidator,
     FilterExtractor,
+    NoteExtractor,
     _parse,
     search,
 )
@@ -599,6 +600,44 @@ class TestFilterExtractor:
         assert new_query == (str(tree) if tree else "")
         assert filter_extractor.filters == QueryDict(filters)
         assert filter_extractor.sort == sort
+
+
+class TestNoteExtractor:
+    @pytest.mark.parametrize(
+        "query,new_query",
+        [
+            ("a user:1", "a"),
+            ("user:1", ""),
+            ("a -user:1", "a"),
+            ("a +user:1", "a"),
+            ("a user:foo", "a"),
+            ('a user:"1"', "a"),
+            ('a user:[1 TO "2"]', "a"),
+            ("a user:(foo:1)", "a"),
+            (
+                'a created_at:"2020-01-02T03:04:05.6Z"',
+                "a",
+            ),
+            ("a title:foo", "a"),
+            ("a data_foo:1", "a"),
+            ("a user:(1 2)", "a"),
+            ("a user:(foo-1 bar-2)", "a"),
+            ("a user:1 organization:2", "a"),
+            ("a user:1 sort:title", "a"),
+            ("a (user:1 AND sort:title)", "a"),
+            ('a _query_:"{!term f=access v=private}"', "a"),
+            ("a AND b", "a AND b"),
+            ("a OR user:1", "a"),
+            ("(a AND +user:1) OR (b AND -user:1)", "(a) OR (b)"),
+            ("(a AND b) OR (user:1 AND user:2)", "(a AND b)"),
+        ],
+    )
+    def test_extract_note(self, query, new_query):
+        tree = parser.parse(query)
+        note_extractor = NoteExtractor()
+        tree = note_extractor.visit(tree)
+
+        assert new_query == (str(tree) if tree else "")
 
 
 class TestParse:
