@@ -733,7 +733,12 @@ def _highlight_notes(response, text_query):
         return response
     parents = {n["id"]: d["id"] for d in response["results"] for n in d["notes"]}
     fq_ = [f"id:({' '.join(note_ids)})"]
-    query = f"title:{text_query} description:{text_query}"
+
+    note_query = _extract_note_query(text_query)
+    if note_query is None:
+        return response
+    query = f"title:{note_query} description:{note_query}"
+
     kwargs = {
         "fq": fq_,
         "rows": 50,
@@ -827,6 +832,16 @@ def _expand(results, key, queryset, serializer):
     return results
 
 
+def _extract_note_query(text_query):
+    """Filter out all search fields"""
+    tree = parser.parse(text_query)
+    note_extractor = NoteExtractor()
+    tree = note_extractor.visit(tree)
+    if tree is None:
+        return None
+    return str(tree)
+
+
 def _add_note_query(text_query, user):
     organizations = " ".join(str(o.pk) for o in user.organizations.all())
     projects = " ".join(
@@ -839,12 +854,9 @@ def _add_note_query(text_query, user):
         )
     )
 
-    tree = parser.parse(text_query)
-    note_extractor = NoteExtractor()
-    tree = note_extractor.visit(tree)
-    if tree is None:
+    note_query = _extract_note_query(text_query)
+    if note_query is None:
         return text_query
-    note_query = str(tree)
     escaped_note_query = note_query.replace('"', '\\"')
 
     return_query = (
