@@ -28,6 +28,9 @@ class UserSerializer(FlexFieldsModelSerializer):
         source="admin_organizations",
         help_text=("List of organizations the user is an admin for"),
     )
+    admin_organizations = serializers.SerializerMethodField(
+        source="admin_organizations"
+    )
 
     class Meta:
         model = User
