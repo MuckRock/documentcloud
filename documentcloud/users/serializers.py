@@ -22,6 +22,9 @@ class UserSerializer(FlexFieldsModelSerializer):
     verified_journalist = serializers.SerializerMethodField(
         source="verified_organizations"
     )
+    admin_organizations = serializers.SerializerMethodField(
+        source="admin_organizations"
+    )
 
     class Meta:
         model = User
@@ -33,6 +36,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             "name",
             "organization",
             "organizations",
+            "admin_organizations",
             "username",
             "uuid",
             "verified_journalist",
@@ -79,6 +83,15 @@ class UserSerializer(FlexFieldsModelSerializer):
             return bool(obj.verified_organizations)
         else:
             return obj.verified_journalist
+
+    def get_admin_organizations(self, obj):
+        """The organizations this user is an admin of"""
+        # If doing a list of users, we preload the admin organizations
+        # in order to avoid n+1 queries.
+        if hasattr(obj, "admin_organizations"):
+            return [o.pk for o in obj.admin_organizations]
+        else:
+            return [o.pk for o in obj.organizations.filter(memberships__admin=True)]
 
 
 class MessageSerializer(serializers.Serializer):
