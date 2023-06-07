@@ -69,6 +69,13 @@ class UserQuerySet(models.QuerySet):
                 queryset=Organization.objects.filter(verified_journalist=True),
                 to_attr="verified_organizations",
             ),
+            Prefetch(
+                "organizations",
+                queryset=Organization.objects.filter(
+                    memberships__admin=True
+                ).distinct(),
+                to_attr="admin_organizations",
+            ),
         )
 
         return queryset
