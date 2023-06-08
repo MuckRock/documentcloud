@@ -1,7 +1,8 @@
 # The DocumentCloud API
 
-All APIs besides the authentication endpoints are served from
-<https://api.www.documentcloud.org/api>.
+API endpoints are served from <https://api.www.documentcloud.org/api>.
+
+Authenticated requests are returned from the same endpoint, however authentication happens at the MuckRock accounts server located at <https://accounts.muckrock.com/>.
 
 ## Overview
 
