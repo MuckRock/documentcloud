@@ -141,9 +141,12 @@ registered accounts, although this may change in the future.
 Authentication happens at the MuckRock accounts server located at
 <https://accounts.muckrock.com/>. The API provided there will supply you with
 a [JWT][1] access token and refresh token in exchange for your username and
-password. The access token should be placed in the `Authorization` header
-preceded by `Bearer` - `{'Authorization': 'Bearer <access token>'}`. The
-access token is valid for 5 minutes, after which you will receive a 403
+password.
+
+The access token should be placed in the `Authorization` header
+preceded by `Token`. For example: `{'Authorization': 'Token <access token>'}`.
+
+The access token is valid for 5 minutes, after which you will receive a 403
 forbidden error if you continue trying to use it. At this point you may use
 the refresh token to obtain a new access token and refresh token. The refresh
 token is valid for one day.
