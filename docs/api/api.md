@@ -139,7 +139,10 @@ registered accounts, although this may change in the future.
 ## Authentication
 
 Authentication happens at the MuckRock accounts server located at
-<https://accounts.muckrock.com/>. The API provided there will supply you with
+<https://accounts.muckrock.com/>. 
+
+To obtain an API key, go to your MuckRock profile and scroll to the
+bottom left-hand side. The API provided there will supply you with
 a [JWT][1] access token and refresh token in exchange for your username and
 password.
 
