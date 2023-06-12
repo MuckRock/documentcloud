@@ -56,6 +56,7 @@ class QueryArrayWidget(django_filters.widgets.BaseCSVWidget, forms.TextInput):
         else:
             ret = []
 
+        print("ret", repr(ret))
         return list(set(ret))
 
 
