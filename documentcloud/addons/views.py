@@ -53,6 +53,7 @@ from documentcloud.addons.serializers import (
 )
 from documentcloud.addons.tasks import cancel, dispatch, update_config
 from documentcloud.common.environment import storage
+from documentcloud.core.filters import QueryArrayWidget
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +103,20 @@ class AddOnViewSet(viewsets.ModelViewSet):
     class Filter(django_filters.FilterSet):
         active = django_filters.BooleanFilter(field_name="active", label="Active")
         query = django_filters.CharFilter(method="query_filter", label="Query")
-        category = django_filters.CharFilter(
+        category = django_filters.MultipleChoiceFilter(
             field_name="parameters",
             lookup_expr="categories__contains",
             label="Category",
+            widget=QueryArrayWidget,
+            choices=(
+                ("export", "export"),
+                ("ai", "ai"),
+                ("bulk", "bulk"),
+                ("extraction", "extraction"),
+                ("file", "file"),
+                ("monitor", "monitor"),
+                ("statistical", "statistical"),
+            ),
         )
 
         def query_filter(self, queryset, name, value):
@@ -113,6 +124,15 @@ class AddOnViewSet(viewsets.ModelViewSet):
             return queryset.filter(
                 Q(name__icontains=value) | Q(parameters__description__icontains=value)
             )
+
+        def category_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            print(repr(value))
+            print(type(value))
+            query = Q()
+            for value_ in value:
+                query |= Q(parameters__categories__contains=value_)
+            return queryset.filter(query)
 
         class Meta:
             model = AddOn
