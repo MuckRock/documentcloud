@@ -407,10 +407,7 @@ class AddOnRun(models.Model):
             fail_statuses = ["failure", "cancelled"]
             if status in fail_statuses:
                 events = list(self.event.runs.order_by("-created_at")[:5])
-                if len(events) == 5 and all(
-                    r.status in fail_statuses
-                    for r in self.event.runs.order_by("-created_at")[:5]
-                ):
+                if len(events) == 5 and all(r.status in fail_statuses for r in events):
                     logger.info(
                         "[SET STATUS] disabling %s - %s", self.uuid, self.status
                     )
