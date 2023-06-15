@@ -405,20 +405,24 @@ class AddOnRun(models.Model):
 
         if self.event is not None:
             fail_statuses = ["failure", "cancelled"]
-            if status in fail_statuses and all(
-                r.status in fail_statuses
-                for r in self.event.runs.order_by("-created_at")[:5]
-            ):
-                logger.info("[SET STATUS] disabling %s - %s", self.uuid, self.status)
-                # disable the event
-                self.event.event = Event.disabled
-                self.event.save()
-                send_mail(
-                    subject="Your scheduled Add-On run has been disabled",
-                    user=self.event.user,
-                    template="addons/email/disabled.html",
-                    extra_context={"run": self},
-                )
+            if status in fail_statuses:
+                events = list(self.event.runs.order_by("-created_at")[:5])
+                if len(events) == 5 and all(
+                    r.status in fail_statuses
+                    for r in self.event.runs.order_by("-created_at")[:5]
+                ):
+                    logger.info(
+                        "[SET STATUS] disabling %s - %s", self.uuid, self.status
+                    )
+                    # disable the event
+                    self.event.event = Event.disabled
+                    self.event.save()
+                    send_mail(
+                        subject="Your scheduled Add-On run has been disabled",
+                        user=self.event.user,
+                        template="addons/email/disabled.html",
+                        extra_context={"run": self},
+                    )
 
     def cancel(self):
         """Cancel the run if it is still running"""
