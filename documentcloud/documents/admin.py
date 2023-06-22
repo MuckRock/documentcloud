@@ -43,6 +43,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "solr_dirty",
         "data",
         "noindex",
+        "admin_noindex",
     )
     readonly_fields = (
         "slug",
@@ -60,7 +61,11 @@ class DocumentAdmin(admin.ModelAdmin):
     @transaction.atomic
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.index_on_commit(field_updates={f: "set" for f in form.changed_data})
+        field_updates = {f: "set" for f in form.changed_data}
+        if "admin_noindex" in field_updates:
+            field_updates.pop("admin_noindex")
+            field_updates["noindex"] = "set"
+        obj.index_on_commit(field_updates=field_updates)
 
     def delete_model(self, request, obj):
         obj.destroy()
