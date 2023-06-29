@@ -107,17 +107,16 @@ def update_config(repository):
 @periodic_task(run_every=crontab(minute="*/5"))
 def dispatch_events():
     """Run scheduled add-ons"""
-    # get current time - minute should be disvisible by 5 due to crontab,
-    # but round to previous 5 minute mark in case their is significant lag for some
-    # reason
+    # get current time - minute should be disvisible by 5 due to crontab
+    # if not, the integer division below will bucket it to the correct 5 minute
+    # bucket anyway
     now = timezone.now()
-    now.replace(minute=now.minute - (now.minute % 5), second=0, microsecond=0)
     # hourly - 12 5-minute buckets
     # daily - 288 5-minute buckets
     # weekly - 2016 5-minute buckets
-    hourly_bucket = now.minute / 5
-    daily_bucket = (now.minute / 5) + (12 * now.hour)
-    weekly_bucket = (now.minute / 5) + (12 * now.hour) + (288 * now.weekday())
+    hourly_bucket = now.minute // 5
+    daily_bucket = (now.minute // 5) + (12 * now.hour)
+    weekly_bucket = (now.minute // 5) + (12 * now.hour) + (288 * now.weekday())
     logger.info(
         "[DISPATCHING EVENTS] rounded time: %s hourly: %s daily: %s weekly: %s",
         now,
