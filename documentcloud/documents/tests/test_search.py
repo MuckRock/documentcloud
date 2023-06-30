@@ -164,7 +164,7 @@ class TestSearch:
 
         response = self.search("")
         url = furl(response["next"])
-        response = self.search(url.querystr)
+        response = self.search(str(url.query))
         self.assert_documents(response["results"], slice_=slice(10, 20))
 
     def test_search_per_page(self):

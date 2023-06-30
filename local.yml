@@ -1,8 +1,8 @@
 version: '3.8'
 
 volumes:
-  local_postgres_data: {}
-  local_postgres_data_backups: {}
+  local_postgres15_data: {}
+  local_postgres15_data_backups: {}
   local_solr_data: {}
   local_solr_test_data: {}
   local_minio_data: {}
@@ -40,10 +40,10 @@ services:
     build:
       context: .
       dockerfile: ./compose/production/postgres/Dockerfile
-    image: documentcloud_production_postgres
+    image: documentcloud_production_postgres15
     volumes:
-      - local_postgres_data:/var/lib/postgresql/data
-      - local_postgres_data_backups:/backups
+      - local_postgres15_data:/var/lib/postgresql/data
+      - local_postgres15_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
 
