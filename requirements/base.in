@@ -4,8 +4,7 @@ Pillow
 rcssmin
 argon2-cffi
 redis
-celery
-django-celery-beat
+celery<5
 python-redis-lock[django]
 furl
 ipython
@@ -17,7 +16,7 @@ jsonschema
 
 # Django
 # ------------------------------------------------------------------------------
-django>3.2
+django>4.1
 django-environ
 django-model-utils
 django-compressor
