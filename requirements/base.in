@@ -4,11 +4,7 @@ Pillow
 rcssmin
 argon2-cffi
 redis
-<<<<<<< HEAD
 celery
-=======
-celery<5
->>>>>>> cdb869fd (upgrade django to 4.2)
 python-redis-lock[django]
 furl
 ipython
