@@ -16,7 +16,7 @@ jsonschema
 
 # Django
 # ------------------------------------------------------------------------------
-django>4.1
+django<5
 django-environ
 django-model-utils
 django-compressor
