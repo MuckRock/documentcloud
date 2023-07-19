@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 # Third Party
+import bleach
 import jwt
+import markdown
 import requests
 import yaml
 from squarelet_auth.utils import squarelet_get
@@ -206,9 +208,43 @@ class AddOn(models.Model):
             if "title" in self.parameters:
                 self.name = self.parameters["title"]
             self.error = False
+            if "description" in self.parameters:
+                self.parameters["description"] = self._render_markdown(
+                    self.pramaters["description"]
+                )
         except yaml.YAMLError:
             self.error = True
         self.save()
+
+    def _render_markdown(self, text):
+        """Render the description Markdown into HTML"""
+        extensions = [
+            # for smart quotes
+            "markdown.extensions.smarty",
+            # for table support
+            "markdown.extensions.tables",
+            # for better code block support
+            "markdown.extensions.fenced_code",
+        ]
+        # from: https://github.com/yourcelf/bleach-allowlist/
+        # Tags suitable for rendering markdown
+        # fmt: off
+        markdown_tags = [
+            "h1", "h2", "h3", "h4", "h5", "h6",
+            "b", "i", "strong", "em", "tt",
+            "p", "br",
+            "span", "div", "blockquote", "code", "pre", "hr",
+            "ul", "ol", "li", "dd", "dt",
+            "img", "a", "sub", "sup",
+        ]
+        # fmt: on
+        markdown_attrs = {
+            "*": ["id"],
+            "img": ["src", "alt", "title"],
+            "a": ["href", "alt", "title"],
+        }
+        html = markdown.markdown(text, extensions=extensions, output_format="html")
+        return bleach.clean(html, tags=markdown_tags, attributes=markdown_attrs)
 
 
 class AddOnRun(models.Model):

@@ -34,6 +34,8 @@ backcall==0.1.0
     # via ipython
 billiard==3.6.4.0
     # via celery
+bleach==6.0.0
+    # via -r requirements/base.in
 boto==2.49.0
     # via smart-open
 boto3==1.21.21
@@ -369,6 +371,7 @@ six==1.15.0
     # via
     #   argon2-cffi
     #   asttokens
+    #   bleach
     #   django-appconf
     #   django-choices
     #   furl
@@ -427,6 +430,8 @@ wand==0.6.6
     # via pdfplumber
 wcwidth==0.1.8
     # via prompt-toolkit
+webencodings==0.5.1
+    # via bleach
 wrapt==1.11.2
     # via
     #   -r requirements/base.in
