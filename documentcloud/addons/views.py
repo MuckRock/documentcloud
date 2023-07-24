@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
+from django.db.models.functions.text import Concat
 from django.http.response import (
     Http404,
     HttpResponse,
@@ -291,13 +292,13 @@ def dashboard(request):
                     up_count=Count("runs", filter=Q(runs__rating=1) & start_filter),
                     down_count=Count("runs", filter=Q(runs__rating=-1) & start_filter),
                     up_comments=StringAgg(
-                        "runs__comment",
+                        Concat("runs__comment", Value(" -"), "runs__user__username"),
                         "\n",
                         distinct=True,
                         filter=Q(runs__rating=1) & start_filter,
                     ),
                     down_comments=StringAgg(
-                        "runs__comment",
+                        Concat("runs__comment", Value(" -"), "runs__user__username"),
                         "\n",
                         distinct=True,
                         filter=Q(runs__rating=-1) & start_filter,

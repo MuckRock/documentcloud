@@ -2,6 +2,9 @@
 from celery.exceptions import MaxRetriesExceededError
 from celery.schedules import crontab
 from celery.task import periodic_task, task
+from django.db.models.expressions import F
+from django.db.models.query_utils import Q
+from django.utils import timezone
 
 # Standard Library
 import logging
@@ -101,25 +104,35 @@ def update_config(repository):
         addon.update_config()
 
 
-def dispatch_events(event_choice):
-    """Run all add-ons for the given event"""
-    logger.info("[DISPATCHING EVENTS] type: %s", event_choice)
-    events = AddOnEvent.objects.filter(event=event_choice)
+@periodic_task(run_every=crontab(minute="*/5"))
+def dispatch_events():
+    """Run scheduled add-ons"""
+    # get current time - minute should be disvisible by 5 due to crontab
+    # if not, the integer division below will bucket it to the correct 5 minute
+    # bucket anyway
+    now = timezone.now()
+    # hourly - 12 5-minute buckets
+    # daily - 288 5-minute buckets
+    # weekly - 2016 5-minute buckets
+    hourly_bucket = now.minute // 5
+    daily_bucket = (now.minute // 5) + (12 * now.hour)
+    weekly_bucket = (now.minute // 5) + (12 * now.hour) + (288 * now.weekday())
+    logger.info(
+        "[DISPATCHING EVENTS] rounded time: %s hourly: %s daily: %s weekly: %s",
+        now,
+        hourly_bucket,
+        daily_bucket,
+        weekly_bucket,
+    )
+    events = AddOnEvent.objects.annotate(
+        hourly_bucket=F("id") % 12,
+        daily_bucket=F("id") % 288,
+        weekly_bucket=F("id") % 2016,
+    ).filter(
+        Q(event=Event.hourly, hourly_bucket=hourly_bucket)
+        | Q(event=Event.daily, daily_bucket=daily_bucket)
+        | Q(event=Event.weekly, weekly_bucket=weekly_bucket)
+    )
     logger.info("[DISPATCHING EVENTS] events to run: %d", len(events))
     for event in events:
         event.dispatch()
-
-
-@periodic_task(run_every=crontab(minute=0))
-def hourly_event():
-    dispatch_events(Event.hourly)
-
-
-@periodic_task(run_every=crontab(minute=30, hour=0))
-def daily_event():
-    dispatch_events(Event.daily)
-
-
-@periodic_task(run_every=crontab(minute=30, hour=1, day_of_week=0))
-def weekly_event():
-    dispatch_events(Event.weekly)
