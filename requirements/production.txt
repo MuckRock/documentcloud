@@ -112,6 +112,7 @@ cpuprofile==1.0.1
 cryptography==35.0.0
     # via
     #   -r requirements/./base.txt
+    #   django-anymail
     #   pyopenssl
     #   social-auth-core
     #   urllib3
@@ -160,7 +161,7 @@ django==4.2.2
     #   drf-nested-routers
     #   rest-social-auth
     #   squarelet-auth
-django-anymail[mailgun]==6.1.0
+django-anymail[mailgun]==10.0
     # via -r requirements/production.in
 django-appconf==1.0.3
     # via
@@ -563,7 +564,6 @@ six==1.15.0
     #   apscheduler
     #   argon2-cffi
     #   asttokens
-    #   django-anymail
     #   django-appconf
     #   django-choices
     #   furl
@@ -630,6 +630,7 @@ urllib3[secure]==1.26.10
     # via
     #   -r requirements/./base.txt
     #   botocore
+    #   django-anymail
     #   requests
     #   scout-apm
     #   sentry-sdk
