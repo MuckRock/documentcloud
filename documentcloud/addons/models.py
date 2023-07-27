@@ -210,7 +210,7 @@ class AddOn(models.Model):
             self.error = False
             if "description" in self.parameters:
                 self.parameters["description"] = self._render_markdown(
-                    self.pramaters["description"]
+                    self.parameters["description"]
                 )
         except yaml.YAMLError:
             self.error = True
