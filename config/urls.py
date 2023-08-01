@@ -13,6 +13,7 @@ from rest_framework_nested.routers import NestedDefaultRouter
 # DocumentCloud
 from documentcloud.addons.views import (
     AddOnEventViewSet,
+    AddOnFileViewSet,
     AddOnRunFileServer,
     AddOnRunViewSet,
     AddOnViewSet,
@@ -58,6 +59,7 @@ router.register("users", UserViewSet)
 router.register("addons", AddOnViewSet)
 router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
+router.register("addon_files", AddOnFileViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 
 

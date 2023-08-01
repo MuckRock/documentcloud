@@ -523,6 +523,32 @@ class AddOnEvent(models.Model):
             )
 
 
+class AddOnFile(models.Model):
+    """A file to be used by an add-on"""
+
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="addon_files",
+        help_text=_("The user who uploaded this file"),
+    )
+    uuid = models.UUIDField(
+        _("UUID"),
+        unique=True,
+        editable=False,
+        default=uuid4,
+        db_index=True,
+        help_text=_("Unique ID to track add-on files"),
+    )
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the add-on file was created")
+    )
+
+    def path(self):
+        return f"{settings.ADDON_BUCKET}/files/{self.user.username}/{self.uuid}"
+
+
 class GitHubAccount(models.Model):
     """A linked GitHub account"""
 

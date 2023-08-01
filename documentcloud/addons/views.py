@@ -42,12 +42,14 @@ from rest_flex_fields.utils import is_expanded
 from documentcloud.addons.models import (
     AddOn,
     AddOnEvent,
+    AddOnFile,
     AddOnRun,
     GitHubAccount,
     GitHubInstallation,
 )
 from documentcloud.addons.serializers import (
     AddOnEventSerializer,
+    AddOnFileSerializer,
     AddOnRunSerializer,
     AddOnSerializer,
 )
@@ -177,6 +179,20 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             fields = {"addon": ["exact"]}
 
     filterset_class = Filter
+
+
+class AddOnFileViewSet(viewsets.ModelViewSet):
+    serializer_class = AddOnFileSerializer
+    queryset = AddOnFile.objects.none()
+    lookup_field = "uuid"
+
+    @lru_cache()
+    def get_queryset(self):
+        """Only fetch add-on files viewable to this user"""
+        return AddOnFile.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 @csrf_exempt

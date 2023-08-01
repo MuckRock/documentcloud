@@ -9,7 +9,7 @@ import jsonschema
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
-from documentcloud.addons.models import AddOn, AddOnEvent, AddOnRun
+from documentcloud.addons.models import AddOn, AddOnEvent, AddOnFile, AddOnRun
 from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access
 from documentcloud.documents.fields import ChoiceField
@@ -230,3 +230,47 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
         request = context.get("request")
         if request and request.user:
             self.fields["addon"].queryset = AddOn.objects.get_viewable(request.user)
+
+
+class AddOnFileSerializer(serializers.ModelSerializer):
+    """Serializer for an Add-On File"""
+
+    presigned_url = serializers.SerializerMethodField(
+        label=_("Presigned URL"),
+        read_only=True,
+        help_text=_("The presigned URL to upload the file to"),
+    )
+    url = serializers.SerializerMethodField(
+        label=_("URL"),
+        read_only=True,
+        help_text=_("The URL to download the file from"),
+    )
+
+    class Meta:
+        model = AddOnFile
+        fields = [
+            "id",
+            "user",
+            "uuid",
+            "presigned_url",
+            "url",
+            "created_at",
+        ]
+        extra_kwargs = {
+            "user": {"read_only": True},
+            "uuid": {"read_only": True},
+            "created_at": {"read_only": True},
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance is not None and "presigned_url" in self.fields:
+            del self.fields["presigned_url"]
+
+    def get_presigned_url(self, obj):
+        """Return the presigned URL to upload the file to"""
+        return storage.presign_url(obj.path(), "put_object")
+
+    def get_url(self, obj):
+        """Return the URL to download the file from"""
+        return storage.presign_url(obj.path(), "get_object")
