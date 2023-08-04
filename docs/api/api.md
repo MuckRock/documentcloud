@@ -188,7 +188,7 @@ documents](#project-documents).
 | edit_access          | Bool         | Read Only          | Does the current user have edit access to this document                                                                                                          |
 | file_hash             | String       | Read Only          | A sha1 hash representation of the raw PDF data as a hexadecimal string.                                                                                       |
 | file_url             | URL          | Create Only        | A URL to a publicly accessible document for the [URL Upload Flow](#url-upload-flow)                                                                              |
-| force_ocr            | Bool         | Create Only        | Force OCR even if the PDF contains embedded text - only include if `file_url` is set, otherwise should set `force_ocr` on the call to the processing endpoint    |
+| force_ocr            | Bool         | Create Only        | Force OCR even if the PDF contains embedded text - only include if `file_url` is set, otherwise should set `force_ocr` on the call to the processing endpoint. This operation clears underlying metadata about the document like authorship, creation date, etc. If this is a concern, make sure to keep a copy of the original document.   |
 | language             | String       | Default: `eng`     | The [language](#languages) the document is in                                                                                                                    |
 | noindex              | Bool         | Not required       | Ask search engines and DocumentCloud search to not index this document                                                                                           |
 | organization         | Integer      | Read Only          | The ID for the [organization](#organizations) this document belongs to                                                                                           |
@@ -428,7 +428,9 @@ Redactions allow you to obscure parts of the document which are confidential
 before publishing them. The pages which are redacted will be fully flattened
 and reprocessed, so that the original content is not present in lower levels of
 the image or as text data. Redactions are not reversible, and may only be
-created, not retrieved or edited.
+created, not retrieved or edited. Redacting a document strips available
+metadata from a document about authorship, creation date, etc. If this is a concern
+to you, you may want to hold onto an original copy before redaction, as it is irreversible. 
 
 #### Fields
 
