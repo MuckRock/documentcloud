@@ -2,6 +2,8 @@
 
 All APIs besides the authentication endpoints are served from
 <https://api.www.documentcloud.org/api>.
+<br> If you develop in Python, check out [python-documentcloud](https://pypi.org/project/python-documentcloud/) which is our Python Wrapper for the DocumentCloud API and its [corresponding documentation](https://documentcloud.readthedocs.io/en/latest/).
+
 
 ## Overview
 
