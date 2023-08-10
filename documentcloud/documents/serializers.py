@@ -152,6 +152,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         fields = [
             "id",
             "access",
+            "admin_noindex",
             "asset_url",
             "canonical_url",
             "created_at",
@@ -184,6 +185,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "user",
         ]
         extra_kwargs = {
+            "admin_noindex": {"read_only": True},
             "created_at": {"read_only": True},
             "description": {"required": False, "max_length": 4000},
             "file_hash": {"read_only": True},

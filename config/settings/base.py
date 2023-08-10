@@ -39,8 +39,6 @@ LANGUAGE_CODE = "en"
 SITE_ID = 1
 # https://docs.djangoproject.com/en/dev/ref/settings/#use-i18n
 USE_I18N = True
-# https://docs.djangoproject.com/en/dev/ref/settings/#use-l10n
-USE_L10N = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#use-tz
 USE_TZ = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#locale-paths
@@ -73,7 +71,6 @@ DJANGO_APPS = [
     "django.contrib.flatpages",
 ]
 THIRD_PARTY_APPS = [
-    "django_celery_beat",
     "django_filters",
     "rest_framework",
     "rules.apps.AutodiscoverRulesConfig",
@@ -257,6 +254,9 @@ CSRF_COOKIE_HTTPONLY = False
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
 X_FRAME_OPTIONS = "DENY"
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS", default=["https://www.dev.documentcloud.org"]
+)
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -335,8 +335,6 @@ CELERY_SLOW_TASK_TIME_LIMIT = env.int("CELERY_SLOW_TASK_TIME_LIMIT", default=6 *
 CELERY_SLOW_TASK_SOFT_TIME_LIMIT = env.int(
     "CELERY_SLOW_TASK_SOFT_TIME_LIMIT", default=5 * 60
 )
-# http://docs.celeryproject.org/en/latest/userguide/configuration.html#beat-scheduler
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_IMPORTS = []
 CELERY_REDIS_MAX_CONNECTIONS = env.int("CELERY_REDIS_MAX_CONNECTIONS", default=40)
 CELERY_BROKER_POOL_LIMIT = env.int("CELERY_BROKER_POOL_LIMIT", default=0)

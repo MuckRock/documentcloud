@@ -160,7 +160,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             file_urls = [d.pop("file_url", None) for d in serializer.validated_data]
             force_ocrs = [d.pop("force_ocr", False) for d in serializer.validated_data]
             ocr_engines = [
-                d.pop("ocr_engines", "tess4") for d in serializer.validated_data
+                d.pop("ocr_engine", "tess4") for d in serializer.validated_data
             ]
         else:
             file_urls = [serializer.validated_data.pop("file_url", None)]

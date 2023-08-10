@@ -26,7 +26,7 @@ aiosignal==1.2.0
     # via
     #   -r requirements/./base.txt
     #   aiohttp
-amqp==2.5.2
+amqp==2.6.1
     # via
     #   -r requirements/./base.txt
     #   kombu
@@ -34,7 +34,7 @@ apscheduler==3.7.0
     # via moesifdjango
 argon2-cffi==19.1.0
     # via -r requirements/./base.txt
-asgiref==3.4.1
+asgiref==3.7.2
     # via
     #   -r requirements/./base.txt
     #   django
@@ -56,10 +56,12 @@ backcall==0.1.0
     # via
     #   -r requirements/./base.txt
     #   ipython
-billiard==3.6.3.0
+billiard==3.6.4.0
     # via
     #   -r requirements/./base.txt
     #   celery
+bleach==6.0.0
+    # via -r requirements/./base.txt
 boto==2.49.0
     # via
     #   -r requirements/./base.txt
@@ -80,10 +82,9 @@ cachetools==3.1.1
     # via
     #   -r requirements/./base.txt
     #   google-auth
-celery==4.4.2
+celery==4.4.7
     # via
     #   -r requirements/./base.txt
-    #   django-celery-beat
     #   django-celery-email
     #   squarelet-auth
 certifi==2019.6.16
@@ -113,6 +114,7 @@ cpuprofile==1.0.1
 cryptography==35.0.0
     # via
     #   -r requirements/./base.txt
+    #   django-anymail
     #   pyopenssl
     #   social-auth-core
     #   urllib3
@@ -138,13 +140,12 @@ deprecation==2.1.0
     # via
     #   -r requirements/./base.txt
     #   pikepdf
-django==3.2.9
+django==4.2.2
     # via
     #   -r requirements/./base.txt
     #   collectfast
     #   django-anymail
     #   django-appconf
-    #   django-celery-beat
     #   django-celery-email
     #   django-choices
     #   django-cors-headers
@@ -156,14 +157,13 @@ django==3.2.9
     #   django-parler-rest
     #   django-redis
     #   django-storages
-    #   django-timezone-field
     #   djangorestframework
     #   djangorestframework-simplejwt
     #   dogslow
     #   drf-nested-routers
     #   rest-social-auth
     #   squarelet-auth
-django-anymail[mailgun]==6.1.0
+django-anymail[mailgun]==10.0
     # via -r requirements/production.in
 django-appconf==1.0.3
     # via
@@ -172,23 +172,21 @@ django-appconf==1.0.3
     #   django-compressor
 django-autoslug==1.9.8
     # via -r requirements/./base.txt
-django-celery-beat==2.0.0
-    # via -r requirements/./base.txt
 django-celery-email==3.0.0
     # via -r requirements/production.in
 django-choices==1.7.2
     # via -r requirements/./base.txt
-django-compressor==2.4.1
+django-compressor==4.4
     # via -r requirements/./base.txt
 django-cors-headers==3.13.0
     # via -r requirements/./base.txt
 django-cprofile-middleware==1.0.5
     # via -r requirements/./base.txt
-django-debug-toolbar==3.1.1
+django-debug-toolbar==4.1.0
     # via -r requirements/./base.txt
 django-environ==0.4.5
     # via -r requirements/./base.txt
-django-extensions==3.2.0
+django-extensions==3.2.3
     # via -r requirements/./base.txt
 django-filter==21.1
     # via -r requirements/./base.txt
@@ -214,11 +212,7 @@ django-storages[boto3]==1.12.3
     # via
     #   -r requirements/production.in
     #   collectfast
-django-timezone-field==4.2.1
-    # via
-    #   -r requirements/./base.txt
-    #   django-celery-beat
-djangorestframework==3.12.4
+djangorestframework==3.14.0
     # via
     #   -r requirements/./base.txt
     #   django-parler-rest
@@ -319,7 +313,7 @@ jsonpickle==2.0.0
     #   moesifdjango
 jsonschema==3.2.0
     # via -r requirements/./base.txt
-kombu==4.6.8
+kombu==4.6.11
     # via
     #   -r requirements/./base.txt
     #   celery
@@ -346,13 +340,13 @@ matplotlib-inline==0.1.3
     # via
     #   -r requirements/./base.txt
     #   ipython
-moesifapi==1.4.0
+moesifapi==1.4.1
     # via
     #   moesifdjango
     #   moesifpythonrequest
-moesifdjango==2.1.4
+moesifdjango==2.3.3
     # via -r requirements/production.in
-moesifpythonrequest==0.2.0
+moesifpythonrequest==0.3.0
     # via moesifdjango
 multidict==4.7.5
     # via
@@ -421,7 +415,7 @@ premailer==3.0.0
     # via
     #   -r requirements/./base.txt
     #   django-premailer
-prompt-toolkit==3.0.31
+prompt-toolkit==3.0.38
     # via
     #   -r requirements/./base.txt
     #   ipython
@@ -437,7 +431,7 @@ protobuf==3.14.0
     #   proto-plus
 psutil==5.7.3
     # via scout-apm
-psycopg2==2.8.3
+psycopg2==2.9.6
     # via -r requirements/production.in
 ptyprocess==0.6.0
     # via
@@ -484,17 +478,12 @@ pyrsistent==0.18.0
     # via
     #   -r requirements/./base.txt
     #   jsonschema
-python-crontab==2.3.8
-    # via
-    #   -r requirements/./base.txt
-    #   django-celery-beat
-python-dateutil==2.8.0
+python-dateutil==2.8.2
     # via
     #   -r requirements/./base.txt
     #   botocore
     #   moesifapi
     #   moesifdjango
-    #   python-crontab
 python-jose==3.3.0
     # via
     #   -r requirements/./base.txt
@@ -512,15 +501,14 @@ pytz==2022.1
     #   -r requirements/./base.txt
     #   apscheduler
     #   celery
-    #   django
-    #   django-timezone-field
+    #   djangorestframework
     #   google-api-core
     #   tzlocal
 pyyaml==5.3.1
     # via
     #   -r requirements/./base.txt
     #   libcst
-rcssmin==1.0.6
+rcssmin==1.1.1
     # via
     #   -r requirements/./base.txt
     #   django-compressor
@@ -549,9 +537,9 @@ requests-oauthlib==1.2.0
     #   -r requirements/./base.txt
     #   google-auth-oauthlib
     #   social-auth-core
-rest-social-auth==7.0.0
+rest-social-auth==8.1.0
     # via -r requirements/./base.txt
-rjsmin==1.1.0
+rjsmin==1.2.1
     # via
     #   -r requirements/./base.txt
     #   django-compressor
@@ -578,10 +566,9 @@ six==1.15.0
     #   apscheduler
     #   argon2-cffi
     #   asttokens
-    #   django-anymail
+    #   bleach
     #   django-appconf
     #   django-choices
-    #   django-compressor
     #   furl
     #   google-api-core
     #   google-auth
@@ -597,7 +584,7 @@ social-auth-app-django==5.0.0
     # via
     #   -r requirements/./base.txt
     #   rest-social-auth
-social-auth-core[openidconnect]==4.1.0
+social-auth-core[openidconnect]==4.4.2
     # via
     #   -r requirements/./base.txt
     #   rest-social-auth
@@ -607,12 +594,12 @@ sortedcontainers==2.4.0
     # via
     #   -r requirements/./base.txt
     #   pdfminer-six
-sqlparse==0.3.0
+sqlparse==0.4.4
     # via
     #   -r requirements/./base.txt
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.0.47
+squarelet-auth==0.1.3
     # via -r requirements/./base.txt
 stack-data==0.3.0
     # via
@@ -630,6 +617,7 @@ traitlets==5.3.0
 typing-extensions==4.4.0
     # via
     #   -r requirements/./base.txt
+    #   asgiref
     #   collectfast
     #   libcst
     #   typing-inspect
@@ -645,6 +633,7 @@ urllib3[secure]==1.26.10
     # via
     #   -r requirements/./base.txt
     #   botocore
+    #   django-anymail
     #   requests
     #   scout-apm
     #   sentry-sdk
@@ -661,6 +650,10 @@ wcwidth==0.1.8
     # via
     #   -r requirements/./base.txt
     #   prompt-toolkit
+webencodings==0.5.1
+    # via
+    #   -r requirements/./base.txt
+    #   bleach
 wrapt==1.11.2
     # via
     #   -r requirements/./base.txt

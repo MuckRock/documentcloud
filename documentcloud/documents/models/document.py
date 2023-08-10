@@ -199,6 +199,14 @@ class Document(models.Model):
             "Ask search engines and DocumentCloud search to not index this document"
         ),
     )
+    admin_noindex = models.BooleanField(
+        _("admin noindex"),
+        default=False,
+        help_text=_(
+            "Ask search engines and DocumentCloud search to not index this document "
+            "(Admin override)"
+        ),
+    )
 
     revision_control = models.BooleanField(
         _("revision control"),
@@ -505,7 +513,7 @@ class Document(models.Model):
             "related_article": self.related_article,
             "publish_at": format_date(self.publish_at),
             "published_url": self.published_url,
-            "noindex": self.noindex,
+            "noindex": self.noindex or self.admin_noindex,
             **pages,
             **data,
         }

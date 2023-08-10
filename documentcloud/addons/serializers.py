@@ -40,11 +40,12 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         view = self.context.get("view")
         request = self.context.get("request")
 
-        active_w = self.fields.pop("active_w")
+        active_w = self.fields.pop("active_w", None)
         # for updates which include setting active
         # change the active field to the writable active field
         if (
-            view
+            active_w is not None
+            and view
             and view.action in ("update", "partial_update")
             and hasattr(self, "initial_data")
             and "active" in self.initial_data

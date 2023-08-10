@@ -544,7 +544,7 @@ class TestDocumentAPI:
         """Test updating a document's owner"""
         client.force_authenticate(user=user)
         response = client.patch(f"/api/documents/{document.pk}/", {"user": user.pk})
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_403_FORBIDDEN
         document.refresh_from_db()
         assert document.user != user
 
