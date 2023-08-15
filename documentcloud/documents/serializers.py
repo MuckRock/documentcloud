@@ -397,9 +397,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
         if not all(len(v) <= DATA_VALUE_LENGTH for v_ in value.values() for v in v_):
             raise serializers.ValidationError(
-                "`data` JSON object must have strings for all values within the lists"
-                "of top level object properties"
+                f"`data` JSON values must be less than {DATA_VALUE_LENGTH} long"
             )
+
+        # trim leading and trailing whitespace for all values
+        for key in value:
+            value[key] = [v.strip() for v in value[key]]
 
         return value
 

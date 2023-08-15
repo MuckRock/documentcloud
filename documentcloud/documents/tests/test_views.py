@@ -277,6 +277,18 @@ class TestDocumentAPI:
         # this check is currently disabled
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    def test_create_trim_data(self, client, user):
+        """Data values are trimmed"""
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/documents/",
+            {"title": "Test", "data": {"key": [" value "]}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        response_json = response.json()
+        assert response_json["data"] == {"key": ["value"]}
+
     def test_create_bad_ocr_engine(self, client, user):
         """OCR engine may only be set if file_url is set"""
         client.force_authenticate(user=user)
