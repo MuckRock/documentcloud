@@ -111,8 +111,13 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
                 user_id = request.user.pk
             ai_credits = organization.use_ai_credits(
                 serializer.validated_data["ai_credits"],
+<<<<<<< HEAD
                 user_id,
                 serializer.validated_data.get("note", ""),
+=======
+                request.user,
+                serializer.validated_data["note"],
+>>>>>>> 6358bb9c (wip)
             )
             run_id = serializer.validated_data.get("addonrun_id")
             if run_id:
