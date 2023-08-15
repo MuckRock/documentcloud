@@ -12,6 +12,7 @@ import environ
 import requests
 import smart_open
 from botocore.client import Config
+from botocore.exceptions import ClientError
 
 # Local
 from ... import access_choices
@@ -325,7 +326,10 @@ class AwsStorage:
 
     def get_expires_at(self, file_name):
         bucket, key = self.bucket_key(file_name)
-        obj = self.s3_resource.Object(bucket, key)
+        try:
+            obj = self.s3_resource.Object(bucket, key)
+        except ClientError:
+            return None
         match = re.search(r'expiry-date="([^"]*)"', obj.expiration)
         if not match:
             return None
