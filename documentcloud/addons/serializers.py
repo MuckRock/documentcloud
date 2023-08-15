@@ -1,6 +1,7 @@
 # Django
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
@@ -117,6 +118,12 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         help_text=_("The presigned URL to download the file from"),
     )
 
+    file_expires_at = serializers.SerializerMethodField(
+        label=_("File Expires At"),
+        read_only=True,
+        help_text=_("Timestamp when the uploaded file will expire"),
+    )
+
     parameters = serializers.JSONField(
         label=_("Parameters"),
         write_only=True,
@@ -134,6 +141,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             "message",
             "presigned_url",
             "file_url",
+            "file_expires_at",
             "file_name",
             "dismissed",
             "parameters",
@@ -157,6 +165,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         super().__init__(*args, **kwargs)
         context = kwargs.get("context", {})
         request = context.get("request")
+        self._expires_at = None
         if request and request.user:
             self.fields["addon"].queryset = AddOn.objects.get_viewable(request.user)
 
@@ -173,12 +182,17 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         return storage.presign_url(obj.file_path(self.upload_file), "put_object")
 
     def get_file_url(self, obj):
-        if obj.file_name:
+        if obj.file_name and timezone.now() < self.get_file_expires_at(obj):
             return settings.DOCCLOUD_API_URL + reverse(
                 "addon-run-file", args=[obj.uuid]
             )
         else:
             return None
+
+    def get_file_expires_at(self, obj):
+        if self._expires_at is None and obj.file_name:
+            self._expires_at = storage.get_expires_at(obj.file_path())
+        return self._expires_at
 
     def validate_addon(self, value):
         if self.instance and value:

@@ -243,8 +243,14 @@ class AddOn(models.Model):
             "img": ["src", "alt", "title"],
             "a": ["href", "alt", "title"],
         }
+        protocols = ["http", "https", "mailto", "javascript"]
         html = markdown.markdown(text, extensions=extensions, output_format="html")
-        return bleach.clean(html, tags=markdown_tags, attributes=markdown_attrs)
+        return bleach.clean(
+            html,
+            tags=markdown_tags,
+            attributes=markdown_attrs,
+            protocols=protocols,
+        )
 
 
 class AddOnRun(models.Model):

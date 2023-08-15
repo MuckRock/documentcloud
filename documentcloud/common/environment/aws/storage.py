@@ -2,10 +2,12 @@
 import asyncio
 import io
 import mimetypes
+import re
 from itertools import zip_longest
 
 # Third Party
 import boto3
+import dateutil
 import environ
 import requests
 import smart_open
@@ -320,6 +322,14 @@ class AwsStorage:
         self.s3_client.copy_object(
             CopySource=src, Bucket=dst_bucket, Key=dst_key, ACL=acl
         )
+
+    def get_expires_at(self, file_name):
+        bucket, key = self.bucket_key(file_name)
+        self.s3_resource.Object(bucket, key)
+        match = re.search(r'expiry-date="([^"]*)"', object.expiration)
+        if not match:
+            return None
+        return dateutil.parser.parse(match.group(1))
 
 
 storage = AwsStorage()

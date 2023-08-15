@@ -340,13 +340,13 @@ matplotlib-inline==0.1.3
     # via
     #   -r requirements/./base.txt
     #   ipython
-moesifapi==1.4.0
+moesifapi==1.4.1
     # via
     #   moesifdjango
     #   moesifpythonrequest
-moesifdjango==2.1.4
+moesifdjango==2.3.3
     # via -r requirements/production.in
-moesifpythonrequest==0.2.0
+moesifpythonrequest==0.3.0
     # via moesifdjango
 multidict==4.7.5
     # via
@@ -599,7 +599,7 @@ sqlparse==0.4.4
     #   -r requirements/./base.txt
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.2
+squarelet-auth==0.1.3
     # via -r requirements/./base.txt
 stack-data==0.3.0
     # via

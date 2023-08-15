@@ -5,7 +5,11 @@
   <p>
     Your scheduled run of the Add-On {{ run.addon.name }} has not run
     succesfully the last five times it was ran.  We have therefore disabled the
-    scheduled run.  You may debug the issue
+    scheduled run.  <a href="{{ settings.DOCCLOUD_URL }}/app?q=#add-ons/{{ run.addon.repository }}/{{ run.event.id }}">View the scheduled run details here.</a>
+  </p>
+
+  <p>
+    You may debug the issue
     <a href="https://github.com/{{ run.addon.repository }}/actions/runs/{{ run.run_id }}/">
       using the GitHub logs.
     </a>  Once fixed, you may re-enable it from the Add-On menu on
