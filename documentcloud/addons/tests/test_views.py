@@ -1,5 +1,9 @@
 # Django
+from django.utils import timezone
 from rest_framework import status
+
+# Standard Library
+from datetime import timedelta
 
 # Third Party
 import pytest
@@ -174,8 +178,12 @@ class TestAddOnRunAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "presigned_url" in response.json()
 
-    def test_retrieve_download_file(self, client):
+    def test_retrieve_download_file(self, client, mocker):
         """Test retrieving a add-on run with an available file"""
+        mocker.patch(
+            "documentcloud.common.environment.storage.get_expires_at",
+            return_value=timezone.now() + timedelta(days=5),
+        )
         run = AddOnRunFactory(file_name="example.csv")
         client.force_authenticate(user=run.user)
         response = client.get(f"/api/addon_runs/{run.uuid}/")
