@@ -181,7 +181,7 @@ class TestAddOnRunAPI:
     def test_retrieve_download_file(self, client, mocker):
         """Test retrieving a add-on run with an available file"""
         mocker.patch(
-            "documentcloud.common.environment.aws.storage.AwsStorage.get_expires_at",
+            "documentcloud.common.environment.storage.get_expires_at",
             return_value=timezone.now() + timedelta(days=5),
         )
         run = AddOnRunFactory(file_name="example.csv")
