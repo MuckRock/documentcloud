@@ -50,7 +50,9 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
         serializer.is_valid(raise_exception=True)
         try:
             ai_credits = organization.use_ai_credits(
-                serializer.validated_data["ai_credits"]
+                serializer.validated_data["ai_credits"],
+                request.user,
+                serializer.validated_data["note"],
             )
             return Response(ai_credits, status=status.HTTP_200_OK)
         except InsufficientAICreditsError as exc:
