@@ -182,6 +182,9 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         return storage.presign_url(obj.file_path(self.upload_file), "put_object")
 
     def get_file_url(self, obj):
+        expires_at = self.get_file_expires_at(obj)
+        if expires_at is None:
+            return None
         if obj.file_name and timezone.now() < self.get_file_expires_at(obj):
             return settings.DOCCLOUD_API_URL + reverse(
                 "addon-run-file", args=[obj.uuid]
