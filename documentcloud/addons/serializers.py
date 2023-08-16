@@ -165,7 +165,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         super().__init__(*args, **kwargs)
         context = kwargs.get("context", {})
         request = context.get("request")
-        self._expires_at = None
+        self._expires_at = {}
         if request and request.user:
             self.fields["addon"].queryset = AddOn.objects.get_viewable(request.user)
 
@@ -193,9 +193,9 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             return None
 
     def get_file_expires_at(self, obj):
-        if self._expires_at is None and obj.file_name:
-            self._expires_at = storage.get_expires_at(obj.file_path())
-        return self._expires_at
+        if obj.file_name and obj.file_name is not in self._expires_at:
+            self._expires_at[obj.file_name] = storage.get_expires_at(obj.file_path())
+        return self._expires_at[obj.file_name]
 
     def validate_addon(self, value):
         if self.instance and value:
