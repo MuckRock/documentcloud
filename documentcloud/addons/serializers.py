@@ -193,7 +193,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             return None
 
     def get_file_expires_at(self, obj):
-        if obj.file_name and obj.file_name is not in self._expires_at:
+        if obj.file_name and obj.file_name not in self._expires_at:
             self._expires_at[obj.file_name] = storage.get_expires_at(obj.file_path())
         return self._expires_at[obj.file_name]
 
