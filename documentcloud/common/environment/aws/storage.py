@@ -326,11 +326,11 @@ class AwsStorage:
 
     def get_expires_at(self, file_name):
         bucket, key = self.bucket_key(file_name)
+        obj = self.s3_resource.Object(bucket, key)
         try:
-            obj = self.s3_resource.Object(bucket, key)
+            match = re.search(r'expiry-date="([^"]*)"', obj.expiration)
         except ClientError:
             return None
-        match = re.search(r'expiry-date="([^"]*)"', obj.expiration)
         if not match:
             return None
         return dateutil.parser.parse(match.group(1))
