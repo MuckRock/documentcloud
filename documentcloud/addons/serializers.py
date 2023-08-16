@@ -195,7 +195,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
     def get_file_expires_at(self, obj):
         if obj.file_name and obj.file_name not in self._expires_at:
             self._expires_at[obj.file_name] = storage.get_expires_at(obj.file_path())
-        return self._expires_at[obj.file_name]
+        return self._expires_at.get(obj.file_name)
 
     def validate_addon(self, value):
         if self.instance and value:
