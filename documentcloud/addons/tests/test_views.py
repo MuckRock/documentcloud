@@ -1,5 +1,9 @@
 # Django
+from django.utils import timezone
 from rest_framework import status
+
+# Standard Library
+from datetime import timedelta
 
 # Third Party
 import pytest
@@ -121,6 +125,29 @@ class TestAddOnRunAPI:
         response_json = response.json()
         assert len(response_json["results"]) == size
 
+    def test_list_ordering(self, client):
+        """List add-on runs"""
+        size = 10
+        user = UserFactory(is_staff=True)
+        client.force_authenticate(user=user)
+        for i in range(size):
+            AddOnRunFactory.create(
+                created_at=timezone.now() - timedelta(days=i), user=user
+            )
+        response = client.get("/api/addon_runs/", {"ordering": "created_at"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert response_json["results"] == sorted(
+            response_json["results"], key=lambda r: r["created_at"]
+        )
+
+        response = client.get("/api/addon_runs/", {"ordering": "-created_at"})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        assert response_json["results"] == sorted(
+            response_json["results"], key=lambda r: r["created_at"], reverse=True
+        )
+
     def test_create(self, client):
         """Test creating a new add-on run"""
         addon = AddOnFactory()
@@ -174,8 +201,12 @@ class TestAddOnRunAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "presigned_url" in response.json()
 
-    def test_retrieve_download_file(self, client):
+    def test_retrieve_download_file(self, client, mocker):
         """Test retrieving a add-on run with an available file"""
+        mocker.patch(
+            "documentcloud.common.environment.storage.get_expires_at",
+            return_value=timezone.now() + timedelta(days=5),
+        )
         run = AddOnRunFactory(file_name="example.csv")
         client.force_authenticate(user=run.user)
         response = client.get(f"/api/addon_runs/{run.uuid}/")

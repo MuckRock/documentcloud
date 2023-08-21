@@ -348,7 +348,9 @@ class AddOnRun(models.Model):
     )
 
     created_at = AutoCreatedField(
-        _("created at"), help_text=_("Timestamp of when the add-on was ran")
+        _("created at"),
+        help_text=_("Timestamp of when the add-on was ran"),
+        db_index=True,
     )
     updated_at = AutoLastModifiedField(
         _("updated at"),
