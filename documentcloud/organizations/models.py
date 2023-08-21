@@ -122,7 +122,7 @@ class Organization(AbstractOrganization):
         )
 
     @transaction.atomic
-    def use_ai_credits(self, amount, user, note):
+    def use_ai_credits(self, amount, user_id, note):
         """Try to deduct AI credits from the organization's balance"""
         ai_credit_count = {"monthly": 0, "regular": 0}
         organization = Organization.objects.select_for_update().get(pk=self.pk)
@@ -141,8 +141,11 @@ class Organization(AbstractOrganization):
         organization.save()
 
         organization.ai_credit_logs.create(
-                user=
-                )
+            user_id=user_id,
+            organization=organization,
+            amount=amount,
+            note=note,
+        )
 
         return ai_credit_count
 
