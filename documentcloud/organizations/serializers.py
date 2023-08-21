@@ -56,8 +56,9 @@ class AICreditSerializer(serializers.Serializer):
         label=_("Note"),
         help_text=_("What are these credits being used for?"),
         max_length=1000,
+        required=False,
     )
-    user_id = serializers.IntegerField(label=_("User ID"))
+    user_id = serializers.IntegerField(label=_("User ID"), required=False)
 
     def validate_ai_credits(self, value):
         if value < 0:

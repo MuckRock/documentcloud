@@ -271,6 +271,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             lambda: process.delay(
                 document.pk,
                 self.request.user.pk,
+                self.request.user.organization.pk,
                 force_ocr,
                 ocr_engine,
             )

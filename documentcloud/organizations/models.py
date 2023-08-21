@@ -124,6 +124,7 @@ class Organization(AbstractOrganization):
     @transaction.atomic
     def use_ai_credits(self, amount, user_id, note):
         """Try to deduct AI credits from the organization's balance"""
+        initial_amount = amount
         ai_credit_count = {"monthly": 0, "regular": 0}
         organization = Organization.objects.select_for_update().get(pk=self.pk)
 
@@ -143,7 +144,7 @@ class Organization(AbstractOrganization):
         organization.ai_credit_logs.create(
             user_id=user_id,
             organization=organization,
-            amount=amount,
+            amount=initial_amount,
             note=note,
         )
 
@@ -167,8 +168,6 @@ class AICreditLog(models.Model):
         related_name="ai_credit_logs",
         help_text=_("The organization the AI credits were used from"),
     )
-    # doc id
-    # addon run id
     amount = models.PositiveIntegerField(
         _("amount"),
         help_text=_("Amount of AI credits charged"),
@@ -182,3 +181,6 @@ class AICreditLog(models.Model):
         _("created at"),
         help_text=_("Timestamp of when the credits were used"),
     )
+
+    class Meta:
+        verbose_name = "AI Credit Log"
