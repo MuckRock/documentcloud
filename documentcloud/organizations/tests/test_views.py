@@ -64,11 +64,11 @@ class TestOrganizationAPI:
         response = client.get(f"/api/organizations/{organization.pk}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_ai_credits(self, client, pro_organization):
+    def test_ai_credits(self, client, pro_organization, user):
         """Test charging AI credits"""
         response = client.post(
             f"/api/organizations/{pro_organization.pk}/ai_credits/",
-            {"ai_credits": 2100},
+            {"ai_credits": 2100, "user_id": user.pk},
             HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
         )
         assert response.status_code == status.HTTP_200_OK
@@ -112,11 +112,11 @@ class TestOrganizationAPI:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_ai_credits_too_many_credits(self, client, pro_organization):
+    def test_ai_credits_too_many_credits(self, client, pro_organization, user):
         """Test charging AI credits over the limit"""
         response = client.post(
             f"/api/organizations/{pro_organization.pk}/ai_credits/",
-            {"ai_credits": 3000},
+            {"ai_credits": 3000, "user_id": user.pk},
             HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
