@@ -133,6 +133,7 @@ class AICreditSerializer(serializers.Serializer):
         help_text=_("What are these credits being used for?"),
         max_length=1000,
 <<<<<<< HEAD
+<<<<<<< HEAD
         required=False,
     )
 <<<<<<< HEAD
@@ -144,6 +145,11 @@ class AICreditSerializer(serializers.Serializer):
 =======
     user_id = serializers.IntegerField(label=_("User ID"))
 >>>>>>> 68436790 (wip)
+=======
+        required=False,
+    )
+    user_id = serializers.IntegerField(label=_("User ID"), required=False)
+>>>>>>> 4fe8fddb (add ai credit logging)
 
     def validate_ai_credits(self, value):
         if value < 0:

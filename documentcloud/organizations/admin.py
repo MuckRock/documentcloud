@@ -32,6 +32,7 @@ class OrganizationAdmin(SAOrganizationAdmin):
 class AICreditLogAdmin(admin.ModelAdmin):
     """AI Credit Log Admin"""
 
+<<<<<<< HEAD
     def export_ai_credit_logs(self, request, queryset):
         """Export selected AI credit logs as CSV."""
         field_names = ["organization", "user", "amount", "note", "created_at"]
@@ -56,6 +57,8 @@ class AICreditLogAdmin(admin.ModelAdmin):
         return response
 
     export_ai_credit_logs.short_description = "Export selected AI credit logs to CSV"
+=======
+>>>>>>> 4fe8fddb (add ai credit logging)
     list_display = (
         "organization",
         "user",
@@ -68,4 +71,7 @@ class AICreditLogAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     fields = ("organization", "user", "amount", "note", "created_at")
     readonly_fields = ("organization", "user", "amount", "note", "created_at")
+<<<<<<< HEAD
     actions = [export_ai_credit_logs]
+=======
+>>>>>>> 4fe8fddb (add ai credit logging)
