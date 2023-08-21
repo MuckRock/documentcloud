@@ -115,6 +115,7 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
 <<<<<<< HEAD
                 user_id,
                 serializer.validated_data.get("note", ""),
+<<<<<<< HEAD
 =======
                 request.user,
 =======
@@ -122,6 +123,8 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
 >>>>>>> 68436790 (wip)
                 serializer.validated_data["note"],
 >>>>>>> 6358bb9c (wip)
+=======
+>>>>>>> c6f8dc61 (fix tests)
             )
             run_id = serializer.validated_data.get("addonrun_id")
             if run_id:
