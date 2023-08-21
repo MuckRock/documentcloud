@@ -124,7 +124,7 @@ def _httpsub_submit(url, document_pk, json, task_):
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
 )
-def process(document_pk, user_pk, force_ocr, ocr_engine):
+def process(document_pk, user_pk, org_pk, force_ocr, ocr_engine):
     """Start the processing"""
     document = Document.objects.get(pk=document_pk)
     _httpsub_submit(
@@ -137,7 +137,8 @@ def process(document_pk, user_pk, force_ocr, ocr_engine):
             "access": document.access,
             "ocr_code": Language.get_choice(document.language).ocr_code,
             "method": "process_pdf",
-            "org_id": document.organization_id,
+            "user_id": user_pk,
+            "org_id": org_pk,
             "force_ocr": force_ocr,
             "ocr_engine": ocr_engine,
         },

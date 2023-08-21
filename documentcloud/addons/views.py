@@ -17,7 +17,7 @@ from django.http.response import (
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import status, viewsets
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -34,6 +34,7 @@ from functools import lru_cache
 
 # Third Party
 from django_filters import rest_framework as django_filters
+from django_filters.rest_framework.backends import DjangoFilterBackend
 from furl import furl
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded
@@ -146,11 +147,14 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     queryset = AddOnRun.objects.none()
     lookup_field = "uuid"
     permit_list_expands = ["addon"]
+    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
 
     @lru_cache()
     def get_queryset(self):
         """Only fetch add-on runs viewable to this user"""
-        queryset = AddOnRun.objects.get_viewable(self.request.user).order_by("-pk")
+        queryset = AddOnRun.objects.get_viewable(self.request.user)
         if is_expanded(self.request, "addon"):
             queryset = queryset.select_related("addon")
         return queryset

@@ -572,6 +572,7 @@ def process_page_cache(data, _context=None):
     force_ocr = data.get("force_ocr", False)
     ocr_engine = data.get("ocr_engine", "tess4")
     org_id = data.get("org_id", None)
+    user_id = data.get("user_id", None)
     page_modification = data.get("page_modification", None)
 
     logger.info("[PROCESS PAGE CACHE] doc_id %s", doc_id)
@@ -598,7 +599,11 @@ def process_page_cache(data, _context=None):
         if ocr_engine == "textract":
             resp = requests.post(
                 urljoin(utils.API_CALLBACK, f"organizations/{org_id}/ai_credits/"),
-                json={"ai_credits": page_count},
+                json={
+                    "ai_credits": page_count,
+                    "note": f"Textract for document {doc_id}",
+                    "user_id": user_id,
+                },
                 timeout=30,
                 headers={"Authorization": f"processing-token {utils.PROCESSING_TOKEN}"},
             )
@@ -654,6 +659,7 @@ def process_pdf(data, _context=None):
     ocr_code = data.get("ocr_code", "eng")
     page_modification = data.get("page_modification", None)
     org_id = data.get("org_id", None)
+    user_id = data.get("user_id", None)
 
     logger.info("[PROCESS PDF] doc_id %s", doc_id)
 
@@ -688,6 +694,7 @@ def process_pdf(data, _context=None):
                 "force_ocr": force_ocr,
                 "ocr_engine": ocr_engine,
                 "org_id": org_id,
+                "user_id": user_id,
                 "page_modification": page_modification,
             }
         ),
