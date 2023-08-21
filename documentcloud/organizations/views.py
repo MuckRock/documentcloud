@@ -112,10 +112,14 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
             ai_credits = organization.use_ai_credits(
                 serializer.validated_data["ai_credits"],
 <<<<<<< HEAD
+<<<<<<< HEAD
                 user_id,
                 serializer.validated_data.get("note", ""),
 =======
                 request.user,
+=======
+                user_id,
+>>>>>>> 68436790 (wip)
                 serializer.validated_data["note"],
 >>>>>>> 6358bb9c (wip)
             )

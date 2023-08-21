@@ -156,6 +156,7 @@ class Organization(AbstractOrganization):
 
     @transaction.atomic
     def use_ai_credits(self, amount, user_id, note):
+<<<<<<< HEAD
         """Try to deduct AI credits from the organization's balance
 
         Consumes AI credits in priority order:
@@ -179,6 +180,9 @@ class Organization(AbstractOrganization):
             all sources
         """
         initial_amount = amount
+=======
+        """Try to deduct AI credits from the organization's balance"""
+>>>>>>> 68436790 (wip)
         ai_credit_count = {"monthly": 0, "regular": 0}
 
         # Lock this organization and related organizations for update to prevent
@@ -233,7 +237,11 @@ class Organization(AbstractOrganization):
         organization.ai_credit_logs.create(
             user_id=user_id,
             organization=organization,
+<<<<<<< HEAD
             amount=initial_amount,
+=======
+            amount=amount,
+>>>>>>> 68436790 (wip)
             note=note,
         )
 

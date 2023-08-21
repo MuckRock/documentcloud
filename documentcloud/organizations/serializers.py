@@ -135,11 +135,15 @@ class AICreditSerializer(serializers.Serializer):
 <<<<<<< HEAD
         required=False,
     )
+<<<<<<< HEAD
     user_id = serializers.IntegerField(label=_("User ID"), required=False)
     addonrun_id = serializers.UUIDField(label=_("AddOn Run ID"), required=False)
 =======
     )
 >>>>>>> 6358bb9c (wip)
+=======
+    user_id = serializers.IntegerField(label=_("User ID"))
+>>>>>>> 68436790 (wip)
 
     def validate_ai_credits(self, value):
         if value < 0:
