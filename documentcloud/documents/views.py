@@ -419,7 +419,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             # never try to update the id
             validated_data.pop("id", None)
             data = validated_data.pop("data", None)
-            if data:
+            if data is not None:
                 # we want to update all data keys if data is set directly,
                 # including old data keys which may have been removed
                 all_keys = old_data_keys | data.keys()
