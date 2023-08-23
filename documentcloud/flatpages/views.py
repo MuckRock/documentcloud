@@ -13,3 +13,7 @@ class FlatPageViewSet(
     queryset = FlatPage.objects.all()
     lookup_field = "url"
     lookup_value_regex = ".+"
+
+    def get_object(self):
+        self.kwargs["url"] = "/" + self.kwargs["url"] + "/"
+        return super().get_object()
