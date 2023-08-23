@@ -35,6 +35,7 @@ from documentcloud.documents.views import (
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.entities.views import EntityOccurrenceViewSet, EntityViewSet
+from documentcloud.flatpages.views import FlatPageViewSet
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
@@ -59,6 +60,7 @@ router.register("addons", AddOnViewSet)
 router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
+router.register("flatpages", FlatPageViewSet)
 
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")

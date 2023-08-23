@@ -154,6 +154,12 @@ def run_document_conversion(data, _context=None):
 
     logger.info("[DOCUMENT CONVERSION] doc_id %s extension %s", doc_id, extension)
 
+    # if we already ran document conversion, skip ahead to PDF processing
+    doc_path = path.doc_path(doc_id, slug)
+    if storage.exists(doc_path):
+        publisher.publish(PDF_PROCESS_TOPIC, data=encode_pubsub_data(data))
+        return
+
     # Ensure whitelisted file extension
     if extension.lower().strip() not in SUPPORTED_DOCUMENT_EXTENSIONS:
         raise DocumentExtensionError()
