@@ -16,6 +16,7 @@ from squarelet_auth.organizations.models import AbstractOrganization
 
 # DocumentCloud
 from documentcloud.core.choices import Language
+from documentcloud.core.fields import AutoCreatedField
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.querysets import OrganizationQuerySet
 
@@ -121,8 +122,9 @@ class Organization(AbstractOrganization):
         )
 
     @transaction.atomic
-    def use_ai_credits(self, amount):
+    def use_ai_credits(self, amount, user_id, note):
         """Try to deduct AI credits from the organization's balance"""
+        initial_amount = amount
         ai_credit_count = {"monthly": 0, "regular": 0}
         organization = Organization.objects.select_for_update().get(pk=self.pk)
 
@@ -138,4 +140,47 @@ class Organization(AbstractOrganization):
         organization.monthly_ai_credits -= ai_credit_count["monthly"]
         organization.number_ai_credits -= ai_credit_count["regular"]
         organization.save()
+
+        organization.ai_credit_logs.create(
+            user_id=user_id,
+            organization=organization,
+            amount=initial_amount,
+            note=note,
+        )
+
         return ai_credit_count
+
+
+class AICreditLog(models.Model):
+    """Log usage of AI Credits"""
+
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="ai_credit_logs",
+        help_text=_("The user who used the AI credits"),
+    )
+    organization = models.ForeignKey(
+        verbose_name=_("organization"),
+        to="organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="ai_credit_logs",
+        help_text=_("The organization the AI credits were used from"),
+    )
+    amount = models.PositiveIntegerField(
+        _("amount"),
+        help_text=_("Amount of AI credits charged"),
+    )
+    note = models.CharField(
+        _("note"),
+        max_length=1000,
+        help_text=_("What were these credits used for?"),
+    )
+    created_at = AutoCreatedField(
+        _("created at"),
+        help_text=_("Timestamp of when the credits were used"),
+    )
+
+    class Meta:
+        verbose_name = "AI Credit Log"

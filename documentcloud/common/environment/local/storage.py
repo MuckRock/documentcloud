@@ -75,7 +75,7 @@ class LocalStorage:
         # pylint: disable=unused-argument
         shutil.copy(src, dst)
 
-    def get_expires_at(self, file_name):
+    def get_expires_at(self, _file_name):
         return None
 
 
