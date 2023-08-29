@@ -105,10 +105,17 @@ def search(user, query_params):
 
     # "sort" or "order" query param takes precedence, then "sort:" filter passed in the
     # query, then fall back to default of score
-    sort = SORT_MAP.get(
-        query_params.get("sort", query_params.get("order", sort_order)),
-        SORT_MAP["score"],
-    )
+    sort_param = query_params.get("sort", query_params.get("order", sort_order))
+    if sort_param and sort_param.startswith(("data_", "-data_")) and user.is_staff:
+        if sort_param.startswith("-"):
+            order = "desc"
+            sort_param = sort_param[1:]
+        else:
+            order = "asc"
+        sort = f"{sort_param} {order}, id desc"
+    else:
+        sort = SORT_MAP.get(sort_param, SORT_MAP["score"])
+
     page_query_data, page_response_data = _paginate(query_params, user)
 
     # allow explicit enabling of highlighting
