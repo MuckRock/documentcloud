@@ -307,15 +307,19 @@ class FilterExtractor(LuceneTreeTransformer):
     def visit_search_field(self, node, parents):
         # pylint: disable=too-many-return-statements, too-many-branches
         # substitute any aliases
+        filter_name = None
         if node.name in FILTER_FIELDS:
             filter_name = FILTER_FIELDS[node.name]
             # update the node name to what it aliases to,
             # so that the alias will hold even if we are in sort only mode
             node.name = filter_name
+        elif node.name in TEXT_FIELDS:
+            text_name = TEXT_FIELDS[node.name]
+            # update the node name to what it aliases to,
+            # so that the alias will hold even if we are in sort only mode
+            node.name = text_name
         elif any(re.match(rf"^{p}$", node.name) for p in DYNAMIC_FILTER_FIELDS):
             filter_name = node.name
-        else:
-            filter_name = None
 
         # remove slugs from ID fields
         if filter_name in ID_FIELDS:
