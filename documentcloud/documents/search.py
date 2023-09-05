@@ -105,10 +105,17 @@ def search(user, query_params):
 
     # "sort" or "order" query param takes precedence, then "sort:" filter passed in the
     # query, then fall back to default of score
-    sort = SORT_MAP.get(
-        query_params.get("sort", query_params.get("order", sort_order)),
-        SORT_MAP["score"],
-    )
+    sort_param = query_params.get("sort", query_params.get("order", sort_order))
+    if sort_param and sort_param.startswith(("data_", "-data_")) and user.is_staff:
+        if sort_param.startswith("-"):
+            order = "desc"
+            sort_param = sort_param[1:]
+        else:
+            order = "asc"
+        sort = f"{sort_param} {order}, id desc"
+    else:
+        sort = SORT_MAP.get(sort_param, SORT_MAP["score"])
+
     page_query_data, page_response_data = _paginate(query_params, user)
 
     # allow explicit enabling of highlighting
@@ -307,15 +314,19 @@ class FilterExtractor(LuceneTreeTransformer):
     def visit_search_field(self, node, parents):
         # pylint: disable=too-many-return-statements, too-many-branches
         # substitute any aliases
+        filter_name = None
         if node.name in FILTER_FIELDS:
             filter_name = FILTER_FIELDS[node.name]
             # update the node name to what it aliases to,
             # so that the alias will hold even if we are in sort only mode
             node.name = filter_name
+        elif node.name in TEXT_FIELDS:
+            text_name = TEXT_FIELDS[node.name]
+            # update the node name to what it aliases to,
+            # so that the alias will hold even if we are in sort only mode
+            node.name = text_name
         elif any(re.match(rf"^{p}$", node.name) for p in DYNAMIC_FILTER_FIELDS):
             filter_name = node.name
-        else:
-            filter_name = None
 
         # remove slugs from ID fields
         if filter_name in ID_FIELDS:
