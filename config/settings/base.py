@@ -117,6 +117,9 @@ SOCIAL_AUTH_SQUARELET_SECRET = SQUARELET_SECRET = env("SQUARELET_SECRET")
 SOCIAL_AUTH_SQUARELET_SCOPE = ["uuid", "organizations", "preferences"]
 SOCIAL_AUTH_SQUARELET_AUTH_EXTRA_ARGUMENTS = {"intent": "documentcloud"}
 SOCIAL_AUTH_TRAILING_SLASH = False
+SOCIAL_AUTH_SANITIZE_REDIRECTS = env.bool(
+    "SOCIAL_AUTH_SANITIZE_REDIRECTS", default=True
+)
 
 SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_details",

@@ -78,6 +78,7 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
         process.delay(
             document.pk,
             document.user.pk,
+            document.organization.pk,
             force_ocr,
             ocr_engine,
         )
