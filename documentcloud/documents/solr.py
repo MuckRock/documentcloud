@@ -168,7 +168,7 @@ def index_single(document_pk, solr_document=None, field_updates=None, index_text
             return
 
         if field_updates:
-            solr_document = document.solr(field_updates.keys())
+            solr_document = document.solr(field_updates.keys(), index_text=index_text)
         else:
             solr_document = document.solr(index_text=index_text)
             # add field updates to avoid clobbering already indexed text
