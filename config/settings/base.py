@@ -417,6 +417,7 @@ CSRF_COOKIE_DOMAIN = env("DJANGO_COOKIE_DOMAIN", default=".dev.documentcloud.org
 # Configure nginx.conf.erb if you change this
 CORS_ORIGIN_WHITELIST = [DOCCLOUD_URL, DOCCLOUD_EMBED_URL]
 CORS_ORIGIN_WHITELIST.extend(env.list("CORS_ORIGIN_WHITELIST", default=[]))
+CORS_ALLOWED_ORIGIN_REGEXES = env.list("CPORS_ALLOWED_ORIGIN_REGEXES", default=[])
 # This enables cookies
 CORS_ALLOW_CREDENTIALS = True
 
