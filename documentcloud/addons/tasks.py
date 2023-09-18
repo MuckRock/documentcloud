@@ -76,9 +76,9 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=Non
     except RequestException as exc:
         try:
             logger.info("[DISPATCH] retry uuid %s exc %s", uuid, exc)
-            dispatch.retry(max_retries=3, countdown=10)
+            dispatch.retry(max_retries=6, retry_backoff=10, retry_jitter=True)
         except MaxRetriesExceededError:
-            logger.error("Failed to dispatch: %s", uuid)
+            logger.error("Failed to dispatch: %s exc", uuid, exc)
             AddOnRun.objects.filter(uuid=uuid).update(status="failure")
 
 
