@@ -113,6 +113,9 @@ http {
         <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
           "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "$http_origin";
         <% end %>
+        <% if ENV.key?("NGINX_CORS_URL") %>
+          "<%= ENV["NGINX_CORS_URL"] %>" "$http_origin";
+        <% end %>
     }
 
     map $http_origin $cors_cred {
@@ -120,6 +123,9 @@ http {
         "<%= ENV["DOCCLOUD_URL"] %>" "true";
         <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
           "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "true";
+        <% end %>
+        <% if ENV.key?("NGINX_CORS_URL") %>
+          "<%= ENV["NGINX_CORS_URL"] %>" "true";
         <% end %>
     }
 
@@ -129,6 +135,9 @@ http {
         <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
           "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "DELETE, GET, OPTIONS, PATCH, POST, PUT";
         <% end %>
+        <% if ENV.key?("NGINX_CORS_URL") %>
+          "<%= ENV["NGINX_CORS_URL"] %>" "DELETE< GET< OPTIONS, PATCH, POST, PUT";
+        <% end %>
     }
 
     map $http_origin $cors_headers {
@@ -137,6 +146,9 @@ http {
         <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
           "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with";
         <% end %>
+        <% if ENV.key?("NGINX_CORS_URL") %>
+          "<%= ENV["NGINX_CORS_URL"] %>" "accept, accept-encoding, authorization, content-type, dnt, origin, user-agent, x-csrftoken, x-requested-with";
+        <% end %>
     }
 
     map $http_origin $cors_max_age {
@@ -144,6 +156,9 @@ http {
         "<%= ENV["DOCCLOUD_URL"] %>" "1728000";
         <% if ENV["DOCCLOUD_URL"] != ENV["DOCCLOUD_EMBED_URL"] %>
           "<%= ENV["DOCCLOUD_EMBED_URL"] %>" "1728000";
+        <% end %>
+        <% if ENV.key?("NGINX_CORS_URL") %>
+          "<%= ENV["NGINX_CORS_URL"] %>" "1728000";
         <% end %>
     }
 
