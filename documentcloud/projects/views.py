@@ -225,20 +225,21 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @transaction.atomic
     def bulk_perform_update(self, serializer, partial):
-        # for partial bulk updates, we simply update the data for each membership
-        # passed in - we expect all memberships passed in to exist
-        if partial:
-            return self.perform_update(serializer)
-
         # a non-partial bulk update will create and destroy memberships in the project
         # to fully match the list of documents passed in
+        # a partial bulk update will only create new memberships passed in
+
         membership_mapping = {m.document: m for m in serializer.instance}
         data_mapping = {item["document"]: item for item in serializer.validated_data}
 
-        # mark all documents as solr dirty
-        Document.objects.filter(
-            pk__in=[d.pk for d in membership_mapping.keys() | data_mapping.keys()]
-        ).update(solr_dirty=True, updated_at=timezone.now())
+        # mark all updated documents as solr dirty
+        if partial:
+            updated_docs = data_mapping.keys()
+        else:
+            updated_docs = membership_mapping.keys() | data_mapping.keys()
+        Document.objects.filter(pk__in=[d.pk for d in updated_docs]).update(
+            solr_dirty=True, updated_at=timezone.now()
+        )
         # create new memberships and update existing memberships
         memberships = []
         for document, data in data_mapping.items():
@@ -252,13 +253,16 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 memberships.append(serializer.child.update(membership, data))
                 _solr_set(data["document"])
 
-        # delete existing memberships not present in the data
-        delete = [
-            (d, m) for d, m in membership_mapping.items() if d not in data_mapping
-        ]
-        ProjectMembership.objects.filter(pk__in=[m.pk for (_, m) in delete]).delete()
-        for document, _ in delete:
-            _solr_set(document)
+        # delete existing memberships not present in the data, if not partial
+        if not partial:
+            delete = [
+                (d, m) for d, m in membership_mapping.items() if d not in data_mapping
+            ]
+            ProjectMembership.objects.filter(
+                pk__in=[m.pk for (_, m) in delete]
+            ).delete()
+            for document, _ in delete:
+                _solr_set(document)
 
         return memberships
 

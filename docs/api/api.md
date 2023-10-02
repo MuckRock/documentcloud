@@ -635,9 +635,8 @@ These endpoints allow you to browse, add and remove documents from a project
     will be added.
 - `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents
   in the project
-  - This endpoint will not create or delete any documents in the project. It
-    will simply update the metadata for each document passed in. It expects
-    every document in the list to already be included in the project.
+  - This endpoint will create or update any documents in the project. It
+    will not delete any documents currently in the project.
 - `DELETE /api/projects/<project_id>/documents/` - Bulk remove documents from
   the project
   - You should specify which document IDs you want to delete using the
