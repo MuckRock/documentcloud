@@ -741,7 +741,7 @@ edit and run your add-ons.
 | ------------- | ------------ | ---------------- | ----------------------------------------------------------------------------------- |
 | ID            | Integer      | Read Only        | The ID for the add-on                                                               |
 | access        | String       | Read Only        | The [access level](#access-levels) for the add-on (will be settable in the future)  |
-| active        | Bool         | Default: `false` | Whether this add-on is active for you                                               |
+| active        | Bool         | Default: `false` | Whether this add-on is pinned for you                                               |
 | created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                             |
 | name          | String       | Read Only        | The name of the add-on (set in the configuration)                                   |
 | organization  | Integer      | Not Required     | The ID for the [organization](#organizations) this add-on belongs to                |
@@ -750,7 +750,7 @@ edit and run your add-ons.
 | updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                         |
 | user          | Integer      | Read Only        | The ID for the [user](#users) this add-on belongs to                                |
 
-Your active add-ons are showed to you in the web interface.
+Your pinned add-ons are shown to you in the add-on sidebar.
 
 ### Endpoints
 
@@ -761,7 +761,7 @@ Your active add-ons are showed to you in the web interface.
 
 ### Filters
 
-- `active` &mdash; Filter by only your active or inactive add-ons 
+- `active` &mdash; Filter by only your pinned add-ons
 - `query` &mdash; Searches for add-ons which contain the query in their name or description
 
 ### Add-On Runs
