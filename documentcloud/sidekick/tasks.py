@@ -135,7 +135,9 @@ def lego_learn(sidekick_id, tag_name):
     for doc_id, dist in zip(doc_ids, dists):
         documents[doc_id].data[f"{tag_name}_score"] = [str(dist)]
         documents[doc_id].data[f"{tag_name}_likely"] = (
-            "Likely" if dist > 0.75 else ("Unlikely" if dist < -0.75 else "Uncertain")
+            ["Likely"]
+            if dist > 0.75
+            else (["Unlikely"] if dist < -0.75 else ["Uncertain"])
         )
         documents[doc_id].solr_dirty = True
     with transaction.atomic():
