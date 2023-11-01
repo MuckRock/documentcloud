@@ -635,9 +635,8 @@ These endpoints allow you to browse, add and remove documents from a project
     will be added.
 - `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents
   in the project
-  - This endpoint will not create or delete any documents in the project. It
-    will simply update the metadata for each document passed in. It expects
-    every document in the list to already be included in the project.
+  - This endpoint will create or update any documents in the project. It
+    will not delete any documents currently in the project.
 - `DELETE /api/projects/<project_id>/documents/` - Bulk remove documents from
   the project
   - You should specify which document IDs you want to delete using the
@@ -742,7 +741,7 @@ edit and run your add-ons.
 | ------------- | ------------ | ---------------- | ----------------------------------------------------------------------------------- |
 | ID            | Integer      | Read Only        | The ID for the add-on                                                               |
 | access        | String       | Read Only        | The [access level](#access-levels) for the add-on (will be settable in the future)  |
-| active        | Bool         | Default: `false` | Whether this add-on is active for you                                               |
+| active        | Bool         | Default: `false` | Whether this add-on is pinned for you                                               |
 | created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                             |
 | name          | String       | Read Only        | The name of the add-on (set in the configuration)                                   |
 | organization  | Integer      | Not Required     | The ID for the [organization](#organizations) this add-on belongs to                |
@@ -751,7 +750,7 @@ edit and run your add-ons.
 | updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                         |
 | user          | Integer      | Read Only        | The ID for the [user](#users) this add-on belongs to                                |
 
-Your active add-ons are showed to you in the web interface.
+Your pinned add-ons are shown to you in the add-on sidebar.
 
 ### Endpoints
 
@@ -762,7 +761,7 @@ Your active add-ons are showed to you in the web interface.
 
 ### Filters
 
-- `active` &mdash; Filter by only your active or inactive add-ons 
+- `active` &mdash; Filter by only your pinned add-ons
 - `query` &mdash; Searches for add-ons which contain the query in their name or description
 
 ### Add-On Runs

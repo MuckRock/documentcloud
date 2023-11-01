@@ -12,6 +12,7 @@ import pytest
 # DocumentCloud
 from documentcloud.core.tests import run_commit_hooks
 from documentcloud.documents.choices import Access
+from documentcloud.documents.models import Document
 from documentcloud.documents.tests.factories import (
     DocumentFactory,
     NoteFactory,
@@ -392,38 +393,63 @@ class TestProjectMembershipAPI:
         )
         assert response.status_code == status.HTTP_200_OK
 
-    def test_partial_update_bulk(self, client, user):
-        """Test updating multiple documents in a project"""
-        documents = DocumentFactory.create_batch(5, user=user)
-        project = ProjectFactory(user=user, documents=documents)
+    def test_partial_update_bulk(self, client, user, mocker):
+        """Bulk add documents to a project without removing existing documents"""
+        mock_solr_index = mocker.patch("documentcloud.documents.tasks.solr_index")
+        old_documents = DocumentFactory.create_batch(5, user=user)
+        new_documents = old_documents[:2] + DocumentFactory.create_batch(3, user=user)
+        # clear solr dirty to test it is set correctly
+        Document.objects.filter(
+            pk__in=[d.pk for d in old_documents + new_documents]
+        ).update(solr_dirty=False)
+        for document in old_documents + new_documents:
+            document.refresh_from_db()
+        project = ProjectFactory(user=user, documents=old_documents)
+        other_project = ProjectFactory(user=user, documents=old_documents)
         client.force_authenticate(user=user)
         response = client.patch(
             f"/api/projects/{project.pk}/documents/",
-            [{"document": d.pk, "edit_access": True} for d in documents[:2]],
+            [{"document": d.pk} for d in new_documents],
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
-        assert project.projectmembership_set.filter(edit_access=True).count() == 2
-        assert project.projectmembership_set.count() == 5
-
-    def test_partial_update_bulk_bad_missing(self, client, user):
-        """Test updating multiple documents in a project"""
-        documents = DocumentFactory.create_batch(5, user=user)
-        other_document = DocumentFactory(user=user)
-        project = ProjectFactory(user=user, documents=documents)
-        client.force_authenticate(user=user)
-        response = client.patch(
-            f"/api/projects/{project.pk}/documents/",
-            [{"document": other_document.pk, "edit_access": True}],
-            format="json",
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # all of new and old documents are in the project
+        assert {d.pk for d in new_documents + old_documents} == {
+            d.pk for d in project.documents.all()
+        }
+        # other project is not changed
+        assert {d.pk for d in old_documents} == {
+            d.pk for d in other_project.documents.all()
+        }
+        # check that the solr index was properly updated for all new documents
+        for document in old_documents + new_documents:
+            document.refresh_from_db()
+        assert all(d.solr_dirty for d in new_documents)
+        assert all(not d.solr_dirty for d in old_documents[2:])
+        run_commit_hooks()
+        calls = []
+        for doc in new_documents:
+            calls.append(
+                mocker.call(
+                    doc.pk,
+                    field_updates={"projects": "set", "projects_edit_access": "set"},
+                )
+            )
+        mock_solr_index.delay.assert_has_calls(calls, any_order=True)
 
     def test_update_bulk(self, client, user, mocker):
         """Test replacing the document set in a project"""
         mock_solr_index = mocker.patch("documentcloud.documents.tasks.solr_index")
-        old_documents = DocumentFactory.create_batch(5, user=user)
-        new_documents = old_documents[:2] + DocumentFactory.create_batch(3, user=user)
+        old_documents = DocumentFactory.create_batch(5, user=user, solr_dirty=False)
+        new_documents = old_documents[:2] + DocumentFactory.create_batch(
+            3, user=user, solr_dirty=False
+        )
+        # clear solr dirty to test it is set correctly
+        Document.objects.filter(
+            pk__in=[d.pk for d in old_documents + new_documents]
+        ).update(solr_dirty=False)
+        for document in old_documents + new_documents:
+            document.refresh_from_db()
         project = ProjectFactory(user=user, documents=old_documents)
         other_project = ProjectFactory(user=user, documents=old_documents)
         client.force_authenticate(user=user)
@@ -433,31 +459,22 @@ class TestProjectMembershipAPI:
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
+        # new documents exactly matches documents in the project now
         assert {d.pk for d in new_documents} == {d.pk for d in project.documents.all()}
+        # other project is not changed
         assert {d.pk for d in old_documents} == {
             d.pk for d in other_project.documents.all()
         }
         # check that the solr index was properly updated for all documents
+        for document in old_documents + new_documents:
+            document.refresh_from_db()
+        assert all(d.solr_dirty for d in old_documents + new_documents[2:])
         run_commit_hooks()
         calls = []
-        for update in old_documents[:2]:
+        for doc in old_documents + new_documents[2:]:
             calls.append(
                 mocker.call(
-                    update.pk,
-                    field_updates={"projects": "set", "projects_edit_access": "set"},
-                )
-            )
-        for add in new_documents[2:]:
-            calls.append(
-                mocker.call(
-                    add.pk,
-                    field_updates={"projects": "set", "projects_edit_access": "set"},
-                )
-            )
-        for delete in old_documents[2:]:
-            calls.append(
-                mocker.call(
-                    delete.pk,
+                    doc.pk,
                     field_updates={"projects": "set", "projects_edit_access": "set"},
                 )
             )
