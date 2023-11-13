@@ -46,3 +46,9 @@ add_perm("addons.view_addonevent", is_authenticated & is_owner)
 add_perm("addons.add_addonevent", is_authenticated)
 add_perm("addons.change_addonevent", is_authenticated & is_owner)
 add_perm("addons.delete_addonevent", always_deny)
+
+
+add_perm("addons.view_addonfile", is_authenticated & is_owner)
+add_perm("addons.add_addonfile", is_authenticated)
+add_perm("addons.change_addonfile", always_deny)
+add_perm("addons.delete_addonfile", always_deny)
