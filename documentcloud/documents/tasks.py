@@ -1,5 +1,4 @@
 # Django
-from celery import chord
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
