@@ -147,6 +147,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             "parameters",
             "rating",
             "comment",
+            "credits_spent",
             "created_at",
             "updated_at",
         ]

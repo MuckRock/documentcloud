@@ -1,4 +1,5 @@
 # Django
+from django.db.models.expressions import F, Value
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 import django_filters
 
 # DocumentCloud
+from documentcloud.addons.models import AddOnRun
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
     OrganizationAICreditsPermissions,
@@ -30,10 +32,11 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
             and self.request.auth is not None
             and "processing" in self.request.auth.get("permissions", [])
         )
+        organizations = Organization.objects.select_related("entitlement")
         if self.valid_token:
-            return Organization.objects.all()
+            return organizations
         else:
-            return Organization.objects.get_viewable(self.request.user)
+            return organizations.get_viewable(self.request.user)
 
     @action(
         detail=True,
@@ -58,6 +61,12 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
                 user_id,
                 serializer.validated_data.get("note", ""),
             )
+            run_id = serializer.validated_data.get("addonrun_id")
+            if run_id:
+                AddOnRun.objects.filter(uuid=run_id).update(
+                    credits_spent=F("credits_spent")
+                    + Value(serializer.validated_data["ai_credits"])
+                )
             return Response(ai_credits, status=status.HTTP_200_OK)
         except InsufficientAICreditsError as exc:
             return Response({"amount": exc.args[0]}, status=status.HTTP_400_BAD_REQUEST)

@@ -9,6 +9,7 @@ import json
 import pytest
 
 # DocumentCloud
+from documentcloud.addons.tests.factories import AddOnRunFactory
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.organizations.tests.factories import (
     OrganizationFactory,
@@ -84,6 +85,32 @@ class TestOrganizationAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"monthly": 1, "regular": 0}
+
+    def test_ai_credits_addon_run(self, client, user):
+        """Test charging AI credits"""
+        run = AddOnRunFactory()
+        client.force_authenticate(user=user)
+        organization = ProfessionalOrganizationFactory(members=[user])
+
+        response = client.post(
+            f"/api/organizations/{organization.pk}/ai_credits/",
+            {"ai_credits": 5, "addonrun_id": run.uuid},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"monthly": 5, "regular": 0}
+        run.refresh_from_db()
+        assert run.credits_spent == 5
+
+        response = client.post(
+            f"/api/organizations/{organization.pk}/ai_credits/",
+            {"ai_credits": 7, "addonrun_id": run.uuid},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {"monthly": 7, "regular": 0}
+        run.refresh_from_db()
+        assert run.credits_spent == 12
 
     def test_ai_credits_no_auth(self, client, pro_organization):
         """Test charging AI credits with no authentication"""

@@ -347,6 +347,12 @@ class AddOnRun(models.Model):
         default="",
     )
 
+    credits_spent = models.IntegerField(
+        _("credits spent"),
+        default=0,
+        help_text=_("The amount of premium credits spent by this run"),
+    )
+
     created_at = AutoCreatedField(
         _("created at"),
         help_text=_("Timestamp of when the add-on was ran"),
