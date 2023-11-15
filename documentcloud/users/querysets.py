@@ -60,7 +60,7 @@ class UserQuerySet(models.QuerySet):
             Prefetch(
                 "memberships",
                 queryset=Membership.objects.filter(active=True).select_related(
-                    "organization"
+                    "organization__entitlement"
                 ),
                 to_attr="active_memberships",
             ),
