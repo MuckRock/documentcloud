@@ -103,6 +103,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
 
     class Filter(django_filters.FilterSet):
         active = django_filters.BooleanFilter(field_name="active", label="Active")
+        premium = django_filters.BooleanFilter(method="premium_filter", label="Premium")
         query = django_filters.CharFilter(method="query_filter", label="Query")
         category = django_filters.MultipleChoiceFilter(
             field_name="parameters",
@@ -128,16 +129,27 @@ class AddOnViewSet(viewsets.ModelViewSet):
 
         def category_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
-            print(repr(value))
-            print(type(value))
             query = Q()
             for value_ in value:
                 query |= Q(parameters__categories__contains=value_)
             return queryset.filter(query)
 
+        def premium_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            if value:
+                return queryset.filter(
+                    parameters__has_key="categories",
+                    parameters__categories__contains="premium",
+                )
+            else:
+                return queryset.exclude(
+                    parameters__has_key="categories",
+                    parameters__categories__contains="premium",
+                )
+
         class Meta:
             model = AddOn
-            fields = ["featured", "default", "repository"]
+            fields = ["featured", "default", "repository", "premium"]
 
     filterset_class = Filter
 

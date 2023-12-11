@@ -1,5 +1,4 @@
 # Django
-from celery import chord
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 from celery.task import periodic_task, task
@@ -234,53 +233,40 @@ def solr_delete(document_pk):
 # was seeing connection errors - seemed to be an issue with celery or redis
 # putting in retries for now to ensure tasks are run
 @task(autoretry_for=(redis.exceptions.ConnectionError,))
-def update_access(document_pk, status, access):
+def update_access(document_pk, status, access, marker=None):
     """Update the access settings for all assets for the given document"""
     document = Document.objects.get(pk=document_pk)
     logger.info(
-        "update access: %d - %s - %d", document_pk, document.title, document.access
+        "[UPDATE ACCESS]: %d - %s - %d", document_pk, document.title, document.access
     )
 
-    files = storage.list(document.path)
+    files = storage.list(document.path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
     # do not ever make revision PDFs public
     revision_prefix = f"{document.path}revisions/"
-    files = [f for f in files if not f.startswith(revision_prefix)]
-    tasks = []
-    for i in range(0, len(files), settings.UPDATE_ACCESS_CHUNK_SIZE):
-        tasks.append(
-            do_update_access.s(files[i : i + settings.UPDATE_ACCESS_CHUNK_SIZE], access)
-        )
+    update_files = [f for f in files if not f.startswith(revision_prefix)]
+    storage.async_set_access(update_files, access)
 
-    # run all do_update_access tasks in parallel, then run finish_update_access
-    # after they have all completed
-    chord(tasks, finish_update_access.si(document_pk, status, access)).delay()
+    if len(files) == settings.UPDATE_ACCESS_CHUNK_SIZE:
+        # there may be more files left, re-run, starting where we left off
+        logger.info("[UPDATE ACCESS] start: %s - %s", files[0], access)
+        update_access.delay(document_pk, status, access, files[-1])
+        logger.info("[UPDATE ACCESS] done:  %s - %s", files[0], access)
+    else:
+        # we are done
+        logger.info("[UPDATE ACCESS] finish %s %s %s", document_pk, status, access)
+        with transaction.atomic():
+            field_updates = {"status": "set"}
+            kwargs = {}
+            if access == Access.public:
+                # if we were switching to public, update the access now
+                kwargs["access"] = Access.public
+                field_updates["access"] = "set"
+                # also set the publication date
+                kwargs["publication_date"] = date.today()
 
-
-@task
-def do_update_access(files, access):
-    """Update access settings for a single chunk of assets"""
-    logger.info("START do update access: %s - %s", files[0], access)
-    storage.async_set_access(files, access)
-    logger.info("DONE: do update access: %s - %s", files[0], access)
-
-
-@task
-def finish_update_access(document_pk, status, access):
-    """Upon finishing an access update, reset the status"""
-    logger.info("Finish update access %s %s %s", document_pk, status, access)
-    with transaction.atomic():
-        field_updates = {"status": "set"}
-        kwargs = {}
-        if access == Access.public:
-            # if we were switching to public, update the access now
-            kwargs["access"] = Access.public
-            field_updates["access"] = "set"
-            # also set the pulbication date
-            kwargs["publication_date"] = date.today()
-
-        Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
-        document = Document.objects.get(pk=document_pk)
-        document.index_on_commit(field_updates=field_updates)
+            # update the document status and re-index into solr
+            Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
+            document.index_on_commit(field_updates=field_updates)
 
 
 @task
