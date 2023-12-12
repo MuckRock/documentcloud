@@ -300,3 +300,4 @@ embedding/
 # solr
 !config/solr/lib/*
 
+scratch/
