@@ -178,7 +178,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             documents, file_urls, force_ocrs, ocr_engines
         ):
             document.index_on_commit()
-            document.create_revision(self.request.user.pk, "Initial", copy=True)
             if file_url is not None:
                 transaction.on_commit(
                     # fmt: off
@@ -204,6 +203,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 document, data=request.data, context=self.get_serializer_context()
             )
             serializer.is_valid(raise_exception=True)
+            if document.status == Status.nofile:
+                # create an initial revision only if this is the initial processing,
+                # ie it was in status nofile before this
+                # A revision will be made post processing whether this is the
+                # initial processing or not
+                document.create_revision(document.user.pk, "Initial", copy=True)
             document.status = Status.pending
             document.save()
             self._process(
