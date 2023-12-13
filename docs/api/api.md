@@ -687,19 +687,38 @@ DocumentCloud API.
 
 ### Fields
 
-| Field      | Type    | Options   | Description                                                                                             |
-| ---------- | ------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| ID         | Integer | Read Only | The ID for the organization                                                                             |
-| avatar_url | URL     | Read Only | A URL pointing to an avatar for the organization &mdash; normally a logo for the company                |
-| individual | Bool    | Read Only | Is this organization for the sole use of an individual                                                  |
-| name       | String  | Read Only | The name of the organization                                                                            |
-| slug       | String  | Read Only | The slug is a URL safe version of the name                                                              |
-| uuid       | UUID    | Read Only | UUID which links this organization to the corresponding organization on the [MuckRock Accounts Site][3] |
+| Field                    | Type    | Options   | Description                                                                                                                                                                  |
+| ----------               | ------- | --------- | -------------------------------------------------------------------------------------------------------                                                                      |
+| ID                       | Integer | Read Only | The ID for the organization                                                                                                                                                  |
+| avatar_url               | URL     | Read Only | A URL pointing to an avatar for the organization &mdash; normally a logo for the company                                                                                     |
+| individual               | Bool    | Read Only | Is this organization for the sole use of an individual                                                                                                                       |
+| name                     | String  | Read Only | The name of the organization                                                                                                                                                 |
+| slug                     | String  | Read Only | The slug is a URL safe version of the name                                                                                                                                   |
+| uuid                     | UUID    | Read Only | UUID which links this organization to the corresponding organization on the [MuckRock Accounts Site][3]                                                                      |
+| monthly_credits          | Integer | Read Only | Number of monthly premium credits this organization has left.  This will reset to `monthly_credit_allowance` on `credit_reset_date`.  Only viewable be organization members. |
+| purchased_credits        | Integer | Read Only | Number of purchased premium credits.  These do not reset or expire. Only viewable by organization members.                                                                   |
+| credit_reset_date        | Date    | Read Only | The date that `monthly_credits` reset.  Only viewable by organization members.                                                                                               |
+| monthly_credit_allowance | Integer | Read Only | The amount of credits that `monthly_credits` will reset to. Only viewable by organization members.                                                                           |
+| plan                     | String  | Read Only | The name of the plan this organization is subscribed to. Only viewable by organization members.                                                                              |
 
 ### Endpoints
 
 - `GET /api/organizations/` - List organizations
 - `GET /api/organizations/<id>/` - Get an organization
+
+## Organization Premium Credits
+
+Certain add-ons may want to charge premium credits to an organization to pay for third party services which charge per API call.  They can do so using the following API:
+
+### Fields
+
+| Field       | Type    | Options   | Description                                                                                                  |
+| ----------  | ------- | --------- | -------------------------------------------------------------------------------------------------------      |
+| ai_credits  | Integer | Required  | The number of premium credits to charge                                                                      |
+| note        | String  | Optional  | An optional note describing what the charges are for                                                         |
+| addonrun_id | UUID    | Optional  | The UUID for the add-on run to link to the charge.  Optional, but should be used when called from an add-on. |
+
+- `POST /api/organizations/<id>/ai_credits/` - Charge credits to an organization.  Returns a 400 response code if the organization does not have enough credits.
 
 ## Users
 

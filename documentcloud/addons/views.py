@@ -136,7 +136,6 @@ class AddOnViewSet(viewsets.ModelViewSet):
 
         def premium_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
-            print(self, queryset, name, value)
             if value:
                 return queryset.filter(
                     parameters__has_key="categories",
