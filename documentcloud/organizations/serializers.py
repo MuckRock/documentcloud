@@ -7,18 +7,6 @@ from documentcloud.organizations.models import Organization
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
-<<<<<<< HEAD
-
-    plan = serializers.SerializerMethodField(
-        label=_("Plan"),
-    )
-    monthly_credits = serializers.IntegerField(source="monthly_ai_credits")
-    purchased_credits = serializers.IntegerField(source="number_ai_credits")
-    credit_reset_date = serializers.DateField(source="date_update")
-    monthly_credit_allowance = serializers.IntegerField(source="ai_credits_per_month")
-
-||||||| bf7bece
-=======
 
     plan = serializers.SerializerMethodField(
         label=_("Plan"),
@@ -34,7 +22,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
         source="ai_credits_per_month", read_only=True
     )
 
->>>>>>> master
     class Meta:
         model = Organization
         fields = [
