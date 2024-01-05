@@ -470,7 +470,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def _create_revision(self, document, old_processing, old_revision_control):
         # create an intial revision when revision control is turned on
         if not old_revision_control and document.revision_control:
-            document.create_revision(self.request.user.pk, "Initial", copy=True)
+            if document.revisions.exist():
+                comment = "Re-enable"
+            else:
+                comment = "Initial"
+            document.create_revision(self.request.user.pk, comment, copy=True)
 
         # if revision control is turned on and we finished processing succesfully,
         # copy the PDF to the latest revision
