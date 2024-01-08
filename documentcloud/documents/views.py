@@ -474,6 +474,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @action(detail=False, methods=["get"])
     def search(self, request):
+        if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
+            return Response(
+                {
+                    "error": "Anonymous searching has been disabled due to server load",
+                    "code": "anon disabled",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         try:
             response = search(request.user, request.query_params)
         except pysolr.SolrError as exc:
@@ -505,6 +513,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
+        if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
+            return Response(
+                {
+                    "error": "Anonymous searching has been disabled due to server load",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         query = request.query_params.get("q", "*:*")
         try:
             results = SOLR.search(
