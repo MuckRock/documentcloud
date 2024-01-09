@@ -256,6 +256,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         for document in documents:
             self._process(document, force_ocr[document.pk], ocr_engine[document.pk])
+            if document.status == Status.nofile:
+                # create an initial revision only if this is the initial processing,
+                # ie it was in status nofile before this
+                # A revision will be made post processing whether this is the
+                # initial processing or not
+                document.create_revision(document.user.pk, "Initial", copy=True)
         documents.update(status=Status.pending)
         return Response("OK", status=status.HTTP_200_OK)
 
@@ -464,7 +470,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def _create_revision(self, document, old_processing, old_revision_control):
         # create an intial revision when revision control is turned on
         if not old_revision_control and document.revision_control:
-            document.create_revision(self.request.user.pk, "Initial", copy=True)
+            if document.revisions.exist():
+                comment = "Re-enable"
+            else:
+                comment = "Initial"
+            document.create_revision(self.request.user.pk, comment, copy=True)
 
         # if revision control is turned on and we finished processing succesfully,
         # copy the PDF to the latest revision
