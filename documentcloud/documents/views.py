@@ -470,7 +470,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def _create_revision(self, document, old_processing, old_revision_control):
         # create an intial revision when revision control is turned on
         if not old_revision_control and document.revision_control:
-            if document.revisions.exist():
+            if document.revisions.exists():
                 comment = "Re-enable"
             else:
                 comment = "Initial"
