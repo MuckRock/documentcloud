@@ -71,6 +71,7 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
             document.save()
             document.index_on_commit(field_updates={"status": "set"})
     else:
+        document.create_revision(document.user.pk, "Initial", copy=True)
         document.status = Status.pending
         document.save()
         document.index_on_commit(field_updates={"status": "set"})
