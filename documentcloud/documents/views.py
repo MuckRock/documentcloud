@@ -92,6 +92,8 @@ logger = logging.getLogger(__name__)
 # served beneath that route.  We set the 'no-cache' Cache-Control header to disable
 # the caching for all views besides the ones we explicitly set
 
+# pylint: disable=too-many-lines
+
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="retrieve")
