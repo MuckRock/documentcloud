@@ -37,9 +37,9 @@ def doc_path(doc_id, slug):
     return file_path(doc_id, slug, DOCUMENT_SUFFIX)
 
 
-def doc_revision_path(doc_id, slug, version):
+def doc_revision_path(doc_id, slug, version, extension):
     """The path to the document file"""
-    return path(doc_id) + f"revisions/{version:04d}-{slug}.{DOCUMENT_SUFFIX}"
+    return path(doc_id) + f"revisions/{version:04d}-{slug}.{extension}"
 
 
 def original_path(doc_id, slug, extension):

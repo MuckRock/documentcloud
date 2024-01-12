@@ -475,7 +475,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             if document.revisions.exists():
                 comment = "Re-enable"
             else:
-                comment = "Initial"
+                comment = "Enable"
             document.create_revision(self.request.user.pk, comment, copy=True)
 
         # if revision control is turned on and we finished processing succesfully,
