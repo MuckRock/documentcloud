@@ -162,14 +162,26 @@ LOGGING = {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
-        }
+        },
+        "logzioFormat": {"format": '{"additional_field": "value"}', "validate": False},
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        }
+        },
+        "logzio": {
+            "class": "logzio.handler.LogzioHandler",
+            "level": "INFO",
+            "formatter": "logzioFormat",
+            "token": env("LOGZIO_TOKEN", default=""),
+            "logzio_type": "django",
+            "logs_drain_timeout": 5,
+            "url": "https://listener.logz.io:8071",
+            "debug": True,
+            "network_timeout": 10,
+        },
     },
     "root": {"level": "INFO", "handlers": ["console"]},
     "loggers": {
@@ -186,6 +198,11 @@ LOGGING = {
             "propagate": False,
         },
         "apscheduler": {"level": "ERROR", "handlers": ["console"], "propagate": False},
+        "django.request": {
+            "level": "INFO",
+            "handlers": ["console", "logzio"],
+            "propogate": False,
+        },
     },
 }
 if env.bool("LOG_SQL", default=False):

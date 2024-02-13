@@ -282,7 +282,7 @@ prompt-toolkit==3.0.38
     # via ipython
 proto-plus==1.13.0
     # via google-cloud-language
-protobuf==3.14.0
+protobuf==4.25.2
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -380,7 +380,6 @@ six==1.15.0
     #   grpcio
     #   jsonschema
     #   orderedmultidict
-    #   protobuf
     #   python-dateutil
 smart-open==1.8.4
     # via -r requirements/base.in
