@@ -92,6 +92,8 @@ logger = logging.getLogger(__name__)
 # served beneath that route.  We set the 'no-cache' Cache-Control header to disable
 # the caching for all views besides the ones we explicitly set
 
+# pylint: disable=too-many-lines
+
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="retrieve")
@@ -473,7 +475,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             if document.revisions.exists():
                 comment = "Re-enable"
             else:
-                comment = "Initial"
+                comment = "Enable"
             document.create_revision(self.request.user.pk, comment, copy=True)
 
         # if revision control is turned on and we finished processing succesfully,
@@ -489,6 +491,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @action(detail=False, methods=["get"])
     def search(self, request):
+        if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
+            return Response(
+                {
+                    "error": "Anonymous searching has been disabled due to server load",
+                    "code": "anon disabled",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         try:
             response = search(request.user, request.query_params)
         except pysolr.SolrError as exc:
@@ -520,6 +530,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
+        if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
+            return Response(
+                {
+                    "error": "Anonymous searching has been disabled due to server load",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         query = request.query_params.get("q", "*:*")
         try:
             results = SOLR.search(

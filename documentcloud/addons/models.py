@@ -33,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 
 class AddOn(models.Model):
-
     objects = AddOnQuerySet.as_manager()
 
     organization = models.ForeignKey(
@@ -211,6 +210,11 @@ class AddOn(models.Model):
             if "description" in self.parameters:
                 self.parameters["description"] = self._render_markdown(
                     self.parameters["description"]
+                )
+
+            if "instructions" in self.parameters:
+                self.parameters["instructions"] = self._render_markdown(
+                    self.parameters["instructions"]
                 )
         except yaml.YAMLError:
             self.error = True

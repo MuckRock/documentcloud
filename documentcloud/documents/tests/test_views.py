@@ -1104,10 +1104,10 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         # turning revision control on creates an initial revision
         assert document.revisions.count() == 1
-        assert document.revisions.last().comment == "Initial"
+        assert document.revisions.last().comment == "Enable"
         mock_copy.assert_called_with(
             document.doc_path,
-            path.doc_revision_path(document.pk, document.slug, 1),
+            path.doc_revision_path(document.pk, document.slug, 1, "pdf"),
         )
 
         # create another revision
@@ -1121,7 +1121,7 @@ class TestDocumentAPI:
         # creating the revision does not copy yet
         mock_copy.assert_called_with(
             document.doc_path,
-            path.doc_revision_path(document.pk, document.slug, 1),
+            path.doc_revision_path(document.pk, document.slug, 1, "pdf"),
         )
         # patching the document to success copies the document
         client.force_authenticate(user=None)
@@ -1132,7 +1132,7 @@ class TestDocumentAPI:
         )
         mock_copy.assert_called_with(
             document.doc_path,
-            path.doc_revision_path(document.pk, document.slug, 2),
+            path.doc_revision_path(document.pk, document.slug, 2, "pdf"),
         )
 
         # view the revisions

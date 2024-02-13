@@ -831,7 +831,12 @@ class RevisionSerializer(serializers.ModelSerializer):
         fields = ["version", "user", "created_at", "comment", "url"]
 
     def get_url(self, obj):
+        if obj.comment == "Initial":
+            # the initial revision will use the original extension
+            extension = obj.document.original_extension
+        else:
+            extension = "pdf"
         return (
             f"{settings.DOCCLOUD_API_URL}/files/documents/{obj.document.pk}/"
-            f"revisions/{obj.version:04d}-{obj.document.slug}.pdf"
+            f"revisions/{obj.version:04d}-{obj.document.slug}.{extension}"
         )

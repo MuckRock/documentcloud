@@ -508,6 +508,8 @@ SOLR_ADD_NOTES = env.bool("SOLR_ADD_NOTES", default=True)
 SOLR_INDEX_NOTES = env.bool("SOLR_INDEX_NOTES", default=True)
 SOLR_QUERY_NOTES = env.bool("SOLR_QUERY_NOTES", default=True)
 
+SOLR_DISABLE_ANON = env.bool("SOLR_DISABLE_ANON", default=False)
+
 # OEmbed
 # ------------------------------------------------------------------------------
 OEMBED_PROVIDER_NAME = env("OEMBED_PROVIDER_NAME", default="DocumentCloud")

@@ -579,7 +579,8 @@ class Document(models.Model):
                 comment=comment,
             )
             if copy:
-                revision.copy()
+                use_original_extension = comment == "Initial"
+                revision.copy(use_original_extension)
 
 
 class DeletedDocument(models.Model):
@@ -872,14 +873,21 @@ class Revision(models.Model):
         unique_together = [("document", "version")]
         ordering = ("version",)
 
-    def copy(self):
-        """Copy the current PDF to this revision"""
+    def copy(self, use_original_extension=False):
+        """Copy the current document to this revision"""
+        if use_original_extension:
+            extension = self.document.original_extension
+            source = self.document.original_path
+        else:
+            extension = "pdf"
+            source = self.document.doc_path
+
         destination = path.doc_revision_path(
-            self.document.pk, self.document.slug, self.version
+            self.document.pk, self.document.slug, self.version, extension
         )
         if storage.exists(destination):
             logger.warning(
                 "[REVISION] Copy to destination already exists: %s", destination
             )
         else:
-            storage.copy(self.document.doc_path, destination)
+            storage.copy(source, destination)
