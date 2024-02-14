@@ -1,5 +1,6 @@
 # Django
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import exceptions, filters, serializers, viewsets
@@ -88,6 +89,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, field_name="collaborators")
         document = ModelMultipleChoiceFilter(model=Document, field_name="documents")
+        query = django_filters.CharFilter(method="query_filter", label="Query")
 
         class Meta:
             model = Project
@@ -98,6 +100,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "slug": ["exact"],
                 "title": ["exact"],
             }
+
+        def query_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            return queryset.filter(
+                Q(title__icontains=value) | Q(description__icontains=value)
+            )
 
     filterset_class = Filter
 
