@@ -198,9 +198,9 @@ LOGGING = {
             "propagate": False,
         },
         "apscheduler": {"level": "ERROR", "handlers": ["console"], "propagate": False},
-        "django.request": {
+        "http_requests": {
             "level": "INFO",
-            "handlers": ["console", "logzio"],
+            "handlers": ["logzio"],
             "propogate": False,
         },
     },

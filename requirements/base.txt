@@ -222,6 +222,8 @@ listcrunch==1.0.0
     # via -r requirements/base.in
 llvmlite==0.38.1
     # via numba
+logzio-python-handler==4.1.1
+    # via -r requirements/base.in
 luqum==0.8.1
     # via -r requirements/base.in
 lxml==4.9.1
@@ -286,6 +288,7 @@ protobuf==4.25.2
     # via
     #   google-api-core
     #   googleapis-common-protos
+    #   logzio-python-handler
     #   proto-plus
 ptyprocess==0.6.0
     # via pexpect
@@ -343,6 +346,7 @@ requests==2.28.1
     # via
     #   gcsfs
     #   google-api-core
+    #   logzio-python-handler
     #   premailer
     #   pysolr
     #   requests-oauthlib

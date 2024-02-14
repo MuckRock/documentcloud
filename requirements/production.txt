@@ -328,7 +328,9 @@ llvmlite==0.38.1
     #   -r requirements/./base.txt
     #   numba
 logzio-python-handler==4.1.1
-    # via -r requirements/production.in
+    # via
+    #   -r requirements/./base.txt
+    #   -r requirements/production.in
 luqum==0.8.1
     # via -r requirements/./base.txt
 lxml==4.9.1
