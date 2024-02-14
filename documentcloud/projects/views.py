@@ -1,5 +1,7 @@
 # Django
 from django.db import transaction
+from django.db.models import Q
+from django.db.models.expressions import Exists, OuterRef, Value
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from rest_framework import exceptions, filters, serializers, viewsets
@@ -51,9 +53,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.none()
 
     def get_queryset(self):
-        return Project.objects.get_viewable(self.request.user).annotate_is_admin(
+        queryset = Project.objects.get_viewable(self.request.user).annotate_is_admin(
             self.request.user
         )
+        if self.request.user.is_authenticated:
+            queryset = queryset.annotate(
+                pinned=Exists(
+                    self.request.user.pinned_projects.filter(pk=OuterRef("pk"))
+                )
+            )
+        else:
+            queryset = queryset.annotate(pinned=Value(False))
+        return queryset
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -85,9 +96,28 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         super().perform_destroy(instance)
 
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        # add or remove project from the current user's pinned projects
+        # if needed
+        if "pinned_w" not in serializer.validated_data:
+            return
+        project = self.get_object()
+        if serializer.validated_data["pinned_w"] and not project.pinned:
+            self.request.user.pinned_projects.add(project)
+        if not serializer.validated_data["pinned_w"] and project.pinned:
+            self.request.user.pinned_projects.remove(project)
+        # pylint: disable=pointless-statement, protected-access
+        # data is a property, we call it here to populate _data
+        serializer.data
+        # we need to set _data directly to set the update value from pinned
+        serializer._data["pinned"] = serializer.validated_data["pinned_w"]
+
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, field_name="collaborators")
         document = ModelMultipleChoiceFilter(model=Document, field_name="documents")
+        query = django_filters.CharFilter(method="query_filter", label="Query")
+        pinned = django_filters.BooleanFilter(field_name="pinned", label="Pinned")
 
         class Meta:
             model = Project
@@ -98,6 +128,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "slug": ["exact"],
                 "title": ["exact"],
             }
+
+        def query_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            return queryset.filter(
+                Q(title__icontains=value) | Q(description__icontains=value)
+            )
 
     filterset_class = Filter
 
