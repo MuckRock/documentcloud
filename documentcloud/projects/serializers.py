@@ -29,6 +29,15 @@ class ProjectSerializer(serializers.ModelSerializer):
             "to this project"
         ),
     )
+    pinned_w = serializers.BooleanField(
+        label=_("Pinned"),
+        default=False,
+        write_only=True,
+        help_text=_("Show this project in the sidebar"),
+    )
+    pinned = serializers.SerializerMethodField(
+        label=_("Pined"), help_text=_("Show this project in the sidebar")
+    )
 
     class Meta:
         model = Project
@@ -43,6 +52,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             "title",
             "updated_at",
             "user",
+            "pinned",
+            "pinned_w",
         ]
         extra_kwargs = {
             "created_at": {"read_only": True},
@@ -52,6 +63,23 @@ class ProjectSerializer(serializers.ModelSerializer):
             "updated_at": {"read_only": True},
             "user": {"read_only": True},
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        view = self.context.get("view")
+        request = self.context.get("request")
+
+        pinned_w = self.fields.pop("pinned_w", None)
+        # for updates which include setting pinned
+        # change the pinned field to the writable pinned field
+        if (
+            pinned_w is not None
+            and view
+            and view.action in ("update", "partial_update")
+            and hasattr(self, "initial_data")
+            and "pinned" in self.initial_data
+        ):
+            self.fields["pinned"] = pinned_w
 
     def get_edit_access(self, obj):
         request = self.context.get("request")
@@ -72,6 +100,21 @@ class ProjectSerializer(serializers.ModelSerializer):
             return obj.is_editor
         else:
             return request.user.has_perm("projects.add_remove_project", obj)
+
+    def get_pinned(self, obj):
+
+        if hasattr(obj, "pinned"):
+            # pre calculate pinned for efficiency
+            return obj.pinned
+
+        request = self.context.get("request")
+        if not request:
+            return False
+
+        if request.user.is_anonymous:
+            return False
+
+        return request.user.pinned_projects.filter(pk=obj.pk).exists()
 
 
 class ProjectMembershipSerializer(FlexFieldsModelSerializer):

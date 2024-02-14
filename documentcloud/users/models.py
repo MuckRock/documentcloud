@@ -38,6 +38,12 @@ class User(SAUser):
         related_name="users",
         help_text=_("Add-Ons shown for this user"),
     )
+    pinned_projects = models.ManyToManyField(
+        verbose_name=_("pinned projects"),
+        to="projects.Project",
+        related_name="pinners",
+        help_text=_("Projects pinned for this user"),
+    )
     mailkey = models.UUIDField(
         _("mailkey"),
         null=True,

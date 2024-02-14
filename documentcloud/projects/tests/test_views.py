@@ -90,6 +90,25 @@ class TestProjectAPI:
         response = client.patch(f"/api/projects/{project.pk}/", {"title": title})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_update_pin(self, client, project):
+        """Test pinning a project"""
+        assert not project.user.pinned_projects.filter(pk=project.pk).exists()
+
+        client.force_authenticate(user=project.user)
+        response = client.patch(f"/api/projects/{project.pk}/", {"pinned": True})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["pinned"]
+
+        project.refresh_from_db()
+        assert project.user.pinned_projects.filter(pk=project.pk).exists()
+
+        response = client.patch(f"/api/projects/{project.pk}/", {"pinned": False})
+        assert response.status_code == status.HTTP_200_OK
+        assert not response.json()["pinned"]
+
+        project.refresh_from_db()
+        assert not project.user.pinned_projects.filter(pk=project.pk).exists()
+
     def test_destroy(self, client, project):
         """Test destroying a project"""
         client.force_authenticate(user=project.user)
