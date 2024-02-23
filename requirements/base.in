@@ -82,3 +82,4 @@ scipy
 
 
 logzio-python-handler
+python-logstash-async

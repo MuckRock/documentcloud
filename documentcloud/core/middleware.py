@@ -10,13 +10,14 @@ class LogHTTPMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Code to be executed for each request before
-        # the view (and later middleware) are called.
+
+        try:
+            request._log_body = request.body
+        except:
+            request._log_body = None
 
         response = self.get_response(request)
 
-        # Code to be executed for each request/response after
-        # the view is called.
         logger.info(
             "%s %s",
             request.method,
@@ -31,14 +32,17 @@ class LogHTTPMiddleware:
 
     def format_request(self, request):
         """Format a request for logging"""
+        try:
+            body = json.loads(request._log_body)
+        except:
+            body = None
         return {
             "user": self.format_user(request.user),
             "path": request.path,
             "method": request.method,
             "headers": dict(request.headers),
-            "get": request.GET,
-            "post": request.POST,
-            "body": request.body.decode("utf8"),
+            "get": dict(request.GET),
+            "body": body,
         }
 
     def format_user(self, user):

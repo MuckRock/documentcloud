@@ -297,6 +297,12 @@ LOGGING = {
             "%(process)d %(thread)d %(message)s"
         },
         "logzioFormat": {"format": '{"additional_field": "value"}', "validate": False},
+        "logstash": {
+            "()": "logstash_async.formatter.DjangoLogstashFormatter",
+            "message_type": "python-logstash",
+            "fqdn": False,
+            "extra_prefix": "dev",
+        },
     },
     "handlers": {
         "console": {
@@ -315,11 +321,23 @@ LOGGING = {
             "debug": True,
             "network_timeout": 10,
         },
+        "logitio": {
+            "class": "logstash_async.handler.AsynchronousLogstashHandler",
+            "level": "INFO",
+            "formatter": "logstash",
+            "transport": "logstash_async.transport.TcpTransport",
+            "host": env("LOGIT_HOST", default=""),
+            "port": 11421,
+            "ssl_enable": True,
+            "ssl_verify": False,
+            "transport": "logstash_async.transport.BeatsTransport",
+            "database_path": "",
+        },
     },
     "loggers": {
         "http_requests": {
             "level": "INFO",
-            "handlers": ["logzio"],
+            "handlers": ["logzio", "logitio"],
             "propogate": False,
         },
     },
