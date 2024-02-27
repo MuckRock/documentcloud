@@ -12,9 +12,9 @@ class LogHTTPMiddleware:
     def __call__(self, request):
 
         try:
-            request._log_body = request.body
-        except:
-            request._log_body = None
+            request.log_body = request.body
+        except:  # pylint: disable=bare-except
+            request.log_body = None
 
         response = self.get_response(request)
 
@@ -33,8 +33,8 @@ class LogHTTPMiddleware:
     def format_request(self, request):
         """Format a request for logging"""
         try:
-            body = json.loads(request._log_body)
-        except:
+            body = json.loads(request.log_body)
+        except json.JSONDecodeError:
             body = None
         return {
             "user": self.format_user(request.user),
