@@ -296,49 +296,12 @@ LOGGING = {
             "format": "%(levelname)s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
         },
-        "logzioFormat": {"format": '{"additional_field": "value"}', "validate": False},
-        "logstash": {
-            "()": "logstash_async.formatter.DjangoLogstashFormatter",
-            "message_type": "python-logstash",
-            "fqdn": False,
-            "extra_prefix": "dev",
-        },
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        },
-        "logzio": {
-            "class": "logzio.handler.LogzioHandler",
-            "level": "INFO",
-            "formatter": "logzioFormat",
-            "token": env("LOGZIO_TOKEN", default=""),
-            "logzio_type": "django",
-            "logs_drain_timeout": 5,
-            "url": "https://listener.logz.io:8071",
-            "debug": True,
-            "network_timeout": 10,
-        },
-        "logitio": {
-            "class": "logstash_async.handler.AsynchronousLogstashHandler",
-            "level": "INFO",
-            "formatter": "logstash",
-            "transport": "logstash_async.transport.TcpTransport",
-            "host": env("LOGIT_HOST", default=""),
-            "port": 11421,
-            "ssl_enable": True,
-            "ssl_verify": False,
-            "transport": "logstash_async.transport.BeatsTransport",
-            "database_path": "",
-        },
-    },
-    "loggers": {
-        "http_requests": {
-            "level": "INFO",
-            "handlers": ["logzio", "logitio"],
-            "propogate": False,
         },
     },
     "root": {"level": "INFO", "handlers": ["console"]},
