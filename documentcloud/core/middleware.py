@@ -1,5 +1,4 @@
 # Standard Library
-import json
 import logging
 
 logger = logging.getLogger("http_requests")
@@ -32,10 +31,10 @@ class LogHTTPMiddleware:
 
     def format_request(self, request):
         """Format a request for logging"""
-        try:
-            body = json.loads(request.log_body)
-        except json.JSONDecodeError:
-            body = None
+        if request.log_body:
+            body = request.log_body[:1024]
+        else:
+            body = ""
         return {
             "user": self.format_user(request.user),
             "path": request.path,
@@ -73,5 +72,5 @@ class LogHTTPMiddleware:
         return {
             "status_code": response.status_code,
             "headers": dict(response.headers),
-            "body": response.content.decode("utf8"),
+            "body": response.content.decode("utf8")[:1024],
         }
