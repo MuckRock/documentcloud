@@ -32,7 +32,7 @@ class LogHTTPMiddleware:
     def format_request(self, request):
         """Format a request for logging"""
         if request.log_body:
-            body = request.log_body[:1024]
+            body = request.log_body.decode("utf8")[:1024]
         else:
             body = ""
         return {
