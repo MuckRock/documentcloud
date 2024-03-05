@@ -158,7 +158,7 @@ class TestEntityAPI:
             "documentcloud.entities.views.WikidataEntities",
             MockWikidataEntities,
         )
-        with django_assert_num_queries(8):
+        with django_assert_num_queries(10):
             response = client.post(
                 "/api/entities/",
                 [

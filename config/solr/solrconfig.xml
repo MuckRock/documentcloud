@@ -867,6 +867,7 @@ this file, see http://wiki.apache.org/solr/SolrConfigXml.
                   organization
                   original_extension
                   page_count
+                  page_spec
                   projects
                   publish_at
                   published_url

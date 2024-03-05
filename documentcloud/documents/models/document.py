@@ -506,6 +506,7 @@ class Document(models.Model):
             "created_at": format_date(self.created_at),
             "updated_at": format_date(self.updated_at),
             "page_count": self.page_count,
+            "page_spec": self.page_spec,
             "projects": project_ids,
             "projects_edit_access": project_edit_access_ids,
             "original_extension": self.original_extension,

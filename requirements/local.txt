@@ -146,6 +146,10 @@ defusedxml==0.6.0
     #   -r requirements/./base.txt
     #   python3-openid
     #   social-auth-core
+deprecated==1.2.14
+    # via
+    #   -r requirements/./base.txt
+    #   limits
 deprecation==2.1.0
     # via
     #   -r requirements/./base.txt
@@ -308,6 +312,10 @@ imagesize==1.1.0
     # via sphinx
 importlib-metadata==6.0.0
     # via pluggy
+importlib-resources==6.1.1
+    # via
+    #   -r requirements/./base.txt
+    #   limits
 iniconfig==1.1.1
     # via pytest
 ipdb==0.13.9
@@ -343,12 +351,18 @@ libcst==0.4.1
     # via
     #   -r requirements/./base.txt
     #   google-cloud-language
+limits==3.9.0
+    # via
+    #   -r requirements/./base.txt
+    #   python-logstash-async
 listcrunch==1.0.0
     # via -r requirements/./base.txt
 llvmlite==0.38.1
     # via
     #   -r requirements/./base.txt
     #   numba
+logzio-python-handler==4.1.1
+    # via -r requirements/./base.txt
 luqum==0.8.1
     # via -r requirements/./base.txt
 lxml==4.9.1
@@ -403,6 +417,7 @@ packaging==21.3
     # via
     #   -r requirements/./base.txt
     #   deprecation
+    #   limits
     #   pikepdf
     #   pytest
     #   pytest-sugar
@@ -460,11 +475,12 @@ proto-plus==1.13.0
     # via
     #   -r requirements/./base.txt
     #   google-cloud-language
-protobuf==3.14.0
+protobuf==4.25.2
     # via
     #   -r requirements/./base.txt
     #   google-api-core
     #   googleapis-common-protos
+    #   logzio-python-handler
     #   proto-plus
 psycopg2==2.9.6
     # via -r requirements/local.in
@@ -525,6 +541,10 @@ pylint-plugin-utils==0.7
     # via
     #   pylint-celery
     #   pylint-django
+pylogbeat==2.0.1
+    # via
+    #   -r requirements/./base.txt
+    #   python-logstash-async
 pyparsing==2.4.2
     # via
     #   -r requirements/./base.txt
@@ -556,6 +576,8 @@ python-jose==3.3.0
     #   social-auth-core
 python-levenshtein==0.12.0
     # via -r requirements/local.in
+python-logstash-async==3.0.0
+    # via -r requirements/./base.txt
 python-redis-lock[django]==3.3.1
     # via -r requirements/./base.txt
 python-slugify==3.0.3
@@ -590,8 +612,10 @@ requests==2.28.1
     #   -r requirements/./base.txt
     #   gcsfs
     #   google-api-core
+    #   logzio-python-handler
     #   premailer
     #   pysolr
+    #   python-logstash-async
     #   requests-mock
     #   requests-oauthlib
     #   smart-open
@@ -646,7 +670,6 @@ six==1.15.0
     #   jsonschema
     #   orderedmultidict
     #   pip-tools
-    #   protobuf
     #   python-dateutil
     #   requests-mock
 smart-open==1.8.4
@@ -721,6 +744,7 @@ typing-extensions==4.4.0
     #   -r requirements/./base.txt
     #   asgiref
     #   libcst
+    #   limits
     #   typing-inspect
 typing-inspect==0.6.0
     # via
@@ -759,6 +783,7 @@ wrapt==1.11.2
     #   -r requirements/./base.txt
     #   aiobotocore
     #   astroid
+    #   deprecated
 yarl==1.4.2
     # via
     #   -r requirements/./base.txt
