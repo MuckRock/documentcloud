@@ -89,7 +89,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         if hasattr(obj, "is_admin"):
             return obj.is_admin
         else:
-            return request.user.has_perm("projects.change_project", obj)
+            return request.user.has_perm("projects.change_project_all", obj)
 
     def get_add_remove_access(self, obj):
         request = self.context.get("request")
