@@ -84,6 +84,8 @@ defusedxml==0.6.0
     # via
     #   python3-openid
     #   social-auth-core
+deprecated==1.2.14
+    # via limits
 deprecation==2.1.0
     # via pikepdf
 django==4.2.2
@@ -204,6 +206,8 @@ idna==2.8
     # via
     #   requests
     #   yarl
+importlib-resources==6.1.1
+    # via limits
 ipython==8.5.0
     # via -r requirements/base.in
 jedi==0.18.1
@@ -218,10 +222,14 @@ kombu==4.6.11
     # via celery
 libcst==0.4.1
     # via google-cloud-language
+limits==3.9.0
+    # via python-logstash-async
 listcrunch==1.0.0
     # via -r requirements/base.in
 llvmlite==0.38.1
     # via numba
+logzio-python-handler==4.1.1
+    # via -r requirements/base.in
 luqum==0.8.1
     # via -r requirements/base.in
 lxml==4.9.1
@@ -254,6 +262,7 @@ orderedmultidict==1.0.1
 packaging==21.3
     # via
     #   deprecation
+    #   limits
     #   pikepdf
 parso==0.8.3
     # via jedi
@@ -286,6 +295,7 @@ protobuf==4.25.2
     # via
     #   google-api-core
     #   googleapis-common-protos
+    #   logzio-python-handler
     #   proto-plus
 ptyprocess==0.6.0
     # via pexpect
@@ -308,6 +318,8 @@ pyjwt==2.3.0
     # via
     #   djangorestframework-simplejwt
     #   social-auth-core
+pylogbeat==2.0.1
+    # via python-logstash-async
 pyparsing==2.4.2
     # via packaging
 pyrsistent==0.18.0
@@ -316,6 +328,8 @@ python-dateutil==2.8.2
     # via botocore
 python-jose==3.3.0
     # via social-auth-core
+python-logstash-async==3.0.0
+    # via -r requirements/base.in
 python-redis-lock[django]==3.3.1
     # via -r requirements/base.in
 python-slugify==3.0.3
@@ -343,8 +357,10 @@ requests==2.28.1
     # via
     #   gcsfs
     #   google-api-core
+    #   logzio-python-handler
     #   premailer
     #   pysolr
+    #   python-logstash-async
     #   requests-oauthlib
     #   smart-open
     #   social-auth-core
@@ -412,6 +428,7 @@ typing-extensions==4.4.0
     #   -r requirements/base.in
     #   asgiref
     #   libcst
+    #   limits
     #   typing-inspect
 typing-inspect==0.6.0
     # via libcst
@@ -435,6 +452,7 @@ wrapt==1.11.2
     # via
     #   -r requirements/base.in
     #   aiobotocore
+    #   deprecated
 yarl==1.4.2
     # via aiohttp
 

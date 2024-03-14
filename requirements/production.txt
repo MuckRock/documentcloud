@@ -136,6 +136,10 @@ defusedxml==0.6.0
     #   -r requirements/./base.txt
     #   python3-openid
     #   social-auth-core
+deprecated==1.2.14
+    # via
+    #   -r requirements/./base.txt
+    #   limits
 deprecation==2.1.0
     # via
     #   -r requirements/./base.txt
@@ -292,6 +296,10 @@ idna==2.8
     #   requests
     #   urllib3
     #   yarl
+importlib-resources==6.1.1
+    # via
+    #   -r requirements/./base.txt
+    #   limits
 ipython==8.5.0
     # via -r requirements/./base.txt
 isodatetimehandler==1.0.2
@@ -321,6 +329,10 @@ libcst==0.4.1
     # via
     #   -r requirements/./base.txt
     #   google-cloud-language
+limits==3.9.0
+    # via
+    #   -r requirements/./base.txt
+    #   python-logstash-async
 listcrunch==1.0.0
     # via -r requirements/./base.txt
 llvmlite==0.38.1
@@ -328,7 +340,9 @@ llvmlite==0.38.1
     #   -r requirements/./base.txt
     #   numba
 logzio-python-handler==4.1.1
-    # via -r requirements/production.in
+    # via
+    #   -r requirements/./base.txt
+    #   -r requirements/production.in
 luqum==0.8.1
     # via -r requirements/./base.txt
 lxml==4.9.1
@@ -381,6 +395,7 @@ packaging==21.3
     # via
     #   -r requirements/./base.txt
     #   deprecation
+    #   limits
     #   pikepdf
 parso==0.8.3
     # via
@@ -471,6 +486,10 @@ pyjwt==2.3.0
     #   -r requirements/./base.txt
     #   djangorestframework-simplejwt
     #   social-auth-core
+pylogbeat==2.0.1
+    # via
+    #   -r requirements/./base.txt
+    #   python-logstash-async
 pyopenssl==19.1.0
     # via urllib3
 pyparsing==2.4.2
@@ -491,6 +510,8 @@ python-jose==3.3.0
     # via
     #   -r requirements/./base.txt
     #   social-auth-core
+python-logstash-async==3.0.0
+    # via -r requirements/./base.txt
 python-redis-lock[django]==3.3.1
     # via -r requirements/./base.txt
 python-slugify==3.0.3
@@ -532,6 +553,7 @@ requests==2.28.1
     #   moesifpythonrequest
     #   premailer
     #   pysolr
+    #   python-logstash-async
     #   requests-oauthlib
     #   smart-open
     #   social-auth-core
@@ -623,6 +645,7 @@ typing-extensions==4.4.0
     #   asgiref
     #   collectfast
     #   libcst
+    #   limits
     #   typing-inspect
 typing-inspect==0.6.0
     # via
@@ -661,6 +684,7 @@ wrapt==1.11.2
     # via
     #   -r requirements/./base.txt
     #   aiobotocore
+    #   deprecated
     #   scout-apm
 yarl==1.4.2
     # via

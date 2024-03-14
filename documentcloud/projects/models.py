@@ -81,6 +81,10 @@ class Project(models.Model):
         ordering = ("slug",)
         permissions = (
             ("add_remove_project", "Can add & remove documents from a project"),
+            (
+                "change_project_all",
+                "Can edit all fields on a project (not just pinned)",
+            ),
         )
 
     def __str__(self):

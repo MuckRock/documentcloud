@@ -97,12 +97,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
         super().perform_destroy(instance)
 
     def perform_update(self, serializer):
+
+        project = self.get_object()
+        # fields anyone may edit
+        allowed_public_edits = ["pinned"]
+
+        if not self.request.user.has_perm("projects.change_project_all", project):
+            for datum in serializer.initial_data:
+                if datum not in allowed_public_edits:
+                    raise exceptions.PermissionDenied(
+                        "You do not have permission to edit this document"
+                    )
+
         super().perform_update(serializer)
         # add or remove project from the current user's pinned projects
         # if needed
         if "pinned_w" not in serializer.validated_data:
             return
-        project = self.get_object()
         if serializer.validated_data["pinned_w"] and not project.pinned:
             self.request.user.pinned_projects.add(project)
         if not serializer.validated_data["pinned_w"] and project.pinned:
@@ -344,7 +355,7 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        if self.request.user.has_perm("projects.change_project", project):
+        if self.request.user.has_perm("projects.change_project_all", project):
             queryset = project.collaboration_set.all()
         else:
             queryset = project.collaboration_set.none()
@@ -356,7 +367,7 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
     def perform_create(self, serializer):
         """Specify the project"""
         project = Project.objects.get(pk=self.kwargs["project_pk"])
-        if not self.request.user.has_perm("projects.change_project", project):
+        if not self.request.user.has_perm("projects.change_project_all", project):
             raise exceptions.PermissionDenied(
                 "You do not have permission to add collaborators to this project"
             )

@@ -79,3 +79,7 @@ pikepdf
 # sidekick
 numba
 scipy
+
+
+logzio-python-handler
+python-logstash-async

@@ -36,17 +36,17 @@ class PrettyJSONWidget(widgets.Textarea):
 @admin.register(AddOn)
 class AddOnAdmin(admin.ModelAdmin):
     list_display = [
-        "name",
+        "display_name",
         "user",
-        "organization",
         "repository",
         "access",
+        "error",
         "removed",
         "featured",
         "default",
     ]
     list_select_related = ["github_account__user", "organization"]
-    list_filter = ["access", "removed", "featured", "default"]
+    list_filter = ["access", "removed", "featured", "default", "error"]
     autocomplete_fields = ["organization"]
     formfield_overrides = {JSONField: {"widget": PrettyJSONWidget}}
     search_fields = ["name", "repository"]
@@ -81,6 +81,15 @@ class AddOnAdmin(admin.ModelAdmin):
         update_config.delay(repository)
         messages.success(request, f"Updating from repo {repository}")
         return HttpResponseRedirect(reverse("admin:addons_addon_change", args=[pk]))
+
+    def display_name(self, obj):
+        """Set a default if empty"""
+        if obj.name:
+            return obj.name
+
+        return "(None)"
+
+    display_name.short_description = "Name"
 
 
 @admin.register(AddOnEvent)
