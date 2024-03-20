@@ -106,7 +106,7 @@ def search(user, query_params):
     # "sort" or "order" query param takes precedence, then "sort:" filter passed in the
     # query, then fall back to default of score
     sort_param = query_params.get("sort", query_params.get("order", sort_order))
-    if sort_param and sort_param.startswith(("data_", "-data_")) and user.is_staff:
+    if sort_param and sort_param.startswith(("data_", "-data_")):
         if sort_param.startswith("-"):
             order = "desc"
             sort_param = sort_param[1:]
