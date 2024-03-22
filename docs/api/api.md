@@ -204,6 +204,7 @@ documents](#project-documents).
 | publish_at           | Date Time    | Not Required       | A timestamp when to automatically make this document public                                                                                                      |
 | published_url        | URL          | Not Required       | The URL where this document is embedded                                                                                                                          |
 | related_article      | URL          | Not Required       | The URL for the article about this document                                                                                                                      |
+| revision_control     | Boolean      | Not Required       | Turns revision control on for this document - requires a premium account                                                                                         |
 | remaining            | JSON         | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter                                           |
 | slug                 | String       | Read Only          | The slug is a URL safe version of the title                                                                                                                      |
 | source               | String       | Not Required       | The source who produced the document                                                                                                                             |
@@ -212,7 +213,7 @@ documents](#project-documents).
 | updated_at           | Date Time    | Read Only          | Time stamp when the document was last updated                                                                                                                    |
 | user                 | Integer      | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                           |
 
-[Expandable fields](#expandable-fields): user, organization, projects, sections, notes
+[Expandable fields](#expandable-fields): user, organization, projects, sections, notes, revisions
 
 ### Uploading a Document
 
@@ -546,6 +547,25 @@ Entity kinds include
 - `relevance__gt` &mdash; Filter for documents with the given relevance or higher
 - `mid` &mdash; Boolean filter for entities which do or do not have a MID
 - `wikipedia_url` &mdash; Boolean filter for entities which do or do not have a Wikipedia URL
+
+### Revisions
+
+User's with premium accounts may activate revision control using the
+`revision_control` parameter on their documents.  Enabling revision control
+will save a copy of the PDF whenever you take a destructive action, such as
+re-processing, redacting, or modifying the document.  There are no dedicated
+endpoints for revisions.  They can be viewed by passing `revisions` to the
+expand field when viewing documents.
+
+#### Fields
+
+| Field      | Type      | Options   | Description                                                     |
+| ---------- | --------- | --------- | --------------------------------------                          |
+| version    | Integer   | Read Only | The version number - it increments for each new version created |
+| user       | User      | Read Only | The user who performed the action which created the new version |
+| created_at | Date Time | Read Only | Time stamp when this revision was created                       |
+| comment    | String    | Read Only | A brief description of what changed in this revision            |
+| url        | URL       | Read Only | A link to the PDF that corresponds to this version              |
 
 ## Projects
 
