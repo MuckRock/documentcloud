@@ -466,6 +466,11 @@ class AddOnRun(models.Model):
                         "[SET STATUS] disabling %s - %s", self.uuid, self.status
                     )
                     # disable the event
+                    self.addon_disable_log.create(
+                        addon=self.addon_id,
+                        user=self.user_id,
+                        previous_event_state=self.event.event,
+                    )
                     self.event.event = Event.disabled
                     self.event.save()
                     send_mail(
@@ -575,6 +580,37 @@ class AddOnEvent(models.Model):
                     self.id,
                 )
             )
+
+
+class AddOnDisableLog(models.Model):
+    """Log usage of Add-On Disables"""
+
+    addon = models.ForeignKey(
+        verbose_name=_("add-on"),
+        to=AddOn,
+        on_delete=models.PROTECT,
+        related_name="addon_disable_log",
+        help_text=_("The add-on which was ran"),
+    )
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="addon_disable_log",
+        help_text=_("The user who defined this event"),
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"),
+        help_text=_("Timestamp of when the add-on event was last updated"),
+    )
+    previous_event_state = models.IntegerField(
+        _("previous event state"),
+        choices=Event.choices,
+        help_text=_("The event state of the Add-On before disable"),
+    )
+
+    class Meta:
+        verbose_name = "Add-On Disable Log"
 
 
 class GitHubAccount(models.Model):

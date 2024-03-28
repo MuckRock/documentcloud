@@ -12,6 +12,7 @@ from django.urls import path, reverse
 from documentcloud.addons.models import (
     AddOn,
     AddOnEvent,
+    AddOnDisableLog,
     GitHubAccount,
     GitHubInstallation,
 )
@@ -97,8 +98,19 @@ class AddOnEventAdmin(admin.ModelAdmin):
     list_display = ["addon", "user", "event"]
     list_select_related = ["addon", "user"]
     list_filter = ["event"]
+    date_hierarchy = "updated_at"
     autocomplete_fields = ["addon", "user"]
 
+@admin.register(AddOnDisableLog)
+class AddOnDisableLogAdmin(admin.ModelAdmin):
+    """Add On Disable Log Admin"""
+
+    list_display = ["addon", "user", "updated_at", "previous_event_state"]
+    list_select_related = ("user", "addon")
+    search_fields = "updated_at"
+    date_hierarchy = "updated_at"
+    fields = ("addon", "user", "updated_at", "previous_event_state")
+    readonly_fields = ("addon", "user", "updated_at")
 
 @admin.register(GitHubAccount)
 class GitHubAccountAdmin(admin.ModelAdmin):
