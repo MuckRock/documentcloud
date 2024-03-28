@@ -107,7 +107,7 @@ class AddOnDisableLogAdmin(admin.ModelAdmin):
 
     list_display = ["addon", "user", "updated_at", "previous_event_state"]
     list_select_related = ("user", "addon")
-    search_fields = "updated_at"
+    search_fields = ("updated_at",)
     date_hierarchy = "updated_at"
     fields = ("addon", "user", "updated_at", "previous_event_state")
     readonly_fields = ("addon", "user", "updated_at")
