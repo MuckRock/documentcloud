@@ -101,6 +101,7 @@ class AddOnEventAdmin(admin.ModelAdmin):
     date_hierarchy = "updated_at"
     autocomplete_fields = ["addon", "user"]
 
+
 @admin.register(AddOnDisableLog)
 class AddOnDisableLogAdmin(admin.ModelAdmin):
     """Add On Disable Log Admin"""
@@ -111,6 +112,7 @@ class AddOnDisableLogAdmin(admin.ModelAdmin):
     date_hierarchy = "updated_at"
     fields = ("addon", "user", "updated_at", "previous_event_state")
     readonly_fields = ("addon", "user", "updated_at")
+
 
 @admin.register(GitHubAccount)
 class GitHubAccountAdmin(admin.ModelAdmin):
