@@ -1,6 +1,3 @@
-# Standard Library
-import json
-
 # Django
 from django.contrib import admin, messages
 from django.db.models import JSONField
@@ -8,11 +5,14 @@ from django.forms import widgets
 from django.http.response import HttpResponseRedirect
 from django.urls import path, reverse
 
+# Standard Library
+import json
+
 # DocumentCloud
 from documentcloud.addons.models import (
     AddOn,
-    AddOnEvent,
     AddOnDisableLog,
+    AddOnEvent,
     GitHubAccount,
     GitHubInstallation,
 )
