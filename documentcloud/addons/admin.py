@@ -111,8 +111,10 @@ class AddOnDisableLogAdmin(admin.ModelAdmin):
         "get_user_name",
         "created_at",
         "previous_event_state",
+        "reverted",
     ]
-    list_select_related = ["addon_event__addon", "addon_event__user"]
+    list_select_related = ["addon_event__addon", "addon_event__user",]
+    list_filter = ["reverted"]
     date_hierarchy = "created_at"
     readonly_fields = ("created_at",)
 

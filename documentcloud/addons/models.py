@@ -467,7 +467,6 @@ class AddOnRun(models.Model):
                     )
                     # disable the event
                     self.addon_disable_log.create(
-                        event=Event.disabled,
                         previous_event_state=self.event.event,
                         addon_event=self.event,
                     )
@@ -594,11 +593,6 @@ class AddOnDisableLog(models.Model):
         help_text=_("Reference to the Add-On Event"),
     )
 
-    event = models.IntegerField(
-        _("event"),
-        choices=Event.choices,
-        help_text=_("The current event state of the Add-On"),
-    )
     created_at = AutoCreatedField(
         _("created at"),
         help_text=_("Timestamp of when the add-on disable log was created"),
@@ -610,11 +604,18 @@ class AddOnDisableLog(models.Model):
         help_text=_("The event state of the Add-On before disable"),
     )
 
+    reverted = models.BooleanField(
+        _("reverted"),
+        default=False,
+        help_text=_("Indicates whether this disable log has been reverted"),
+    )
+
     def revert_event(self):
         # Logic to revert the event
-        addon_event = self.addon_event
-        addon_event.event = self.previous_event_state
-        addon_event.save()
+        self.addon_event.event = self.previous_event_state
+        self.addon_event.save()
+        self.reverted = True
+        self.save()
 
     class Meta:
         verbose_name = "Add-On Disable Log"
