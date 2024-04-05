@@ -467,9 +467,9 @@ class AddOnRun(models.Model):
                     )
                     # disable the event
                     self.addon_disable_log.create(
-                        addon=self.addon_id,
-                        user=self.user_id,
+                        event=Event.disabled,
                         previous_event_state=self.event.event,
+                        addon_event=self.event,
                     )
                     self.event.event = Event.disabled
                     self.event.save()
@@ -585,29 +585,36 @@ class AddOnEvent(models.Model):
 class AddOnDisableLog(models.Model):
     """Log usage of Add-On Disables"""
 
-    addon = models.ForeignKey(
-        verbose_name=_("add-on"),
-        to=AddOn,
+    # Reference to the AddOnEvent
+    addon_event = models.ForeignKey(
+        verbose_name=_("event reference"),
+        to="addons.AddOnEvent",
         on_delete=models.PROTECT,
-        related_name="addon_disable_log",
-        help_text=_("The add-on which was ran"),
+        related_name="disable_logs",
+        help_text=_("Reference to the Add-On Event"),
     )
-    user = models.ForeignKey(
-        verbose_name=_("user"),
-        to="users.User",
-        on_delete=models.PROTECT,
-        related_name="addon_disable_log",
-        help_text=_("The user who defined this event"),
+
+    event = models.IntegerField(
+        _("event"),
+        choices=Event.choices,
+        help_text=_("The current event state of the Add-On"),
     )
-    updated_at = AutoLastModifiedField(
-        _("updated at"),
-        help_text=_("Timestamp of when the add-on event was last updated"),
+    created_at = AutoCreatedField(
+        _("created at"),
+        help_text=_("Timestamp of when the add-on disable log was created"),
+        db_index=True,
     )
     previous_event_state = models.IntegerField(
         _("previous event state"),
         choices=Event.choices,
         help_text=_("The event state of the Add-On before disable"),
     )
+
+    def revert_event(self):
+        # Logic to revert the event
+        addon_event = self.event_reference
+        addon_event.event = self.previous_event_state
+        addon_event.save()
 
     class Meta:
         verbose_name = "Add-On Disable Log"

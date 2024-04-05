@@ -106,12 +106,34 @@ class AddOnEventAdmin(admin.ModelAdmin):
 class AddOnDisableLogAdmin(admin.ModelAdmin):
     """Add On Disable Log Admin"""
 
-    list_display = ["addon", "user", "updated_at", "previous_event_state"]
-    list_select_related = ("user", "addon")
-    search_fields = ("updated_at",)
-    date_hierarchy = "updated_at"
-    fields = ("addon", "user", "updated_at", "previous_event_state")
-    readonly_fields = ("addon", "user", "updated_at")
+    list_display = [
+        "get_addon_name",
+        "get_user_name",
+        "created_at",
+        "previous_event_state",
+    ]
+    list_select_related = ["addon_event__addon", "addon_event__user"]
+    date_hierarchy = "created_at"
+    readonly_fields = ("created_at",)
+
+    actions = ["revert_addon_event"]
+
+    def get_addon_name(self, obj):
+        return obj.addon_event.addon.name
+
+    get_addon_name.short_description = "Addon Name"
+
+    def get_user_name(self, obj):
+        return obj.addon_event.user.username
+
+    get_user_name.short_description = "User Name"
+
+    def revert_addon_event(self, request, queryset):
+        for log in queryset:
+            log.revert_event()
+        self.message_user(request, "Events reverted successfully.")
+
+    revert_addon_event.short_description = "Re-enable add-on(s)"
 
 
 @admin.register(GitHubAccount)
