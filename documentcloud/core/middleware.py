@@ -1,13 +1,22 @@
+# Django
+from django.conf import settings
+from django.core.cache import cache
+from django.http.response import JsonResponse
+
 # Standard Library
 import logging
 import time
 
-logger = logging.getLogger("http_requests")
+# Third Party
+from ipware import get_client_ip
+
+logger = logging.getLogger(__name__)
 
 
 class LogHTTPMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
+        self.logger = logging.getLogger("http_requests")
 
     def __call__(self, request):
 
@@ -22,7 +31,7 @@ class LogHTTPMiddleware:
 
         end = time.time()
 
-        logger.info(
+        self.logger.info(
             "%s %s",
             request.method,
             request.path,
@@ -80,3 +89,39 @@ class LogHTTPMiddleware:
             "headers": dict(response.headers),
             "body": response.content.decode("utf8")[:1024],
         }
+
+
+class RateLimitAnonymousUsers:
+    """Rate limit anonymous users to encourage people to login"""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+        # how many requests to allow per time period
+        self.limit = settings.ANON_RL_LIMIT
+        self.timeout = settings.ANON_RL_TIMEOUT
+
+        # paths to exclude from the rate limiting
+        # we want to exclude the login path so anonymous users may login
+        self.exclude_paths = settings.ANON_RL_EXCLUDE_PATHS
+
+        # the error message to return when rate limited
+        self.message = {"message": settings.ANON_RL_MESSAGE}
+
+    def __call__(self, request):
+
+        if request.user.is_authenticated or request.path in self.exclude_paths:
+            return self.get_response(request)
+
+        try:
+            ip_address, _ = get_client_ip(request)
+            key = f"ratelimit-{ip_address}"
+            value = cache.incr(key)
+            logger.info("[ANON RATE LIMIT] IP: %s - %d", ip_address, value)
+            if value > self.limit:
+                return JsonResponse(self.message, status=429)
+        except ValueError:
+            logger.info("[ANON RATE LIMIT] New IP: %s", ip_address)
+            cache.set(key, 1, timeout=self.timeout)
+
+        return self.get_response(request)

@@ -168,6 +168,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "social_django.middleware.SocialAuthExceptionMiddleware",
+    "documentcloud.core.middleware.RateLimitAnonymousUsers",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "documentcloud.core.middleware.LogHTTPMiddleware",
@@ -607,4 +608,20 @@ LANGUAGES = (
     ("de", _("German")),
     ("ru", _("Russian")),
     ("uk", _("Ukrainian")),
+)
+
+# Anonymous User Rate Limit
+# ------------------------------------------------------------------------------
+ANON_RL_LIMIT = env.int("ANON_RL_LIMIT", default=500)
+ANON_RL_TIMEOUT = env.int("ANON_RL_TIMEOUT", default=60 * 60 * 24)
+ANON_RL_EXCLUDE_PATHS = env.list(
+    "ANON_RL_EXCLUDE_PATHS", default=["/accounts/login/squarelet"]
+)
+ANON_RL_MESSAGE = env(
+    "ANON_RL_MESSAGE",
+    default="As an anonymous user you have been blocked for going over "
+    "500 API calls per 24 hour period.  Please create a free account at "
+    "https://accounts.muckrock.com/accounts/signup/?intent=documentcloud "
+    "in order to increase your limit.  If you believe you are seeing this "
+    "message in error, please contact info@documentcloud.org",
 )
