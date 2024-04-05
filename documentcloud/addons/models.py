@@ -612,7 +612,7 @@ class AddOnDisableLog(models.Model):
 
     def revert_event(self):
         # Logic to revert the event
-        addon_event = self.event_reference
+        addon_event = self.addon_event
         addon_event.event = self.previous_event_state
         addon_event.save()
 
