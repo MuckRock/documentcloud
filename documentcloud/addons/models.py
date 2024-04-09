@@ -610,6 +610,7 @@ class AddOnDisableLog(models.Model):
         help_text=_("Indicates whether this disable log has been reverted"),
     )
 
+    @transaction.atomic
     def revert_event(self):
         # Logic to revert the event
         self.addon_event.event = self.previous_event_state
