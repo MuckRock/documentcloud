@@ -11,6 +11,7 @@ import json
 # DocumentCloud
 from documentcloud.addons.models import (
     AddOn,
+    AddOnDisableLog,
     AddOnEvent,
     GitHubAccount,
     GitHubInstallation,
@@ -97,7 +98,47 @@ class AddOnEventAdmin(admin.ModelAdmin):
     list_display = ["addon", "user", "event"]
     list_select_related = ["addon", "user"]
     list_filter = ["event"]
+    date_hierarchy = "updated_at"
     autocomplete_fields = ["addon", "user"]
+
+
+@admin.register(AddOnDisableLog)
+class AddOnDisableLogAdmin(admin.ModelAdmin):
+    """Add On Disable Log Admin"""
+
+    list_display = [
+        "get_addon_name",
+        "get_user_name",
+        "created_at",
+        "previous_event_state",
+        "reverted",
+    ]
+    list_select_related = [
+        "addon_event__addon",
+        "addon_event__user",
+    ]
+    list_filter = ["reverted"]
+    date_hierarchy = "created_at"
+    readonly_fields = ("created_at",)
+
+    actions = ["revert_addon_event"]
+
+    def get_addon_name(self, obj):
+        return obj.addon_event.addon.name
+
+    get_addon_name.short_description = "Addon Name"
+
+    def get_user_name(self, obj):
+        return obj.addon_event.user.username
+
+    get_user_name.short_description = "User Name"
+
+    def revert_addon_event(self, request, queryset):
+        for log in queryset:
+            log.revert_event()
+        self.message_user(request, "Events reverted successfully.")
+
+    revert_addon_event.short_description = "Re-enable add-on(s)"
 
 
 @admin.register(GitHubAccount)
