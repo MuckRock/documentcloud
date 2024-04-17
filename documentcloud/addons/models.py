@@ -466,9 +466,8 @@ class AddOnRun(models.Model):
                         "[SET STATUS] disabling %s - %s", self.uuid, self.status
                     )
                     # disable the event
-                    self.disable_logs.create(
-                        previous_event_state=self.event.event,
-                        addon_event=self.event,
+                    self.event.disable_logs.create(
+                        previous_event_state=self.event.event
                     )
                     self.event.event = Event.disabled
                     self.event.save()
