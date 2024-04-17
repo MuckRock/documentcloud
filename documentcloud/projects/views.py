@@ -141,15 +141,15 @@ class ProjectViewSet(viewsets.ModelViewSet):
 class OrderingFilter(filters.OrderingFilter):
 
     filter_map = {
-        "created_at": "document__created_at",
-        "-created_at": "-document__created_at",
+        "created_at": "document__pk",
+        "-created_at": "-document__pk",
     }
 
     def get_ordering(self, request, queryset, view):
         param = request.query_params.get(self.ordering_param)
 
         if param in self.filter_map:
-            return [self.filter_map[param], "pk"]
+            return [self.filter_map[param]]
 
         # No ordering was included
         return self.get_default_ordering(view)
@@ -178,7 +178,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     pagination_class = VersionedCountPagination
     filter_backends = [OrderingFilter, DjangoFilterBackend]
     ordering_fields = ["created_at"]
-    ordering = ["-document__created_at", "pk"]
+    ordering = ["-document__pk"]
 
     @lru_cache()
     def get_queryset(self):
