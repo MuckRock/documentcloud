@@ -119,7 +119,7 @@ class AddOnDisableLogAdmin(admin.ModelAdmin):
     ]
     list_filter = ["reverted"]
     date_hierarchy = "created_at"
-    readonly_fields = ("created_at",)
+    readonly_fields = ("created_at", "addon_event", "previous_event_state")
 
     actions = ["revert_addon_event"]
 
