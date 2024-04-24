@@ -466,6 +466,9 @@ class AddOnRun(models.Model):
                         "[SET STATUS] disabling %s - %s", self.uuid, self.status
                     )
                     # disable the event
+                    self.event.disable_logs.create(
+                        previous_event_state=self.event.event
+                    )
                     self.event.event = Event.disabled
                     self.event.save()
                     send_mail(
@@ -575,6 +578,47 @@ class AddOnEvent(models.Model):
                     self.id,
                 )
             )
+
+
+class AddOnDisableLog(models.Model):
+    """Log usage of Add-On Disables"""
+
+    # Reference to the AddOnEvent
+    addon_event = models.ForeignKey(
+        verbose_name=_("event reference"),
+        to="addons.AddOnEvent",
+        on_delete=models.PROTECT,
+        related_name="disable_logs",
+        help_text=_("Reference to the Add-On Event"),
+    )
+
+    created_at = AutoCreatedField(
+        _("created at"),
+        help_text=_("Timestamp of when the add-on disable log was created"),
+        db_index=True,
+    )
+    previous_event_state = models.IntegerField(
+        _("previous event state"),
+        choices=Event.choices,
+        help_text=_("The event state of the Add-On before disable"),
+    )
+
+    reverted = models.BooleanField(
+        _("reverted"),
+        default=False,
+        help_text=_("Indicates whether this disable log has been reverted"),
+    )
+
+    @transaction.atomic
+    def revert_event(self):
+        # Logic to revert the event
+        self.addon_event.event = self.previous_event_state
+        self.addon_event.save()
+        self.reverted = True
+        self.save()
+
+    class Meta:
+        verbose_name = "Add-On Disable Log"
 
 
 class GitHubAccount(models.Model):
