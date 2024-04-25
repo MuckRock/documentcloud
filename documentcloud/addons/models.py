@@ -476,7 +476,7 @@ class AddOnRun(models.Model):
     def send_disabled_email(self):
         """Send an email when an addon is disabled"""
         # Fetch footer content from config
-        footer_content = self.parameters.get("custom_disabled_email_footer")
+        footer_content = self.event.parameters.get("custom_disabled_email_footer")
 
         if footer_content:
             # If footer content exists, use the base_disabled.html template
