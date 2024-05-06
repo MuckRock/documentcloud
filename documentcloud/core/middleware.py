@@ -1,5 +1,6 @@
 # Standard Library
 import logging
+import time
 
 logger = logging.getLogger("http_requests")
 
@@ -10,12 +11,16 @@ class LogHTTPMiddleware:
 
     def __call__(self, request):
 
+        start = time.time()
+
         try:
             request.log_body = request.body
         except:  # pylint: disable=bare-except
             request.log_body = None
 
         response = self.get_response(request)
+
+        end = time.time()
 
         logger.info(
             "%s %s",
@@ -24,6 +29,7 @@ class LogHTTPMiddleware:
             extra={
                 "request": self.format_request(request),
                 "response": self.format_response(response),
+                "elapsed": (end - start) * 1000,
             },
         )
 
