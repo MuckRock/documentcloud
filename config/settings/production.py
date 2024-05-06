@@ -275,27 +275,3 @@ CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = ["scout_apm.django"] + INSTALLED_APPS  # noqa F405
 SCOUT_NAME = env("SCOUT_NAME")
-
-# Moesif
-# ------------------------------------------------------------------------------
-MOESIF_ID = env("MOESIF_ID", default=None)
-if MOESIF_ID:
-    MIDDLEWARE += ["moesifdjango.middleware.moesif_middleware"]
-    INSTALLED_APPS += ["moesifdjango"]
-    MOESIF_MIDDLEWARE = {
-        "APPLICATION_ID": MOESIF_ID,
-        "LOG_BODY": True,
-        "LOCAL_DEBUG": env.bool("MOESIF_LOCAL_DEBUG", default=False),
-        "USE_CELERY": True,
-        "CELERY_BROKER_URL": CELERY_BROKER_URL,
-        "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
-            DOCCLOUD_EMBED_URL
-        )
-        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
-        "IDENTIFY_USER": lambda request, response: request.user.pk
-        if request.user and request.user.is_authenticated
-        else get_client_ip(request)[0],
-        "IDENTIFY_COMPANY": lambda request, response: request.user.organization.pk
-        if request.user and request.user.is_authenticated
-        else None,
-    }
