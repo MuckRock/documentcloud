@@ -113,15 +113,21 @@ class RateLimitAnonymousUsers:
     def is_authenticated(self, request):
         """Determine if the request is authenticated"""
 
+        logger.info("not enabled: %s", not self.enable)
         if not self.enable:
             return True
 
+        logger.info("user.is authenticated: %s", request.user.is_authenticated)
         if request.user.is_authenticated:
             return True
 
+        logger.info("path exclude", request.path in self.exclude_paths
         if request.path in self.exclude_paths:
             return True
 
+        logger.info("has auth: %s", hasattr(request, "auth"))
+        if hasattr(request, "auth"):
+            logger.info("auth: %s", request.auth)
         if (
             hasattr(request, "auth")
             and request.auth is not None
@@ -142,11 +148,12 @@ class RateLimitAnonymousUsers:
             key = f"ratelimit-{ip_address}"
             value = cache.incr(key)
             logger.info(
-                "[ANON RATE LIMIT] IP: %s - %d: %s - %s",
+                "[ANON RATE LIMIT] IP: %s - %d: %s - %s - %s",
                 ip_address,
                 value,
                 request.path,
                 request.META.get("HTTP_AUTHORIZATION"),
+                getattr(request, "auth", None),
             )
             if value > self.limit:
                 return JsonResponse(self.message, status=429)
