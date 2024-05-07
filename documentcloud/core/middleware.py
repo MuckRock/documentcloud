@@ -108,20 +108,50 @@ class RateLimitAnonymousUsers:
         # the error message to return when rate limited
         self.message = {"message": settings.ANON_RL_MESSAGE}
 
+    def is_authenticated(self, request):
+        """Determine if the request is authenticated"""
+
+        if request.user.is_authenticated:
+            return True
+
+        if request.path in self.exclude_paths:
+            return True
+
+        if (
+            hasattr(self.request, "auth")
+            and self.request.auth is not None
+            and "processing" in self.request.auth.get("permissions", [])
+        ):
+            # this is how Lambda functions authenticate
+            return True
+
+        return False
+
     def __call__(self, request):
 
-        if request.user.is_authenticated or request.path in self.exclude_paths:
+        if self.is_authenticated(request):
             return self.get_response(request)
 
         try:
             ip_address, _ = get_client_ip(request)
             key = f"ratelimit-{ip_address}"
             value = cache.incr(key)
-            logger.info("[ANON RATE LIMIT] IP: %s - %d", ip_address, value)
+            logger.info(
+                "[ANON RATE LIMIT] IP: %s - %d: %s - %s",
+                ip_address,
+                value,
+                request.path,
+                request.headers.get("Authorization"),
+            )
             if value > self.limit:
                 return JsonResponse(self.message, status=429)
         except ValueError:
-            logger.info("[ANON RATE LIMIT] New IP: %s", ip_address)
+            logger.info(
+                "[ANON RATE LIMIT] New IP: %s: %s - %s",
+                ip_address,
+                request.path,
+                request.headers.get("Authorization"),
+            )
             cache.set(key, 1, timeout=self.timeout)
 
         return self.get_response(request)
