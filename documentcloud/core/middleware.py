@@ -121,7 +121,7 @@ class RateLimitAnonymousUsers:
         if request.user.is_authenticated:
             return True
 
-        logger.info("path exclude", request.path in self.exclude_paths
+        logger.info("path exclude: %s", request.path in self.exclude_paths)
         if request.path in self.exclude_paths:
             return True
 
