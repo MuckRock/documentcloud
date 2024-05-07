@@ -612,6 +612,7 @@ LANGUAGES = (
 
 # Anonymous User Rate Limit
 # ------------------------------------------------------------------------------
+ANON_RL_ENABLE = env.bool("ANON_RL_ENABLE", default=True)
 ANON_RL_LIMIT = env.int("ANON_RL_LIMIT", default=500)
 ANON_RL_TIMEOUT = env.int("ANON_RL_TIMEOUT", default=60 * 60 * 24)
 ANON_RL_EXCLUDE_PATHS = env.list(

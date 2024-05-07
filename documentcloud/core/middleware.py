@@ -97,6 +97,8 @@ class RateLimitAnonymousUsers:
     def __init__(self, get_response):
         self.get_response = get_response
 
+        self.enable = settings.ANON_RL_ENABLE
+
         # how many requests to allow per time period
         self.limit = settings.ANON_RL_LIMIT
         self.timeout = settings.ANON_RL_TIMEOUT
@@ -110,6 +112,9 @@ class RateLimitAnonymousUsers:
 
     def is_authenticated(self, request):
         """Determine if the request is authenticated"""
+
+        if not self.enable:
+            return True
 
         if request.user.is_authenticated:
             return True
