@@ -156,7 +156,7 @@ class RateLimitAnonymousUsers:
                 ip_address,
                 request.path,
                 request.META.get("HTTP_AUTHORIZATION"),
-                getattr(request, "auth"),
+                getattr(request, "auth", None),
             )
             cache.set(key, 1, timeout=self.timeout)
 
