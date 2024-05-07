@@ -118,9 +118,9 @@ class RateLimitAnonymousUsers:
             return True
 
         if (
-            hasattr(self.request, "auth")
-            and self.request.auth is not None
-            and "processing" in self.request.auth.get("permissions", [])
+            hasattr(request, "auth")
+            and request.auth is not None
+            and "processing" in request.auth.get("permissions", [])
         ):
             # this is how Lambda functions authenticate
             return True
