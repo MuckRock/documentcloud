@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.http.response import JsonResponse
+from rest_framework.views import APIView
 
 # Standard Library
 import logging
@@ -134,7 +135,8 @@ class RateLimitAnonymousUsers:
 
     def __call__(self, request):
 
-        if self.is_authenticated(request):
+        drf_request = APIView().initialize_request(request)
+        if self.is_authenticated(drf_request):
             return self.get_response(request)
 
         try:
