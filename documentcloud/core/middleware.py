@@ -146,7 +146,7 @@ class RateLimitAnonymousUsers:
                 ip_address,
                 value,
                 request.path,
-                request.headers.get("Authorization"),
+                request.META.get("HTTP_AUTHORIZATION"),
             )
             if value > self.limit:
                 return JsonResponse(self.message, status=429)
@@ -155,7 +155,7 @@ class RateLimitAnonymousUsers:
                 "[ANON RATE LIMIT] New IP: %s: %s - %s",
                 ip_address,
                 request.path,
-                request.headers.get("Authorization"),
+                request.META.get("HTTP_AUTHORIZATION"),
             )
             cache.set(key, 1, timeout=self.timeout)
 
