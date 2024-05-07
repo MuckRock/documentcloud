@@ -1,14 +1,26 @@
+# Django
+from django.conf import settings
+from django.core.cache import cache
+from django.http.response import JsonResponse
+
 # Standard Library
 import logging
+import time
 
-logger = logging.getLogger("http_requests")
+# Third Party
+from ipware import get_client_ip
+
+logger = logging.getLogger(__name__)
 
 
 class LogHTTPMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
+        self.logger = logging.getLogger("http_requests")
 
     def __call__(self, request):
+
+        start = time.time()
 
         try:
             request.log_body = request.body
@@ -17,13 +29,16 @@ class LogHTTPMiddleware:
 
         response = self.get_response(request)
 
-        logger.info(
+        end = time.time()
+
+        self.logger.info(
             "%s %s",
             request.method,
             request.path,
             extra={
                 "request": self.format_request(request),
                 "response": self.format_response(response),
+                "elapsed": (end - start) * 1000,
             },
         )
 
@@ -74,3 +89,74 @@ class LogHTTPMiddleware:
             "headers": dict(response.headers),
             "body": response.content.decode("utf8")[:1024],
         }
+
+
+class RateLimitAnonymousUsers:
+    """Rate limit anonymous users to encourage people to login"""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+        self.enable = settings.ANON_RL_ENABLE
+
+        # how many requests to allow per time period
+        self.limit = settings.ANON_RL_LIMIT
+        self.timeout = settings.ANON_RL_TIMEOUT
+
+        # paths to exclude from the rate limiting
+        # we want to exclude the login path so anonymous users may login
+        self.exclude_paths = settings.ANON_RL_EXCLUDE_PATHS
+
+        # the error message to return when rate limited
+        self.message = {"message": settings.ANON_RL_MESSAGE}
+
+    def is_authenticated(self, request):
+        """Determine if the request is authenticated"""
+
+        if not self.enable:
+            return True
+
+        if request.user.is_authenticated:
+            return True
+
+        if request.path in self.exclude_paths:
+            return True
+
+        if (
+            hasattr(request, "auth")
+            and request.auth is not None
+            and "processing" in request.auth.get("permissions", [])
+        ):
+            # this is how Lambda functions authenticate
+            return True
+
+        return False
+
+    def __call__(self, request):
+
+        if self.is_authenticated(request):
+            return self.get_response(request)
+
+        try:
+            ip_address, _ = get_client_ip(request)
+            key = f"ratelimit-{ip_address}"
+            value = cache.incr(key)
+            logger.info(
+                "[ANON RATE LIMIT] IP: %s - %d: %s - %s",
+                ip_address,
+                value,
+                request.path,
+                request.META.get("HTTP_AUTHORIZATION"),
+            )
+            if value > self.limit:
+                return JsonResponse(self.message, status=429)
+        except ValueError:
+            logger.info(
+                "[ANON RATE LIMIT] New IP: %s: %s - %s",
+                ip_address,
+                request.path,
+                request.META.get("HTTP_AUTHORIZATION"),
+            )
+            cache.set(key, 1, timeout=self.timeout)
+
+        return self.get_response(request)

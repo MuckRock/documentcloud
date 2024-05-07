@@ -163,13 +163,7 @@ LOGGING = {
             "format": "%(levelname)s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
         },
-        "logzioFormat": {"format": '{"additional_field": "value"}', "validate": False},
-        "logstash": {
-            "()": "logstash_async.formatter.DjangoLogstashFormatter",
-            "message_type": "python-logstash",
-            "fqdn": False,
-            "extra_prefix": "dev",
-        },
+        "logzioFormat": {"validate": False},
     },
     "handlers": {
         "console": {
@@ -187,18 +181,6 @@ LOGGING = {
             "url": "https://listener.logz.io:8071",
             "debug": True,
             "network_timeout": 10,
-        },
-        "logitio": {
-            "class": "logstash_async.handler.AsynchronousLogstashHandler",
-            "level": "INFO",
-            "formatter": "logstash",
-            "transport": "logstash_async.transport.TcpTransport",
-            "host": env("LOGIT_HOST", default=""),
-            "port": 11421,
-            "ssl_enable": True,
-            "ssl_verify": False,
-            "transport": "logstash_async.transport.BeatsTransport",
-            "database_path": "",
         },
     },
     "root": {"level": "INFO", "handlers": ["console"]},
@@ -218,7 +200,7 @@ LOGGING = {
         "apscheduler": {"level": "ERROR", "handlers": ["console"], "propagate": False},
         "http_requests": {
             "level": "INFO",
-            "handlers": ["logzio", "logitio"],
+            "handlers": ["logzio"],
             "propogate": False,
         },
     },
@@ -293,27 +275,3 @@ CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = ["scout_apm.django"] + INSTALLED_APPS  # noqa F405
 SCOUT_NAME = env("SCOUT_NAME")
-
-# Moesif
-# ------------------------------------------------------------------------------
-MOESIF_ID = env("MOESIF_ID", default=None)
-if MOESIF_ID:
-    MIDDLEWARE += ["moesifdjango.middleware.moesif_middleware"]
-    INSTALLED_APPS += ["moesifdjango"]
-    MOESIF_MIDDLEWARE = {
-        "APPLICATION_ID": MOESIF_ID,
-        "LOG_BODY": True,
-        "LOCAL_DEBUG": env.bool("MOESIF_LOCAL_DEBUG", default=False),
-        "USE_CELERY": True,
-        "CELERY_BROKER_URL": CELERY_BROKER_URL,
-        "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
-            DOCCLOUD_EMBED_URL
-        )
-        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
-        "IDENTIFY_USER": lambda request, response: request.user.pk
-        if request.user and request.user.is_authenticated
-        else get_client_ip(request)[0],
-        "IDENTIFY_COMPANY": lambda request, response: request.user.organization.pk
-        if request.user and request.user.is_authenticated
-        else None,
-    }
