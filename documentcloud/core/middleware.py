@@ -144,20 +144,18 @@ class RateLimitAnonymousUsers:
             key = f"ratelimit-{ip_address}"
             value = cache.incr(key)
             logger.info(
-                "[ANON RATE LIMIT] IP: %s - %d: %s - %s",
+                "[ANON RATE LIMIT] IP: %s - %d: %s",
                 ip_address,
                 value,
                 request.path,
-                request.META.get("HTTP_AUTHORIZATION"),
             )
             if value > self.limit:
                 return JsonResponse(self.message, status=429)
         except ValueError:
             logger.info(
-                "[ANON RATE LIMIT] New IP: %s: %s - %s",
+                "[ANON RATE LIMIT] New IP: %s: %s",
                 ip_address,
                 request.path,
-                request.META.get("HTTP_AUTHORIZATION"),
             )
             cache.set(key, 1, timeout=self.timeout)
 
