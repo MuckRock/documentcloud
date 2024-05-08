@@ -431,7 +431,13 @@ class TestProjectMembershipAPI:
             [{"document": d.pk} for d in new_documents],
             format="json",
         )
+
         assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert sorted([d["document"] for d in response_json]) == sorted(
+            [d.id for d in new_documents]
+        )
+
         # all of new and old documents are in the project
         assert {d.pk for d in new_documents + old_documents} == {
             d.pk for d in project.documents.all()

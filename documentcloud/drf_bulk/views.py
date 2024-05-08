@@ -36,7 +36,10 @@ class BulkUpdateModelMixin:
             partial=partial,
         )
         serializer.is_valid(raise_exception=True)
-        self.bulk_perform_update(serializer, partial)
+        data = self.bulk_perform_update(serializer, partial)
+        # allow bulk_perform_update to override the response data if needed
+        if data is not None:
+            serializer = self.get_serializer(data, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def bulk_partial_update(self, request, *args, **kwargs):
