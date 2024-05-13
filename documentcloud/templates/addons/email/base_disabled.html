@@ -8,7 +8,7 @@
     scheduled run.  <a href="{{ settings.DOCCLOUD_URL }}/app?q=#add-ons/{{ run.addon.repository }}/{{ run.event.id }}">View the scheduled run details here.</a>
   </p>
   <p>
-    {{ footer_content }}
+    {{ footer_content|urlize }}
   </p>
 
 {% endblock body %}
