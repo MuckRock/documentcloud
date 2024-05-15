@@ -471,12 +471,29 @@ class AddOnRun(models.Model):
                     )
                     self.event.event = Event.disabled
                     self.event.save()
-                    send_mail(
-                        subject="Your scheduled Add-On run has been disabled",
-                        user=self.event.user,
-                        template="addons/email/disabled.html",
-                        extra_context={"run": self},
-                    )
+                    self.send_disabled_email()
+
+    def send_disabled_email(self):
+        """Send an email when an addon is disabled"""
+        # Fetch footer content from config
+        footer_content = self.addon.parameters.get("custom_disabled_email_footer")
+
+        if footer_content:
+            # If footer content exists, use the base_disabled.html template
+            template = "addons/email/base_disabled.html"
+            extra_context = {"run": self, "footer_content": footer_content}
+        else:
+            # If footer content doesn't exist, use the disabled.html template
+            template = "addons/email/disabled.html"
+            extra_context = {"run": self}
+
+        # Send the email using the appropriate template
+        send_mail(
+            subject="Your scheduled Add-On run has been disabled",
+            user=self.event.user,
+            template=template,
+            extra_context=extra_context,
+        )
 
     def cancel(self):
         """Cancel the run if it is still running"""
