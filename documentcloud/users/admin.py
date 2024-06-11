@@ -1,6 +1,5 @@
 # Django
 from django.contrib import admin
-from django.db.models.aggregates import Count
 from django.http.response import HttpResponse
 from django.urls.conf import re_path
 
