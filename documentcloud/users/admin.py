@@ -45,14 +45,10 @@ class UserAdmin(SAUserAdmin):
             else:
                 return ""
 
-        writer.writerow(
-            ["username", "name", "email", "last_login", "date_joined", "docs"]
-        )
-        for user in (
-            User.objects.only("username", "name", "email", "last_login", "created_at")
-            .annotate(docs=Count("documents"))
-            .iterator(chunk_size=2000)
-        ):
+        writer.writerow(["username", "name", "email", "last_login", "date_joined"])
+        for user in User.objects.only(
+            "username", "name", "email", "last_login", "created_at"
+        ).iterator(chunk_size=2000):
             writer.writerow(
                 [
                     user.username,
@@ -60,7 +56,6 @@ class UserAdmin(SAUserAdmin):
                     user.email,
                     format_date(user.last_login),
                     format_date(user.created_at),
-                    user.docs,
                 ]
             )
 
