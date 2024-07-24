@@ -180,7 +180,7 @@ class TestUserAPI:
         response_json = json.loads(response.content)
         assert "email" in response_json
 
-    def test_retrieve_another_user_email(self, client, user):
+    def test_retrieve_another_user_email(self, client):
         """Test that a different user cannot see another user's email"""
         users = UserFactory.create_batch(2)
         OrganizationFactory(members=users)
