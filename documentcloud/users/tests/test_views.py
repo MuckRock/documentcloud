@@ -24,6 +24,23 @@ from documentcloud.users.tests.factories import UserFactory
 
 @pytest.mark.django_db()
 class TestUserAPI:
+    def test_retrieve_own_email(self, client, user):
+        """Test that a user can see their own email"""
+        client.force_authenticate(user=user)
+        response = client.get("/api/users/me/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "email" in response_json
+
+    def test_retrieve_another_user_email(self, client, user):
+        """Test that a different user cannot see another user's email"""
+        another_user = UserFactory()
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/users/{another_user.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "email" not in response_json
+
     def test_list(self, client):
         """List users"""
         size = 10
