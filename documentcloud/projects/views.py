@@ -68,7 +68,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def perform_create(self, serializer):
-        """Specify the creator and add them as a collaborator by default"""
+        """Specify the creator, add them as a collaborator by default, and
+        pin the project for them
+        """
         project = serializer.save(user=self.request.user)
         Collaboration.objects.create(
             project=project,
@@ -76,6 +78,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             creator=self.request.user,
             access=CollaboratorAccess.admin,
         )
+        self.request.user.pinned_projects.add(project)
 
     @transaction.atomic
     def perform_destroy(self, instance):

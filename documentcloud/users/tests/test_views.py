@@ -171,3 +171,21 @@ class TestUserAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         user.refresh_from_db()
         assert user.mailkey is None
+
+    def test_retrieve_own_email(self, client, user):
+        """Test that a user can see their own email"""
+        client.force_authenticate(user=user)
+        response = client.get("/api/users/me/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "email" in response_json
+
+    def test_retrieve_another_user_email(self, client):
+        """Test that a different user cannot see another user's email"""
+        users = UserFactory.create_batch(2)
+        OrganizationFactory(members=users)
+        client.force_authenticate(user=users[0])
+        response = client.get(f"/api/users/{users[1].pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        response_json = json.loads(response.content)
+        assert "email" not in response_json
