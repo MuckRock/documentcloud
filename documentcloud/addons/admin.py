@@ -15,6 +15,7 @@ from documentcloud.addons.models import (
     AddOnEvent,
     GitHubAccount,
     GitHubInstallation,
+    VisualAddOn,
 )
 from documentcloud.addons.tasks import update_config
 
@@ -157,3 +158,29 @@ class GitHubInstallationAdmin(admin.ModelAdmin):
     fields = ["account", "name", "iid", "removed"]
     readonly_fields = ["account", "name", "iid", "removed"]
     search_fields = ["name"]
+
+
+@admin.register(VisualAddOn)
+class VisualAddOnAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "user",
+        "organization",
+        "access",
+    ]
+    list_select_related = ["user", "organization"]
+    list_filter = ["access"]
+    autocomplete_fields = ["user", "organization"]
+    search_fields = ["name"]
+    prepopulated_fields = {"slug": ("name",)}
+    fields = [
+        "name",
+        "slug",
+        "url",
+        "user",
+        "organization",
+        "access",
+        "created_at",
+        "updated_at",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
