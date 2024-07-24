@@ -35,6 +35,10 @@ add_perm("addons.add_addon", always_deny)
 add_perm("addons.change_addon", is_authenticated & ~is_removed)
 add_perm("addons.delete_addon", always_deny)
 
+add_perm("addons.view_visualaddon", can_view)
+add_perm("addons.add_visualaddon", always_deny)
+add_perm("addons.change_visualaddon", is_authenticated & ~is_removed)
+add_perm("addons.delete_visualaddon", always_deny)
 
 add_perm("addons.view_addonrun", is_authenticated & is_owner)
 add_perm("addons.add_addonrun", is_authenticated)

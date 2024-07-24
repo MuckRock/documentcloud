@@ -33,6 +33,7 @@ from datetime import timedelta
 from functools import lru_cache
 
 # Third Party
+import requests
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework.backends import DjangoFilterBackend
 from furl import furl
@@ -46,6 +47,7 @@ from documentcloud.addons.models import (
     AddOnRun,
     GitHubAccount,
     GitHubInstallation,
+    VisualAddOn,
 )
 from documentcloud.addons.serializers import (
     AddOnEventSerializer,
@@ -390,3 +392,24 @@ class AddOnRunFileServer(APIView):
             return JsonResponse({"location": url})
         else:
             return HttpResponseRedirect(url)
+
+
+class VisualAddOnProxy(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, *args, **kwargs):
+        visual_addon = get_object_or_404(
+            VisualAddOn.objects.get_viewable(request.user), slug=kwargs["slug"]
+        )
+
+        url = visual_addon.url
+        if not url.endswith("/"):
+            url += "/"
+        url += kwargs.get("path", "")
+
+        response = requests.get(url)
+        return HttpResponse(
+            content=response.content,
+            status=response.status_code,
+            content_type=response.headers["Content-Type"],
+        )

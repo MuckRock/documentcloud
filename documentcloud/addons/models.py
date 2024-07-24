@@ -24,6 +24,7 @@ from documentcloud.addons.querysets import (
     AddOnEventQuerySet,
     AddOnQuerySet,
     AddOnRunQuerySet,
+    VisualAddOnQuerySet,
 )
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.mail import send_mail
@@ -722,3 +723,55 @@ class GitHubInstallation(models.Model):
                     token = resp["token"]
                     cache.set(key, token, expire_in - 10)
         return token
+
+
+class VisualAddOn(models.Model):
+
+    objects = VisualAddOnQuerySet.as_manager()
+
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="visual_addons",
+        help_text=_("The user who owns this visual add-on"),
+    )
+    organization = models.ForeignKey(
+        verbose_name=_("organization"),
+        to="organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="visual_addons",
+        help_text=_("The organization that owns this visual add-on"),
+    )
+    access = models.IntegerField(
+        _("access"),
+        choices=Access.choices,
+        default=Access.private,
+        help_text=_("Designates who may access this document by default"),
+    )
+
+    name = models.CharField(
+        _("name"),
+        max_length=255,
+        help_text=_("The visual add-on's name"),
+    )
+    slug = models.SlugField(
+        _("slug"),
+        max_length=255,
+    )
+
+    url = models.URLField(
+        _("URL"),
+        help_text=_("URL of the Visual AddOn"),
+    )
+
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the add-on was created")
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"), help_text=_("Timestamp of when the add-on was last updated")
+    )
+
+    @property
+    def removed(self):
+        return False
