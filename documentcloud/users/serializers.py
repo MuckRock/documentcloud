@@ -40,12 +40,14 @@ class UserSerializer(FlexFieldsModelSerializer):
             "username",
             "uuid",
             "verified_journalist",
+            "email",
         ]
         extra_kwargs = {
             "avatar_url": {"read_only": True},
             "name": {"read_only": True},
             "organizations": {"read_only": True},
             "username": {"read_only": True},
+            "email": {"read_only": True},
         }
         expandable_fields = {
             "organization": ("documentcloud.organizations.OrganizationSerializer", {})
@@ -60,6 +62,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             self.fields.pop("is_staff")
         if not view or view.kwargs.get("pk") != "me":
             self.fields.pop("feature_level")
+            self.fields.pop("email")
 
     def validate_organization(self, value):
         organization = Organization.objects.filter(pk=value).first()
