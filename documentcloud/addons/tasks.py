@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 @task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
-    retry_kwargs={"max_retries": 10},
+    retry_kwargs={"max_retries": 9},
 )
 def find_run_id(uuid):
     """Find the GitHub Actions run ID from the AddOnRun's UUID"""
@@ -46,7 +46,7 @@ def find_run_id(uuid):
             find_run_id.retry(
                 args=[uuid],
                 countdown=2**find_run_id.request.retries,
-                max_retries=10,
+                max_retries=9,
             )
         except MaxRetriesExceededError:
             logger.error("Failed to find run ID: %s", uuid)
