@@ -193,11 +193,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     class Filter(django_filters.FilterSet):
         class Meta:
             model = AddOnRun
-            fields = {
-                "dismissed": ["exact"],
-                "event": ["exact"],
-                "addon": ["exact"]
-            }
+            fields = {"dismissed": ["exact"], "event": ["exact"], "addon": ["exact"]}
 
     filterset_class = Filter
 
