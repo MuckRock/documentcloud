@@ -132,6 +132,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
         document = ModelMultipleChoiceFilter(model=Document, field_name="documents")
         query = django_filters.CharFilter(method="query_filter", label="Query")
         pinned = django_filters.BooleanFilter(field_name="pinned", label="Pinned")
+        is_shared = django_filters.BooleanFilter(
+            method="filter_is_shared", label="Shared"
+        )
+        owned_by_user = django_filters.BooleanFilter(
+            method="filter_owned_by_user", label="Owned"
+        )
 
         class Meta:
             model = Project
@@ -149,11 +155,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 Q(title__icontains=value) | Q(description__icontains=value)
             )
 
+        def filter_is_shared(self, queryset, value):
+            """Filter projects shared with user, but not owned"""
+            if value and self.request.user.is_authenticated:
+                return queryset.filter(
+                    Q(collaborators=self.request.user) & ~Q(user=self.request.user)
+                )
+            return queryset
+
+        def filter_owned_by_user(self, queryset, value):
+            """Filter projects where the user is the owner."""
+            if value and self.request.user.is_authenticated:
+                return queryset.filter(user=self.request.user)
+            return queryset
+
     filterset_class = Filter
 
 
 class OrderingFilter(filters.OrderingFilter):
-
     filter_map = {
         "created_at": "document__pk",
         "-created_at": "-document__pk",
@@ -169,7 +188,6 @@ class OrderingFilter(filters.OrderingFilter):
         return self.get_default_ordering(view)
 
     def filter_queryset(self, request, queryset, view):
-
         ordering = self.get_ordering(request, queryset, view)
 
         if ordering:
@@ -345,7 +363,6 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
 
 class CollaborationViewSet(FlexFieldsModelViewSet):
-
     serializer_class = CollaborationSerializer
     queryset = Collaboration.objects.none()
     lookup_field = "user_id"
