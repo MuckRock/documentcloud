@@ -144,7 +144,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 Q(title__icontains=value) | Q(description__icontains=value)
             )
 
-        def filter_is_shared(self, queryset, value):
+        def filter_is_shared(self, queryset, _name, value):
             """Filter projects shared with user, but not owned"""
             if value and self.request.user.is_authenticated:
                 return queryset.filter(
@@ -152,7 +152,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 )
             return queryset
 
-        def filter_owned_by_user(self, queryset, value):
+        def filter_owned_by_user(self, queryset, _name, value):
             """Filter projects where the user is the owner."""
             if value and self.request.user.is_authenticated:
                 return queryset.filter(user=self.request.user)
