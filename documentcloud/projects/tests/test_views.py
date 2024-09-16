@@ -120,7 +120,7 @@ class TestProjectAPI:
 @pytest.mark.django_db()
 class TestProjectFilters:
     def test_filter_is_shared(self, client):
-        """Test filtering projects that are shared with the user but not owned by them"""
+        """Test filtering projects that are shared with the user"""
         # Create users
         owner = UserFactory()
         collaborator = UserFactory()
@@ -137,7 +137,7 @@ class TestProjectFilters:
 
         owned_only_project = ProjectFactory(user=owner)
 
-        # Create a project that the user does not collaborate on and is owned by someone else
+        # Create a project that the user does not collaborate on
         ProjectFactory(user=non_collaborator)
 
         # Authenticate as the collaborator
