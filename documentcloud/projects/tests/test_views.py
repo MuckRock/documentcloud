@@ -30,6 +30,7 @@ from documentcloud.users.tests.factories import UserFactory
 
 # pylint: disable=too-many-public-methods
 
+
 @pytest.mark.django_db()
 class TestProjectAPI:
     def test_list(self, client):
@@ -115,12 +116,9 @@ class TestProjectAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Project.objects.filter(pk=project.pk).exists()
 
+
 @pytest.mark.django_db()
 class TestProjectFilters:
-    
-    @pytest.mark.django_db()
-class TestProjectFilters:
-
     def test_filter_is_shared(self, client):
         """Test filtering projects that are shared with the user but not owned by them"""
         # Create users
@@ -138,7 +136,7 @@ class TestProjectFilters:
         )
 
         owned_only_project = ProjectFactory(user=owner)
-        
+
         # Create a project that the user does not collaborate on and is owned by someone else
         ProjectFactory(user=non_collaborator)
 
@@ -149,11 +147,13 @@ class TestProjectFilters:
         response = client.get("/api/projects/", {"is_shared": True})
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
-        
+
         # Check that only the shared project is included
         assert len(response_json["results"]) == 1
-        assert any(p['id'] == shared_project.id for p in response_json["results"])
-        assert not any(p['id'] == owned_only_project.id for p in response_json["results"])
+        assert any(p["id"] == shared_project.id for p in response_json["results"])
+        assert not any(
+            p["id"] == owned_only_project.id for p in response_json["results"]
+        )
 
     def test_filter_owned_by_user(self, client):
         """Test filtering projects owned by the user"""
@@ -173,9 +173,12 @@ class TestProjectFilters:
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         # Check if the owned project is in the response
-        assert any(p['id'] == owned_project.id for p in response_json["results"])
+        assert any(p["id"] == owned_project.id for p in response_json["results"])
         # Check that non-owned project is not included
-        assert not any(p['id'] == Project.objects.exclude(user=owner).first().id for p in response_json["results"])
+        assert not any(
+            p["id"] == Project.objects.exclude(user=owner).first().id
+            for p in response_json["results"]
+        )
 
 
 @pytest.mark.django_db()
