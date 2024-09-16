@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
+from django.db.models.fields.related import ForeignKey
 from django.db.models.functions.text import Concat
 from django.http.response import (
     Http404,
@@ -56,7 +57,7 @@ from documentcloud.addons.serializers import (
 )
 from documentcloud.addons.tasks import cancel, dispatch, update_config
 from documentcloud.common.environment import storage
-from documentcloud.core.filters import QueryArrayWidget
+from documentcloud.core.filters import ModelChoiceFilter, QueryArrayWidget
 
 logger = logging.getLogger(__name__)
 
@@ -191,9 +192,16 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         cancel.delay(instance.uuid)
 
     class Filter(django_filters.FilterSet):
+        event = ModelChoiceFilter(model=AddOnEvent)
+        addon = ModelChoiceFilter(model=AddOn)
+
         class Meta:
             model = AddOnRun
-            fields = {"dismissed": ["exact"], "event": ["exact"], "addon": ["exact"]}
+            fields = {
+                "dismissed": ["exact"],
+                "event": ["exact"],
+                "addon": ["exact"],
+            }
 
     filterset_class = Filter
 
