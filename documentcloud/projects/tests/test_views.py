@@ -135,8 +135,6 @@ class TestProjectFilters:
             access=CollaboratorAccess.admin,
         )
 
-        owned_only_project = ProjectFactory(user=owner)
-
         # Create a project that the user does not collaborate on
         ProjectFactory(user=non_collaborator)
 
