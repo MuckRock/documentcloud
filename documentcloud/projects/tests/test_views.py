@@ -118,6 +118,63 @@ class TestProjectAPI:
 
 
 @pytest.mark.django_db()
+class TestProjectFilters:
+    def test_filter_is_shared(self, client):
+        """Test filtering projects that are shared with the user"""
+        # Create users
+        owner = UserFactory()
+        collaborator = UserFactory()
+        non_collaborator = UserFactory()
+
+        # Create projects
+        shared_project = ProjectFactory(user=owner)
+        Collaboration.objects.create(
+            project=shared_project,
+            user=collaborator,
+            creator=owner,
+            access=CollaboratorAccess.admin,
+        )
+
+        # Create a project that the user does not collaborate on
+        ProjectFactory(user=non_collaborator)
+
+        # Authenticate as the collaborator
+        client.force_authenticate(user=collaborator)
+
+        # Filter for shared projects
+        response = client.get("/api/projects/", {"is_shared": True})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+
+        assert len(response_json["results"]) == 1
+        assert response_json["results"][0]["id"] == shared_project.id
+
+    def test_filter_owned_by_user(self, client):
+        """Test filtering projects owned by the user"""
+        # Create users
+        owner = UserFactory()
+        non_owner = UserFactory()
+
+        # Create projects
+        owned_project = ProjectFactory(user=owner)
+        non_owned_project = ProjectFactory(user=non_owner)
+
+        # Authenticate as the owner
+        client.force_authenticate(user=owner)
+
+        # Filter for owned projects
+        response = client.get("/api/projects/", {"owned_by_user": True})
+        assert response.status_code == status.HTTP_200_OK
+        response_json = response.json()
+        # Check if the owned project is in the response
+        assert any(p["id"] == owned_project.id for p in response_json["results"])
+        # Check that non-owned project is not included
+        assert not any(
+            p["id"] == non_owned_project.id for p in response_json["results"]
+        )
+
+
+@pytest.mark.django_db()
 class TestProjectMembershipAPI:
     def test_list(self, client):
         """List documents in a project"""
