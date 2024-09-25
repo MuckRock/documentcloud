@@ -68,6 +68,7 @@ from documentcloud.documents.serializers import (
 from documentcloud.documents.tasks import (
     extract_entities,
     fetch_file_url,
+    graft_text,
     invalidate_cache,
     modify,
     post_process,
@@ -396,6 +397,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._run_addons(instance, old_processing)
             self._set_page_text(instance, validated_data.get("pages"))
             self._create_revision(instance, old_processing, old_revision_control)
+            self._graft_text(instance, old_processing)
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
@@ -488,6 +490,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             last_revision = document.revisions.last()
             if last_revision:
                 last_revision.copy()
+
+    def _graft_text(self, document, old_processing):
+        """If it has succesfully processed, check if we need to graft text"""
+        if old_processing and document.status == Status.success:
+            # if it was processed succesfully, do a full index with text
+            transaction.on_commit(lambda: graft_text.delay(document.pk))
 
     @action(detail=False, methods=["get"])
     def search(self, request):
