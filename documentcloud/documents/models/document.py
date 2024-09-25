@@ -9,12 +9,14 @@ from django.utils.translation import gettext_lazy as _
 # Standard Library
 import json
 import logging
+import math
 import sys
 import time
 import uuid
 
 # Third Party
 import boto3
+import pymupdf
 import requests
 from listcrunch import uncrunch
 
@@ -399,6 +401,7 @@ class Document(models.Model):
             return {"pages": [], "updated": None}
 
     def set_page_text(self, page_text_infos):
+        logger.info("[SET PAGE TEXT] get all page text %d", self.pk)
         # get the json text
         json_text = self.get_all_page_text()
 
@@ -411,8 +414,14 @@ class Document(models.Model):
             )
         file_names = []
         file_contents = []
+
+        logger.info("[SET PAGE TEXT] init graft pdf %d", self.pk)
+        grafted_pdf = self._init_graft_pdf()
+        did_graft = False
+
         for page_text_info in page_text_infos:
             page = page_text_info["page_number"]
+            logger.info("[SET PAGE TEXT] %d - page %d", self.pk, page)
             text = page_text_info["text"]
             ocr = page_text_info.get("ocr")
             file_names.append(path.page_text_path(self.pk, self.slug, page))
@@ -425,6 +434,7 @@ class Document(models.Model):
                 "updated": timestamp,
             }
             if page_text_info.get("positions"):
+                logger.info("[SET PAGE TEXT] %d - positions page %d", self.pk, page)
                 file_names.append(
                     path.page_text_position_path(self.pk, self.slug, page)
                 )
@@ -432,6 +442,20 @@ class Document(models.Model):
                     {**p.pop("metadata", {}), **p} for p in page_text_info["positions"]
                 ]
                 file_contents.append(json.dumps(positions).encode("utf-8"))
+
+                logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page)
+                # do the grafting
+                did_graft |= self._graft_page(
+                    page_text_info["positions"],
+                    grafted_pdf,
+                    page,
+                )
+
+        # upload grafted pdf
+        if did_graft:
+            file_names.append(self.doc_path)
+            file_contents.append(grafted_pdf.convert_to_pdf())
+        grafted_pdf.close()
 
         # set the full text
         concatenated_text = b"\n\n".join(
@@ -450,6 +474,75 @@ class Document(models.Model):
         storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
 
         return json_text
+
+    def graft_text(self):
+        """Just graft the text from the positions file back into the PDF
+        This is only used for documents which use the built in Textract OCR
+        """
+        did_graft = False
+        # download all of the position files
+        positions = storage.async_download(
+            [
+                path.page_text_position_path(self.pk, self.slug, page)
+                for page in range(self.page_count)
+            ]
+        )
+        # generate new pdf
+        grafted_pdf = self._init_graft_pdf()
+        # graft
+        for page, position in enumerate(positions):
+            position_data = json.loads(position)
+            did_graft |= self._graft_page(position_data, grafted_pdf, page)
+        # upload
+        if did_graft:
+            storage.simple_upload(
+                self.doc_path, grafted_pdf.convert_to_pdf(), access=self.access
+            )
+        grafted_pdf.close()
+
+    def _init_graft_pdf(self):
+        """Initialize a new PDF to graft OCR text onto"""
+        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
+        return current_pdf
+
+        grafted_pdf = pymupdf.open()
+        for pdf_page in current_pdf.pages():
+            pdf_pix_map = pdf_page.get_pixmap(dpi=200, colorspace="RGB")
+            pdf_page_img = grafted_pdf.new_page(
+                width=pdf_page.rect.width,
+                height=pdf_page.rect.height,
+            )
+            pdf_page_img.insert_image(rect=pdf_page.rect, pixmap=pdf_pix_map)
+            pdf_pix_map = None
+            pymupdf.TOOLS.store_shrink(100)
+        current_pdf.close()
+        return grafted_pdf
+
+    def _graft_page(self, positions, grafted_pdf, page):
+        default_fontsize = 15
+        did_graft = False
+
+        for position in positions:
+            did_graft = True
+            pdf_page = grafted_pdf[page]
+            word_text = position["text"]
+            text_length = pymupdf.get_text_length(
+                word_text,
+                fontsize=default_fontsize,
+            )
+            width = (position["x2"] - position["x1"]) * pdf_page.rect.width
+            fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
+            pdf_page.insert_text(
+                point=pymupdf.Point(
+                    position["x1"] * pdf_page.rect.width,
+                    position["y2"] * pdf_page.rect.height,
+                ),
+                text=word_text,
+                fontsize=fontsize_optimal,
+                fill_opacity=0,
+            )
+
+        return did_graft
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
