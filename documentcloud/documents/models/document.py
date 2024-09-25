@@ -9,12 +9,14 @@ from django.utils.translation import gettext_lazy as _
 # Standard Library
 import json
 import logging
+import math
 import sys
 import time
 import uuid
 
 # Third Party
 import boto3
+import pymupdf
 import requests
 from listcrunch import uncrunch
 
@@ -399,6 +401,7 @@ class Document(models.Model):
             return {"pages": [], "updated": None}
 
     def set_page_text(self, page_text_infos):
+        logger.info("[SET PAGE TEXT] get all page text %d", self.pk)
         # get the json text
         json_text = self.get_all_page_text()
 
@@ -411,8 +414,14 @@ class Document(models.Model):
             )
         file_names = []
         file_contents = []
+
+        logger.info("[SET PAGE TEXT] init graft pdf %d", self.pk)
+
+        positions_present = any("positions" in page for page in page_text_infos)
+
         for page_text_info in page_text_infos:
             page = page_text_info["page_number"]
+            logger.info("[SET PAGE TEXT] %d - page %d", self.pk, page)
             text = page_text_info["text"]
             ocr = page_text_info.get("ocr")
             file_names.append(path.page_text_path(self.pk, self.slug, page))
@@ -424,14 +433,13 @@ class Document(models.Model):
                 "ocr": ocr,
                 "updated": timestamp,
             }
-            if page_text_info.get("positions"):
-                file_names.append(
-                    path.page_text_position_path(self.pk, self.slug, page)
-                )
-                positions = [
-                    {**p.pop("metadata", {}), **p} for p in page_text_info["positions"]
-                ]
-                file_contents.append(json.dumps(positions).encode("utf-8"))
+
+        if positions_present:
+            doc = self._set_page_positions(page_text_infos, file_names, file_contents)
+
+            # upload grafted pdf
+            file_names.append(self.doc_path)
+            file_contents.append(doc.tobytes())
 
         # set the full text
         concatenated_text = b"\n\n".join(
@@ -445,11 +453,105 @@ class Document(models.Model):
         file_contents.append(json.dumps(json_text).encode("utf-8"))
 
         # upload the text to S3
-        logger.info("[SET PAGE TEXT] upload %d", self.pk)
+        logger.info(
+            "[SET PAGE TEXT] upload %d - %d mb",
+            self.pk,
+            sum(len(i) for i in file_contents) / 1000 / 1000,
+        )
+        for name, contents in zip(file_names, file_contents):
+            logger.info(
+                "[SET PAGE TEXT] upload %d - %s: %d mb",
+                self.pk,
+                name,
+                len(contents) / 1000 / 1000,
+            )
         # reverse the lists to upload the larger files first
         storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
 
         return json_text
+
+    def _set_page_positions(self, pages, file_names, file_contents):
+        """Handle grafting page positions back into the document"""
+
+        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
+        start_page = pages[0]["page_number"]
+        stop_page = pages[-1]["page_number"]
+        grafted_pdf = self._init_graft_pdf(current_pdf, start_page, stop_page)
+
+        for page in pages:
+            page_number = page["page_number"]
+            if page.get("positions"):
+                logger.info(
+                    "[SET PAGE TEXT] %d - positions page %d", self.pk, page_number
+                )
+                file_names.append(
+                    path.page_text_position_path(self.pk, self.slug, page_number)
+                )
+                positions = [{**p.pop("metadata", {}), **p} for p in page["positions"]]
+                file_contents.append(json.dumps(positions).encode("utf-8"))
+
+                logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page_number)
+                # do the grafting
+                self._graft_page(
+                    page["positions"],
+                    grafted_pdf,
+                    page_number - start_page,
+                )
+
+        # put the full pdf back together with the newly grafted pages
+        doc = pymupdf.open()
+        if start_page > 0:
+            doc.insert_pdf(current_pdf, to_page=start_page - 1)
+        doc.insert_pdf(grafted_pdf)
+        if stop_page < current_pdf.page_count - 1:
+            doc.insert_pdf(current_pdf, from_page=stop_page + 1)
+
+        current_pdf.close()
+        grafted_pdf.close()
+
+        return doc
+
+    def _init_graft_pdf(self, current_pdf, start_page, stop_page):
+        """Initialize a new PDF to graft OCR text onto"""
+        grafted_pdf = pymupdf.open()
+
+        for pdf_page in current_pdf.pages(start_page, stop_page + 1):
+            pdf_pix_map = pdf_page.get_pixmap(dpi=200, colorspace="RGB")
+            pdf_page_img = grafted_pdf.new_page(
+                width=pdf_page.rect.width,
+                height=pdf_page.rect.height,
+            )
+            pdf_page_img.insert_image(rect=pdf_page.rect, pixmap=pdf_pix_map)
+        return grafted_pdf
+
+    def _graft_page(self, positions, grafted_pdf, page):
+        default_fontsize = 15
+
+        for position in positions:
+            pdf_page = grafted_pdf[page]
+            word_text = position["text"]
+            text_length = pymupdf.get_text_length(
+                word_text,
+                fontsize=default_fontsize,
+            )
+            width = (position["x2"] - position["x1"]) * pdf_page.rect.width
+            fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
+            if settings.GRAFT_DEBUG:
+                kwargs = {
+                    "fill_opacity": 1,
+                    "color": (1, 0, 0),
+                }
+            else:
+                kwargs = {"fill_opacity": 0}
+            pdf_page.insert_text(
+                point=pymupdf.Point(
+                    position["x1"] * pdf_page.rect.width,
+                    position["y2"] * pdf_page.rect.height,
+                ),
+                text=word_text,
+                fontsize=fontsize_optimal,
+                **kwargs,
+            )
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document

@@ -76,6 +76,7 @@ google-cloud-language
 # PDF
 pdfplumber
 pikepdf
+pymupdf
 
 # sidekick
 numba
