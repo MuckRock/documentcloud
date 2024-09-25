@@ -306,7 +306,15 @@ def graft_text(document_pk):
     """
     # pylint: disable=broad-except
     document = Document.objects.get(pk=document_pk)
-    if not document.get_all_page_text()["pages"][0]["ocr"].startswith("textract"):
+    page_json = document.get_all_page_text()
+
+    if (
+        "pages" not in page_json
+        or len(page_json["pages"]) == 0
+        or "ocr" not in page_json["pages"][0]
+        or page_json["pages"][0]["ocr"] is None
+        or not document.get_all_page_text()["pages"][0]["ocr"].startswith("textract")
+    ):
         return
 
     logger.info("[GRAFT TEXT] %d - setting status to readable", document_pk)
