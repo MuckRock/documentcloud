@@ -575,6 +575,16 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
+pymupdf==1.24.10
+    # via -r requirements/./base.txt
+pymupdfb==1.24.10
+    # via
+    #   -r requirements/./base.txt
+    #   pymupdf
+pyparsing==2.4.2
+    # via
+    #   -r requirements/./base.txt
+    #   packaging
 pyrsistent==0.18.0
     # via
     #   -r /app/requirements/base.txt

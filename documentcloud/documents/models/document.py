@@ -504,7 +504,7 @@ class Document(models.Model):
         """Initialize a new PDF to graft OCR text onto"""
         current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
         return current_pdf
-        # pylint:disable=unreachable
+
         grafted_pdf = pymupdf.open()
         for pdf_page in current_pdf.pages():
             pdf_pix_map = pdf_page.get_pixmap(dpi=200, colorspace="RGB")

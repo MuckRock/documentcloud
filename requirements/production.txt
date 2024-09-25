@@ -487,10 +487,10 @@ pyjwt==2.3.0
     #   djangorestframework-simplejwt
     #   social-auth-core
 pymupdf==1.24.10
-    # via -r /app/requirements/base.txt
+    # via -r requirements/./base.txt
 pymupdfb==1.24.10
     # via
-    #   -r /app/requirements/base.txt
+    #   -r requirements/./base.txt
     #   pymupdf
 pyopenssl==19.1.0
     # via urllib3
