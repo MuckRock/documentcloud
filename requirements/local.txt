@@ -553,6 +553,8 @@ pylint-plugin-utils==0.7
     # via
     #   pylint-celery
     #   pylint-django
+pymupdf==1.25.3
+    # via -r /app/requirements/base.txt
 pyproject-hooks==1.2.0
     # via
     #   build

@@ -474,6 +474,8 @@ pyjwt==2.3.0
     #   -r /app/requirements/base.txt
     #   djangorestframework-simplejwt
     #   social-auth-core
+pymupdf==1.25.3
+    # via -r /app/requirements/base.txt
 pyopenssl==19.1.0
     # via urllib3
 pyrsistent==0.18.0
