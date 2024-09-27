@@ -401,6 +401,7 @@ class Document(models.Model):
             return {"pages": [], "updated": None}
 
     def set_page_text(self, page_text_infos):
+        logger.info("[SET PAGE TEXT] get all page text %d", self.pk)
         # get the json text
         json_text = self.get_all_page_text()
 
@@ -414,11 +415,13 @@ class Document(models.Model):
         file_names = []
         file_contents = []
 
+        logger.info("[SET PAGE TEXT] init graft pdf %d", self.pk)
         grafted_pdf = self._init_graft_pdf()
         did_graft = False
 
         for page_text_info in page_text_infos:
             page = page_text_info["page_number"]
+            logger.info("[SET PAGE TEXT] %d - page %d", self.pk, page)
             text = page_text_info["text"]
             ocr = page_text_info.get("ocr")
             file_names.append(path.page_text_path(self.pk, self.slug, page))
@@ -431,6 +434,7 @@ class Document(models.Model):
                 "updated": timestamp,
             }
             if page_text_info.get("positions"):
+                logger.info("[SET PAGE TEXT] %d - positions page %d", self.pk, page)
                 file_names.append(
                     path.page_text_position_path(self.pk, self.slug, page)
                 )
@@ -439,6 +443,7 @@ class Document(models.Model):
                 ]
                 file_contents.append(json.dumps(positions).encode("utf-8"))
 
+                logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page)
                 # do the grafting
                 did_graft |= self._graft_page(
                     page_text_info["positions"],
