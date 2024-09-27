@@ -253,7 +253,7 @@ oauthlib==3.1.0
     #   social-auth-core
 orderedmultidict==1.0.1
     # via furl
-packaging==21.3
+packaging==24.1
     # via
     #   deprecation
     #   pikepdf
@@ -311,8 +311,6 @@ pyjwt==2.3.0
     # via
     #   djangorestframework-simplejwt
     #   social-auth-core
-pyparsing==2.4.2
-    # via packaging
 pyrsistent==0.18.0
     # via jsonschema
 python-dateutil==2.8.2

@@ -20,6 +20,7 @@ from documentcloud.statistics.models import Statistics
 
 logger = logging.getLogger(__name__)
 
+
 # This is using UTC time instead of the local timezone
 @periodic_task(
     run_every=crontab(hour=5, minute=30), time_limit=3600, soft_time_limit=3600

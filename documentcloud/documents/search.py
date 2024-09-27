@@ -780,9 +780,9 @@ def _highlight_notes(response, text_query):
 def _add_canonical_url(results):
 
     for result in results:
-        result[
-            "canonical_url"
-        ] = f"{settings.DOCCLOUD_URL}/documents/{result['id']}-{result.get('slug', '')}"
+        result["canonical_url"] = (
+            f"{settings.DOCCLOUD_URL}/documents/{result['id']}-{result.get('slug', '')}"
+        )
     return results
 
 
