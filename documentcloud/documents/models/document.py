@@ -455,6 +455,7 @@ class Document(models.Model):
         if did_graft:
             file_names.append(self.doc_path)
             file_contents.append(grafted_pdf.convert_to_pdf())
+        grafted_pdf.close()
 
         # set the full text
         concatenated_text = b"\n\n".join(
@@ -497,6 +498,7 @@ class Document(models.Model):
             storage.simple_upload(
                 self.doc_path, grafted_pdf.convert_to_pdf(), access=self.access
             )
+        grafted_pdf.close()
 
     def _init_graft_pdf(self):
         """Initialize a new PDF to graft OCR text onto"""
@@ -509,6 +511,8 @@ class Document(models.Model):
                 height=pdf_page.rect.height,
             )
             pdf_page_img.insert_image(rect=pdf_page.rect, pixmap=pdf_pix_map)
+            pdf_pix_map = None
+            pymupdf.TOOLS.store_shrink(100)
         current_pdf.close()
         return grafted_pdf
 
