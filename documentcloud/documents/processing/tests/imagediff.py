@@ -5,6 +5,7 @@ alignment similarity of image files. This similarity method should be robust to
 equating the same images at different resolutions, while finding images with minor
 alterations (e.g. a small red square placed somewhere within) not similar.
 """
+
 # Standard Library
 import os
 import tempfile

@@ -18,6 +18,7 @@ There are three basic types of re-indexing:
     update our indexing options or upgrade to a new version of Solr.  This shares
     batch logic with dirty indexing
 """
+
 # Django
 from celery import chord, signature
 from django.conf import settings

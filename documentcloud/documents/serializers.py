@@ -270,9 +270,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             and "projects" in self.fields
             and isinstance(self.fields["projects"], ManyRelatedField)
         ):
-            self.fields[
-                "projects"
-            ].child_relation.queryset = Project.objects.get_addable(user)
+            self.fields["projects"].child_relation.queryset = (
+                Project.objects.get_addable(user)
+            )
 
     def _init_presigned_url(self, request, user, is_document, is_list):
         """Only shown presigned url if needed"""

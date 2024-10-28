@@ -68,7 +68,7 @@ billiard==3.6.4.0
     # via
     #   -r requirements/./base.txt
     #   celery
-black==22.6.0
+black==24.8.0
     # via -r requirements/local.in
 bleach==6.0.0
     # via -r requirements/./base.txt
@@ -401,9 +401,10 @@ orderedmultidict==1.0.1
     # via
     #   -r requirements/./base.txt
     #   furl
-packaging==21.3
+packaging==24.1
     # via
     #   -r requirements/./base.txt
+    #   black
     #   deprecation
     #   pikepdf
     #   pytest
@@ -534,10 +535,6 @@ pymupdfb==1.24.10
     # via
     #   -r requirements/./base.txt
     #   pymupdf
-pyparsing==2.4.2
-    # via
-    #   -r requirements/./base.txt
-    #   packaging
 pyrsistent==0.18.0
     # via
     #   -r requirements/./base.txt
@@ -729,6 +726,7 @@ typing-extensions==4.4.0
     # via
     #   -r requirements/./base.txt
     #   asgiref
+    #   black
     #   libcst
     #   typing-inspect
 typing-inspect==0.6.0

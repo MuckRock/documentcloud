@@ -120,6 +120,9 @@ SOCIAL_AUTH_TRAILING_SLASH = False
 SOCIAL_AUTH_SANITIZE_REDIRECTS = env.bool(
     "SOCIAL_AUTH_SANITIZE_REDIRECTS", default=True
 )
+SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS = env.list(
+    "SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS", default=[]
+)
 
 SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_details",
