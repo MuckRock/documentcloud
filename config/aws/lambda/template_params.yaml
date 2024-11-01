@@ -201,7 +201,7 @@ Resources:
       CodeUri: ./awsbin/ocr
       Environment:
         Variables:
-          LD_LIBRARY_PATH: /var/task/tesseract:/usr/lib64
+          LD_LIBRARY_PATH: /var/task/tesseract
           TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/ocr/timeout:latest}}"
           OCR_TOPIC: ocr-extraction-{$ENV$}
       # Trigger function via SNS
