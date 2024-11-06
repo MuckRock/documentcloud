@@ -124,6 +124,8 @@ cssutils==1.0.2
     # via
     #   -r requirements/./base.txt
     #   premailer
+daily-active-users==0.1.1
+    # via -r requirements/./base.txt
 decorator==4.4.0
     # via
     #   -r requirements/./base.txt
@@ -142,6 +144,7 @@ django==4.2.2
     # via
     #   -r requirements/./base.txt
     #   collectfast
+    #   daily-active-users
     #   django-anymail
     #   django-appconf
     #   django-celery-email
@@ -357,7 +360,7 @@ orderedmultidict==1.0.1
     # via
     #   -r requirements/./base.txt
     #   furl
-packaging==21.3
+packaging==24.1
     # via
     #   -r requirements/./base.txt
     #   deprecation
@@ -453,10 +456,6 @@ pyjwt==2.3.0
     #   social-auth-core
 pyopenssl==19.1.0
     # via urllib3
-pyparsing==2.4.2
-    # via
-    #   -r requirements/./base.txt
-    #   packaging
 pyrsistent==0.18.0
     # via
     #   -r requirements/./base.txt

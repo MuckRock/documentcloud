@@ -76,6 +76,8 @@ cssselect==1.1.0
     # via premailer
 cssutils==1.0.2
     # via premailer
+daily-active-users==0.1.1
+    # via -r requirements/base.in
 decorator==4.4.0
     # via
     #   gcsfs
@@ -89,6 +91,7 @@ deprecation==2.1.0
 django==4.2.2
     # via
     #   -r requirements/base.in
+    #   daily-active-users
     #   django-appconf
     #   django-choices
     #   django-cors-headers

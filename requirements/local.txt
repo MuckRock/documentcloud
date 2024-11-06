@@ -135,6 +135,8 @@ cssutils==1.0.2
     # via
     #   -r requirements/./base.txt
     #   premailer
+daily-active-users==0.1.1
+    # via -r requirements/./base.txt
 decorator==4.4.0
     # via
     #   -r requirements/./base.txt
@@ -155,6 +157,7 @@ dill==0.3.5.1
 django==4.2.2
     # via
     #   -r requirements/./base.txt
+    #   daily-active-users
     #   django-appconf
     #   django-choices
     #   django-cors-headers

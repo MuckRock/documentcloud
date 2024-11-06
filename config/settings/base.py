@@ -80,6 +80,7 @@ THIRD_PARTY_APPS = [
     "squarelet_auth.apps.SquareletAuthConfig",
     "django_premailer",
     "robots",
+    "daily_active_users.apps.DailyActiveUsersConfig",
 ]
 
 LOCAL_APPS = [
@@ -175,6 +176,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "documentcloud.core.middleware.LogHTTPMiddleware",
+    "daily_active_users.middleware.DailyActiveUserMiddleware",
 ]
 
 # STATIC
