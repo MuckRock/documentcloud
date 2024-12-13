@@ -30,7 +30,7 @@ aiosignal==1.2.0
     #   aiohttp
 alabaster==0.7.12
     # via sphinx
-amqp==2.6.1
+amqp==5.3.1
     # via
     #   -r requirements/./base.txt
     #   kombu
@@ -64,7 +64,7 @@ backcall==0.1.0
     # via
     #   -r requirements/./base.txt
     #   ipython
-billiard==3.6.4.0
+billiard==4.2.1
     # via
     #   -r requirements/./base.txt
     #   celery
@@ -91,7 +91,7 @@ cachetools==3.1.1
     # via
     #   -r requirements/./base.txt
     #   google-auth
-celery==4.4.7
+celery==5.4.0
     # via
     #   -r requirements/./base.txt
     #   squarelet-auth
@@ -113,10 +113,27 @@ charset-normalizer==2.1.0
     #   -r requirements/./base.txt
     #   aiohttp
     #   requests
-click==8.1.3
+click==8.1.7
     # via
+    #   -r requirements/./base.txt
     #   black
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
     #   pip-tools
+click-didyoumean==0.3.1
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+click-plugins==1.1.1
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+click-repl==0.3.0
+    # via
+    #   -r requirements/./base.txt
+    #   celery
 coverage==4.5.4
     # via
     #   -r requirements/local.in
@@ -336,7 +353,7 @@ joblib==1.0.1
     # via scikit-learn
 jsonschema==3.2.0
     # via -r requirements/./base.txt
-kombu==4.6.11
+kombu==5.4.2
     # via
     #   -r requirements/./base.txt
     #   celery
@@ -461,6 +478,7 @@ premailer==3.0.0
 prompt-toolkit==3.0.38
     # via
     #   -r requirements/./base.txt
+    #   click-repl
     #   ipython
 proto-plus==1.13.0
     # via
@@ -552,6 +570,7 @@ python-dateutil==2.8.2
     # via
     #   -r requirements/./base.txt
     #   botocore
+    #   celery
     #   faker
 python-jose==3.3.0
     # via
@@ -571,7 +590,6 @@ pytz==2022.1
     # via
     #   -r requirements/./base.txt
     #   babel
-    #   celery
     #   djangorestframework
     #   google-api-core
 pyyaml==5.3.1
@@ -690,7 +708,7 @@ sqlparse==0.4.4
     #   -r requirements/./base.txt
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.6
+squarelet-auth==0.1.7
     # via -r requirements/./base.txt
 stack-data==0.3.0
     # via
@@ -730,6 +748,11 @@ typing-inspect==0.6.0
     # via
     #   -r requirements/./base.txt
     #   libcst
+tzdata==2024.2
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+    #   kombu
 unidecode==1.1.1
     # via
     #   -r requirements/./base.txt
@@ -739,11 +762,12 @@ urllib3==1.26.10
     #   -r requirements/./base.txt
     #   botocore
     #   requests
-vine==1.3.0
+vine==5.1.0
     # via
     #   -r requirements/./base.txt
     #   amqp
     #   celery
+    #   kombu
 wand==0.6.6
     # via
     #   -r requirements/./base.txt

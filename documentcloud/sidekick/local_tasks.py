@@ -1,10 +1,10 @@
 # Django
-from celery.task import task
+from celery import shared_task
 
 # DocumentCloud
 from documentcloud.documents.processing.sidekick.main import preprocess
 
 
-@task
+@shared_task
 def sidekick_preprocess(data):
     preprocess(data)

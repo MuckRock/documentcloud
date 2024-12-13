@@ -3,6 +3,7 @@ Base settings to build other settings files upon.
 """
 
 # Django
+from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -356,6 +357,38 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = env.int(
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int(
     "CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=20 * 1024
 )
+
+
+CELERY_BEAT_SCHEDULE = {
+    "store_statistics": {
+        "task": "documentcloud.statistics.tasks.store_statistics",
+        "schedule": crontab(hour=5, minute=30),
+        "options": {
+            "time_limit": 3600,
+            "soft_time_limit": 3600,
+        },
+    },
+    "db_cleanup": {
+        "task": "documentcloud.statistics.tasks.db_cleanup",
+        "schedule": crontab(hour=6, minute=0),
+        "options": {
+            "time_limit": 1800,
+            "soft_time_limit": 1740,
+        },
+    },
+    "solr_index_dirty": {
+        "task": "documentcloud.documents.tasks.solr_index_dirty",
+        "schedule": crontab(minute=30),
+    },
+    "publish_scheduled_documents": {
+        "task": "documentcloud.documents.tasks.publish_scheduled_documents",
+        "schedule": 600,
+    },
+    "dispatch_events": {
+        "task": "documentcloud.addons.tasks.dispatch_events",
+        "schedule": crontab(minute="*/5"),
+    },
+}
 
 # django-compressor
 # ------------------------------------------------------------------------------
