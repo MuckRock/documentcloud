@@ -300,7 +300,7 @@ def set_page_text(document_pk, page_text_infos):
             document.index_on_commit(**kwargs)
 
 
-@task
+@shared_task
 def graft_text(document_pk):
     """Just graft the text from the positions file back into the PDF
     This is only used for documents which use the built in Textract OCR
