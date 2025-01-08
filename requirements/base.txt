@@ -16,7 +16,7 @@ aioitertools==0.10.0
     # via aiobotocore
 aiosignal==1.2.0
     # via aiohttp
-amqp==2.6.1
+amqp==5.3.1
     # via kombu
 argon2-cffi==19.1.0
     # via -r requirements/base.in
@@ -32,7 +32,7 @@ attrs==19.3.0
     #   jsonschema
 backcall==0.1.0
     # via ipython
-billiard==3.6.4.0
+billiard==4.2.1
     # via celery
 bleach==6.0.0
     # via -r requirements/base.in
@@ -50,7 +50,7 @@ botocore==1.24.21
     #   s3transfer
 cachetools==3.1.1
     # via google-auth
-celery==4.4.7
+celery==5.4.0
     # via
     #   -r requirements/base.in
     #   squarelet-auth
@@ -66,6 +66,18 @@ charset-normalizer==2.1.0
     # via
     #   aiohttp
     #   requests
+click==8.1.7
+    # via
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
+click-didyoumean==0.3.1
+    # via celery
+click-plugins==1.1.1
+    # via celery
+click-repl==0.3.0
+    # via celery
 cpuprofile==1.0.1
     # via -r requirements/base.in
 cryptography==35.0.0
@@ -76,6 +88,8 @@ cssselect==1.1.0
     # via premailer
 cssutils==1.0.2
     # via premailer
+daily-active-users==0.1.1
+    # via -r requirements/base.in
 decorator==4.4.0
     # via
     #   gcsfs
@@ -89,6 +103,7 @@ deprecation==2.1.0
 django==4.2.2
     # via
     #   -r requirements/base.in
+    #   daily-active-users
     #   django-appconf
     #   django-choices
     #   django-cors-headers
@@ -214,7 +229,7 @@ jmespath==0.9.4
     #   botocore
 jsonschema==3.2.0
     # via -r requirements/base.in
-kombu==4.6.11
+kombu==5.4.2
     # via celery
 libcst==0.4.1
     # via google-cloud-language
@@ -281,7 +296,9 @@ ply==3.11
 premailer==3.0.0
     # via django-premailer
 prompt-toolkit==3.0.38
-    # via ipython
+    # via
+    #   click-repl
+    #   ipython
 proto-plus==1.13.0
     # via google-cloud-language
 protobuf==4.25.2
@@ -318,7 +335,9 @@ pymupdfb==1.24.10
 pyrsistent==0.18.0
     # via jsonschema
 python-dateutil==2.8.2
-    # via botocore
+    # via
+    #   botocore
+    #   celery
 python-jose==3.3.0
     # via social-auth-core
 python-redis-lock[django]==3.3.1
@@ -330,7 +349,6 @@ python3-openid==3.1.0
 pytz==2022.1
     # via
     #   -r requirements/base.in
-    #   celery
     #   djangorestframework
     #   google-api-core
 pyyaml==5.3.1
@@ -403,7 +421,7 @@ sqlparse==0.4.4
     # via
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.6
+squarelet-auth==0.1.7
     # via -r requirements/base.in
 stack-data==0.3.0
     # via ipython
@@ -421,16 +439,21 @@ typing-extensions==4.4.0
     #   typing-inspect
 typing-inspect==0.6.0
     # via libcst
+tzdata==2024.2
+    # via
+    #   celery
+    #   kombu
 unidecode==1.1.1
     # via -r requirements/base.in
 urllib3==1.26.10
     # via
     #   botocore
     #   requests
-vine==1.3.0
+vine==5.1.0
     # via
     #   amqp
     #   celery
+    #   kombu
 wand==0.6.6
     # via pdfplumber
 wcwidth==0.1.8

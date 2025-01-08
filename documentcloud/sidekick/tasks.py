@@ -1,5 +1,5 @@
 # Django
-from celery.task import task
+from celery import shared_task
 from django.conf import settings
 from django.db import transaction
 
@@ -53,7 +53,7 @@ def _httpsub_submit(url, project_pk, json, task_):
             raise
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
@@ -68,7 +68,7 @@ def preprocess(project_pk):
     )
 
 
-@task
+@shared_task
 def lego_learn(sidekick_id, tag_name):
     """Start the lego learning"""
 
