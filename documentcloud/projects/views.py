@@ -136,6 +136,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "private": ["exact"],
                 "slug": ["exact"],
                 "title": ["exact"],
+                "id": ["in"],
             }
 
         def query_filter(self, queryset, name, value):
