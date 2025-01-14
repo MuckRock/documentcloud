@@ -143,7 +143,7 @@ cssutils==1.0.2
     # via
     #   -r requirements/./base.txt
     #   premailer
-daily-active-users==0.1.1
+daily-active-users==0.1.2
     # via -r requirements/./base.txt
 decorator==4.4.0
     # via
