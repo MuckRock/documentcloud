@@ -782,9 +782,7 @@ def _add_canonical_url(results):
     for result in results:
         id = result["id"]
         slug = result.get("slug", "")
-        result["canonical_url"] = (
-            f"{settings.DOCCLOUD_URL}/documents/{result['id']}-{result.get('slug', '')}/"
-        )
+        result["canonical_url"] = f"{settings.DOCCLOUD_URL}/documents/{id}-{slug}/"
     return results
 
 
