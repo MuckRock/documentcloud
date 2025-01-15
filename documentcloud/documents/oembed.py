@@ -35,7 +35,7 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
 
-        responsive = query.params.get("responsive") == "1"
+        responsive = query.params.get("responsive", "1") == "1"
         width, height = self.get_dimensions(document, max_width, max_height)
         style = self.get_style(responsive, max_width, max_height)
         oembed = {
@@ -57,7 +57,7 @@ class DocumentOEmbed(RichOEmbed):
         return {"src": src, **extra}
 
     def get_dimensions(self, document, max_width, max_height):
-        default_width = 700
+        default_width = 800
         aspect_ratio = document.aspect_ratio
         if max_width and max_height:
             # preserve user intention and break aspect ratio
