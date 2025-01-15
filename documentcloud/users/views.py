@@ -89,6 +89,7 @@ class UserViewSet(
                 "name": ["exact", "istartswith"],
                 "username": ["exact"],
                 "uuid": ["exact"],
+                "id": ["in"],
             }
 
     filterset_class = Filter

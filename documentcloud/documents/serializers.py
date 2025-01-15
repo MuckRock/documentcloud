@@ -444,7 +444,7 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         return request.user.has_perm("documents.change_document", obj)
 
     def get_canonical_url(self, obj):
-        return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}"
+        return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}/"
 
     def bulk_create_attrs(self, attrs):
         """Set the slug on bulk creation"""
