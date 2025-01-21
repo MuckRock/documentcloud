@@ -45,6 +45,7 @@ from documentcloud.projects.views import (
 )
 from documentcloud.sidekick.routers import SidekickRouter
 from documentcloud.sidekick.views import SidekickViewSet
+from documentcloud.statistics.views import StatisticsViewSet
 from documentcloud.users.views import MessageView, UserViewSet
 
 
@@ -62,6 +63,7 @@ router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 router.register("flatpages", FlatPageViewSet)
+router.register("statistics", StatisticsViewSet)
 
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
