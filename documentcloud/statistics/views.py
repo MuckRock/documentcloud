@@ -1,5 +1,5 @@
 # Django
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, permissions, viewsets
 
 # DocumentCloud
 from documentcloud.statistics.models import Statistics
@@ -15,3 +15,4 @@ class StatisticsViewSet(
     serializer_class = StatisticsSerializer
     queryset = Statistics.objects.all()
     filterset_fields = ("date",)
+    permission_classes = [permissions.IsAdminUser]
