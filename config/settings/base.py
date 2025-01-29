@@ -82,6 +82,7 @@ THIRD_PARTY_APPS = [
     "django_premailer",
     "robots",
     "daily_active_users.apps.DailyActiveUsersConfig",
+    "drf_spectacular",
 ]
 
 LOCAL_APPS = [
@@ -415,6 +416,7 @@ REST_FRAMEWORK = {
     "DEFAULT_VERSIONING_CLASS": "documentcloud.core.versioning.QueryParameterVersioning",
     "DEFAULT_VERSION": env("REST_FRAMEWORK_DEFAULT_VERSION", default="1.0"),
     "ALLOWED_VERSIONS": ["1.0", "2.0"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
 ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=100)
