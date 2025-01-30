@@ -50,7 +50,8 @@ can_add_remove = is_authenticated & is_edit_collaborator
 
 add_perm("projects.view_project", can_view)
 add_perm("projects.add_project", is_authenticated)
-add_perm("projects.change_project", can_change)
+add_perm("projects.change_project_all", can_change)
+add_perm("projects.change_project", can_view)
 add_perm("projects.add_remove_project", can_add_remove)
 add_perm("projects.delete_project", can_change)
 

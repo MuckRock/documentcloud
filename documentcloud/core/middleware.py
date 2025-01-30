@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.http.response import JsonResponse
+from rest_framework.views import APIView
 
 # Standard Library
 import logging
