@@ -418,6 +418,16 @@ REST_FRAMEWORK = {
     "ALLOWED_VERSIONS": ["1.0", "2.0"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "DocumentCloud API",
+    # 'DESCRIPTION': 'Your project description',
+    "VERSION": "2.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # OTHER SETTINGS
+    "PREPROCESSING_HOOKS": ["documentcloud.core.utils.custom_preprocessing_hook"],
+}
+
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
 ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=100)
 

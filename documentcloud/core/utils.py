@@ -19,3 +19,11 @@ def grouper(iterable, num, fillvalue=None):
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
     args = [iter(iterable)] * num
     return zip_longest(*args, fillvalue=fillvalue)
+
+
+def custom_preprocessing_hook(endpoints):
+    filtered = []
+    for path, path_regex, method, callback in endpoints:
+        if "api" in path:
+            filtered.append((path, path_regex, method, callback))
+    return filtered
