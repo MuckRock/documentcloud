@@ -8,6 +8,11 @@ from django.views.generic.base import RedirectView
 from rest_framework import permissions
 
 # Third Party
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
@@ -95,6 +100,12 @@ urlpatterns = [
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
     path("api/", include(sidekick_router.urls)),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/redoc/",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
     path("api/", include("documentcloud.oembed.urls")),
     path("api/messages/", MessageView.as_view(), name="message-create"),
     # Social Django
