@@ -23,6 +23,7 @@ from django_filters import rest_framework as django_filters
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
+from drf_spectacular.utils import extend_schema
 
 # DocumentCloud
 from documentcloud.addons.choices import Event
@@ -593,9 +594,21 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             return Response([])
 
     class Filter(django_filters.FilterSet):
-        user = ModelMultipleChoiceFilter(model=User)
-        organization = ModelMultipleChoiceFilter(model=Organization)
-        project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
+        user = ModelMultipleChoiceFilter(
+            model=User, 
+            help_text="Filter by users"
+        )
+        organization = ModelMultipleChoiceFilter(
+            model=Organization, 
+            help_text="Filter by which organization the document belongs to"
+        )
+        project = ModelMultipleChoiceFilter(
+            model=Project, 
+            field_name="projects", 
+            help_text=(
+                "Filter by which projects a document belongs to"
+            )
+        )
         access = ChoicesFilter(choices=Access)
         status = ChoicesFilter(choices=Status)
 

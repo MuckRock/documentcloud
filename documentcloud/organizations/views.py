@@ -72,6 +72,18 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"amount": exc.args[0]}, status=status.HTTP_400_BAD_REQUEST)
 
     class Filter(django_filters.FilterSet):
+        individual = django_filters.BooleanFilter(
+            help_text="Is this organization for the sole use of an individual."
+        )
+        slug = django_filters.CharFilter(
+            help_text="The slug is a URL-safe version of the organization name."
+        )
+        uuid = django_filters.UUIDFilter(
+            help_text="UUID which links this organization to the corresponding organization on the MuckRock Accounts Site."
+        )
+        name = django_filters.CharFilter(
+            help_text="The name of the organization."
+        )
         class Meta:
             model = Organization
             fields = {

@@ -16,7 +16,9 @@ from documentcloud.oembed.registry import registry
 
 
 class OEmbedView(APIView):
-    """oEmbed endpoint"""
+    """The oembed endpoint responds with the appropriate code 
+        allowing you to embed the resource (document, page, project, etc) on your website. 
+    """
 
     permission_classes = (AllowAny,)
 

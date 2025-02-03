@@ -33,7 +33,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         label=_("Active"), help_text=_("Show this add-on in your add-on menu")
     )
     user = serializers.PrimaryKeyRelatedField(
-        read_only=True, source="github_account.user"
+        read_only=True, source="github_account.user", help_text="The GitHub account username of the developer of the Add-On."
     )
 
     def __init__(self, *args, **kwargs):

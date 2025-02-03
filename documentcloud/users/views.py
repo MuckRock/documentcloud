@@ -47,7 +47,10 @@ class UserViewSet(
 
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
     def mailkey(self, request):
-        """Create a new mailkey for yourself"""
+        """
+            Create a new mailkey for yourself. 
+            This allows you to upload documents via email.
+        """
         if not self.request.user.is_authenticated:
             return Response({"error": "Unauthenticated"}, status=401)
 
@@ -77,10 +80,12 @@ class UserViewSet(
 
     class Filter(django_filters.FilterSet):
         organization = ModelMultipleChoiceFilter(
-            model=Organization, field_name="organizations"
+            model=Organization, field_name="organizations", help_text="The user's active organization"
         )
-        project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
-
+        project = ModelMultipleChoiceFilter(model=Project, field_name="projects", help_text="ID of projects the user has access to")
+        name = django_filters.CharFilter(help_text="The user's full name")
+        username = django_filters.CharFilter(help_text="The user's username")
+        uuid = django_filters.UUIDFilter(help_text="UUID which links this user to the corresponding user on the MuckRock Accounts Site")
         class Meta:
             model = User
             fields = {
@@ -91,7 +96,6 @@ class UserViewSet(
                 "uuid": ["exact"],
                 "id": ["in"],
             }
-
     filterset_class = Filter
 
 
@@ -101,7 +105,7 @@ class MessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, format=None):
-        """Send youself an email."""
+        """Send yourself an email, used by Add-Ons."""
         # pylint: disable=redefined-builtin, unused-argument
         serializer = MessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

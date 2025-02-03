@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 # Third Party
+from drf_spectacular.utils import extend_schema_field
 from rest_flex_fields.serializers import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -14,16 +15,18 @@ class UserSerializer(FlexFieldsModelSerializer):
     organization = serializers.IntegerField(
         source="organization.pk",
         label=_("Active Organization"),
-        help_text=_(
+        help_text=(
             "This is the user's current organization - it must be set to one of the "
             "organiations they are a member of"
         ),
     )
     verified_journalist = serializers.SerializerMethodField(
-        source="verified_organizations"
+        source="verified_organizations",
+        help_text =("Whether the user is a verified journalist or not")
     )
     admin_organizations = serializers.SerializerMethodField(
-        source="admin_organizations"
+        source="admin_organizations",
+        help_text=("List of organizations the user is an admin for")
     )
 
     class Meta:
@@ -43,12 +46,24 @@ class UserSerializer(FlexFieldsModelSerializer):
             "email",
         ]
         extra_kwargs = {
-            "avatar_url": {"read_only": True},
-            "name": {"read_only": True},
-            "organizations": {"read_only": True},
-            "username": {"read_only": True},
-            "email": {"read_only": True},
+            "avatar_url": {
+                "read_only": True
+            },
+            "name": {
+                "read_only": True
+            },
+            "organizations": {
+                "read_only": True,
+                "help_text": "A list of the IDs of the organizations this user belongs to."
+            },
+            "username": {
+                "read_only": True
+            },
+            "email": {
+                "read_only": True
+            },
         }
+
         expandable_fields = {
             "organization": ("documentcloud.organizations.OrganizationSerializer", {})
         }
@@ -87,6 +102,7 @@ class UserSerializer(FlexFieldsModelSerializer):
         else:
             return obj.verified_journalist
 
+    @extend_schema_field(serializers.ListField(child=serializers.IntegerField()))
     def get_admin_organizations(self, obj):
         """The organizations this user is an admin of"""
         # If doing a list of users, we preload the admin organizations

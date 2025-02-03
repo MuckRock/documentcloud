@@ -19,6 +19,11 @@ class EntitySerializer(FlexFieldsModelSerializer):
         help_text=Entity._meta.get_field("access").help_text,
     )
 
+    description = serializers.CharField(help_text="Description of the entity")
+    name = serializers.CharField(help_text="Name of the entity")
+    wikidata_id = serializers.IntegerField(help_text="The Wikidata ID of the entity")
+    wikipedia_url = serializers.CharField(help_text="Link to the entity on Wikipedia")
+
     class Meta:
         model = Entity
         list_serializer_class = BulkListSerializer
@@ -37,7 +42,10 @@ class EntitySerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
-            "user": {"read_only": True},
+            "user": {
+                "read_only": True,
+                "help_text": "The Github account username for the developer of the Add-On."
+            },
             # remove this as being required to allow private entities to be
             # created
             "wikidata_id": {"required": True},
