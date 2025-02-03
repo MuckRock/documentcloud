@@ -11,3 +11,5 @@ scout-apm
 django-storages[boto3]
 django-anymail[mailgun]
 django-celery-email
+
+drf-spectacular

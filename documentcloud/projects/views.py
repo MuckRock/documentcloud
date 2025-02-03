@@ -128,15 +128,50 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer._data["pinned"] = serializer.validated_data["pinned_w"]
 
     class Filter(django_filters.FilterSet):
-        user = ModelMultipleChoiceFilter(model=User, field_name="collaborators")
-        document = ModelMultipleChoiceFilter(model=Document, field_name="documents")
-        query = django_filters.CharFilter(method="query_filter", label="Query")
-        pinned = django_filters.BooleanFilter(field_name="pinned", label="Pinned")
+        user = ModelMultipleChoiceFilter(
+            model=User,
+            field_name="collaborators",
+            help_text="Filter by projects where this user is a collaborator",
+        )
+        document = ModelMultipleChoiceFilter(
+            model=Document,
+            field_name="documents",
+            help_text="Filter by projects which contain the given document",
+        )
+        query = django_filters.CharFilter(
+            method="query_filter", label="Query", help_text=""
+        )
+        pinned = django_filters.BooleanFilter(
+            field_name="pinned",
+            label="Pinned",
+            help_text="Filters by whether this project has been pinned by the user",
+        )
         is_shared = django_filters.BooleanFilter(
-            method="filter_is_shared", label="Shared"
+            method="filter_is_shared",
+            label="Shared",
+            help_text=(
+                "Filter projects by whether they are shared with the currently "
+                "logged in user. Excludes projects the user owns."
+            ),
         )
         owned_by_user = django_filters.BooleanFilter(
-            method="filter_owned_by_user", label="Owned"
+            method="filter_owned_by_user",
+            label="Owned",
+            help_text=(
+                "Filter projects by whether the currently logged in user "
+                "owns the project or not. Excludes projects shared "
+                "with the user as a collaborator."
+            ),
+        )
+        private = django_filters.BooleanFilter(
+            field_name="private", help_text="Whether the project is private or not"
+        )
+        slug = django_filters.CharFilter(
+            field_name="slug",
+            help_text="Filter by the slug, a URL safe version of the title",
+        )
+        title = django_filters.CharFilter(
+            field_name="title", help_text="Filters by the title of the project"
         )
 
         class Meta:

@@ -146,6 +146,16 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     pages = PageSerializer(required=False, write_only=True, many=True)
 
+    data = serializers.JSONField(
+        label=_("Custom Metadata"),
+        required=False,
+        help_text=_(
+            "A JSON object containing custom metadata for the document. "
+            "The keys should be alphanumeric strings, "
+            "and the values should be arrays of strings."
+        ),
+    )
+
     class Meta:
         model = Document
         list_serializer_class = BulkListSerializer
@@ -588,6 +598,8 @@ class EntityDateSerializer(serializers.ModelSerializer):
 
 
 class DataSerializer(serializers.Serializer):
+    """Custom metadata for a document in JSON format"""
+
     # pylint: disable=abstract-method
     values = serializers.ListSerializer(
         child=serializers.CharField(max_length=DATA_VALUE_LENGTH)

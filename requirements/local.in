@@ -38,3 +38,6 @@ requests-mock
 fasttext
 scikit-learn
 
+# Documentation
+# ------------------------------------------------------------------------------
+drf-spectacular

@@ -250,7 +250,9 @@ drf-flex-fields==1.0.0
 drf-nested-routers==0.91
     # via -r /app/requirements/base.txt
 drf-spectacular==0.28.0
-    # via -r /app/requirements/base.txt
+    # via
+    #   -r /app/requirements/base.txt
+    #   -r requirements/production.in
 ecdsa==0.13.2
     # via
     #   -r /app/requirements/base.txt
@@ -485,10 +487,10 @@ pyjwt==2.3.0
     #   djangorestframework-simplejwt
     #   social-auth-core
 pymupdf==1.24.10
-    # via -r requirements/./base.txt
+    # via -r /app/requirements/base.txt
 pymupdfb==1.24.10
     # via
-    #   -r requirements/./base.txt
+    #   -r /app/requirements/base.txt
     #   pymupdf
 pyopenssl==19.1.0
     # via urllib3

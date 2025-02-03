@@ -255,7 +255,9 @@ drf-flex-fields==1.0.0
 drf-nested-routers==0.91
     # via -r /app/requirements/base.txt
 drf-spectacular==0.28.0
-    # via -r /app/requirements/base.txt
+    # via
+    #   -r /app/requirements/base.txt
+    #   -r requirements/local.in
 ecdsa==0.13.2
     # via
     #   -r /app/requirements/base.txt
