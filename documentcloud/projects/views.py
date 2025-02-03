@@ -149,12 +149,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         is_shared = django_filters.BooleanFilter(
             method="filter_is_shared",
             label="Shared",
-            help_text="Filter projects by whether they are shared with the currently logged in user. Excludes projects the user owns.",
+            help_text=(
+                "Filter projects by whether they are shared with the currently "
+                "logged in user. Excludes projects the user owns."
+            ),
         )
         owned_by_user = django_filters.BooleanFilter(
             method="filter_owned_by_user",
             label="Owned",
-            help_text="Filter projects by whether the currently logged in user owns the project or not. Excludes projects shared with the user as a collaborator. ",
+            help_text=(
+                "Filter projects by whether the currently logged in user "
+                "owns the project or not. Excludes projects shared "
+                "with the user as a collaborator."
+            ),
         )
         private = django_filters.BooleanFilter(
             field_name="private", help_text="Whether the project is private or not"

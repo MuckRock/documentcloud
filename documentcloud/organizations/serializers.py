@@ -36,7 +36,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
     credit_reset_date = serializers.DateField(
         source="date_update",
         read_only=True,
-        help_text="The date that monthly_credits reset. Only viewable by organization members.",
+        help_text= (
+            "The date that monthly_credits reset. "
+            "Only viewable by organization members."
+        ),
     )
     monthly_credit_allowance = serializers.IntegerField(
         source="ai_credits_per_month",

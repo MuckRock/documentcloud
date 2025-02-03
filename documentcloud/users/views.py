@@ -92,7 +92,10 @@ class UserViewSet(
         name = django_filters.CharFilter(help_text="The user's full name")
         username = django_filters.CharFilter(help_text="The user's username")
         uuid = django_filters.UUIDFilter(
-            help_text="UUID which links this user to the corresponding user on the MuckRock Accounts Site"
+            help_text=(
+                "UUID which links this user to the corresponding user "
+                "on the MuckRock Accounts Site"
+            )
         )
 
         class Meta:

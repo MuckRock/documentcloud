@@ -79,7 +79,10 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
             help_text="The slug is a URL-safe version of the organization name."
         )
         uuid = django_filters.UUIDFilter(
-            help_text="UUID which links this organization to the corresponding organization on the MuckRock Accounts Site."
+            help_text=(
+                "UUID which links this organization to the "
+                "corresponding organization on the MuckRock Accounts Site."
+            )
         )
         name = django_filters.CharFilter(help_text="The name of the organization.")
 

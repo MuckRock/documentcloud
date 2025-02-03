@@ -150,7 +150,8 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         label=_("Custom Metadata"),
         required=False,
         help_text=_(
-            "A JSON object containing custom metadata for the document. The keys should be alphanumeric strings, "
+            "A JSON object containing custom metadata for the document. "
+            "The keys should be alphanumeric strings, "
             "and the values should be arrays of strings."
         ),
     )

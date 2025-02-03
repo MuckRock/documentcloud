@@ -20,7 +20,6 @@ from functools import lru_cache
 import environ
 import pysolr
 from django_filters import rest_framework as django_filters
-from drf_spectacular.utils import extend_schema
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
