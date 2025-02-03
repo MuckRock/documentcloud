@@ -105,8 +105,12 @@ class AddOnViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     class Filter(django_filters.FilterSet):
-        active = django_filters.BooleanFilter(field_name="active", label="Add-On marked as active")
-        premium = django_filters.BooleanFilter(method="premium_filter", label="Add-On requires credits to run.")
+        active = django_filters.BooleanFilter(
+            field_name="active", label="Add-On marked as active"
+        )
+        premium = django_filters.BooleanFilter(
+            method="premium_filter", label="Add-On requires credits to run."
+        )
         query = django_filters.CharFilter(method="query_filter", label="Query")
         category = django_filters.MultipleChoiceFilter(
             field_name="parameters",
@@ -123,10 +127,15 @@ class AddOnViewSet(viewsets.ModelViewSet):
                 ("statistical", "statistical"),
             ),
         )
-        default = django_filters.BooleanFilter(field_name="default", label="Enabled by default")
-        featured = django_filters.BooleanFilter(field_name = "featured", label="Marked as featured by the MuckRock team.")
-        repository = django_filters.CharFilter(label="Link to the Github repository for this Add-On")
-
+        default = django_filters.BooleanFilter(
+            field_name="default", label="Enabled by default"
+        )
+        featured = django_filters.BooleanFilter(
+            field_name="featured", label="Marked as featured by the MuckRock team."
+        )
+        repository = django_filters.CharFilter(
+            label="Link to the Github repository for this Add-On"
+        )
 
         def query_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
@@ -196,9 +205,14 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         cancel.delay(instance.uuid)
 
     class Filter(django_filters.FilterSet):
-        event = ModelChoiceFilter(model=AddOnEvent, help_text="Filter runs by a specific event ID.")
-        addon = ModelChoiceFilter(model=AddOn, help_text="Filter runs by a specific add-on ID.")
+        event = ModelChoiceFilter(
+            model=AddOnEvent, help_text="Filter runs by a specific event ID."
+        )
+        addon = ModelChoiceFilter(
+            model=AddOn, help_text="Filter runs by a specific add-on ID."
+        )
         dismissed = django_filters.BooleanFilter(help_text="Was this run dismissed?")
+
         class Meta:
             model = AddOnRun
             fields = {
@@ -227,7 +241,12 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
         serializer.save(user=self.request.user)
 
     class Filter(django_filters.FilterSet):
-        addon = django_filters.NumberFilter(field_name="addon", lookup_expr="exact", help_text="Filter events by a specific add-on ID.")
+        addon = django_filters.NumberFilter(
+            field_name="addon",
+            lookup_expr="exact",
+            help_text="Filter events by a specific add-on ID.",
+        )
+
         class Meta:
             model = AddOnEvent
             fields = ["addon"]

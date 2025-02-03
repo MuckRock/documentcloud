@@ -68,8 +68,13 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
                 )
 
     class Filter(django_filters.FilterSet):
-        name = django_filters.CharFilter(field_name="translations__name", help_text="The name of the entity")
-        wikidata_id = django_filters.CharFilter(help_text="The Wikidata ID of the entity")
+        name = django_filters.CharFilter(
+            field_name="translations__name", help_text="The name of the entity"
+        )
+        wikidata_id = django_filters.CharFilter(
+            help_text="The Wikidata ID of the entity"
+        )
+
         class Meta:
             model = Entity
             fields = {

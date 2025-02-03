@@ -81,9 +81,8 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
         uuid = django_filters.UUIDFilter(
             help_text="UUID which links this organization to the corresponding organization on the MuckRock Accounts Site."
         )
-        name = django_filters.CharFilter(
-            help_text="The name of the organization."
-        )
+        name = django_filters.CharFilter(help_text="The name of the organization.")
+
         class Meta:
             model = Organization
             fields = {
