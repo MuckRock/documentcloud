@@ -51,8 +51,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             "organizations": {
                 "read_only": True,
                 "help_text": (
-                    "A list of the IDs of the organizations "
-                    "this user belongs to."
+                    "A list of the IDs of the organizations " "this user belongs to."
                 ),
             },
             "username": {"read_only": True},

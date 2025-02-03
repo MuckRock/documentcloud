@@ -47,7 +47,7 @@ class EntitySerializer(FlexFieldsModelSerializer):
             # created
             "wikidata_id": {
                 "required": True,
-                "help_text": "The Wikidata ID of the entity"
+                "help_text": "The Wikidata ID of the entity",
             },
             "name": {"help_text": "Name of the entity"},
             "description": {"help_text": "Description of the entity"},

@@ -36,7 +36,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     credit_reset_date = serializers.DateField(
         source="date_update",
         read_only=True,
-        help_text= (
+        help_text=(
             "The date that monthly_credits reset. "
             "Only viewable by organization members."
         ),
