@@ -676,3 +676,9 @@ ANON_RL_MESSAGE = env(
     "in order to increase your limit.  If you believe you are seeing this "
     "message in error, please contact info@documentcloud.org",
 )
+
+# Page validation
+# ------------------------------------------------------------------------------
+MAX_POSITION_PAGES = env.int("MAX_POSITION_PAGES", default=20)
+MAX_NONPOSITION_PAGES = env.int("MAX_NONPOSITION_PAGES", default=50)
+GRAFT_DEBUG = env.bool("GRAFT_DEBUG", default=False)

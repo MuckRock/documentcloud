@@ -300,45 +300,6 @@ def set_page_text(document_pk, page_text_infos):
             document.index_on_commit(**kwargs)
 
 
-@shared_task
-def graft_text(document_pk):
-    """Just graft the text from the positions file back into the PDF
-    This is only used for documents which use the built in Textract OCR
-    """
-    # pylint: disable=broad-except
-    document = Document.objects.get(pk=document_pk)
-    page_json = document.get_all_page_text()
-
-    if (
-        "pages" not in page_json
-        or len(page_json["pages"]) == 0
-        or "ocr" not in page_json["pages"][0]
-        or page_json["pages"][0]["ocr"] is None
-        or not document.get_all_page_text()["pages"][0]["ocr"].startswith("textract")
-    ):
-        return
-
-    logger.info("[GRAFT TEXT] %d - setting status to readable", document_pk)
-    with transaction.atomic():
-        document.status = Status.readable
-        document.save()
-        document.index_on_commit(field_updates={"status": "set"})
-    kwargs = {"field_updates": {}}
-    try:
-        document.graft_text()
-    except Exception as exc:
-        logger.exception(
-            "[GRAFT TEXT] %d - exception: %s", document_pk, exc, exc_info=exc
-        )
-    finally:
-        with transaction.atomic():
-            logger.info("[GRAFT TEXT] %d - setting status to success", document_pk)
-            document.status = Status.success
-            document.save()
-            kwargs["field_updates"]["status"] = "set"
-            document.index_on_commit(**kwargs)
-
-
 # new solr
 
 
