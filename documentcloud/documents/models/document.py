@@ -435,7 +435,7 @@ class Document(models.Model):
             }
 
         if positions_present:
-            doc = self.graft_page_text(page_text_infos, file_names, file_contents)
+            doc = self._set_page_positions(page_text_infos, file_names, file_contents)
 
             # upload grafted pdf
             file_names.append(self.doc_path)
