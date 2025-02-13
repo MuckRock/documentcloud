@@ -489,9 +489,9 @@ class Document(models.Model):
 
         # put the full pdf back together with the newly grafted pages
         doc = pymupdf.open()
-        doc.insert(current_pdf, to_page=start_page - 1)
-        doc.insert(grafted_pdf)
-        doc.insert(current_pdf, from_page=stop_page + 1)
+        doc.insert_pdf(current_pdf, to_page=start_page - 1)
+        doc.insert_pdf(grafted_pdf)
+        doc.insert_pdf(current_pdf, from_page=stop_page + 1)
 
         current_pdf.close()
         grafted_pdf.close()
