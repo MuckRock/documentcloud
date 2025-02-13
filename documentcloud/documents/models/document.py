@@ -439,7 +439,7 @@ class Document(models.Model):
 
             # upload grafted pdf
             file_names.append(self.doc_path)
-            file_contents.append(doc.convert_to_pdf())
+            file_contents.append(doc.tobytes())
 
         # set the full text
         concatenated_text = b"\n\n".join(
