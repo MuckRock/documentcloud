@@ -468,20 +468,23 @@ class Document(models.Model):
         grafted_pdf = self._init_graft_pdf(current_pdf, start_page, stop_page)
 
         for page in pages:
+            page_number = page["page_number"]
             if page.get("positions"):
-                logger.info("[SET PAGE TEXT] %d - positions page %d", self.pk, page)
+                logger.info(
+                    "[SET PAGE TEXT] %d - positions page %d", self.pk, page_number
+                )
                 file_names.append(
-                    path.page_text_position_path(self.pk, self.slug, page)
+                    path.page_text_position_path(self.pk, self.slug, page_number)
                 )
                 positions = [{**p.pop("metadata", {}), **p} for p in page["positions"]]
                 file_contents.append(json.dumps(positions).encode("utf-8"))
 
-                logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page)
+                logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page_number)
                 # do the grafting
                 self._graft_page(
                     page["positions"],
                     grafted_pdf,
-                    page - start_page,
+                    page_number - start_page,
                 )
 
         # put the full pdf back together with the newly grafted pages
