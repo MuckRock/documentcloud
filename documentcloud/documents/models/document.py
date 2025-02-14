@@ -453,7 +453,11 @@ class Document(models.Model):
         file_contents.append(json.dumps(json_text).encode("utf-8"))
 
         # upload the text to S3
-        logger.info("[SET PAGE TEXT] upload %d", self.pk)
+        logger.info(
+            "[SET PAGE TEXT] upload %d - %d bytes",
+            self.pk,
+            sum(len(i) for i in file_contents),
+        )
         # reverse the lists to upload the larger files first
         storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
 
