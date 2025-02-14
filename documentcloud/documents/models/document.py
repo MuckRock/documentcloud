@@ -454,10 +454,17 @@ class Document(models.Model):
 
         # upload the text to S3
         logger.info(
-            "[SET PAGE TEXT] upload %d - %d bytes",
+            "[SET PAGE TEXT] upload %d - %d mb",
             self.pk,
-            sum(len(i) for i in file_contents),
+            sum(len(i) for i in file_contents) / 1000 / 1000,
         )
+        for name, contents in zip(file_names, file_contents):
+            logger.info(
+                "[SET PAGE TEXT] upload %d - %s: %d mb",
+                self.pk,
+                name,
+                len(contents) / 1000 / 1000,
+            )
         # reverse the lists to upload the larger files first
         storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
 
