@@ -15,7 +15,6 @@ from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access
 from documentcloud.documents.fields import ChoiceField
 
-
 class AddOnSerializer(FlexFieldsModelSerializer):
     access = ChoiceField(
         Access,
@@ -27,10 +26,10 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         label=_("Active"),
         default=False,
         write_only=True,
-        help_text=_("Show this add-on in your add-on menu"),
+        help_text=_("Whether this Add-On is pinned for you"),
     )
     active = serializers.SerializerMethodField(
-        label=_("Active"), help_text=_("Show this add-on in your add-on menu")
+        label=_("Active"), help_text=_("Whether this Add-On is pinned for you")
     )
     user = serializers.PrimaryKeyRelatedField(
         read_only=True,
@@ -104,7 +103,6 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "default": {"read_only": True},
             "featured": {"read_only": True},
         }
-
 
 class AddOnRunSerializer(FlexFieldsModelSerializer):
 
