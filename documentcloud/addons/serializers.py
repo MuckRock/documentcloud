@@ -15,6 +15,7 @@ from documentcloud.common.environment import storage
 from documentcloud.documents.choices import Access
 from documentcloud.documents.fields import ChoiceField
 
+
 class AddOnSerializer(FlexFieldsModelSerializer):
     access = ChoiceField(
         Access,
