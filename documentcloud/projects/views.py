@@ -14,6 +14,7 @@ from functools import lru_cache
 # Third Party
 import django_filters
 from django_filters.rest_framework.backends import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
@@ -51,6 +52,182 @@ def _solr_set(document):
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     queryset = Project.objects.none()
+
+    @extend_schema(
+        request=None,
+        responses={200: ProjectSerializer(many=True)},
+        examples=[
+            OpenApiExample(
+                "List Projects",
+                description="A response to a request to retrieve a list of projects.",
+                value=[
+                    {
+                        "id": 15757,
+                        "created_at": "2020-11-10T19:30:27.917057Z",
+                        "description": "",
+                        "edit_access": None,
+                        "add_remove_access": None,
+                        "private": False,
+                        "slug": "test",
+                        "title": "test",
+                        "updated_at": "2020-11-10T19:30:27.941148Z",
+                        "user": 6978,
+                        "pinned": False,
+                    },
+                    {
+                        "id": 15857,
+                        "created_at": "2020-12-14T17:19:34.372993Z",
+                        "description": "",
+                        "edit_access": None,
+                        "add_remove_access": None,
+                        "private": False,
+                        "slug": "test",
+                        "title": "test",
+                        "updated_at": "2020-12-14T17:19:34.414844Z",
+                        "user": 7695,
+                        "pinned": False,
+                    },
+                ],
+                response_only=True,
+            ),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        request=ProjectSerializer,
+        responses={201: ProjectSerializer},
+        examples=[
+            OpenApiExample(
+                "Create Project",
+                description="A request to create a new project.",
+                value={
+                    "title": "New Project",
+                    "description": "This is a description of the new project.",
+                    "private": False,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create Project Response",
+                description="A response for the creation of a new project.",
+                value={
+                    "id": 1,
+                    "created_at": "2020-10-23T15:59:33.780576Z",
+                    "description": "This is a description of the new project.",
+                    "edit_access": None,
+                    "add_remove_access": None,
+                    "private": False,
+                    "slug": "new-project-slug",
+                    "title": "New Project",
+                    "updated_at": "2020-10-23T15:59:33.896906Z",
+                    "user": 33,
+                    "pinned": False,
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        return response
+
+    @extend_schema(
+        request=None,
+        responses={200: ProjectSerializer},
+        examples=[
+            OpenApiExample(
+                "Retrieve Project",
+                description="A response for a retrieve request of a specific project by ID.", #pylint:disable=line-too-long
+                value={
+                    "id": 36,
+                    "created_at": "2020-10-23T15:59:33.780576Z",
+                    "description": "",
+                    "edit_access": None,
+                    "add_remove_access": None,
+                    "private": False,
+                    "slug": "congressional-research-reports",
+                    "title": "Congressional Research Reports",
+                    "updated_at": "2020-10-23T15:59:33.896906Z",
+                    "user": 33,
+                    "pinned": False,
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=ProjectSerializer,
+        responses={200: ProjectSerializer},
+        examples=[
+            OpenApiExample(
+                "Update Project",
+                description="A request to update an existing project.",
+                value={
+                    "description": "Updated description for the project.",
+                    "private": True,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Update Project Response",
+                description="A response showing the updated project.",
+                value={
+                    "id": 1,
+                    "created_at": "2020-10-23T15:59:33.780576Z",
+                    "description": "Updated description for the project.",
+                    "edit_access": None,
+                    "add_remove_access": None,
+                    "private": True,
+                    "slug": "congressional-research-reports",
+                    "title": "Congressional Research Reports",
+                    "updated_at": "2023-02-16T15:59:33.896906Z",
+                    "user": 33,
+                    "pinned": False,
+                },
+            ),
+        ],
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request=ProjectSerializer,
+        responses={200: ProjectSerializer},
+        examples=[
+            OpenApiExample(
+                "Partial Update Project",
+                description="A request to partially update an existing project.",
+                value={
+                    "pinned": True,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Partial Update Project Response",
+                description="A response showing the partially updated project",
+                value={
+                    "id": 1,
+                    "created_at": "2020-10-23T15:59:33.780576Z",
+                    "description": "Project description.",
+                    "edit_access": None,
+                    "add_remove_access": None,
+                    "private": False,
+                    "slug": "congressional-research-reports",
+                    "title": "Congressional Research Reports",
+                    "updated_at": "2023-02-16T15:59:33.896906Z",
+                    "user": 33,
+                    "pinned": True,
+                },
+            ),
+        ],
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = Project.objects.get_viewable(self.request.user).annotate_is_admin(

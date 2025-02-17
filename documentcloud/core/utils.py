@@ -23,7 +23,10 @@ def grouper(iterable, num, fillvalue=None):
 
 def custom_preprocessing_hook(endpoints):
     filtered = []
+    excluded_endpoints = ["statistics", "sidekick", "legacy"]
     for path, path_regex, method, callback in endpoints:
-        if "api" in path and "statistics" not in path:
+        if "api" in path and not any(
+            excluded in path for excluded in excluded_endpoints
+        ):
             filtered.append((path, path_regex, method, callback))
     return filtered
