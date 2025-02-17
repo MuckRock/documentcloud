@@ -1,3 +1,5 @@
+# pylint:disable = too-many-lines
+
 # Django
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
@@ -37,6 +39,7 @@ from functools import lru_cache
 import requests
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework.backends import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from furl import furl
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded
@@ -65,6 +68,317 @@ logger = logging.getLogger(__name__)
 class AddOnViewSet(viewsets.ModelViewSet):
     serializer_class = AddOnSerializer
     queryset = AddOn.objects.none()
+
+    @extend_schema(
+        request=AddOnRunSerializer,
+        responses={201: AddOnRunSerializer},
+        examples=[
+            OpenApiExample(
+                "Create Request",
+                description="An example request for creating a new Add-On.",
+                value={
+                    "addon": 11,
+                    "progress": 50,
+                    "message": "Exporting notes...",
+                    "file_name": "notes-export.zip",
+                    "dismissed": False,
+                    "parameters": {},
+                    "rating": None,
+                    "comment": "Export in progress",
+                    "credits_spent": 0,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create Response",
+                description="An example response for creating a new Add-On.",
+                value={
+                    "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "addon": 11,
+                    "user": 20080,
+                    "status": "in_progress",
+                    "progress": 50,
+                    "message": "Exporting notes...",
+                    "file_url": "https://example.com/note-export.zip",
+                    "file_expires_at": "2025-02-20T12:34:56Z",
+                    "dismissed": False,
+                    "rating": None,
+                    "comment": "Export in progress",
+                    "credits_spent": 0,
+                    "created_at": "2025-02-16T10:00:00Z",
+                    "updated_at": "2025-02-16T10:15:00Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={200: AddOnRunSerializer},
+        examples=[
+            OpenApiExample(
+                "List Add-On Runs",
+                description="An example response for listing Add-Ons.",
+                value=[
+                    {
+                        "id": 8,
+                        "user": 20080,
+                        "organization": 125,
+                        "access": "public",
+                        "name": "Bulk Edit",
+                        "repository": "MuckRock/documentcloud-bulk-edit-addon",
+                        "parameters": {
+                            "type": "object",
+                            "title": "Bulk Edit",
+                            "version": 2,
+                            "documents": ["query"],
+                            "categories": ["bulk"],
+                            "properties": {
+                                "source": {"type": "string", "title": "Source"},
+                                "description": {
+                                    "type": "string",
+                                    "title": "Description",
+                                },
+                                "published_url": {
+                                    "type": "string",
+                                    "title": "Published URL",
+                                    "format": "uri",
+                                },
+                                "related_article": {
+                                    "type": "string",
+                                    "title": "Related Article URL",
+                                    "format": "uri",
+                                },
+                            },
+                            "description": (
+                                "<p>This will update document information for all"
+                                " documents in your current search. Please be sure you"
+                                " have edit access to these documents before running"
+                                " this add-on.</p>"
+                            ),
+                            "instructions": "",
+                        },
+                        "created_at": "2022-04-20T13:44:49.028548Z",
+                        "updated_at": "2025-02-13T18:20:04.256135Z",
+                        "active": True,
+                        "default": False,
+                        "featured": False,
+                    },
+                    {
+                        "id": 9,
+                        "user": 20080,
+                        "organization": 125,
+                        "access": "public",
+                        "name": "Regex Extractor",
+                        "repository": "MuckRock/documentcloud-regex-addon",
+                        "parameters": {
+                            "type": "object",
+                            "title": "Regex Extractor",
+                            "required": ["regex"],
+                            "documents": ["selected", "query"],
+                            "categories": ["extraction"],
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "title": "Key",
+                                    "default": "_tag",
+                                    "description": (
+                                        "Use a key-value pair, where your regex match"
+                                        " is the value and you set the key. Keep _tag"
+                                        " if you want the regular expression match to"
+                                        ' appear as a standalone "tag" and not a'
+                                        " key-value pair."
+                                    ),
+                                },
+                                "regex": {
+                                    "type": "string",
+                                    "title": "Regex",
+                                    "description": (
+                                        "The regular expression that you would like to"
+                                        " search your documents for."
+                                    ),
+                                },
+                                "annotate": {
+                                    "type": "boolean",
+                                    "title": "Annotate",
+                                    "default": False,
+                                    "description": (
+                                        "Annotate pages where regex matches are found."
+                                    ),
+                                },
+                                "annotation_access": {
+                                    "enum": [
+                                        "private",
+                                        "organization",
+                                        "public",
+                                    ],
+                                    "type": "string",
+                                    "title": "Access Level",
+                                    "default": "private",
+                                    "description": (
+                                        "Access level for posted annotations with"
+                                        " matches."
+                                    ),
+                                },
+                            },
+                            "description": (
+                                "<p>Given a regular expression as input, this Add-On"
+                                " searches through each document for matches. You can"
+                                " choose to add &ldquo;tags&rdquo; or"
+                                " &ldquo;key-value&rdquo; pairs to your document so"
+                                " that the document is marked with the first instance"
+                                " of the match that is found. This Add-On also outputs"
+                                " a CSV that lists all matches found in a given"
+                                " document and the page number the match was found on."
+                                " This can be helpful for analysis or inspecting your"
+                                " results</p>"
+                            ),
+                            "instructions": "",
+                        },
+                        "created_at": "2022-04-20T13:44:49.038381Z",
+                        "updated_at": "2024-12-07T03:39:12.837192Z",
+                        "active": False,
+                        "default": False,
+                        "featured": False,
+                    },
+                ],
+            ),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={200: AddOnSerializer},
+        examples=[
+            OpenApiExample(
+                "Retrieve Add-On",
+                description="An example response for retrieving an Add-On.",
+                value={
+                    "id": 11,
+                    "user": 20080,
+                    "organization": 125,
+                    "access": "public",
+                    "name": "Note Exporter",
+                    "repository": "MuckRock/documentcloud-note-export-addon",
+                    "parameters": {
+                        "type": "object",
+                        "title": "Note Exporter",
+                        "documents": ["selected", "query"],
+                        "categories": ["export"],
+                        "properties": {},
+                        "description": (
+                            "<p>Export notes from the selected documents as text files"
+                            " in a zip file</p>"
+                        ),
+                        "instructions": "",
+                    },
+                    "created_at": "2022-04-20T13:44:49.055986Z",
+                    "updated_at": "2024-12-03T16:09:50.426796Z",
+                    "active": False,
+                    "default": False,
+                    "featured": False,
+                },
+            ),
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnSerializer,
+        responses=AddOnSerializer,
+        examples=[
+            OpenApiExample(
+                "Full Update Request",
+                description="An example request for a full update of an add-on.",
+                value={"active": True, "organization": 125},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Full Update Response",
+                description="A response example after successfully updating an add-on.",
+                value={
+                    "id": 11,
+                    "user": 20080,
+                    "organization": 125,
+                    "access": "public",
+                    "name": "Note Exporter",
+                    "repository": "MuckRock/documentcloud-note-export-addon",
+                    "parameters": {
+                        "type": "object",
+                        "title": "Note Exporter",
+                        "documents": ["selected", "query"],
+                        "categories": ["export"],
+                        "properties": {},
+                        "description": (
+                            "<p>Export notes from the selected documents as text files"
+                            " in a zip file</p>"
+                        ),
+                        "instructions": "",
+                    },
+                    "created_at": "2022-04-20T13:44:49.055986Z",
+                    "updated_at": "2025-02-16T12:34:56Z",
+                    "active": True,
+                    "default": False,
+                    "featured": False,
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnSerializer,
+        responses=AddOnSerializer,
+        examples=[
+            OpenApiExample(
+                "Partial Update Request",
+                description="An example request for a partial update of an add-on.",
+                value={"active": True},  # Only updating the 'active' field
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Partial Update Response",
+                description=(
+                    "A response example after successfully performing a partial update"
+                    " on an add-on."
+                ),
+                value={
+                    "id": 11,
+                    "user": 20080,
+                    "organization": 125,
+                    "access": "public",
+                    "name": "Note Exporter",
+                    "repository": "MuckRock/documentcloud-note-export-addon",
+                    "parameters": {
+                        "type": "object",
+                        "title": "Note Exporter",
+                        "documents": ["selected", "query"],
+                        "categories": ["export"],
+                        "properties": {},
+                        "description": (
+                            "<p>Export notes from the selected documents as text files"
+                            " in a zip file</p>"
+                        ),
+                        "instructions": "",
+                    },
+                    "created_at": "2022-04-20T13:44:49.055986Z",
+                    "updated_at": "2025-02-16T12:34:56Z",
+                    "active": True,
+                    "default": False,
+                    "featured": False,
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = (
@@ -131,7 +445,8 @@ class AddOnViewSet(viewsets.ModelViewSet):
             field_name="default", label="Enabled by default"
         )
         featured = django_filters.BooleanFilter(
-            field_name="featured", label="Marked as featured by the MuckRock team."
+            field_name="featured",
+            label="Marked as featured by the MuckRock team.",
         )
         repository = django_filters.CharFilter(
             label="Link to the Github repository for this Add-On"
@@ -178,6 +493,217 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: AddOnRunSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "List Add-On Runs",
+                description=(
+                    "A response for a request to retrieve a list of all add-on runs."
+                ),
+                value=[
+                    {
+                        "uuid": "267f4e1a-9b66-4feb-9347-77a15832023c",
+                        "addon": 436,
+                        "user": 102112,
+                        "status": "success",
+                        "progress": 0,
+                        "message": "No changes detected on the site",
+                        "file_url": None,
+                        "file_expires_at": None,
+                        "dismissed": True,
+                        "rating": 0,
+                        "comment": "",
+                        "credits_spent": 0,
+                        "created_at": "2025-02-16T00:10:00.244385Z",
+                        "updated_at": "2025-02-16T00:10:18.774025Z",
+                    },
+                    {
+                        "uuid": "fceef811-cf11-4be3-a22d-2e3e9f6c7e8b",
+                        "addon": 436,
+                        "user": 102112,
+                        "status": "success",
+                        "progress": 0,
+                        "message": "No changes detected on the site",
+                        "file_url": None,
+                        "file_expires_at": None,
+                        "dismissed": True,
+                        "rating": 0,
+                        "comment": "",
+                        "credits_spent": 0,
+                        "created_at": "2025-02-15T00:10:00.406270Z",
+                        "updated_at": "2025-02-15T00:10:26.128542Z",
+                    },
+                ],
+                response_only=True,
+            ),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: AddOnRunSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Retrieve Add-On Run",
+                description="A request to retrieve details of a specific add-on run.",
+                value={
+                    "uuid": "267f4e1a-9b66-4feb-9347-77a15832023c",
+                    "addon": 436,
+                    "user": 102112,
+                    "status": "success",
+                    "progress": 0,
+                    "message": "No changes detected on the site",
+                    "file_url": None,
+                    "file_expires_at": None,
+                    "dismissed": True,
+                    "rating": 0,
+                    "comment": "",
+                    "credits_spent": 0,
+                    "created_at": "2025-02-16T00:10:00.244385Z",
+                    "updated_at": "2025-02-16T00:10:18.774025Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnRunSerializer,
+        responses={201: AddOnRunSerializer},
+        examples=[
+            OpenApiExample(
+                "Create Add-On Run Request",
+                description="A request to create a new add-on run.",
+                value={
+                    "addon": 436,
+                    "parameters": {"param1": "value1"},
+                    "credits_spent": 5,
+                    "dismissed": True,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create Add-On Run Response",
+                description="A response after successfully creating an add-on run.",
+                value={
+                    "uuid": "267f4e1a-9b66-4feb-9347-77a15832023c",
+                    "addon": 436,
+                    "user": 102112,
+                    "status": "queued",
+                    "progress": 0,
+                    "message": "Running the add-on...",
+                    "file_url": None,
+                    "file_expires_at": None,
+                    "dismissed": True,
+                    "rating": None,
+                    "comment": "",
+                    "credits_spent": 5,
+                    "created_at": "2025-02-16T00:10:00.244385Z",
+                    "updated_at": "2025-02-16T00:10:18.774025Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnRunSerializer,
+        responses={200: AddOnRunSerializer},
+        examples=[
+            OpenApiExample(
+                "Update Add-On Run Request",
+                description="A request to update an existing add-on run.",
+                value={
+                    "status": "in_progress",
+                    "progress": 50,
+                    "message": "Processing...",
+                    "dismissed": False,
+                    "credits_spent": 10,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Update Add-On Run Response",
+                description="A response after successfully updating an add-on run.",
+                value={
+                    "uuid": "267f4e1a-9b66-4feb-9347-77a15832023c",
+                    "addon": 436,
+                    "user": 102112,
+                    "status": "in_progress",
+                    "progress": 50,
+                    "message": "Processing...",
+                    "file_url": None,
+                    "file_expires_at": None,
+                    "dismissed": False,
+                    "rating": 4,
+                    "comment": "Good progress",
+                    "credits_spent": 10,
+                    "created_at": "2025-02-16T00:10:00.244385Z",
+                    "updated_at": "2025-02-16T00:15:00.244385Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnRunSerializer,
+        responses={200: AddOnRunSerializer},
+        examples=[
+            OpenApiExample(
+                "Partial Update Add-On Run Request (Update Message Only)",
+                description=(
+                    "A request to partially update an existing add-on run by changing"
+                    " only the message."
+                ),
+                value={
+                    "message": "The process is almost complete!",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Partial Update Add-On Run Response (Message Updated)",
+                description=(
+                    "A response after successfully partially updating an add-on run"
+                    " with the new message."
+                ),
+                value={
+                    "uuid": "267f4e1a-9b66-4feb-9347-77a15832023c",
+                    "addon": 436,
+                    "user": 102112,
+                    "status": "in_progress",
+                    "progress": 50,
+                    "message": "The process is almost complete!",
+                    "file_url": None,
+                    "file_expires_at": None,
+                    "dismissed": False,
+                    "rating": 4,
+                    "comment": "Good progress",
+                    "credits_spent": 10,
+                    "created_at": "2025-02-16T00:10:00.244385Z",
+                    "updated_at": "2025-02-16T00:15:00.244385Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):
@@ -228,6 +754,197 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
     serializer_class = AddOnEventSerializer
     queryset = AddOnEvent.objects.none()
     permit_list_expands = ["addon"]
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: AddOnEventSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "List Add-On Events",
+                description=(
+                    "A response to a request to retrieve a list of all add-on events"
+                    " viewable by the user."
+                ),
+                value=[
+                    {
+                        "id": 616,
+                        "addon": 436,
+                        "user": 102112,
+                        "parameters": {
+                            "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
+                            "selector": "*",
+                        },
+                        "event": 0,
+                        "scratch": {"timestamp": "20230703130357"},
+                        "created_at": "2023-07-03T01:02:09.025856Z",
+                        "updated_at": "2023-07-15T06:20:35.502166Z",
+                    },
+                    {
+                        "id": 617,
+                        "addon": 388,
+                        "user": 102112,
+                        "parameters": {
+                            "site": "https://github.com/duckduckgrayduck/bulk-reprocress-addon/issues",  # pylint:disable=line-too-long
+                            "selector": "*",
+                        },
+                        "event": 0,
+                        "scratch": {},
+                        "created_at": "2023-07-03T02:14:13.954076Z",
+                        "updated_at": "2023-07-03T04:02:16.471265Z",
+                    },
+                ],
+                response_only=True,
+            ),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnEventSerializer,
+        responses={201: AddOnEventSerializer},
+        examples=[
+            OpenApiExample(
+                "Create Add-On Event Request",
+                description="A request to create a new add-on event.",
+                value={
+                    "addon": 436,
+                    "parameters": {
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
+                        "selector": "*",
+                    },
+                    "event": 1,
+                    "scratch": {},
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create Add-On Event Response",
+                description="A response after successfully creating an add-on event.",
+                value={
+                    "id": 618,
+                    "addon": 436,
+                    "user": 102112,
+                    "parameters": {
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
+                        "selector": "*",
+                    },
+                    "event": 1,
+                    "scratch": {},
+                    "created_at": "2025-02-16T00:10:00.244385Z",
+                    "updated_at": "2025-02-16T00:10:18.774025Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: AddOnEventSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Retrieve Add-On Event",
+                description="A response to retrieve a specific add-on event by its ID.",
+                value={
+                    "id": 616,
+                    "addon": 436,
+                    "user": 102112,
+                    "parameters": {
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
+                        "selector": "*",
+                    },
+                    "event": 0,
+                    "scratch": {"timestamp": "20230703130357"},
+                    "created_at": "2023-07-03T01:02:09.025856Z",
+                    "updated_at": "2023-07-15T06:20:35.502166Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnEventSerializer,
+        responses={200: AddOnEventSerializer},
+        examples=[
+            OpenApiExample(
+                "Update Add-On Event Request",
+                description="A request to update an add-on event.",
+                value={
+                    "addon": 436,
+                    "event": 0,
+                    "scratch": {"timestamp": "20230810101000"},
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Update Add-On Event Response",
+                description="A response after successfully updating an add-on event.",
+                value={
+                    "id": 616,
+                    "addon": 436,
+                    "user": 102112,
+                    "parameters": {
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
+                        "selector": "*",
+                    },
+                    "event": 0,
+                    "scratch": {"timestamp": "20230810101000"},
+                    "created_at": "2023-07-03T01:02:09.025856Z",
+                    "updated_at": "2025-02-16T00:10:18.774025Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request=AddOnEventSerializer,
+        responses={200: AddOnEventSerializer},
+        examples=[
+            OpenApiExample(
+                "Partial Update Add-On Event Request",
+                description="A request to partially update an add-on event.",
+                value={
+                    "event": 0,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Partial Update Add-On Event Response",
+                description=(
+                    "A response after successfully partially updating an add-on event."
+                ),
+                value={
+                    "id": 616,
+                    "addon": 436,
+                    "user": 102112,
+                    "parameters": {
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
+                        "selector": "*",
+                    },
+                    "event": 0,
+                    "scratch": {"timestamp": "20230901090900"},
+                    "created_at": "2023-07-03T01:02:09.025856Z",
+                    "updated_at": "2025-02-16T00:10:18.774025Z",
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):
@@ -357,7 +1074,8 @@ def dashboard(request):
                         "runs", filter=Q(runs__status="failure") & start_filter
                     ),
                     cancelled_count=Count(
-                        "runs", filter=Q(runs__status="cancelled") & start_filter
+                        "runs",
+                        filter=Q(runs__status="cancelled") & start_filter,
                     ),
                     fail_rate=Case(
                         When(run_count=0, then=0),

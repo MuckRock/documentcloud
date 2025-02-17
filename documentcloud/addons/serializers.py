@@ -27,10 +27,10 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         label=_("Active"),
         default=False,
         write_only=True,
-        help_text=_("Show this add-on in your add-on menu"),
+        help_text=_("Whether this Add-On is pinned for you"),
     )
     active = serializers.SerializerMethodField(
-        label=_("Active"), help_text=_("Show this add-on in your add-on menu")
+        label=_("Active"), help_text=_("Whether this Add-On is pinned for you")
     )
     user = serializers.PrimaryKeyRelatedField(
         read_only=True,
