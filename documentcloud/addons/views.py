@@ -773,7 +773,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                         "addon": 436,
                         "user": 102112,
                         "parameters": {
-                            "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues", #pylint:disable=line-too-long
+                            "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
                             "selector": "*",
                         },
                         "event": 0,
@@ -786,7 +786,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                         "addon": 388,
                         "user": 102112,
                         "parameters": {
-                            "site": "https://github.com/duckduckgrayduck/bulk-reprocress-addon/issues", #pylint:disable=line-too-long
+                            "site": "https://github.com/duckduckgrayduck/bulk-reprocress-addon/issues",  # pylint:disable=line-too-long
                             "selector": "*",
                         },
                         "event": 0,
@@ -812,7 +812,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                 value={
                     "addon": 436,
                     "parameters": {
-                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues", #pylint:disable=line-too-long
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
                         "selector": "*",
                     },
                     "event": 1,
@@ -828,7 +828,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                     "addon": 436,
                     "user": 102112,
                     "parameters": {
-                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues", #pylint:disable=line-too-long
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
                         "selector": "*",
                     },
                     "event": 1,
@@ -857,7 +857,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                     "addon": 436,
                     "user": 102112,
                     "parameters": {
-                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues", #pylint:disable=line-too-long
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
                         "selector": "*",
                     },
                     "event": 0,
@@ -894,7 +894,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                     "addon": 436,
                     "user": 102112,
                     "parameters": {
-                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues", #pylint:disable=line-too-long
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
                         "selector": "*",
                     },
                     "event": 0,
@@ -931,7 +931,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                     "addon": 436,
                     "user": 102112,
                     "parameters": {
-                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues", #pylint:disable=line-too-long
+                        "site": "https://github.com/duckduckgrayduck/pdf-splitter-add-on/issues",  # pylint:disable=line-too-long
                         "selector": "*",
                     },
                     "event": 0,

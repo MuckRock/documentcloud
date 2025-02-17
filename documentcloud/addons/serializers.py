@@ -105,6 +105,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "featured": {"read_only": True},
         }
 
+
 class AddOnRunSerializer(FlexFieldsModelSerializer):
 
     presigned_url = serializers.SerializerMethodField(

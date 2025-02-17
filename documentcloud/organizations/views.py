@@ -37,7 +37,7 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
                 value=[
                     {
                         "id": 1,
-                        "avatar_url": "https://cdn.muckrock.com/static/images/avatars/organization.png", #pylint:disable=line-too-long
+                        "avatar_url": "https://cdn.muckrock.com/static/images/avatars/organization.png",  # pylint:disable=line-too-long
                         "individual": False,
                         "name": "DocumentCloud",
                         "slug": "dcloud",
@@ -45,7 +45,7 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
                     },
                     {
                         "id": 2,
-                        "avatar_url": "https://cdn.muckrock.com/static/images/avatars/organization.png", #pylint:disable=line-too-long
+                        "avatar_url": "https://cdn.muckrock.com/static/images/avatars/organization.png",  # pylint:disable=line-too-long
                         "individual": False,
                         "name": "Talking Points Memo",
                         "slug": "tpm",
@@ -65,10 +65,10 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
         examples=[
             OpenApiExample(
                 "Retrieve Organization",
-                description="A response for a retrieve request of a specific organization by ID.", #pylint:disable=line-too-long
+                description="A response for a retrieve request of a specific organization by ID.",  # pylint:disable=line-too-long
                 value={
                     "id": 1,
-                    "avatar_url": "https://cdn.muckrock.com/static/images/avatars/organization.png", #pylint:disable=line-too-long
+                    "avatar_url": "https://cdn.muckrock.com/static/images/avatars/organization.png",  # pylint:disable=line-too-long
                     "individual": False,
                     "name": "DocumentCloud",
                     "slug": "dcloud",

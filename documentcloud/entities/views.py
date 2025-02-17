@@ -76,7 +76,7 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
         examples=[
             OpenApiExample(
                 "Retrieve Entity",
-                description="A response for a retrieve request of a specific entity by ID.", #pylint:disable=line-too-long
+                description="A response for a retrieve request of a specific entity by ID.",  # pylint:disable=line-too-long
                 value={
                     "id": 1,
                     "name": "Common Era",

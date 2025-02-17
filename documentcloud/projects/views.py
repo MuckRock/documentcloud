@@ -139,7 +139,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         examples=[
             OpenApiExample(
                 "Retrieve Project",
-                description="A response for a retrieve request of a specific project by ID.", #pylint:disable=line-too-long
+                description="A response for a retrieve request of a specific project by ID.",  # pylint:disable=line-too-long
                 value={
                     "id": 36,
                     "created_at": "2020-10-23T15:59:33.780576Z",
