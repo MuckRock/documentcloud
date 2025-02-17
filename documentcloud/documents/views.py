@@ -20,6 +20,7 @@ from functools import lru_cache
 import environ
 import pysolr
 from django_filters import rest_framework as django_filters
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
@@ -93,7 +94,7 @@ logger = logging.getLogger(__name__)
 # served beneath that route.  We set the 'no-cache' Cache-Control header to disable
 # the caching for all views besides the ones we explicitly set
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, line-too-long
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
@@ -112,6 +113,166 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     permission_classes = (
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
     )
+
+    @extend_schema(
+        responses={200: DocumentSerializer},
+        examples=[
+            OpenApiExample(
+                "List Documents",
+                description="A response from a request to retrieve a list of documents.",
+                value=[
+                    {
+                        "id": 1,
+                        "access": "public",
+                        "admin_noindex": False,
+                        "asset_url": "https://s3.documentcloud.org/",
+                        "canonical_url": "https://www.documentcloud.org/documents/1-a-i-g-bailout-the-inspector-generals-report/",
+                        "created_at": "2010-02-22T19:48:08.738905Z",
+                        "description": "Neil Barofsky's report concludes that officials overseeing the rescue of the American International Group might have overpaid other banks to wrap up A.I.G.'s financial obligations.",
+                        "edit_access": True,
+                        "file_hash": "",
+                        "noindex": False,
+                        "language": "eng",
+                        "organization": 1,
+                        "original_extension": "pdf",
+                        "page_count": 47,
+                        "page_spec": "612.0x792.0:0-46",
+                        "projects": [46386],
+                        "publish_at": None,
+                        "published_url": "",
+                        "related_article": "",
+                        "revision_control": False,
+                        "slug": "a-i-g-bailout-the-inspector-generals-report",
+                        "source": "Office of the Special Inspector General for T.A.R.P.",
+                        "status": "success",
+                        "title": "A.I.G. Bailout: The Inspector General's Report",
+                        "updated_at": "2020-11-10T16:23:31.154198Z",
+                        "user": 1,
+                    },
+                    {
+                        "id": 2,
+                        "access": "public",
+                        "admin_noindex": False,
+                        "asset_url": "https://s3.documentcloud.org/",
+                        "canonical_url": "https://www.documentcloud.org/documents/2-president-obamas-health-care-proposal/",
+                        "created_at": "2010-02-22T19:57:44.131650Z",
+                        "description": "On Feb. 22, 2010, the Obama Administration released a detailed proposal outlining the President's plan for a compromise among the House and Senate versions of a health care bill, and Republican concerns.",
+                        "edit_access": True,
+                        "file_hash": "",
+                        "noindex": False,
+                        "language": "eng",
+                        "organization": 1,
+                        "original_extension": "pdf",
+                        "page_count": 11,
+                        "page_spec": "612.0x792.0:0-10",
+                        "projects": [],
+                        "publish_at": None,
+                        "published_url": "",
+                        "related_article": "",
+                        "revision_control": False,
+                        "slug": "president-obamas-health-care-proposal",
+                        "source": "whitehouse.gov",
+                        "status": "success",
+                        "title": "President Obama's Health Care Proposal",
+                        "updated_at": "2020-11-10T16:23:31.180653Z",
+                        "user": 1,
+                    },
+                ],
+            )
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={200: DocumentSerializer},
+        examples=[
+            OpenApiExample(
+                "Retrieve Document",
+                description="A response from a request to retrieve an existing document.",
+                value={
+                    "id": 1,
+                    "access": "public",
+                    "admin_noindex": False,
+                    "asset_url": "https://s3.documentcloud.org/",
+                    "canonical_url": "https://www.documentcloud.org/documents/1-a-i-g-bailout-the-inspector-generals-report/",
+                    "created_at": "2010-02-22T19:48:08.738905Z",
+                    "data": {},
+                    "description": "Neil Barofsky's report concludes that officials overseeing the rescue of the American International Group might have overpaid other banks to wrap up A.I.G.'s financial obligations.",
+                    "edit_access": True,
+                    "file_hash": "",
+                    "noindex": False,
+                    "language": "eng",
+                    "organization": 1,
+                    "original_extension": "pdf",
+                    "page_count": 47,
+                    "page_spec": "612.0x792.0:0-46",
+                    "projects": [46386],
+                    "publish_at": None,
+                    "published_url": "",
+                    "related_article": "",
+                    "revision_control": False,
+                    "slug": "a-i-g-bailout-the-inspector-generals-report",
+                    "source": "Office of the Special Inspector General for T.A.R.P.",
+                    "status": "success",
+                    "title": "A.I.G. Bailout: The Inspector General's Report",
+                    "updated_at": "2020-11-10T16:23:31.154198Z",
+                    "user": 1,
+                },
+            )
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=DocumentSerializer,
+        responses={201: DocumentSerializer},
+        examples=[
+            OpenApiExample(
+                "Create Document",
+                description="A request to create a new document by a file URL.",
+                value={
+                    "title": "New Document Title",
+                    "file_url": "https://example.com/path/to/document.pdf",
+                    "access": "public",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create Document Response",
+                description="Response when a document is successfully created.",
+                value={
+                    "id": 1,
+                    "access": "public",
+                    "asset_url": "https://s3.documentcloud.org/",
+                    "canonical_url": "https://www.documentcloud.org/documents/1-new-document-slug/",
+                    "created_at": "2025-02-16T00:00:00.000000Z",
+                    "description": "",
+                    "edit_access": True,
+                    "file_hash": "",
+                    "file_url": "https://example.com/path/to/document.pdf",
+                    "language": "eng",
+                    "noindex": False,
+                    "original_extension": "pdf",
+                    "page_count": 10,
+                    "projects": [],
+                    "publish_at": "",
+                    "published_url": "",
+                    "related_article": "",
+                    "revision_control": False,
+                    "slug": "new-document-slug",
+                    "source": "",
+                    "status": "success",
+                    "title": "New Document Title",
+                    "updated_at": "2025-02-16T00:00:00.000000Z",
+                    "user": 1,
+                },
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         valid_token = (
