@@ -11,6 +11,7 @@ from django.http.response import (
 )
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.cache import patch_cache_control
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
@@ -60,7 +61,7 @@ class FileServer(APIView):
 
         if request.META.get("HTTP_ACCEPT", "").startswith("application/json"):
             response = JsonResponse({"location": url})
-            response.headers["max-age"] = 300
+            patch_cache_control(response, max_age=300)
             return response
         else:
             return HttpResponseRedirect(url)
