@@ -59,7 +59,9 @@ class FileServer(APIView):
             )
 
         if request.META.get("HTTP_ACCEPT", "").startswith("application/json"):
-            return JsonResponse({"location": url})
+            response = JsonResponse({"location": url})
+            response.headers["max-age"] = 300
+            return response
         else:
             return HttpResponseRedirect(url)
 
