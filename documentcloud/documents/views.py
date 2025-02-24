@@ -114,6 +114,18 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
     )
 
+    @extend_schema(operation_id="documents_bulk_partial_update")
+    def bulk_partial_update(self, request, *args, **kwargs):
+        return super().bulk_partial_update(request, *args, **kwargs)
+
+    @extend_schema(operation_id="documents_bulk_update")
+    def bulk_update(self, request, *args, **kwargs):
+        return super().bulk_update(request, *args, **kwargs)
+
+    @extend_schema(operation_id="documents_bulk_destroy")
+    def bulk_destroy(self, request, *args, **kwargs):
+        return super().bulk_destroy(request, *args, **kwargs)
+
     @extend_schema(
         responses={200: DocumentSerializer},
         examples=[
@@ -382,6 +394,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             )
             return Response("OK", status=status.HTTP_200_OK)
 
+    @extend_schema(operation_id="documents_process_bulk_create")
     @transaction.atomic
     @action(detail=False, url_path="process", methods=["post"])
     def bulk_process(self, request):
@@ -658,8 +671,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             # if it was processed succesfully, do a full index with text
             transaction.on_commit(lambda: graft_text.delay(document.pk))
 
+    @extend_schema(operation_id="documents_search_across")
     @action(detail=False, methods=["get"])
     def search(self, request):
+        """ Search across all documents on DocumentCloud """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
@@ -697,8 +712,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             return Response(response)
 
+    @extend_schema(operation_id="documents_search_within_single_document")
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
+        """ Search within a single document """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
@@ -792,6 +809,14 @@ class DocumentErrorViewSet(
         DjangoObjectPermissionsOrAnonReadOnly | DocumentErrorTokenPermissions,
     )
 
+    @extend_schema(tags=["document_errors"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_errors"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
     @lru_cache()
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
@@ -826,6 +851,30 @@ class NoteViewSet(FlexFieldsModelViewSet):
     serializer_class = NoteSerializer
     permit_list_expands = ["user", "organization"]
     queryset = Note.objects.none()
+
+    @extend_schema(tags=["document_notes"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):
@@ -876,6 +925,30 @@ class NoteViewSet(FlexFieldsModelViewSet):
 class SectionViewSet(viewsets.ModelViewSet):
     serializer_class = SectionSerializer
     queryset = Section.objects.none()
+
+    @extend_schema(tags=["document_sections"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):
@@ -937,14 +1010,17 @@ class DataViewSet(viewsets.ViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
+    @extend_schema(tags=["document_data"])
     def list(self, request, document_pk=None):
         document = self.get_object()
         return Response(document.data)
 
+    @extend_schema(tags=["document_data"])
     def retrieve(self, request, pk=None, document_pk=None):
         document = self.get_object()
         return Response(document.data.get(pk))
 
+    @extend_schema(tags=["document_data"])
     @transaction.atomic
     def update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -957,6 +1033,7 @@ class DataViewSet(viewsets.ViewSet):
         document.index_on_commit(field_updates={f"data_{pk}": "set"})
         return Response(document.data)
 
+    @extend_schema(tags=["document_data"])
     @transaction.atomic
     def partial_update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -984,6 +1061,7 @@ class DataViewSet(viewsets.ViewSet):
         document.index_on_commit(field_updates={f"data_{pk}": "set"})
         return Response(document.data)
 
+    @extend_schema(tags=["document_data"])
     @transaction.atomic
     def destroy(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -1017,6 +1095,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
+    @extend_schema(tags=["document_redactions"])
     def create(self, request, *args, **kwargs):
         with transaction.atomic():
 
@@ -1042,7 +1121,6 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             serializer.data,
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -1159,6 +1237,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
+    @extend_schema(tags=["document_modifications"])
     def create(self, request, *args, **kwargs):
         document = self.get_object()
         serializer = self.get_serializer(data={"data": request.data})
@@ -1187,6 +1266,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(tags=["document_modifications"])
     @transaction.atomic
     @action(detail=False, methods=["post"])
     def post_process(self, request, document_pk=None):

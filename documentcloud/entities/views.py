@@ -214,6 +214,30 @@ class EntityOccurrenceViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     lookup_field = "entity_id"
     permit_list_expands = ["entity"]
 
+    @extend_schema(tags=["document_entities"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
     @lru_cache()
     def get_queryset(self):
         self.document = get_object_or_404(

@@ -425,6 +425,42 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     ordering_fields = ["created_at"]
     ordering = ["-document__pk"]
 
+    @extend_schema(tags=["project_documents"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"], operation_id="projects_documents_bulk_update")
+    def bulk_update(self, request, *args, **kwargs):
+        return super().bulk_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"],operation_id="projects_documents_bulk_partial_update")
+    def bulk_partial_update(self, request, *args, **kwargs):
+        return super().bulk_partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_documents"], operation_id="projects_documents_bulk_destroy")
+    def bulk_destroy(self, request, *args, **kwargs):
+        return super().bulk_destroy(request, *args, **kwargs)
+
     @lru_cache()
     def get_queryset(self):
         """Only fetch projects viewable to this user"""
@@ -581,6 +617,26 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
     lookup_field = "user_id"
     permit_list_expands = ["user", "user.organization"]
 
+    @extend_schema(tags=["project_collaborators"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_collaborators"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_collaborators"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_collaborators"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["project_collaborators"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
     @lru_cache()
     def get_queryset(self):
         """Only fetch projects viewable to this user"""
@@ -607,6 +663,7 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
 
         serializer.save(project=project, creator=self.request.user)
 
+    @extend_schema(tags=["project_collaborators"])
     def destroy(self, request, *args, **kwargs):
         project = Project.objects.get(pk=self.kwargs["project_pk"])
         collaboration = self.get_object()

@@ -10,7 +10,7 @@ import uuid
 
 # Third Party
 import django_filters
-from drf_spectacular.utils import OpenApiExample, extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema, OpenApiTypes, OpenApiResponse
 from rest_flex_fields.views import FlexFieldsMixin
 
 # DocumentCloud
