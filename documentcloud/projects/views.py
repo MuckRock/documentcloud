@@ -437,11 +437,17 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @extend_schema(tags=["project_documents"], operation_id="projects_documents_bulk_update")
+    @extend_schema(
+        tags=["project_documents"],
+        operation_id="projects_documents_bulk_update"
+    )
     def bulk_update(self, request, *args, **kwargs):
         return super().bulk_update(request, *args, **kwargs)
 
-    @extend_schema(tags=["project_documents"],operation_id="projects_documents_bulk_partial_update")
+    @extend_schema(
+        tags=["project_documents"],
+        operation_id="projects_documents_bulk_partial_update"
+    )
     def bulk_partial_update(self, request, *args, **kwargs):
         return super().bulk_partial_update(request, *args, **kwargs)
 
@@ -457,7 +463,10 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
-    @extend_schema(tags=["project_documents"], operation_id="projects_documents_bulk_destroy")
+    @extend_schema(
+        tags=["project_documents"],
+        operation_id="projects_documents_bulk_destroy"
+    )
     def bulk_destroy(self, request, *args, **kwargs):
         return super().bulk_destroy(request, *args, **kwargs)
 
