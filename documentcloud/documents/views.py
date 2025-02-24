@@ -674,7 +674,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @extend_schema(operation_id="documents_search_across")
     @action(detail=False, methods=["get"])
     def search(self, request):
-        """ Search across all documents on DocumentCloud """
+        """Search across all documents on DocumentCloud"""
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
@@ -715,7 +715,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @extend_schema(operation_id="documents_search_within_single_document")
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
-        """ Search within a single document """
+        """Search within a single document"""
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
@@ -1121,6 +1121,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             serializer.data,
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
