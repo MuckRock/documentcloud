@@ -1,5 +1,5 @@
 # Django
-from rest_framework import mixins, permissions, viewsets
+from rest_framework import mixins, permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,7 +10,7 @@ import uuid
 
 # Third Party
 import django_filters
-from drf_spectacular.utils import OpenApiExample, extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema, inline_serializer
 from rest_flex_fields.views import FlexFieldsMixin
 
 # DocumentCloud
@@ -109,6 +109,12 @@ class UserViewSet(
         else:
             return super().get_object()
 
+    @extend_schema(
+        request=inline_serializer("mailkey", {}),
+        responses={
+            201: inline_serializer("mailkey", {"mailkey": serializers.UUIDField()})
+        },
+    )
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
     def mailkey(self, request):
         """
@@ -127,6 +133,10 @@ class UserViewSet(
         )
         return Response({"mailkey": self.request.user.mailkey})
 
+    @extend_schema(
+        request=None,
+        responses=None,
+    )
     @mailkey.mapping.delete
     def delete_mailkey(self, request):
         """Delete an existing mailkey"""
