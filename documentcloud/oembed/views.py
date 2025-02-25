@@ -35,13 +35,13 @@ class OEmbedView(APIView):
         "title": "the-mueller-report",
         "width": 800,
         "height": 1035,
-        "html": """<iframe src="https://embed.documentcloud.org/documents/25524482-the-mueller-report/?embed=1" title="the-mueller-report (Hosted by DocumentCloud)" width="800" height="1035" style="border: 1px solid #aaa; width: 100%; height: 800px; height: calc(100vh - 100px);" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"></iframe>""", #pylint:disable=line-too-long
+        "html": """<iframe src="https://embed.documentcloud.org/documents/25524482-the-mueller-report/?embed=1" title="the-mueller-report (Hosted by DocumentCloud)" width="800" height="1035" style="border: 1px solid #aaa; width: 100%; height: 800px; height: calc(100vh - 100px);" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"></iframe>""",  # pylint:disable=line-too-long
         "type": "rich",
     }
 
     @extend_schema(
         summary="oembed_retrieve",
-        description="Retrieve an oEmbed response for embedding a document, page, or project.", #pylint:disable=line-too-long
+        description="Retrieve an oEmbed response for embedding a document, page, or project.",  # pylint:disable=line-too-long
         parameters=[
             OpenApiParameter(
                 name="url",
@@ -85,7 +85,7 @@ class OEmbedView(APIView):
                 examples=[
                     OpenApiExample(
                         "oEmbed Response Example",
-                        description="An example oEmbed response for the Mueller Report.", #pylint:disable=line-too-long
+                        description="An example oEmbed response for the Mueller Report.",  # pylint:disable=line-too-long
                         value=example_oembed_response,
                     ),
                 ],
