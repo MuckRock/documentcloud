@@ -190,6 +190,7 @@ class MessageView(APIView):
     """A view to allow you to email yourself via API"""
 
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = MessageSerializer
 
     def post(self, request, format=None):
         """Send yourself an email, used by Add-Ons."""
