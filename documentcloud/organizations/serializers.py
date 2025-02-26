@@ -2,6 +2,10 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+# Third Party
+# Third party
+from drf_spectacular.utils import extend_schema_field
+
 # DocumentCloud
 from documentcloud.organizations.models import Organization
 
@@ -91,6 +95,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
         return super().to_representation(instance)
 
+    @extend_schema_field(serializers.CharField())
     def get_plan(self, obj):
         if obj.entitlement:
             return obj.entitlement.name

@@ -19,6 +19,14 @@ class EntitySerializer(FlexFieldsModelSerializer):
         help_text=Entity._meta.get_field("access").help_text,
     )
 
+    name = serializers.CharField(help_text="Name of the entity", required=False)
+    wikipedia_url = serializers.URLField(
+        help_text="Link to the entity on Wikipedia", required=False
+    )
+    description = serializers.CharField(
+        help_text="Description of the entity", required=False
+    )
+
     class Meta:
         model = Entity
         list_serializer_class = BulkListSerializer

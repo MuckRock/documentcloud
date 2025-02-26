@@ -12,6 +12,7 @@ import re
 from copy import deepcopy
 
 # Third Party
+from drf_spectacular.utils import extend_schema_field
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -154,6 +155,12 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             "The keys should be alphanumeric strings, "
             "and the values should be arrays of strings."
         ),
+    )
+
+    asset_url = serializers.SerializerMethodField(
+        label=_("Asset URL"),
+        read_only=True,
+        help_text=_("The base URL to load this document's static assets from"),
     )
 
     class Meta:
@@ -461,16 +468,19 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
         return attrs
 
+    @extend_schema_field(serializers.URLField())
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
         return storage.presign_url(obj.original_path, "put_object")
 
+    @extend_schema_field(serializers.BooleanField())
     def get_edit_access(self, obj):
         request = self.context.get("request")
         if not request:
             return False
         return request.user.has_perm("documents.change_document", obj)
 
+    @extend_schema_field(serializers.URLField())
     def get_canonical_url(self, obj):
         return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}/"
 
@@ -478,6 +488,11 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         """Set the slug on bulk creation"""
         attrs["slug"] = slugify(attrs["title"])
         return attrs
+
+    @extend_schema_field(serializers.CharField())
+    def get_asset_url(self, obj):
+        """Return the asset URL"""
+        return obj.asset_url
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
@@ -562,6 +577,7 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
             raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
 
+    @extend_schema_field(serializers.BooleanField())
     def get_edit_access(self, obj):
         request = self.context.get("request")
         if not request:

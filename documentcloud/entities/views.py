@@ -10,6 +10,7 @@ from functools import lru_cache
 
 # Third Party
 from django_filters import rest_framework as django_filters
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from requests.exceptions import RequestException
 
 # DocumentCloud
@@ -28,6 +29,128 @@ from documentcloud.entities.serializers import (
 class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     serializer_class = EntitySerializer
     queryset = Entity.objects.none()
+
+    @extend_schema(
+        request=None,
+        responses={200: EntitySerializer(many=True)},
+        examples=[
+            OpenApiExample(
+                "List Entities",
+                description="A request to retrieve a list of entities.",
+                value=[
+                    {
+                        "id": 1,
+                        "name": "Common Era",
+                        "access": "public",
+                        "created_at": "2023-05-18T12:57:50.814203Z",
+                        "updated_at": "2023-05-18T12:57:50.815184Z",
+                        "description": "modern calendar era",
+                        "wikidata_id": "Q208141",
+                        "wikipedia_url": "https://en.wikipedia.org/wiki/Common_Era",
+                        "metadata": {},
+                        "user": None,
+                    },
+                    {
+                        "id": 2,
+                        "name": "maintenance",
+                        "access": "public",
+                        "created_at": "2023-05-18T12:57:50.814265Z",
+                        "updated_at": "2023-05-18T12:57:50.815219Z",
+                        "description": "Involves repairing",
+                        "wikidata_id": "Q1043452",
+                        "wikipedia_url": "https://en.wikipedia.org/wiki/Maintenance",
+                        "metadata": {},
+                        "user": None,
+                    },
+                ],
+                response_only=True,
+            ),
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        request=None,
+        responses={200: EntitySerializer},
+        examples=[
+            OpenApiExample(
+                "Retrieve Entity",
+                description="A response for a retrieve request of a specific entity by ID.",  # pylint:disable=line-too-long
+                value={
+                    "id": 1,
+                    "name": "Common Era",
+                    "access": "public",
+                    "created_at": "2023-05-18T12:57:50.814203Z",
+                    "updated_at": "2023-05-18T12:57:50.815184Z",
+                    "description": "modern calendar era",
+                    "wikidata_id": "Q208141",
+                    "wikipedia_url": "https://en.wikipedia.org/wiki/Common_Era",
+                    "metadata": {},
+                    "user": None,
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=EntitySerializer,
+        responses={201: EntitySerializer},
+        examples=[
+            OpenApiExample(
+                "Create Entity",
+                description="A request to create a new entity.",
+                value={
+                    "name": "New Entity",
+                    "access": "public",
+                    "description": "A new entity description",
+                    "wikidata_id": "Q123456",
+                    "wikipedia_url": "https://en.wikipedia.org/wiki/New_Entity",
+                    "metadata": {},
+                    "user": None,
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        request=EntitySerializer,
+        responses={200: EntitySerializer},
+        examples=[
+            OpenApiExample(
+                "Update Entity",
+                description="A request to update a specific entity.",
+                value={
+                    "wikidata_id": "Q999999",
+                    "metadata": {"new_key": "new_value"},
+                },
+                response_only=True,
+            ),
+        ],
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request=EntitySerializer,
+        responses={200: EntitySerializer},
+        examples=[
+            OpenApiExample(
+                "Partial Update Entity",
+                description="A request to partially update a specific entity.",
+                value={"id": 1, "wikidata_id": "Q999999"},
+                response_only=True,
+            ),
+        ],
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     def get_queryset(self):
         return Entity.objects.get_viewable(self.request.user)
@@ -90,6 +213,30 @@ class EntityOccurrenceViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     queryset = EntityOccurrence.objects.none()
     lookup_field = "entity_id"
     permit_list_expands = ["entity"]
+
+    @extend_schema(tags=["document_entities"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_entities"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):

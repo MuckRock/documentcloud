@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 # Third Party
 import jsonschema
+from drf_spectacular.utils import extend_schema_field
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -27,10 +28,10 @@ class AddOnSerializer(FlexFieldsModelSerializer):
         label=_("Active"),
         default=False,
         write_only=True,
-        help_text=_("Show this add-on in your add-on menu"),
+        help_text=_("Whether this Add-On is pinned for you"),
     )
     active = serializers.SerializerMethodField(
-        label=_("Active"), help_text=_("Show this add-on in your add-on menu")
+        label=_("Active"), help_text=_("Whether this Add-On is pinned for you")
     )
     user = serializers.PrimaryKeyRelatedField(
         read_only=True,
@@ -65,6 +66,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             self.fields["organization"].read_only = False
             self.fields["organization"].queryset = request.user.organizations.all()
 
+    @extend_schema_field(serializers.BooleanField())
     def get_active(self, obj):
 
         if hasattr(obj, "active"):
@@ -184,6 +186,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
     def get_presigned_url(self, obj):
         return storage.presign_url(obj.file_path(self.upload_file), "put_object")
 
+    @extend_schema_field(serializers.URLField())
     def get_file_url(self, obj):
         expires_at = self.get_file_expires_at(obj)
         if expires_at is None:
@@ -195,6 +198,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         else:
             return None
 
+    @extend_schema_field(serializers.DateTimeField())
     def get_file_expires_at(self, obj):
         if obj.file_name and obj.file_name not in self._expires_at:
             self._expires_at[obj.file_name] = storage.get_expires_at(obj.file_path())
