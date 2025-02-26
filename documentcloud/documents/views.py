@@ -37,6 +37,9 @@ from documentcloud.core.permissions import (
     DocumentPostProcessPermissions,
     DocumentTokenPermissions,
 )
+from documentcloud.core.utils import (  # pylint:disable=unused-import
+    ProcessingTokenAuthenticationScheme,
+)
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (

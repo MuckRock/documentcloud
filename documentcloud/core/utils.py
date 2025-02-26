@@ -5,7 +5,26 @@ from django.utils.text import slugify as django_slugify
 from itertools import zip_longest
 
 # Third Party
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from unidecode import unidecode
+
+
+class ProcessingTokenAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = "documentcloud.core.authentication.ProcessingTokenAuthentication"
+    name = "ProcessingTokenAuthentication"
+
+    def get_security_definition(self, auto_schema):
+        return {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": (
+                "Custom token-based authentication using"
+                " the 'processing-token' scheme.\n\n"
+                "Clients must include an Authorization header with the token:\n\n"
+                "    Authorization: processing-token <your_token>"
+            ),
+        }
 
 
 def slugify(text):
