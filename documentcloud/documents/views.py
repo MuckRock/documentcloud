@@ -667,6 +667,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             if last_revision:
                 last_revision.copy()
 
+    @extend_schema(operation_id="documents_search_across")
     @action(detail=False, methods=["get"])
     def search(self, request):
         """Search across all documents on DocumentCloud"""
