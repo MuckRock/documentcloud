@@ -336,10 +336,8 @@ pyjwt==2.3.0
     # via
     #   djangorestframework-simplejwt
     #   social-auth-core
-pymupdf==1.24.10
+pymupdf==1.25.3
     # via -r requirements/base.in
-pymupdfb==1.24.10
-    # via pymupdf
 pyrsistent==0.18.0
     # via jsonschema
 python-dateutil==2.8.2
