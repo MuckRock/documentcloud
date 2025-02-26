@@ -86,6 +86,7 @@ class UserSerializer(FlexFieldsModelSerializer):
             raise serializers.ValidationError(exc.args[0])
         return instance
 
+    @extend_schema_field(serializers.BooleanField())
     def get_verified_journalist(self, obj):
         """Is this user a member of a verified journalist organization?"""
         # If doing a list of users, we preload the verified organizations

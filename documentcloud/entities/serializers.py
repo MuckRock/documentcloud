@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 # Third Party
+from drf_spectacular.utils import extend_schema_field
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -18,6 +19,28 @@ class EntitySerializer(FlexFieldsModelSerializer):
         read_only=True,
         help_text=Entity._meta.get_field("access").help_text,
     )
+
+    name = serializers.SerializerMethodField(
+        help_text="The name of the entity.", label="Entity Name"
+    )
+    wikipedia_url = serializers.SerializerMethodField(
+        help_text="The Wikipedia URL of the entity.", label="Wikipedia URL"
+    )
+    description = serializers.SerializerMethodField(
+        help_text="A description of the entity.", label="Entity Description"
+    )
+
+    @extend_schema_field(serializers.CharField())
+    def get_name(self, obj):
+        return obj.name
+
+    @extend_schema_field(serializers.CharField())
+    def get_wikipedia_url(self, obj):
+        return obj.wikipedia_url
+
+    @extend_schema_field(serializers.CharField())
+    def get_description(self, obj):
+        return obj.description
 
     class Meta:
         model = Entity

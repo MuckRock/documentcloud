@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, serializers
 
 # Third Party
+from drf_spectacular.utils import extend_schema_field
 from rest_flex_fields.serializers import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -81,6 +82,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         ):
             self.fields["pinned"] = pinned_w
 
+    @extend_schema_field(serializers.BooleanField())
     def get_edit_access(self, obj):
         request = self.context.get("request")
         if not request:
@@ -91,6 +93,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         else:
             return request.user.has_perm("projects.change_project_all", obj)
 
+    @extend_schema_field(serializers.BooleanField())
     def get_add_remove_access(self, obj):
         request = self.context.get("request")
         if not request:
@@ -101,6 +104,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         else:
             return request.user.has_perm("projects.add_remove_project", obj)
 
+    @extend_schema_field(serializers.BooleanField())
     def get_pinned(self, obj):
 
         if hasattr(obj, "pinned"):

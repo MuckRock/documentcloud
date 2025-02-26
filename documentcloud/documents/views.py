@@ -20,6 +20,7 @@ from functools import lru_cache
 import environ
 import pysolr
 from django_filters import rest_framework as django_filters
+from drf_spectacular.openapi import OpenApiParameter
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
@@ -992,6 +993,17 @@ class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return document.dates.all()
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="document_pk",
+            type=int,
+            description="The ID of the document",
+            required=True,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DataViewSet(viewsets.ViewSet):
     # pylint: disable=unused-argument
@@ -1074,6 +1086,17 @@ class DataViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="document_pk",
+            type=int,
+            description="The ID of the document",
+            required=True,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = RedactionSerializer
@@ -1224,6 +1247,17 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "ccw": 3}
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="document_pk",
+            type=int,
+            description="The ID of the document",
+            required=True,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ModificationSpecSerializer
