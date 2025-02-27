@@ -288,50 +288,50 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         """
-            There are two supported ways to upload documents — directly uploading the file to our storage servers
-            or by providing a URL to a publicly available PDF or other supported file type.
-            To upload another supported file type you will need to include the original_extension field documented above.
+        There are two supported ways to upload documents — directly uploading the file to our storage servers
+        or by providing a URL to a publicly available PDF or other supported file type.
+        To upload another supported file type you will need to include the original_extension field documented above.
 
-            <strong> Direct File Upload Flow </strong>
+        <strong> Direct File Upload Flow </strong>
 
-            POST /api/documents/
+        POST /api/documents/
 
-            To initiate an upload, you will first create the document. You may specify all writable document fields
-            (besides file_url). The response will contain all the fields for the document, with two being of note
-            for this flow: presigned_url and id.
+        To initiate an upload, you will first create the document. You may specify all writable document fields
+        (besides file_url). The response will contain all the fields for the document, with two being of note
+        for this flow: presigned_url and id.
 
-            If you would like to upload files in bulk, you may POST a list of JSON objects to /api/documents/ instead of a single object.
-            The response will contain a list of document objects.
+        If you would like to upload files in bulk, you may POST a list of JSON objects to /api/documents/ instead of a single object.
+        The response will contain a list of document objects.
 
-            PUT <presigned_url>
+        PUT <presigned_url>
 
-            Next, you will PUT the binary data for the file to the given presigned_url.
-            The presigned URL is valid for 5 minutes.
-            You may obtain a new URL by issuing a GET request to /api/documents/document_id/.
+        Next, you will PUT the binary data for the file to the given presigned_url.
+        The presigned URL is valid for 5 minutes.
+        You may obtain a new URL by issuing a GET request to /api/documents/document_id/.
 
-            If you are bulk uploading, you will still need to issue a single PUT to the corresponding presigned_url for each file.
+        If you are bulk uploading, you will still need to issue a single PUT to the corresponding presigned_url for each file.
 
-            POST /api/documents/document_id/process/
+        POST /api/documents/document_id/process/
 
-            Finally, you will begin processing of the document.
-            Note that this endpoint accepts only one optional parameter — force_ocr which, if set to true,
-            will OCR the document even if it contains embedded text.
+        Finally, you will begin processing of the document.
+        Note that this endpoint accepts only one optional parameter — force_ocr which, if set to true,
+        will OCR the document even if it contains embedded text.
 
-            If you are uploading in bulk you can issue a
-            single POST to /api/document/process/ which will begin processing in bulk.
-            You should pass a list of objects containing the document IDs
-            of the documents you would like to being processing. You may optionally specify force_ocr for each document.
+        If you are uploading in bulk you can issue a
+        single POST to /api/document/process/ which will begin processing in bulk.
+        You should pass a list of objects containing the document IDs
+        of the documents you would like to being processing. You may optionally specify force_ocr for each document.
 
 
 
-            <strong> URL Upload Flow </strong>
+        <strong> URL Upload Flow </strong>
 
-            POST /api/documents/
+        POST /api/documents/
 
-            If you set file_url to a URL pointing to a publicly accessible PDF,
-            our servers will fetch the PDF and begin processing it automatically.
+        If you set file_url to a URL pointing to a publicly accessible PDF,
+        our servers will fetch the PDF and begin processing it automatically.
 
-            You may also send a list of document objects with file_url set to bulk upload files using this flow.
+        You may also send a list of document objects with file_url set to bulk upload files using this flow.
 
         """
         return super().create(request, *args, **kwargs)
