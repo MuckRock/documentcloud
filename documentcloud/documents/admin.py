@@ -20,7 +20,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "noindex",
     )
     list_filter = ("access", "status", "language")
-    search_fields = ("title", "user__username", "organization__name")
+    search_fields = ("title",)
     show_full_result_count = False
     paginator = LargeTablePaginator
     ordering = ("pk",)
