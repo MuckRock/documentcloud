@@ -225,6 +225,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
     """Use Textract OCR to render a txt file"""
     with open(tmp_files["img"], "rb") as document:
         img = Image.open(document).convert("RGB")
+        document.seek(0)
         image_bytes = bytearray(document.read())
 
     textract = boto3.client(
