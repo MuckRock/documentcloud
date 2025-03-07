@@ -1,6 +1,7 @@
 # Standard Library
 import json
 import logging
+import math
 import os
 import tempfile
 import time
@@ -9,6 +10,7 @@ from pathlib import Path
 # Third Party
 import boto3
 import environ
+import pymupdf
 from botocore.client import Config
 from cpuprofile import profile_cpu
 from PIL import Image
@@ -222,6 +224,7 @@ def ocr_page_tesseract(doc_id, ocr_code, tmp_files, upload_text_path, access):
 def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_number):
     """Use Textract OCR to render a txt file"""
     with open(tmp_files["img"], "rb") as document:
+        img = Image.open(document).convert("RGB")
         image_bytes = bytearray(document.read())
 
     textract = boto3.client(
@@ -272,7 +275,42 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
 
     logger.info("[OCR PAGE] textract extracted text position  stored doc_id %s", doc_id)
 
-    return text, b""
+    # create the overlay PDF
+
+    pdf = pymupdf.open()
+    pdf.new_page(
+        width=img.width,
+        height=img.height,
+    )
+
+    default_fontsize = 15
+    for word in words:
+        pdf_page = pdf[0]
+        word_text = word["text"]
+        text_length = pymupdf.get_text_length(
+            word_text,
+            fontsize=default_fontsize,
+        )
+        width = (word["x2"] - word["x1"]) * pdf_page.rect.width
+        fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
+        # For debug, write in red
+        # For production, make it invisible
+        # kwargs = {"fill_opacity": 0}
+        kwargs = {
+            "fill_opacity": 1,
+            "color": (1, 0, 0),
+        }
+        pdf_page.insert_text(
+            point=pymupdf.Point(
+                word["x1"] * pdf_page.rect.width,
+                word["y2"] * pdf_page.rect.height,
+            ),
+            text=word_text,
+            fontsize=fontsize_optimal,
+            **kwargs,
+        )
+
+    return text, pdf.tobytes()
 
 
 @pubsub_function(REDIS, OCR_TOPIC)
