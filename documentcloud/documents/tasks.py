@@ -271,7 +271,10 @@ def update_access(document_pk, status, access, marker=None):
             document.index_on_commit(field_updates=field_updates)
 
 
-@shared_task
+@shared_task(
+    time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
+    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
+)
 def set_page_text(document_pk, page_text_infos):
     """Update the text information for a document"""
     # pylint: disable=broad-except
