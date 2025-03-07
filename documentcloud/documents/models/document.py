@@ -513,7 +513,7 @@ class Document(models.Model):
 
         for i in range(start_page, stop_page + 1):
             base_page = PikePage(base_pdf.pages[i])
-            overlay_page = PikePage(overlay_pdf.base_pages[i - start_page])
+            overlay_page = PikePage(overlay_pdf.pages[i - start_page])
             base_page.add_overlay(overlay_page, Rectangle(*base_page.trimbox))
 
         buffer = BytesIO()
