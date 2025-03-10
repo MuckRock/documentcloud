@@ -279,14 +279,13 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
     # create the overlay PDF
 
     pdf = pymupdf.open()
-    pdf.new_page(
+    pdf_page = pdf.new_page(
         width=img.width,
         height=img.height,
     )
 
     default_fontsize = 15
     for word in words:
-        pdf_page = pdf[0]
         word_text = word["text"]
         text_length = pymupdf.get_text_length(
             word_text,
@@ -294,13 +293,6 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
         )
         width = (word["x2"] - word["x1"]) * pdf_page.rect.width
         fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
-        # For debug, write in red
-        # For production, make it invisible
-        # kwargs = {"fill_opacity": 0}
-        kwargs = {
-            "fill_opacity": 1,
-            "color": (1, 0, 0),
-        }
         pdf_page.insert_text(
             point=pymupdf.Point(
                 word["x1"] * pdf_page.rect.width,
@@ -308,7 +300,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
             ),
             text=word_text,
             fontsize=fontsize_optimal,
-            **kwargs,
+            fill_opacity=0,
         )
 
     return text, pdf.tobytes()
