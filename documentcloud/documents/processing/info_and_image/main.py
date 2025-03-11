@@ -19,6 +19,7 @@ import redis
 import requests
 from botocore.exceptions import ClientError
 from listcrunch import crunch_collection
+from pikepdf import Pdf, Rectangle
 from PIL import Image
 
 env = environ.Env()
@@ -541,6 +542,31 @@ def graft_ocr_in_pdf(doc_id, slug, access):
             grafter.finalize()
 
 
+def graft_ocr_in_pdf_2(doc_id, slug, access):
+    """Reinjects the OCR'd text-only PDFs back into the main PDF."""
+    logger.info("[GRAFT OCR 2] doc_id %s", doc_id)
+    page_text_pdf_field = redis_fields.page_text_pdf(doc_id)
+    redis_pdf_pages = REDIS.hkeys(page_text_pdf_field)
+    doc_path = path.doc_path(doc_id, slug)
+
+    base_pdf = Pdf.open(io.BytesIO(storage.open(doc_path).read()))
+    for redis_page_key in redis_pdf_pages:
+        page_number = int(redis_page_key)
+        overlay_pdf = Pdf.open(
+            io.BytesIO(REDIS.hget(page_text_pdf_field, redis_page_key))
+        )
+        base_pdf.pages[page_number].add_overlay(
+            overlay_pdf.pages[0], Rectangle(*base_pdf.pages[0].trimbox)
+        )
+
+    # Overwrite source PDF
+    mem_file = io.BytesIO()
+    base_pdf.save(mem_file)
+    mem_file.seek(0)
+    with storage.open(doc_path, "wb", access=access) as output_file:
+        output_file.write(mem_file.read())
+
+
 def patch_partial_page_text(doc_id, slug, results):
     """Patch/assemble page text from a partial update."""
     with storage.open(path.json_text_path(doc_id, slug), "rb") as json_file:
@@ -906,12 +932,16 @@ def assemble_page_text(data, _context=None):
     slug = data["slug"]
     access = data.get("access", access_choices.PRIVATE)
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
+    ocr_engine = data["ocr_engine"]
 
     logger.info("[ASSEMBLE TEXT] doc_id %s", doc_id)
 
     # Reinject OCR layer into PDF
     try:
-        graft_ocr_in_pdf(doc_id, slug, access)
+        if ocr_engine == "tess4":
+            graft_ocr_in_pdf(doc_id, slug, access)
+        else:
+            graft_ocr_in_pdf_2(doc_id, slug, access)
     except Exception as exc:  # pylint: disable=broad-except
         logger.exception("[Grafting doc_id %s failed]", doc_id, exc_info=exc)
 
@@ -955,6 +985,7 @@ def extract_text_position(data, _context=None):
     in_memory = data.get("in_memory", False)
     page_numbers = data["paths_and_numbers"]  # The page numbers to extract
     partial = data["partial"]  # Whether it is a partial update (e.g. redaction) or not
+    ocr_engine = data["ocr_engine"]
     doc_path = path.doc_path(doc_id, slug)
 
     logger.info(
@@ -1054,6 +1085,7 @@ def extract_text_position(data, _context=None):
                             "slug": slug,
                             "access": access,
                             "partial": partial,
+                            "ocr_engine": ocr_engine,
                         }
                     ),
                 )

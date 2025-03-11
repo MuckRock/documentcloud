@@ -300,7 +300,8 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
             ),
             text=word_text,
             fontsize=fontsize_optimal,
-            fill_opacity=0,
+            fill_opacity=1,
+            color=(1, 0, 0),
         )
 
     return text, pdf.tobytes()
@@ -392,6 +393,7 @@ def run_tesseract(data, _context=None):
                             "slug": slug,
                             "access": access,
                             "partial": partial,
+                            "ocr_engine": ocr_engine,
                         }
                     ),
                 )
@@ -406,6 +408,7 @@ def run_tesseract(data, _context=None):
                         "slug": slug,
                         "access": access,
                         "ocr_code": ocr_code,
+                        "ocr_engine": ocr_engine,
                         "partial": partial,
                         "in_memory": True,
                     }
