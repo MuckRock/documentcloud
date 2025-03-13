@@ -9,7 +9,6 @@ from django.utils.translation import gettext_lazy as _
 # Standard Library
 import json
 import logging
-import math
 import sys
 import time
 import uuid
@@ -26,6 +25,7 @@ from pikepdf import Page as PikePage, Pdf, Rectangle
 from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.common.extensions import EXTENSIONS
+from documentcloud.common.serverless.utils import graft_page
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.utils import slugify
@@ -500,16 +500,23 @@ class Document(models.Model):
 
                 logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page_number)
                 # create the overlay file
-                self._graft_page(
-                    page["positions"],
-                    grafted_pdf,
-                    page_number - start_page,
-                )
+                graft_page(page["positions"], grafted_pdf[page_number - start_page])
 
-        # graft the overlay pages back onto the original document
+        # merge the overlay pages back onto the original document
+        contents = self._merge_overlay(
+            current_pdf_contents,
+            grafted_pdf,
+            start_page,
+            stop_page,
+        )
+        grafted_pdf.close()
+
+        return contents
+
+    def _merge_overlay(self, current_pdf_contents, grafted_pdf, start_page, stop_page):
+        """Merge the text only overlay pages back in to the base PDF"""
         base_pdf = Pdf.open(BytesIO(current_pdf_contents))
         overlay_pdf = Pdf.open(BytesIO(grafted_pdf.tobytes()))
-        grafted_pdf.close()
 
         for i in range(start_page, stop_page + 1):
             base_page = PikePage(base_pdf.pages[i])
@@ -531,35 +538,6 @@ class Document(models.Model):
                 height=pdf_page.rect.height,
             )
         return grafted_pdf
-
-    def _graft_page(self, positions, grafted_pdf, page):
-        default_fontsize = 15
-
-        for position in positions:
-            pdf_page = grafted_pdf[page]
-            word_text = position["text"]
-            text_length = pymupdf.get_text_length(
-                word_text,
-                fontsize=default_fontsize,
-            )
-            width = (position["x2"] - position["x1"]) * pdf_page.rect.width
-            fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
-            if settings.GRAFT_DEBUG:
-                kwargs = {
-                    "fill_opacity": 1,
-                    "color": (1, 0, 0),
-                }
-            else:
-                kwargs = {"fill_opacity": 0}
-            pdf_page.insert_text(
-                point=pymupdf.Point(
-                    position["x1"] * pdf_page.rect.width,
-                    position["y2"] * pdf_page.rect.height,
-                ),
-                text=word_text,
-                fontsize=fontsize_optimal,
-                **kwargs,
-            )
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
