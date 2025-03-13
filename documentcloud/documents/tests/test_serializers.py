@@ -50,6 +50,137 @@ class TestDocumentSerializer:
         )
         assert not serializer.is_valid()
 
+    @pytest.mark.django_db()
+    def test_pages(self):
+        """Test a valid value for pages"""
+        document = DocumentFactory(page_count=2)
+        pages = [
+            {
+                "page_number": 0,
+                "text": "hello",
+                "positions": [
+                    {
+                        "text": "hello",
+                        "x1": 0.1,
+                        "x2": 0.1,
+                        "y1": 0.2,
+                        "y2": 0.2,
+                    }
+                ],
+            },
+            {
+                "page_number": 1,
+                "text": "world",
+                "positions": [
+                    {
+                        "text": "world",
+                        "x1": 0.1,
+                        "x2": 0.1,
+                        "y1": 0.2,
+                        "y2": 0.2,
+                    }
+                ],
+            },
+        ]
+        serializer = DocumentSerializer(
+            data={"pages": pages},
+            instance=document,
+            partial=True,
+        )
+        assert serializer.is_valid()
+
+    @pytest.mark.django_db()
+    def test_pages_max(self):
+        """Test the limit for the number of pages to set in one call"""
+        document = DocumentFactory(page_count=100)
+        pages = [
+            {
+                "page_number": i,
+                "text": "hello",
+                "positions": [
+                    {
+                        "text": "hello",
+                        "x1": 0.1,
+                        "x2": 0.1,
+                        "y1": 0.2,
+                        "y2": 0.2,
+                    }
+                ],
+            }
+            for i in range(51)
+        ]
+        serializer = DocumentSerializer(
+            data={"pages": pages},
+            instance=document,
+            partial=True,
+        )
+        assert not serializer.is_valid()
+
+    @pytest.mark.django_db()
+    def test_pages_consecutive(self):
+        """If positions are present, pages must be consecutive"""
+        document = DocumentFactory(page_count=10)
+        pages = [
+            {
+                "page_number": 0,
+                "text": "hello",
+                "positions": [
+                    {
+                        "text": "hello",
+                        "x1": 0.1,
+                        "x2": 0.1,
+                        "y1": 0.2,
+                        "y2": 0.2,
+                    }
+                ],
+            },
+            {
+                "page_number": 2,
+                "text": "world",
+                "positions": [
+                    {
+                        "text": "world",
+                        "x1": 0.1,
+                        "x2": 0.1,
+                        "y1": 0.2,
+                        "y2": 0.2,
+                    }
+                ],
+            },
+        ]
+        serializer = DocumentSerializer(
+            data={"pages": pages},
+            instance=document,
+            partial=True,
+        )
+        assert not serializer.is_valid()
+
+    @pytest.mark.django_db()
+    def test_pages_page_number(self):
+        """Page number must be less than page count of the document"""
+        document = DocumentFactory(page_count=10)
+        pages = [
+            {
+                "page_number": 11,
+                "text": "hello",
+                "positions": [
+                    {
+                        "text": "hello",
+                        "x1": 0.1,
+                        "x2": 0.1,
+                        "y1": 0.2,
+                        "y2": 0.2,
+                    }
+                ],
+            },
+        ]
+        serializer = DocumentSerializer(
+            data={"pages": pages},
+            instance=document,
+            partial=True,
+        )
+        assert not serializer.is_valid()
+
 
 @pytest.mark.django_db()
 class TestModificationSerializer:
