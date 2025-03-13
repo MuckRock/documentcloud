@@ -1,7 +1,6 @@
 # Standard Library
 import json
 import logging
-import math
 import os
 import tempfile
 import time
@@ -223,10 +222,6 @@ def ocr_page_tesseract(doc_id, ocr_code, tmp_files, upload_text_path, access):
 
 def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_number):
     """Use Textract OCR to render a txt file"""
-    with open(tmp_files["img"], "rb") as document:
-        img = Image.open(document).convert("RGB")
-        document.seek(0)
-        image_bytes = bytearray(document.read())
 
     textract = boto3.client(
         "textract",
@@ -234,16 +229,18 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
         config=Config(retries={"max_attempts": 10, "mode": "adaptive"}),
     )
 
-    response = textract.detect_document_text(Document={"Bytes": image_bytes})
+    with open(tmp_files["img"], "rb") as document:
+        img = Image.open(document).convert("RGB")
+        document.seek(0)
+        response = textract.detect_document_text(
+            Document={"Bytes": bytearray(document.read())}
+        )
 
     logger.info("[OCR PAGE] textract doc_id %s", doc_id)
 
-    lines = []
-    for item in response["Blocks"]:
-        if item["BlockType"] == "LINE":
-            lines.append(item["Text"])
-
-    text = "\n".join(lines)
+    text = "\n".join(
+        item["Text"] for item in response["Blocks"] if item["BlockType"] == "Line"
+    )
 
     with storage.open(upload_text_path, "w", access=access) as new_text_file:
         # upload text file to s3
@@ -284,24 +281,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
         height=img.height,
     )
 
-    default_fontsize = 15
-    for word in words:
-        word_text = word["text"]
-        text_length = pymupdf.get_text_length(
-            word_text,
-            fontsize=default_fontsize,
-        )
-        width = (word["x2"] - word["x1"]) * pdf_page.rect.width
-        fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
-        pdf_page.insert_text(
-            point=pymupdf.Point(
-                word["x1"] * pdf_page.rect.width,
-                word["y2"] * pdf_page.rect.height,
-            ),
-            text=word_text,
-            fontsize=fontsize_optimal,
-            fill_opacity=0,
-        )
+    utils.graft_page(words, pdf_page)
 
     return text, pdf.tobytes()
 
