@@ -408,15 +408,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     def validate_pages(self, value):
         positions_present = any("positions" in page for page in value)
-        if positions_present and len(value) > settings.MAX_POSITION_PAGES:
+        if len(value) > settings.MAX_PAGES:
             raise serializers.ValidationError(
-                f"`pages` length must be less than {settings.MAX_POSITION_PAGES} "
-                "if it contains position data"
-            )
-        if not positions_present and len(value) > settings.MAX_NONPOSITION_PAGES:
-            raise serializers.ValidationError(
-                f"`pages` length must be less than {settings.MAX_NONPOSITION_PAGES} "
-                "if it does not contain position data"
+                f"`pages` length must be less than {settings.MAX_PAGES}"
             )
         if positions_present:
             for page_a, page_b in zip(value, value[1:]):
