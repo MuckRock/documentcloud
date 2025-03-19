@@ -30,6 +30,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
+    from documentcloud.common.utils import graft_page
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.ocr.tess import Tesseract
@@ -44,6 +45,7 @@ else:
         publisher,
         storage,
     )
+    from common.utils import graft_page
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
@@ -281,7 +283,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
         height=img.height,
     )
 
-    utils.graft_page(words, pdf_page)
+    graft_page(words, pdf_page)
 
     return text, pdf.tobytes()
 
