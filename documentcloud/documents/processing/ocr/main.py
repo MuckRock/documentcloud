@@ -30,6 +30,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
+    from documentcloud.common.utils import graft_page
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.common.utils import graft_page
@@ -45,6 +46,7 @@ else:
         publisher,
         storage,
     )
+    from common.utils import graft_page
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
     from common.utils import graft_page
