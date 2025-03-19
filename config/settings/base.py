@@ -679,6 +679,5 @@ ANON_RL_MESSAGE = env(
 
 # Page validation
 # ------------------------------------------------------------------------------
-MAX_POSITION_PAGES = env.int("MAX_POSITION_PAGES", default=20)
-MAX_NONPOSITION_PAGES = env.int("MAX_NONPOSITION_PAGES", default=50)
+MAX_PAGES = env.int("MAX_PAGES", default=50)
 GRAFT_DEBUG = env.bool("GRAFT_DEBUG", default=False)

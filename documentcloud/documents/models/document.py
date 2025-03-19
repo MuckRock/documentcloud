@@ -13,17 +13,20 @@ import math
 import sys
 import time
 import uuid
+from io import BytesIO
 
 # Third Party
 import boto3
 import pymupdf
 import requests
 from listcrunch import uncrunch
+from pikepdf import Page as PikePage, Pdf, Rectangle
 
 # DocumentCloud
 from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.common.extensions import EXTENSIONS
+from documentcloud.common.serverless.utils import graft_page
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.utils import slugify
@@ -435,11 +438,15 @@ class Document(models.Model):
             }
 
         if positions_present:
-            doc = self._set_page_positions(page_text_infos, file_names, file_contents)
+            doc_contents = self._set_page_positions(
+                page_text_infos,
+                file_names,
+                file_contents,
+            )
 
             # upload grafted pdf
             file_names.append(self.doc_path)
-            file_contents.append(doc.tobytes())
+            file_contents.append(doc_contents)
 
         # set the full text
         concatenated_text = b"\n\n".join(
@@ -473,10 +480,12 @@ class Document(models.Model):
     def _set_page_positions(self, pages, file_names, file_contents):
         """Handle grafting page positions back into the document"""
 
-        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
+        current_pdf_contents = storage.open(self.doc_path, "rb").read()
+        current_pdf = pymupdf.open(stream=current_pdf_contents)
         start_page = pages[0]["page_number"]
         stop_page = pages[-1]["page_number"]
         grafted_pdf = self._init_graft_pdf(current_pdf, start_page, stop_page)
+        current_pdf.close()
 
         for page in pages:
             page_number = page["page_number"]
@@ -491,67 +500,45 @@ class Document(models.Model):
                 file_contents.append(json.dumps(positions).encode("utf-8"))
 
                 logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page_number)
-                # do the grafting
-                self._graft_page(
-                    page["positions"],
-                    grafted_pdf,
-                    page_number - start_page,
-                )
+                # create the overlay file
+                graft_page(page["positions"], grafted_pdf[page_number - start_page])
 
-        # put the full pdf back together with the newly grafted pages
-        doc = pymupdf.open()
-        if start_page > 0:
-            doc.insert_pdf(current_pdf, to_page=start_page - 1)
-        doc.insert_pdf(grafted_pdf)
-        if stop_page < current_pdf.page_count - 1:
-            doc.insert_pdf(current_pdf, from_page=stop_page + 1)
-
-        current_pdf.close()
+        # merge the overlay pages back onto the original document
+        contents = self._merge_overlay(
+            current_pdf_contents,
+            grafted_pdf,
+            start_page,
+            stop_page,
+        )
         grafted_pdf.close()
 
-        return doc
+        return contents
+
+    def _merge_overlay(self, current_pdf_contents, grafted_pdf, start_page, stop_page):
+        """Merge the text only overlay pages back in to the base PDF"""
+        base_pdf = Pdf.open(BytesIO(current_pdf_contents))
+        overlay_pdf = Pdf.open(BytesIO(grafted_pdf.tobytes()))
+
+        for i in range(start_page, stop_page + 1):
+            base_page = PikePage(base_pdf.pages[i])
+            overlay_page = PikePage(overlay_pdf.pages[i - start_page])
+            base_page.add_overlay(overlay_page, Rectangle(*base_page.trimbox))
+
+        buffer = BytesIO()
+        base_pdf.save(buffer)
+        buffer.seek(0)
+        return buffer.read()
 
     def _init_graft_pdf(self, current_pdf, start_page, stop_page):
         """Initialize a new PDF to graft OCR text onto"""
         grafted_pdf = pymupdf.open()
 
         for pdf_page in current_pdf.pages(start_page, stop_page + 1):
-            pdf_pix_map = pdf_page.get_pixmap(dpi=200, colorspace="RGB")
-            pdf_page_img = grafted_pdf.new_page(
+            grafted_pdf.new_page(
                 width=pdf_page.rect.width,
                 height=pdf_page.rect.height,
             )
-            pdf_page_img.insert_image(rect=pdf_page.rect, pixmap=pdf_pix_map)
         return grafted_pdf
-
-    def _graft_page(self, positions, grafted_pdf, page):
-        default_fontsize = 15
-
-        for position in positions:
-            pdf_page = grafted_pdf[page]
-            word_text = position["text"]
-            text_length = pymupdf.get_text_length(
-                word_text,
-                fontsize=default_fontsize,
-            )
-            width = (position["x2"] - position["x1"]) * pdf_page.rect.width
-            fontsize_optimal = int(math.floor((width / text_length) * default_fontsize))
-            if settings.GRAFT_DEBUG:
-                kwargs = {
-                    "fill_opacity": 1,
-                    "color": (1, 0, 0),
-                }
-            else:
-                kwargs = {"fill_opacity": 0}
-            pdf_page.insert_text(
-                point=pymupdf.Point(
-                    position["x1"] * pdf_page.rect.width,
-                    position["y2"] * pdf_page.rect.height,
-                ),
-                text=word_text,
-                fontsize=fontsize_optimal,
-                **kwargs,
-            )
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
