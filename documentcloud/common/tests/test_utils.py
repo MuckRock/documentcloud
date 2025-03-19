@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pymupdf
 
 # DocumentCloud
-from documentcloud.common.serverless.utils import graft_page
+from documentcloud.common.utils import graft_page
 
 
 def test_graft_page():

@@ -25,7 +25,7 @@ from pikepdf import Page as PikePage, Pdf, Rectangle
 from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.common.extensions import EXTENSIONS
-from documentcloud.common.serverless.utils import graft_page
+from documentcloud.common.utils import graft_page
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.utils import slugify
