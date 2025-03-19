@@ -19,6 +19,14 @@ class EntitySerializer(FlexFieldsModelSerializer):
         help_text=Entity._meta.get_field("access").help_text,
     )
 
+    name = serializers.CharField(help_text="Name of the entity", required=False)
+    wikipedia_url = serializers.URLField(
+        help_text="Link to the entity on Wikipedia", required=False
+    )
+    description = serializers.CharField(
+        help_text="Description of the entity", required=False
+    )
+
     class Meta:
         model = Entity
         list_serializer_class = BulkListSerializer
@@ -37,10 +45,21 @@ class EntitySerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
-            "user": {"read_only": True},
+            "user": {
+                "read_only": True,
+                "help_text": (
+                    "The Github account username for the developer of the Add-On."
+                ),
+            },
             # remove this as being required to allow private entities to be
             # created
-            "wikidata_id": {"required": True},
+            "wikidata_id": {
+                "required": True,
+                "help_text": "The Wikidata ID of the entity",
+            },
+            "name": {"help_text": "Name of the entity"},
+            "description": {"help_text": "Description of the entity"},
+            "wikipedia_url": {"help_text": "Link to the entity on Wikipedia"},
         }
         expandable_fields = {
             "user": ("documentcloud.users.UserSerializer", {}),

@@ -181,6 +181,7 @@ django==4.2.2
     #   djangorestframework-simplejwt
     #   dogslow
     #   drf-nested-routers
+    #   drf-spectacular
     #   rest-social-auth
     #   squarelet-auth
 django-anymail[mailgun]==10.0
@@ -238,6 +239,7 @@ djangorestframework==3.14.0
     #   django-parler-rest
     #   djangorestframework-simplejwt
     #   drf-nested-routers
+    #   drf-spectacular
     #   rest-social-auth
 djangorestframework-simplejwt==4.8.0
     # via -r /app/requirements/base.txt
@@ -247,6 +249,10 @@ drf-flex-fields==1.0.0
     # via -r /app/requirements/base.txt
 drf-nested-routers==0.91
     # via -r /app/requirements/base.txt
+drf-spectacular==0.28.0
+    # via
+    #   -r /app/requirements/base.txt
+    #   -r requirements/production.in
 ecdsa==0.13.2
     # via
     #   -r /app/requirements/base.txt
@@ -312,6 +318,10 @@ idna==2.8
     #   requests
     #   urllib3
     #   yarl
+inflection==0.5.1
+    # via
+    #   -r /app/requirements/base.txt
+    #   drf-spectacular
 ipython==8.5.0
     # via -r /app/requirements/base.txt
 jedi==0.18.1
@@ -324,7 +334,9 @@ jmespath==0.9.4
     #   boto3
     #   botocore
 jsonschema==3.2.0
-    # via -r /app/requirements/base.txt
+    # via
+    #   -r /app/requirements/base.txt
+    #   drf-spectacular
 kombu==5.4.2
     # via
     #   -r /app/requirements/base.txt
@@ -507,6 +519,7 @@ pytz==2022.1
 pyyaml==5.3.1
     # via
     #   -r /app/requirements/base.txt
+    #   drf-spectacular
     #   libcst
 rcssmin==1.1.1
     # via
@@ -628,6 +641,10 @@ tzdata==2024.2
     #   kombu
 unidecode==1.1.1
     # via -r /app/requirements/base.txt
+uritemplate==4.1.1
+    # via
+    #   -r /app/requirements/base.txt
+    #   drf-spectacular
 urllib3[secure]==1.26.10
     # via
     #   -r /app/requirements/base.txt

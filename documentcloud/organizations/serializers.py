@@ -2,6 +2,10 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+# Third Party
+# Third party
+from drf_spectacular.utils import extend_schema_field
+
 # DocumentCloud
 from documentcloud.organizations.models import Organization
 
@@ -10,16 +14,44 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     plan = serializers.SerializerMethodField(
         label=_("Plan"),
+        help_text=(
+            "The name of the plan this organization is subscribed to. "
+            "Only viewable by organization members."
+        ),
     )
     monthly_credits = serializers.IntegerField(
-        source="monthly_ai_credits", read_only=True
+        source="monthly_ai_credits",
+        read_only=True,
+        help_text=(
+            "Number of monthly premium credits this organization has left. "
+            "This will reset to monthly_credit_allowance on credit_reset_date. "
+            "Only viewable be organization members."
+        ),
     )
     purchased_credits = serializers.IntegerField(
-        source="number_ai_credits", read_only=True
+        source="number_ai_credits",
+        read_only=True,
+        help_text=(
+            "Number of purchased premium credits. "
+            "These do not reset or expire. "
+            "Only viewable by organization members."
+        ),
     )
-    credit_reset_date = serializers.DateField(source="date_update", read_only=True)
+    credit_reset_date = serializers.DateField(
+        source="date_update",
+        read_only=True,
+        help_text=(
+            "The date that monthly_credits reset. "
+            "Only viewable by organization members."
+        ),
+    )
     monthly_credit_allowance = serializers.IntegerField(
-        source="ai_credits_per_month", read_only=True
+        source="ai_credits_per_month",
+        read_only=True,
+        help_text=(
+            "The amount of credits that monthly_credits will reset to. "
+            "Only viewable by organization members."
+        ),
     )
 
     class Meta:
@@ -63,6 +95,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
         return super().to_representation(instance)
 
+    @extend_schema_field(serializers.CharField())
     def get_plan(self, obj):
         if obj.entitlement:
             return obj.entitlement.name
