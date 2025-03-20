@@ -571,7 +571,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def perform_update(self, serializer):
         # work for regular and bulk updates
 
+        logger.info("[DOC UPDATE] start perform update")
+
         bulk = getattr(serializer, "many", False)
+        logger.info("[DOC UPDATE] bulk %s", bulk)
 
         if bulk:
             validated_datas = sorted(
@@ -585,12 +588,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             validated_datas = [serializer.validated_data]
             instances = [serializer.instance]
 
+        logger.info("[DOC UPDATE] instances: %s", [i.pk for i in instances])
         self._update_validate_processing(instances, validated_datas)
 
         old_accesses = [i.access for i in instances]
         old_processings = [i.processing for i in instances]
         old_data_keys = [i.data.keys() for i in instances]
         old_revision_controls = [i.revision_control for i in instances]
+        logger.info("[DOC UPDATE] do perform")
         super().perform_update(serializer)
 
         # refresh from database after performing update
@@ -598,6 +603,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             instances = sorted(serializer.instance, key=lambda i: i.id)
         else:
             instances = [serializer.instance]
+
+        logger.info("[DOC UPDATE] pre-loop")
 
         for (
             instance,
@@ -624,6 +631,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
+        logger.info("[DOC UPDATE] update access %s", document.pk)
         # do update_access if access changed to or from public
         if old_access != document.access and Access.public in (
             old_access,
@@ -645,6 +653,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_solr(self, document, old_processing, old_data_keys, validated_data):
         """Update solr index after updating a document"""
+        logger.info("[DOC UPDATE] update solr %s", document.pk)
         # update solr index
         if old_processing and document.status == Status.success:
             # if it was processed succesfully, do a full index with text
@@ -671,11 +680,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_cache(self, document, old_processing):
         """Invalidate the cache when finished processing a detructive operation"""
+        logger.info("[DOC UPDATE] update cache %s", document.pk)
         if old_processing and not document.processing and document.cache_dirty:
             transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
 
     def _run_addons(self, document, old_processing):
         """Run upload add-ons once the document is succesfully processed"""
+        logger.info("[DOC UPDATE] run addons %s", document.pk)
         if old_processing and document.status == Status.success:
             events = AddOnEvent.objects.filter(
                 event=Event.upload,
@@ -691,11 +702,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 event.dispatch(document_pk=document.pk)
 
     def _set_page_text(self, document, pages):
+        logger.info("[DOC UPDATE] set page text %s", document.pk)
         if pages is not None:
             set_page_text.delay(document.pk, pages)
 
     def _create_revision(self, document, old_processing, old_revision_control):
         # create an intial revision when revision control is turned on
+        logger.info("[DOC UPDATE] create revision %s", document.pk)
         if not old_revision_control and document.revision_control:
             if document.revisions.exists():
                 comment = "Re-enable"
