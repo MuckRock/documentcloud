@@ -45,6 +45,7 @@ from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import is_expanded
 
 # DocumentCloud
+from documentcloud.addons.choices import Event
 from documentcloud.addons.models import (
     AddOn,
     AddOnEvent,
@@ -955,7 +956,9 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        instance = serializer.save(user=self.request.user)
+        if instance.event in [Event.hourly, Event.daily, Event.weekly]:
+            instance.dispatch()
 
     class Filter(django_filters.FilterSet):
         addon = django_filters.NumberFilter(
