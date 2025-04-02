@@ -479,11 +479,12 @@ class Document(models.Model):
     def _set_page_positions(self, pages, file_names, file_contents):
         """Handle grafting page positions back into the document"""
 
-        current_pdf_contents = storage.open(self.doc_path, "rb").read()
-        current_pdf = pymupdf.open(stream=current_pdf_contents)
+        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
         start_page = pages[0]["page_number"]
         stop_page = pages[-1]["page_number"]
-        grafted_pdf = self._init_graft_pdf(current_pdf, start_page, stop_page)
+        grafted_pdf, base_pdf_stream = self._init_graft_pdf(
+            current_pdf, start_page, stop_page
+        )
         current_pdf.close()
 
         for page in pages:
@@ -504,7 +505,7 @@ class Document(models.Model):
 
         # merge the overlay pages back onto the original document
         contents = self._merge_overlay(
-            current_pdf_contents,
+            base_pdf_stream,
             grafted_pdf,
             start_page,
             stop_page,
@@ -513,9 +514,9 @@ class Document(models.Model):
 
         return contents
 
-    def _merge_overlay(self, current_pdf_contents, grafted_pdf, start_page, stop_page):
+    def _merge_overlay(self, base_pdf_stream, grafted_pdf, start_page, stop_page):
         """Merge the text only overlay pages back in to the base PDF"""
-        base_pdf = Pdf.open(BytesIO(current_pdf_contents))
+        base_pdf = Pdf.open(base_pdf_stream)
         overlay_pdf = Pdf.open(BytesIO(grafted_pdf.tobytes()))
 
         for i in range(start_page, stop_page + 1):
@@ -531,13 +532,21 @@ class Document(models.Model):
     def _init_graft_pdf(self, current_pdf, start_page, stop_page):
         """Initialize a new PDF to graft OCR text onto"""
         grafted_pdf = pymupdf.open()
+        buffer = BytesIO()
 
         for pdf_page in current_pdf.pages(start_page, stop_page + 1):
             grafted_pdf.new_page(
                 width=pdf_page.rect.width,
                 height=pdf_page.rect.height,
             )
-        return grafted_pdf
+            pdf_page.add_redact_annot(pdf_page.rect)
+            pdf_page.apply_redactions(
+                images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+            )
+
+        current_pdf.save(buffer)
+        return grafted_pdf, buffer
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
