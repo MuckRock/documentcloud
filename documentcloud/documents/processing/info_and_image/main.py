@@ -15,6 +15,7 @@ from urllib.parse import urljoin
 # Third Party
 import environ
 import pdfplumber
+import pymupdf
 import redis
 import requests
 from botocore.exceptions import ClientError
@@ -553,7 +554,20 @@ def graft_ocr_in_pdf(doc_id, slug, access):
     redis_pdf_pages = REDIS.hkeys(page_text_pdf_field)
     doc_path = path.doc_path(doc_id, slug)
 
-    base_pdf = Pdf.open(io.BytesIO(storage.open(doc_path).read()))
+    base_pdf = pymupdf.open(stream=storage.open(doc_path).read())
+    buffer = io.BytesIO()
+    for redis_page_key in redis_pdf_pages:
+        page_number = int(redis_page_key)
+        page = base_pdf[page_number]
+        page.add_redact_annot(page.rect)
+        page.apply_redactions(
+            images=pymupdf.PDF_REDACT_IMAGE_NONE,
+            graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+        )
+    base_pdf.save(buffer)
+    buffer.seek(0)
+
+    base_pdf = Pdf.open(buffer)
     for redis_page_key in redis_pdf_pages:
         page_number = int(redis_page_key)
         overlay_pdf = Pdf.open(
