@@ -241,7 +241,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
     logger.info("[OCR PAGE] textract doc_id %s", doc_id)
 
     text = "\n".join(
-        item["Text"] for item in response["Blocks"] if item["BlockType"] == "Line"
+        item["Text"] for item in response["Blocks"] if item["BlockType"] == "LINE"
     )
 
     with storage.open(upload_text_path, "w", access=access) as new_text_file:
