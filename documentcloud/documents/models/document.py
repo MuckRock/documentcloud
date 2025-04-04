@@ -479,8 +479,7 @@ class Document(models.Model):
     def _set_page_positions(self, pages, file_names, file_contents):
         """Handle grafting page positions back into the document"""
 
-        current_pdf_contents = storage.open(self.doc_path, "rb").read()
-        current_pdf = pymupdf.open(stream=current_pdf_contents)
+        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
         start_page = pages[0]["page_number"]
         stop_page = pages[-1]["page_number"]
         grafted_pdf, base_pdf_stream = self._init_graft_pdf(
