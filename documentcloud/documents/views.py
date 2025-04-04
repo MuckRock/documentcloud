@@ -801,8 +801,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             return Response(results.highlighting.get(pk, {}))
 
-    @action(detail=False, methods=["get"])
-    def pending(self, request):
+    @action(detail=False, methods=["get"], url_path="pending")
+    def bulk_pending(self, request):
         """Get the progress status on all of the current users pending documents"""
         if not self.request.user or not self.request.user.is_authenticated:
             return Response([])
@@ -823,6 +823,34 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         except RequestException as exc:
             logger.warning(
                 "Error getting progress exception %s", exc, exc_info=sys.exc_info()
+            )
+            return Response([])
+
+    @action(detail=True, methods=["get"], url_path="pending")
+    def pending(self, request):
+        """Get the processing progress of a single pending document"""
+        document = self.get_object()
+
+        if not request.user.is_authenticated or document.user != request.user:
+            return Response(None)
+
+        if document.status != Status.pending:
+            return Response(None)
+
+        try:
+            response = httpsub.post(
+                settings.PROGRESS_URL,
+                json={"doc_ids": [document.id]},
+                timeout=settings.PROGRESS_TIMEOUT,
+            )
+            response.raise_for_status()
+            return Response(response.json())
+        except RequestException as exc:
+            logger.warning(
+                "Error getting progress for document %s: %s",
+                document.id,
+                exc,
+                exc_info=sys.exc_info(),
             )
             return Response([])
 
