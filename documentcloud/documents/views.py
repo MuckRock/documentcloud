@@ -827,7 +827,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             return Response([])
 
     @action(detail=True, methods=["get"], url_path="pending")
-    def pending(self, request):
+    def pending(self, request, pk=None):  # pylint:disable = unused-argument
         """Get the processing progress of a single pending document"""
         document = self.get_object()
 
