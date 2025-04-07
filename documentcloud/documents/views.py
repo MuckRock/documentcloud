@@ -832,10 +832,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document = self.get_object()
 
         if not request.user.is_authenticated or document.user != request.user:
-            return Response(None)
+            return Response([])
 
         if document.status != Status.pending:
-            return Response(None)
+            return Response([])
 
         try:
             response = httpsub.post(
