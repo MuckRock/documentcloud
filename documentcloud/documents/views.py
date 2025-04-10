@@ -801,8 +801,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             return Response(results.highlighting.get(pk, {}))
 
-    @action(detail=False, methods=["get"])
-    def pending(self, request):
+    @action(detail=False, methods=["get"], url_path="pending")
+    def bulk_pending(self, request):
         """Get the progress status on all of the current users pending documents"""
         if not self.request.user or not self.request.user.is_authenticated:
             return Response([])
@@ -825,6 +825,35 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 "Error getting progress exception %s", exc, exc_info=sys.exc_info()
             )
             return Response([])
+
+    @action(detail=True, methods=["get"], url_path="pending")
+    def pending(self, request, pk=None):  # pylint:disable = unused-argument
+        """Get the processing progress of a single pending document"""
+        document = self.get_object()
+
+        if not request.user.is_authenticated or document.user != request.user:
+            return Response({})
+
+        if document.status != Status.pending:
+            return Response({})
+
+        try:
+            response = httpsub.post(
+                settings.PROGRESS_URL,
+                json={"doc_ids": [document.id]},
+                timeout=settings.PROGRESS_TIMEOUT,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return Response(data[0] if data else {})
+        except RequestException as exc:
+            logger.warning(
+                "Error getting progress for document %s: %s",
+                document.id,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+            return Response({})
 
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, help_text="Filter by users")
