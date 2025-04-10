@@ -855,7 +855,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             )
             return Response({})
 
-
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, help_text="Filter by users")
         organization = ModelMultipleChoiceFilter(
