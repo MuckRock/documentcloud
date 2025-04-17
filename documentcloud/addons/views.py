@@ -755,6 +755,9 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
     serializer_class = AddOnEventSerializer
     queryset = AddOnEvent.objects.none()
     permit_list_expands = ["addon"]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    ordering_fields = ['id', 'created_at', 'updated_at']
+    ordering = ['-created_at']
 
     @extend_schema(
         request=None,
