@@ -482,10 +482,18 @@ class Document(models.Model):
         current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
         start_page = pages[0]["page_number"]
         stop_page = pages[-1]["page_number"]
-        grafted_pdf, base_pdf_stream = self._init_graft_pdf(
-            current_pdf, start_page, stop_page
+
+        visible_text = self._check_visible_text(current_pdf, start_page, stop_page)
+        logger.info(
+            "[SET PAGE TEXT] %d - visible text detected: %s", self.pk, visible_text
         )
-        current_pdf.close()
+
+        grafted_pdf, base_pdf_stream = self._init_graft_pdf(
+            current_pdf,
+            start_page,
+            stop_page,
+            visible_text,
+        )
 
         for page in pages:
             page_number = page["page_number"]
@@ -504,12 +512,21 @@ class Document(models.Model):
                 graft_page(page["positions"], grafted_pdf[page_number - start_page])
 
         # merge the overlay pages back onto the original document
-        contents = self._merge_overlay(
-            base_pdf_stream,
-            grafted_pdf,
-            start_page,
-            stop_page,
-        )
+        if visible_text:
+            contents = self._merge_overlay_visible(
+                current_pdf,
+                grafted_pdf,
+                start_page,
+                stop_page,
+            )
+        else:
+            contents = self._merge_overlay(
+                base_pdf_stream,
+                grafted_pdf,
+                start_page,
+                stop_page,
+            )
+        current_pdf.close()
         grafted_pdf.close()
 
         return contents
@@ -529,21 +546,46 @@ class Document(models.Model):
         buffer.seek(0)
         return buffer.read()
 
-    def _init_graft_pdf(self, current_pdf, start_page, stop_page):
+    def _merge_overlay_visible(self, current_pdf, grafted_pdf, start_page, stop_page):
+        """Merge the flatten grafted pages back into the PDF"""
+        doc = pymupdf.open()
+        if start_page > 0:
+            doc.insert_pdf(current_pdf, to_page=start_page - 1)
+        doc.insert_pdf(grafted_pdf)
+        if stop_page < current_pdf.page_count - 1:
+            doc.insert_pdf(current_pdf, from_page=stop_page + 1)
+        return doc.tobytes()
+
+    def _check_visible_text(self, current_pdf, start_page, stop_page):
+        """Check if the pages contain visible text"""
+        for pdf_page in current_pdf.pages(start_page, stop_page + 1):
+            text_trace = pdf_page.get_texttrace()
+            for trace in text_trace:
+                # zero opacity means the text is transparant
+                # text type 3 is hidden text
+                if trace["opacity"] != 0 and trace["type"] != 3:
+                    return True
+        return False
+
+    def _init_graft_pdf(self, current_pdf, start_page, stop_page, visible_text):
         """Initialize a new PDF to graft OCR text onto"""
         grafted_pdf = pymupdf.open()
         buffer = BytesIO()
 
         for pdf_page in current_pdf.pages(start_page, stop_page + 1):
-            grafted_pdf.new_page(
+            new_pdf_page = grafted_pdf.new_page(
                 width=pdf_page.rect.width,
                 height=pdf_page.rect.height,
             )
-            pdf_page.add_redact_annot(pdf_page.rect)
-            pdf_page.apply_redactions(
-                images=pymupdf.PDF_REDACT_IMAGE_NONE,
-                graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
-            )
+            if visible_text:
+                pdf_pix_map = pdf_page.get_pixmap(dpi=300, colorspace="RGB")
+                new_pdf_page.insert_image(rect=pdf_page.rect, pixmap=pdf_pix_map)
+            else:
+                pdf_page.add_redact_annot(pdf_page.rect)
+                pdf_page.apply_redactions(
+                    images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                    graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+                )
 
         current_pdf.save(buffer)
         return grafted_pdf, buffer
