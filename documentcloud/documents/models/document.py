@@ -548,12 +548,22 @@ class Document(models.Model):
 
     def _merge_overlay_visible(self, current_pdf, grafted_pdf, start_page, stop_page):
         """Merge the flatten grafted pages back into the PDF"""
+        logger.info(
+            "[MERGE OVERLAY VISIBLE] %d - start - %d - %d",
+            self.pk,
+            start_page,
+            stop_page,
+        )
         doc = pymupdf.open()
+        logger.info("[MERGE OVERLAY VISIBLE] %d - 1", self.pk)
         if start_page > 0:
             doc.insert_pdf(current_pdf, to_page=start_page - 1)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - 2", self.pk)
         doc.insert_pdf(grafted_pdf)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - 3", self.pk)
         if stop_page < current_pdf.page_count - 1:
             doc.insert_pdf(current_pdf, from_page=stop_page + 1)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - end", self.pk)
         return doc.tobytes()
 
     def _check_visible_text(self, current_pdf, start_page, stop_page):
