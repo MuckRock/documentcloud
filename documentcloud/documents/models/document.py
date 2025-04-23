@@ -564,7 +564,12 @@ class Document(models.Model):
         if stop_page < current_pdf.page_count - 1:
             doc.insert_pdf(current_pdf, from_page=stop_page + 1)
         logger.info("[MERGE OVERLAY VISIBLE] %d - end", self.pk)
-        return doc.tobytes()
+        buffer = BytesIO()
+        logger.info("[MERGE OVERLAY VISIBLE] %d - ez save", self.pk)
+        doc.ez_save(buffer)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - ez save done", self.pk)
+        buffer.seek(0)
+        return buffer.read()
 
     def _check_visible_text(self, current_pdf, start_page, stop_page):
         """Check if the pages contain visible text"""
