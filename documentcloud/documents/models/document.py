@@ -554,22 +554,12 @@ class Document(models.Model):
             start_page,
             stop_page,
         )
-        doc = pymupdf.open()
-        logger.info("[MERGE OVERLAY VISIBLE] %d - 1", self.pk)
-        if start_page > 0:
-            doc.insert_pdf(current_pdf, to_page=start_page - 1)
-        logger.info("[MERGE OVERLAY VISIBLE] %d - 2", self.pk)
-        doc.insert_pdf(grafted_pdf)
-        logger.info("[MERGE OVERLAY VISIBLE] %d - 3", self.pk)
-        if stop_page < current_pdf.page_count - 1:
-            doc.insert_pdf(current_pdf, from_page=stop_page + 1)
-        logger.info("[MERGE OVERLAY VISIBLE] %d - end", self.pk)
-        buffer = BytesIO()
-        logger.info("[MERGE OVERLAY VISIBLE] %d - ez save", self.pk)
-        doc.ez_save(buffer)
-        logger.info("[MERGE OVERLAY VISIBLE] %d - ez save done", self.pk)
-        buffer.seek(0)
-        return buffer.read()
+        current_pdf.delete_pages(start_page, stop_page)
+        current_pdf.insert_pdf(grafted_pdf, starts_at=start_page)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - tobytes", self.pk)
+        contents = current_pdf.tobytes(deflate=True, garbage=2, use_objstms=True)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - tobytes done", self.pk)
+        return contents
 
     def _check_visible_text(self, current_pdf, start_page, stop_page):
         """Check if the pages contain visible text"""
