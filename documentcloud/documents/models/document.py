@@ -555,7 +555,7 @@ class Document(models.Model):
             stop_page,
         )
         current_pdf.delete_pages(start_page, stop_page)
-        current_pdf.insert_pdf(grafted_pdf, starts_at=start_page)
+        current_pdf.insert_pdf(grafted_pdf, start_at=start_page)
         logger.info("[MERGE OVERLAY VISIBLE] %d - tobytes", self.pk)
         contents = current_pdf.tobytes(deflate=True, garbage=2, use_objstms=True)
         logger.info("[MERGE OVERLAY VISIBLE] %d - tobytes done", self.pk)
