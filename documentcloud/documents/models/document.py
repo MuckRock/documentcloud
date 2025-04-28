@@ -442,10 +442,10 @@ class Document(models.Model):
                 file_names,
                 file_contents,
             )
-
-            # upload grafted pdf
-            file_names.append(self.doc_path)
-            file_contents.append(doc_contents)
+            if doc_contents is not None:
+                # upload grafted pdf
+                file_names.append(self.doc_path)
+                file_contents.append(doc_contents)
 
         # set the full text
         concatenated_text = b"\n\n".join(
@@ -487,6 +487,9 @@ class Document(models.Model):
         logger.info(
             "[SET PAGE TEXT] %d - visible text detected: %s", self.pk, visible_text
         )
+        if visible_text:
+            # merging when we need to flatten visible text causes excessive memory usage
+            return None
 
         grafted_pdf, base_pdf_stream = self._init_graft_pdf(
             current_pdf,
