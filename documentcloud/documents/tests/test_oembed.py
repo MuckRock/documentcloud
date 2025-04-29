@@ -2,7 +2,7 @@ from django.conf import settings
 from django.test import RequestFactory, TestCase
 from unittest import mock
 from documentcloud.documents.models import Document
-from documentcloud.documents.oembed import DocumentOEmbed, PageOEmbed
+from documentcloud.documents.oembed import DocumentOEmbed, PageOEmbed, NoteOEmbed
 from documentcloud.oembed.utils import Query
 
 class DocumentOEmbedTest(TestCase):
@@ -112,6 +112,7 @@ class PageOEmbedTest(TestCase):
     self.factory = RequestFactory()
     self.user = mock.MagicMock()
     self.document = mock.MagicMock(spec=Document)
+    self.document.pk = 123
     self.document.title = "Test Document"
     self.document.aspect_ratio = 1.5
     self.document.get_absolute_url.return_value = "/documents/123/"
@@ -150,7 +151,7 @@ class PageOEmbedTest(TestCase):
     
     # Check that the response contains an iframe with expected attributes
     self.assertIn('<iframe src="', response["html"])
-    self.assertIn(f'{settings.DOCCLOUD_EMBED_URL}/documents/123/?responsive=1#document/p1', response["html"])
+    self.assertIn(f'{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1?responsive=1', response["html"])
     self.assertIn('title="Test Document (Hosted by DocumentCloud)"', response["html"])
     self.assertIn('width="600" height="400"', response["html"])
     self.assertIn('style="border: 1px solid #aaa; width: 100%; height: 800px;', response["html"])
@@ -179,8 +180,68 @@ class PageOEmbedTest(TestCase):
     
     context = self.page_oembed.get_context(self.document, query, extra, page=2)
     
-    expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123/?param=value#document/p2"
+    expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2?param=value"
     self.assertEqual(context["src"], expected_src)
     self.assertEqual(context["width"], 600)
     self.assertEqual(context["height"], 400)
     self.assertEqual(context["style"], "")
+
+class NoteOEmbedTest(TestCase):
+  def setUp(self):
+    self.factory = RequestFactory()
+    self.user = mock.MagicMock()
+    
+    # Mock the Document
+    self.document = mock.MagicMock(spec=Document)
+    self.document.title = "Test Document"
+    self.document.get_absolute_url.return_value = "/documents/123/"
+    self.document.pk = 123
+    
+    # Mock the Note
+    self.note = mock.MagicMock()
+    self.note.title = "Test Note"
+    self.note.pk = 456
+    
+    # Mock Document.notes.get_viewable
+    note_queryset = mock.MagicMock()
+    note_queryset.get_viewable.return_value = note_queryset
+    self.document.notes = note_queryset
+    
+    # Mock the Document manager
+    self.document_queryset = mock.MagicMock()
+    self.document_queryset.get_viewable.return_value = self.document_queryset
+    Document.objects = self.document_queryset
+    
+    # Create a NoteOEmbed instance
+    self.note_oembed = NoteOEmbed()
+    
+    # Mock get_object_or_404 for both document and note
+    self.get_object_mock = mock.patch(
+      "documentcloud.documents.oembed.get_object_or_404",
+      side_effect=[self.document, self.note]
+    )
+
+  def test_note_oembed_response(self):
+    """Test the response method of NoteOEmbed"""
+    request = self.factory.get("/oembed/")
+    request.user = self.user
+    query = Query("responsive=1")
+    
+    with self.get_object_mock:
+      response = self.note_oembed.response(
+        request, query, max_width=600, max_height=None, doc_pk=123, pk=456
+      )
+    
+    # Check response properties
+    self.assertEqual(response["version"], "1.0")
+    self.assertEqual(response["type"], "rich")
+    self.assertEqual(response["title"], "Test Note")
+    
+    # Check that the response contains an iframe with expected attributes
+    self.assertIn('<iframe src="', response["html"])
+    self.assertIn(f'{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456?responsive=1', response["html"])
+    self.assertIn('title="Test Note (Hosted by DocumentCloud)"', response["html"])
+    self.assertIn('width="100%" height="500px"', response["html"])
+    self.assertIn('style="border: 1px solid #aaa;', response["html"])
+    self.assertIn('sandbox="allow-scripts allow-same-origin allow-popups allow-forms', response["html"])
+    

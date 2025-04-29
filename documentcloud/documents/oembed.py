@@ -96,11 +96,9 @@ class PageOEmbed(DocumentOEmbed):
 
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
-        src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}"
         if query:
             src = f"{src}?{query}"
-        if page:
-            src = f"{src}#document/p{page}"
         return {
             "src": src,
             **extra,
@@ -127,33 +125,22 @@ class NoteOEmbed(RichOEmbed):
             r"notes/(?P<pk>[0-9]+)/?$"
         ),
     ]
-    width = 750
 
-    def response(self, request, query, max_width=None, max_height=None, **kwargs):
+    def response(self, request, query, **kwargs):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["doc_pk"]
         )
         note = get_object_or_404(
             document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
-
-        height = None
-        if max_width and max_width < self.width:
-            width = max_width
-        else:
-            width = self.width
-        oembed = {"title": note.title, "width": width, "height": height}
+        oembed = {"title": note.title}
         # pylint: disable=consider-using-f-string
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}"
+        if query:
+            src = f"{src}?{query}"
         context = {
-            "pk": note.pk,
-            "loader_src": f"{settings.DOCCLOUD_URL}/notes/loader.js",
-            "note_src": "{}{}annotations/{}.js".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
-            ),
-            "note_html_src": "{}{}annotations/{}".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
-            ),
-            **oembed,
+            "src": src,
+            "title": note.title,
         }
         template = get_template(self.template)
         oembed["html"] = template.render(context)
