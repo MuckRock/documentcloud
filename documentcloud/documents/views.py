@@ -832,10 +832,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document = self.get_object()
 
         if not request.user.is_authenticated or document.user != request.user:
-            return Response([])
+            return Response({})
 
         if document.status != Status.pending:
-            return Response([])
+            return Response({})
 
         try:
             response = httpsub.post(
@@ -844,7 +844,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 timeout=settings.PROGRESS_TIMEOUT,
             )
             response.raise_for_status()
-            return Response(response.json())
+            data = response.json()
+            return Response(data[0] if data else {})
         except RequestException as exc:
             logger.warning(
                 "Error getting progress for document %s: %s",
@@ -852,7 +853,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 exc,
                 exc_info=sys.exc_info(),
             )
-            return Response([])
+            return Response({})
 
     class Filter(django_filters.FilterSet):
         user = ModelMultipleChoiceFilter(model=User, help_text="Filter by users")
