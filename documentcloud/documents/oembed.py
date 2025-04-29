@@ -5,10 +5,8 @@ from rest_framework.generics import get_object_or_404
 
 # Standard Library
 import re
-import time
 
 # DocumentCloud
-from documentcloud.common.path import page_image_path, page_text_path
 from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
@@ -34,7 +32,6 @@ class DocumentOEmbed(RichOEmbed):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
-
         responsive = query.params.get("responsive", "1") == "1"
         width, height = self.get_dimensions(document, max_width, max_height)
         style = self.get_style(responsive, max_width, max_height)
@@ -70,10 +67,7 @@ class DocumentOEmbed(RichOEmbed):
             return default_width, int(default_width / aspect_ratio)
 
     def get_style(self, responsive, max_width, max_height):
-        if not responsive:
-            # Don't apply any extra styling if not responsive
-            return ""
-
+        # Responsive is now the default width setting
         # 100% width and 100vh - 100px height (800px fallback for old browsers)
         style = " width: 100%; height: 800px; height: calc(100vh - 100px);"
 
@@ -100,32 +94,15 @@ class PageOEmbed(DocumentOEmbed):
         ),
     ]
 
-    def get_dimensions(self, document, max_width, max_height):
-        default_width = 700
-        if max_width:
-            return (min(max_width, default_width), None)
-        else:
-            return default_width, None
-
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
-        timestamp = int(time.time())
-        # pylint: disable=consider-using-f-string
+        src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
+        if query:
+            src = f"{src}?{query}"
+        if page:
+            src = f"{src}#document/p{page}"
         return {
-            "page": page,
-            "page_url": "{}{}#document/p{}".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), page
-            ),
-            "img_url": "{}?ts={}".format(
-                page_image_path(document.pk, document.slug, page - 1, "xlarge"),
-                timestamp,
-            ),
-            "text_url": "{}?ts={}".format(
-                page_text_path(document.pk, document.slug, page - 1), timestamp
-            ),
-            "user_org_string": f"{document.user.name} ({document.organization})",
-            "app_url": settings.DOCCLOUD_URL,
-            "enhance_src": f"{settings.DOCCLOUD_URL}/embed/enhance.js",
+            "src": src,
             **extra,
         }
 
