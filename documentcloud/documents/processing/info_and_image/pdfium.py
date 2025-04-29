@@ -83,9 +83,10 @@ class Bitmap:
             self.bitmap, 0, 0, self.width, self.height, 0xFFFFFFFF
         )
 
-        # Render with print settings and no rotation
+        # Render with print settings and no rotation and annotations
+        # https://pdfium.patagames.com/help/html/T_Patagames_Pdf_Enums_RenderFlags.htm
         self.workspace.fpdf_render_page_bitmap(
-            self.bitmap, self.page, 0, 0, self.width, self.height, 0, 0x800
+            self.bitmap, self.page, 0, 0, self.width, self.height, 0, 0x801
         )
 
         stride = self.workspace.fpdf_bitmap_get_stride(self.bitmap)
