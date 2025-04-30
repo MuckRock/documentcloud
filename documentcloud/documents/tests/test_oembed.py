@@ -7,6 +7,7 @@ from documentcloud.oembed.utils import Query
 
 
 class DocumentOEmbedTest(TestCase):
+    # pylint: disable=too-many-instance-attributes
     def setUp(self):
         self.factory = RequestFactory()
         self.user = mock.MagicMock()
@@ -118,34 +119,35 @@ class DocumentOEmbedTest(TestCase):
     def test_document_oembed_get_style(self):
         """Test the get_style method of DocumentOEmbed"""
         # Test responsive with no max dimensions
-        style = self.document_oembed.get_style(True, None, None)
+        style = self.document_oembed.get_style(None, None)
         self.assertEqual(
             style, " width: 100%; height: 800px; height: calc(100vh - 100px);"
         )
 
         # Test with max_width only
-        style = self.document_oembed.get_style(True, 600, None)
+        style = self.document_oembed.get_style(600, None)
         self.assertEqual(
             style,
-            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px;",
+            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px;", # pylint: disable=line-too-long
         )
 
         # Test with max_height only
-        style = self.document_oembed.get_style(True, None, 400)
+        style = self.document_oembed.get_style(None, 400)
         self.assertEqual(
             style,
-            " width: 100%; height: 800px; height: calc(100vh - 100px); max-height: 400px;",
+            " width: 100%; height: 800px; height: calc(100vh - 100px); max-height: 400px;", # pylint: disable=line-too-long
         )
 
         # Test with both max dimensions
-        style = self.document_oembed.get_style(True, 600, 400)
+        style = self.document_oembed.get_style(600, 400)
         self.assertEqual(
             style,
-            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px; max-height: 400px;",
+            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px; max-height: 400px;", # pylint: disable=line-too-long
         )
 
 
 class PageOEmbedTest(TestCase):
+    # pylint: disable=too-many-instance-attributes
     def setUp(self):
         self.factory = RequestFactory()
         self.user = mock.MagicMock()
@@ -250,6 +252,7 @@ class PageOEmbedTest(TestCase):
 
 
 class NoteOEmbedTest(TestCase):
+    # pylint: disable=too-many-instance-attributes
     def setUp(self):
         self.factory = RequestFactory()
         self.user = mock.MagicMock()
@@ -315,7 +318,7 @@ class NoteOEmbedTest(TestCase):
         # Check that the response contains an iframe with expected attributes
         self.assertIn('<iframe src="', response["html"])
         self.assertIn(
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1",
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1", # pylint: disable=line-too-long
             response["html"],
         )
         self.assertIn('title="Test Note (Hosted by DocumentCloud)"', response["html"])
