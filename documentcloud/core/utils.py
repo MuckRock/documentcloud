@@ -49,3 +49,9 @@ def custom_preprocessing_hook(endpoints):
         ):
             filtered.append((path, path_regex, method, callback))
     return filtered
+
+
+def format_date(date):
+    if date is None:
+        return None
+    return date.replace(tzinfo=None).isoformat() + "Z"
