@@ -107,7 +107,9 @@ class DocumentOEmbedTest(TestCase):
 
         context = self.document_oembed.get_context(self.document, query, extra)
 
-        expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?param=value"
+        expected_src = (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?param=value"
+        )
         self.assertEqual(context["src"], expected_src)
         self.assertEqual(context["width"], 600)
         self.assertEqual(context["height"], 400)
