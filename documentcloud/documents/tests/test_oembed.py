@@ -13,8 +13,11 @@ class DocumentOEmbedTest(TestCase):
         self.document = mock.MagicMock(spec=Document)
         self.document.title = "Test Document"
         self.document.aspect_ratio = 1.5
-        self.document.get_absolute_url.return_value = "/documents/123/"
+        self.document.slug = "test-document"
         self.document.pk = 123
+        self.document.get_absolute_url.return_value = (
+            f"/documents/{self.document.pk}-{self.document.slug}/"
+        )
 
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
@@ -59,7 +62,7 @@ class DocumentOEmbedTest(TestCase):
         # Check that the response contains an iframe with expected attributes
         self.assertIn('<iframe src="', response["html"])
         self.assertIn(
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/?responsive=1",
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?responsive=1",
             response["html"],
         )
         self.assertIn(
@@ -104,7 +107,7 @@ class DocumentOEmbedTest(TestCase):
 
         context = self.document_oembed.get_context(self.document, query, extra)
 
-        expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123/?param=value"
+        expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?param=value"
         self.assertEqual(context["src"], expected_src)
         self.assertEqual(context["width"], 600)
         self.assertEqual(context["height"], 400)
@@ -146,9 +149,12 @@ class PageOEmbedTest(TestCase):
         self.user = mock.MagicMock()
         self.document = mock.MagicMock(spec=Document)
         self.document.pk = 123
+        self.document.slug = "test-document"
         self.document.title = "Test Document"
         self.document.aspect_ratio = 1.5
-        self.document.get_absolute_url.return_value = "/documents/123/"
+        self.document.get_absolute_url.return_value = (
+            f"/documents/{self.document.pk}-{self.document.slug}/"
+        )
 
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
@@ -193,7 +199,7 @@ class PageOEmbedTest(TestCase):
         # Check that the response contains an iframe with expected attributes
         self.assertIn('<iframe src="', response["html"])
         self.assertIn(
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1?responsive=1",
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1/?responsive=1",
             response["html"],
         )
         self.assertIn(
@@ -233,7 +239,7 @@ class PageOEmbedTest(TestCase):
         context = self.page_oembed.get_context(self.document, query, extra, page=2)
 
         expected_src = (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2?param=value"
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2/?param=value"
         )
         self.assertEqual(context["src"], expected_src)
         self.assertEqual(context["width"], 600)
@@ -249,8 +255,11 @@ class NoteOEmbedTest(TestCase):
         # Mock the Document
         self.document = mock.MagicMock(spec=Document)
         self.document.title = "Test Document"
-        self.document.get_absolute_url.return_value = "/documents/123/"
+        self.document.slug = "test-document"
         self.document.pk = 123
+        self.document.get_absolute_url.return_value = (
+            f"/documents/{self.document.pk}-{self.document.slug}/"
+        )
 
         # Mock the Note
         self.note = mock.MagicMock()
@@ -304,7 +313,7 @@ class NoteOEmbedTest(TestCase):
         # Check that the response contains an iframe with expected attributes
         self.assertIn('<iframe src="', response["html"])
         self.assertIn(
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456?responsive=1",
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1",
             response["html"],
         )
         self.assertIn('title="Test Note (Hosted by DocumentCloud)"', response["html"])

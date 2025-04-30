@@ -96,7 +96,7 @@ class PageOEmbed(DocumentOEmbed):
 
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
-        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}"
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}/"
         if query:
             src = f"{src}?{query}"
         return {
@@ -135,7 +135,7 @@ class NoteOEmbed(RichOEmbed):
         )
         oembed = {"title": note.title}
         # pylint: disable=consider-using-f-string
-        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}"
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}/"
         if query:
             src = f"{src}?{query}"
         context = {
