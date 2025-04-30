@@ -14,20 +14,30 @@ class DocumentOEmbedTest(TestCase):
         self.document.title = "Test Document"
         self.document.aspect_ratio = 1.5
         self.document.get_absolute_url.return_value = "/documents/123/"
+        self.document.pk = 123
 
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
         self.document_queryset.get_viewable.return_value = self.document_queryset
+        self.document_queryset.get.return_value = self.document
+        self.original_objects = Document.objects
         Document.objects = self.document_queryset
 
         # Create a DocumentOEmbed instance
         self.document_oembed = DocumentOEmbed()
 
         # Mock get_object_or_404
-        self.get_object_mock = mock.patch(
+        self.get_object_patcher = mock.patch(
             "documentcloud.documents.oembed.get_object_or_404",
             return_value=self.document,
         )
+        self.mock_get_object = self.get_object_patcher.start()
+
+    def tearDown(self):
+        # Restore original objects
+        Document.objects = self.original_objects
+        # Stop all patches
+        self.get_object_patcher.stop()
 
     def test_document_oembed_response(self):
         """Test the response method of DocumentOEmbed"""
@@ -35,10 +45,9 @@ class DocumentOEmbedTest(TestCase):
         request.user = self.user
         query = Query("responsive=1")
 
-        with self.get_object_mock:
-            response = self.document_oembed.response(
-                request, query, max_width=600, max_height=None, pk=123
-            )
+        response = self.document_oembed.response(
+            request, query, max_width=600, max_height=None, pk=123
+        )
 
         # Check response properties
         self.assertEqual(response["version"], "1.0")
@@ -144,16 +153,25 @@ class PageOEmbedTest(TestCase):
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
         self.document_queryset.get_viewable.return_value = self.document_queryset
+        self.document_queryset.get.return_value = self.document
+        self.original_objects = Document.objects
         Document.objects = self.document_queryset
 
         # Create a PageOEmbed instance
         self.page_oembed = PageOEmbed()
 
         # Mock get_object_or_404
-        self.get_object_mock = mock.patch(
+        self.get_object_patcher = mock.patch(
             "documentcloud.documents.oembed.get_object_or_404",
             return_value=self.document,
         )
+        self.mock_get_object = self.get_object_patcher.start()
+
+    def tearDown(self):
+        # Restore original objects
+        Document.objects = self.original_objects
+        # Stop all patches
+        self.get_object_patcher.stop()
 
     def test_page_oembed_response(self):
         """Test the response method of PageOEmbed"""
@@ -161,10 +179,9 @@ class PageOEmbedTest(TestCase):
         request.user = self.user
         query = Query("responsive=1")
 
-        with self.get_object_mock:
-            response = self.page_oembed.response(
-                request, query, max_width=600, max_height=None, pk=123, page=1
-            )
+        response = self.page_oembed.response(
+            request, query, max_width=600, max_height=None, pk=123, page=1
+        )
 
         # Check response properties
         self.assertEqual(response["version"], "1.0")
@@ -243,21 +260,31 @@ class NoteOEmbedTest(TestCase):
         # Mock Document.notes.get_viewable
         note_queryset = mock.MagicMock()
         note_queryset.get_viewable.return_value = note_queryset
+        note_queryset.get.return_value = self.note
         self.document.notes = note_queryset
 
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
         self.document_queryset.get_viewable.return_value = self.document_queryset
+        self.document_queryset.get.return_value = self.document
+        self.original_objects = Document.objects
         Document.objects = self.document_queryset
 
         # Create a NoteOEmbed instance
         self.note_oembed = NoteOEmbed()
 
         # Mock get_object_or_404 for both document and note
-        self.get_object_mock = mock.patch(
+        self.get_object_patcher = mock.patch(
             "documentcloud.documents.oembed.get_object_or_404",
             side_effect=[self.document, self.note],
         )
+        self.mock_get_object = self.get_object_patcher.start()
+
+    def tearDown(self):
+        # Restore original objects
+        Document.objects = self.original_objects
+        # Stop all patches
+        self.get_object_patcher.stop()
 
     def test_note_oembed_response(self):
         """Test the response method of NoteOEmbed"""
@@ -265,10 +292,9 @@ class NoteOEmbedTest(TestCase):
         request.user = self.user
         query = Query("responsive=1")
 
-        with self.get_object_mock:
-            response = self.note_oembed.response(
-                request, query, max_width=600, max_height=None, doc_pk=123, pk=456
-            )
+        response = self.note_oembed.response(
+            request, query, max_width=600, max_height=None, doc_pk=123, pk=456
+        )
 
         # Check response properties
         self.assertEqual(response["version"], "1.0")
