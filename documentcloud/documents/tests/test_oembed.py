@@ -1,8 +1,13 @@
+# Django
 from django.conf import settings
 from django.test import RequestFactory, TestCase
+
+# Standard Library
 from unittest import mock
+
+# DocumentCloud
 from documentcloud.documents.models import Document
-from documentcloud.documents.oembed import DocumentOEmbed, PageOEmbed, NoteOEmbed
+from documentcloud.documents.oembed import DocumentOEmbed, NoteOEmbed, PageOEmbed
 from documentcloud.oembed.utils import Query
 
 
@@ -128,21 +133,21 @@ class DocumentOEmbedTest(TestCase):
         style = self.document_oembed.get_style(600, None)
         self.assertEqual(
             style,
-            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px;", # pylint: disable=line-too-long
+            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px;",  # pylint: disable=line-too-long
         )
 
         # Test with max_height only
         style = self.document_oembed.get_style(None, 400)
         self.assertEqual(
             style,
-            " width: 100%; height: 800px; height: calc(100vh - 100px); max-height: 400px;", # pylint: disable=line-too-long
+            " width: 100%; height: 800px; height: calc(100vh - 100px); max-height: 400px;",  # pylint: disable=line-too-long
         )
 
         # Test with both max dimensions
         style = self.document_oembed.get_style(600, 400)
         self.assertEqual(
             style,
-            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px; max-height: 400px;", # pylint: disable=line-too-long
+            " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px; max-height: 400px;",  # pylint: disable=line-too-long
         )
 
 
@@ -318,7 +323,7 @@ class NoteOEmbedTest(TestCase):
         # Check that the response contains an iframe with expected attributes
         self.assertIn('<iframe src="', response["html"])
         self.assertIn(
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1", # pylint: disable=line-too-long
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1",  # pylint: disable=line-too-long
             response["html"],
         )
         self.assertIn('title="Test Note (Hosted by DocumentCloud)"', response["html"])

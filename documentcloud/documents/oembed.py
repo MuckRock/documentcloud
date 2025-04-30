@@ -133,7 +133,7 @@ class NoteOEmbed(RichOEmbed):
             document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
         oembed = {"title": note.title}
-        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}/" # pylint: disable=line-too-long
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}/"  # pylint: disable=line-too-long
         if query:
             src = f"{src}?{query}"
         context = {
