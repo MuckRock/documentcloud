@@ -132,24 +132,21 @@ class TestDocumentOEmbed:
         # Test with max_width only
         style = self.document_oembed.get_style(600, None)
         assert (
-            style
-            == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            style == " width: 100%; height: 800px; height: calc(100vh - 100px); "
             "max-width: 600px;"
         )
 
         # Test with max_height only
         style = self.document_oembed.get_style(None, 400)
         assert (
-            style
-            == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            style == " width: 100%; height: 800px; height: calc(100vh - 100px); "
             "max-height: 400px;"
         )
 
         # Test with both max dimensions
         style = self.document_oembed.get_style(600, 400)
         assert (
-            style
-            == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            style == " width: 100%; height: 800px; height: calc(100vh - 100px); "
             "max-width: 600px; max-height: 400px;"
         )
 
