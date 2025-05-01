@@ -112,6 +112,23 @@ class Organization(AbstractOrganization):
     def _choose_entitlement(self, entitlements):
         return max(entitlements, key=lambda e: e["resources"].get("base_ai_credits", 0))
 
+    @transaction.atomic
+    def merge(self, uuid):
+        """Merge this organization into another"""
+        other = Organization.objects.get(uuid=uuid)
+        logger.info("Merge orgs: %d %d", self.pk, other.pk)
+
+        # add all users not already in the other organization
+        self.memberships.exclude(user__in=other.users.all()).update(organization=other)
+        self.memberships.all().delete()
+
+        self.documents.update(organization=other)
+        self.notes.update(organization=other)
+        self.addons.update(organization=other)
+        self.visual_addons.update(organization=other)
+
+        self.merged = other
+
     def calc_ai_credits_per_month(self, users):
         """Calculate how many AI credits an organization gets per month on this plan
         for a given number of users"""
