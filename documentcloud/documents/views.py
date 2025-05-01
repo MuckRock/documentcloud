@@ -303,7 +303,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         },
     )
     def partial_update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        return super().partial_update(request, *args, **kwargs)
 
     @extend_schema(
         operation_id="documents_bulk_partial_update",
