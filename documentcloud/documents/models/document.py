@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 # pylint:disable = too-many-lines
 
+
 def format_date(date):
     if date is None:
         return None
