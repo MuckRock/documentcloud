@@ -33,6 +33,7 @@ from documentcloud.documents.querysets import DocumentQuerySet
 
 logger = logging.getLogger(__name__)
 
+# pylint:disable = too-many-lines
 
 class Document(models.Model):
     """A document uploaded to DocumentCloud"""
