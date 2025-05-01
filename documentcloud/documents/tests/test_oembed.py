@@ -15,6 +15,7 @@ from documentcloud.oembed.utils import Query
 
 
 class TestDocumentOEmbed:
+    # pylint: disable=too-many-instance-attributes
     @pytest.fixture(autouse=True)
     def setup(self):
         self.factory = RequestFactory()
@@ -44,9 +45,9 @@ class TestDocumentOEmbed:
             return_value=self.document,
         )
         self.mock_get_object = self.get_object_patcher.start()
-        
+
         yield
-        
+
         # Teardown
         Document.objects = self.original_objects
         self.get_object_patcher.stop()
@@ -70,11 +71,20 @@ class TestDocumentOEmbed:
 
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
-        assert f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?responsive=1" in response["html"]
+        assert (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?responsive=1"
+            in response["html"]
+        )
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
-        assert 'style="border: 1px solid #aaa; width: 100%; height: 800px;' in response["html"]
-        assert 'sandbox="allow-scripts allow-same-origin allow-popups allow-forms' in response["html"]
+        assert (
+            'style="border: 1px solid #aaa; width: 100%; height: 800px;'
+            in response["html"]
+        )
+        assert (
+            'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
+            in response["html"]
+        )
 
     def test_document_oembed_get_dimensions(self):
         """Test the get_dimensions method of DocumentOEmbed"""
@@ -105,7 +115,9 @@ class TestDocumentOEmbed:
 
         context = self.document_oembed.get_context(self.document, query, extra)
 
-        expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?param=value"
+        expected_src = (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?param=value"
+        )
         assert context["src"] == expected_src
         assert context["width"] == 600
         assert context["height"] == 400
@@ -119,18 +131,31 @@ class TestDocumentOEmbed:
 
         # Test with max_width only
         style = self.document_oembed.get_style(600, None)
-        assert style == " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px;"
+        assert (
+            style
+            == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            "max-width: 600px;"
+        )
 
         # Test with max_height only
         style = self.document_oembed.get_style(None, 400)
-        assert style == " width: 100%; height: 800px; height: calc(100vh - 100px); max-height: 400px;"
+        assert (
+            style
+            == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            "max-height: 400px;"
+        )
 
         # Test with both max dimensions
         style = self.document_oembed.get_style(600, 400)
-        assert style == " width: 100%; height: 800px; height: calc(100vh - 100px); max-width: 600px; max-height: 400px;"
+        assert (
+            style
+            == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            "max-width: 600px; max-height: 400px;"
+        )
 
 
 class TestPageOEmbed:
+    # pylint: disable=too-many-instance-attributes
     @pytest.fixture(autouse=True)
     def setup(self):
         self.factory = RequestFactory()
@@ -160,9 +185,9 @@ class TestPageOEmbed:
             return_value=self.document,
         )
         self.mock_get_object = self.get_object_patcher.start()
-        
+
         yield
-        
+
         # Teardown
         Document.objects = self.original_objects
         self.get_object_patcher.stop()
@@ -186,11 +211,20 @@ class TestPageOEmbed:
 
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
-        assert f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1/?responsive=1" in response["html"]
+        assert (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1/?responsive=1"
+            in response["html"]
+        )
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
-        assert 'style="border: 1px solid #aaa; width: 100%; height: 800px;' in response["html"]
-        assert 'sandbox="allow-scripts allow-same-origin allow-popups allow-forms' in response["html"]
+        assert (
+            'style="border: 1px solid #aaa; width: 100%; height: 800px;'
+            in response["html"]
+        )
+        assert (
+            'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
+            in response["html"]
+        )
 
     def test_page_oembed_get_dimensions(self):
         """Test the get_dimensions method of PageOEmbed"""
@@ -215,7 +249,9 @@ class TestPageOEmbed:
 
         context = self.page_oembed.get_context(self.document, query, extra, page=2)
 
-        expected_src = f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2/?param=value"
+        expected_src = (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2/?param=value"
+        )
         assert context["src"] == expected_src
         assert context["width"] == 600
         assert context["height"] == 400
@@ -223,6 +259,7 @@ class TestPageOEmbed:
 
 
 class TestNoteOEmbed:
+    # pylint: disable=too-many-instance-attributes
     @pytest.fixture(autouse=True)
     def setup(self):
         self.factory = RequestFactory()
@@ -264,9 +301,9 @@ class TestNoteOEmbed:
             side_effect=[self.document, self.note],
         )
         self.mock_get_object = self.get_object_patcher.start()
-        
+
         yield
-        
+
         # Teardown
         Document.objects = self.original_objects
         self.get_object_patcher.stop()
@@ -288,8 +325,14 @@ class TestNoteOEmbed:
 
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
-        assert f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1" in response["html"]
+        assert (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1"
+            in response["html"]
+        )
         assert 'title="Test Note (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="100%" height="500px"' in response["html"]
         assert 'style="border: 1px solid #aaa;' in response["html"]
-        assert 'sandbox="allow-scripts allow-same-origin allow-popups allow-forms' in response["html"]
+        assert (
+            'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
+            in response["html"]
+        )
