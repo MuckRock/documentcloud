@@ -32,9 +32,8 @@ class DocumentOEmbed(RichOEmbed):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
-        responsive = query.params.get("responsive", "1") == "1"
         width, height = self.get_dimensions(document, max_width, max_height)
-        style = self.get_style(responsive, max_width, max_height)
+        style = self.get_style(max_width, max_height)
         oembed = {
             "title": document.title,
             "width": width,
@@ -66,7 +65,7 @@ class DocumentOEmbed(RichOEmbed):
         else:
             return default_width, int(default_width / aspect_ratio)
 
-    def get_style(self, responsive, max_width, max_height):
+    def get_style(self, max_width, max_height):
         # Responsive is now the default width setting
         # 100% width and 100vh - 100px height (800px fallback for old browsers)
         style = " width: 100%; height: 800px; height: calc(100vh - 100px);"
@@ -96,7 +95,7 @@ class PageOEmbed(DocumentOEmbed):
 
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
-        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}"
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}/"
         if query:
             src = f"{src}?{query}"
         return {
@@ -126,7 +125,7 @@ class NoteOEmbed(RichOEmbed):
         ),
     ]
 
-    def response(self, request, query, **kwargs):
+    def response(self, request, query, max_width=None, max_height=None, **kwargs):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["doc_pk"]
         )
@@ -134,8 +133,7 @@ class NoteOEmbed(RichOEmbed):
             document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
         oembed = {"title": note.title}
-        # pylint: disable=consider-using-f-string
-        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}"
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}/"  # pylint: disable=line-too-long
         if query:
             src = f"{src}?{query}"
         context = {
