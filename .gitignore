@@ -282,6 +282,7 @@ documentcloud/media/
 
 .pytest_cache/
 .env
+.envrc
 .envs/*
 
 # Generated test reports

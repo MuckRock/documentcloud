@@ -5,10 +5,8 @@ from rest_framework.generics import get_object_or_404
 
 # Standard Library
 import re
-import time
 
 # DocumentCloud
-from documentcloud.common.path import page_image_path, page_text_path
 from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
@@ -34,10 +32,8 @@ class DocumentOEmbed(RichOEmbed):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
-
-        responsive = query.params.get("responsive", "1") == "1"
         width, height = self.get_dimensions(document, max_width, max_height)
-        style = self.get_style(responsive, max_width, max_height)
+        style = self.get_style(max_width, max_height)
         oembed = {
             "title": document.title,
             "width": width,
@@ -69,11 +65,8 @@ class DocumentOEmbed(RichOEmbed):
         else:
             return default_width, int(default_width / aspect_ratio)
 
-    def get_style(self, responsive, max_width, max_height):
-        if not responsive:
-            # Don't apply any extra styling if not responsive
-            return ""
-
+    def get_style(self, max_width, max_height):
+        # Responsive is now the default width setting
         # 100% width and 100vh - 100px height (800px fallback for old browsers)
         style = " width: 100%; height: 800px; height: calc(100vh - 100px);"
 
@@ -100,32 +93,13 @@ class PageOEmbed(DocumentOEmbed):
         ),
     ]
 
-    def get_dimensions(self, document, max_width, max_height):
-        default_width = 700
-        if max_width:
-            return (min(max_width, default_width), None)
-        else:
-            return default_width, None
-
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
-        timestamp = int(time.time())
-        # pylint: disable=consider-using-f-string
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}/"
+        if query:
+            src = f"{src}?{query}"
         return {
-            "page": page,
-            "page_url": "{}{}#document/p{}".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), page
-            ),
-            "img_url": "{}?ts={}".format(
-                page_image_path(document.pk, document.slug, page - 1, "xlarge"),
-                timestamp,
-            ),
-            "text_url": "{}?ts={}".format(
-                page_text_path(document.pk, document.slug, page - 1), timestamp
-            ),
-            "user_org_string": f"{document.user.name} ({document.organization})",
-            "app_url": settings.DOCCLOUD_URL,
-            "enhance_src": f"{settings.DOCCLOUD_URL}/embed/enhance.js",
+            "src": src,
             **extra,
         }
 
@@ -150,7 +124,6 @@ class NoteOEmbed(RichOEmbed):
             r"notes/(?P<pk>[0-9]+)/?$"
         ),
     ]
-    width = 750
 
     def response(self, request, query, max_width=None, max_height=None, **kwargs):
         document = get_object_or_404(
@@ -159,24 +132,16 @@ class NoteOEmbed(RichOEmbed):
         note = get_object_or_404(
             document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
-
-        height = None
-        if max_width and max_width < self.width:
-            width = max_width
-        else:
-            width = self.width
-        oembed = {"title": note.title, "width": width, "height": height}
-        # pylint: disable=consider-using-f-string
+        oembed = {"title": note.title}
+        src = (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{document.pk}/annotations/{note.pk}/"
+        )
+        if query:
+            src = f"{src}?{query}"
         context = {
-            "pk": note.pk,
-            "loader_src": f"{settings.DOCCLOUD_URL}/notes/loader.js",
-            "note_src": "{}{}annotations/{}.js".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
-            ),
-            "note_html_src": "{}{}annotations/{}".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
-            ),
-            **oembed,
+            "src": src,
+            "title": note.title,
         }
         template = get_template(self.template)
         oembed["html"] = template.render(context)
