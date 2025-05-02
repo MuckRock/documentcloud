@@ -72,7 +72,9 @@ class TestDocumentOEmbed:
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
         assert (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/?embed=1&amp;responsive=1"
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{self.document.pk}-{self.document.slug}/"
+            "?embed=1&amp;responsive=1"
         ) in response["html"]
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
@@ -90,18 +92,18 @@ class TestDocumentOEmbed:
         request.user = self.user
         query = Query("responsive=1&fullscreen=1&title=0")
 
-        with self.get_object_mock:
-            response = self.document_oembed.response(
-                request, query, max_width=600, max_height=None, pk=123
-            )
+        response = self.document_oembed.response(
+            request, query, max_width=600, max_height=None, pk=123
+        )
 
         # Check that the response contains an iframe with expected attributes
-        self.assertIn('<iframe src="', response["html"])
+        assert '<iframe src="' in response["html"]
         # Since the text is HTML, we need to encode the ampersands
-        self.assertIn(
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/?embed=1&amp;responsive=1&amp;fullscreen=1&amp;title=0",
-            response["html"],
-        )
+        assert (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{self.document.pk}-{self.document.slug}/"
+            "?embed=1&amp;responsive=1&amp;fullscreen=1&amp;title=0"
+        ) in response["html"]
 
     def test_document_oembed_get_dimensions(self):
         """Test the get_dimensions method of DocumentOEmbed"""
@@ -133,7 +135,9 @@ class TestDocumentOEmbed:
         context = self.document_oembed.get_context(self.document, query, extra)
 
         expected_src = (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/?embed=1&param=value"
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{self.document.pk}-{self.document.slug}/"
+            "?embed=1&param=value"
         )
         assert context["src"] == expected_src
         assert context["width"] == 600
@@ -226,7 +230,8 @@ class TestPageOEmbed:
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
         assert (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1?embed=1&amp;responsive=1",
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1/"
+            "?embed=1&amp;responsive=1"
         ) in response["html"]
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
@@ -339,7 +344,8 @@ class TestNoteOEmbed:
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
         assert (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?embed=1&amp;responsive=1"
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/"
+            "?embed=1&amp;responsive=1"
         ) in response["html"]
         assert 'title="Test Note (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="100%" height="500px"' in response["html"]
