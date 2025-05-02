@@ -21,7 +21,7 @@ import environ
 import pysolr
 from django_filters import rest_framework as django_filters
 from drf_spectacular.openapi import OpenApiParameter
-from drf_spectacular.utils import OpenApiExample, extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
@@ -97,7 +97,7 @@ logger = logging.getLogger(__name__)
 # served beneath that route.  We set the 'no-cache' Cache-Control header to disable
 # the caching for all views besides the ones we explicitly set
 
-# pylint: disable=too-many-lines, line-too-long
+# pylint: disable=too-many-lines, line-too-long, too-many-public-methods
 
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
@@ -117,20 +117,396 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
     )
 
-    @extend_schema(operation_id="documents_bulk_partial_update")
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        operation_id="documents_bulk_partial_update",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
     def bulk_partial_update(self, request, *args, **kwargs):
         return super().bulk_partial_update(request, *args, **kwargs)
 
-    @extend_schema(operation_id="documents_bulk_update")
+    @extend_schema(
+        operation_id="documents_bulk_update",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
     def bulk_update(self, request, *args, **kwargs):
         return super().bulk_update(request, *args, **kwargs)
 
-    @extend_schema(operation_id="documents_bulk_destroy")
+    @extend_schema(
+        operation_id="documents_bulk_destroy",
+    )
     def bulk_destroy(self, request, *args, **kwargs):
         return super().bulk_destroy(request, *args, **kwargs)
 
     @extend_schema(
-        responses={200: DocumentSerializer},
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+        },
         examples=[
             OpenApiExample(
                 "List Documents",
@@ -200,7 +576,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         return super().list(request, *args, **kwargs)
 
     @extend_schema(
-        responses={200: DocumentSerializer},
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
         examples=[
             OpenApiExample(
                 "Retrieve Document",
@@ -242,7 +623,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     @extend_schema(
         request=DocumentSerializer,
-        responses={201: DocumentSerializer},
+        responses={
+            201: DocumentSerializer,
+            400: OpenApiResponse(description="Invalid parameters specified"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
         examples=[
             OpenApiExample(
                 "Create Document",

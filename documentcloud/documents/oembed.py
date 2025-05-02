@@ -48,8 +48,9 @@ class DocumentOEmbed(RichOEmbed):
 
     def get_context(self, document, query, extra, **kwargs):
         src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
+        src = f"{src}?embed=1"
         if query:
-            src = f"{src}?{query}"
+            src = f"{src}&{query}"
         return {"src": src, **extra}
 
     def get_dimensions(self, document, max_width, max_height):
@@ -96,8 +97,9 @@ class PageOEmbed(DocumentOEmbed):
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
         src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}/"
+        src = f"{src}?embed=1"
         if query:
-            src = f"{src}?{query}"
+            src = f"{src}&{query}"
         return {
             "src": src,
             **extra,
@@ -133,9 +135,13 @@ class NoteOEmbed(RichOEmbed):
             document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
         oembed = {"title": note.title}
-        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/annotations/{note.pk}/"  # pylint: disable=line-too-long
+        src = (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{document.pk}/annotations/{note.pk}/"
+        )
+        src = f"{src}?embed=1"
         if query:
-            src = f"{src}?{query}"
+            src = f"{src}&{query}"
         context = {
             "src": src,
             "title": note.title,
