@@ -135,7 +135,7 @@ class NoteOEmbed(RichOEmbed):
         oembed = {"title": note.title}
         src = (
             f"{settings.DOCCLOUD_EMBED_URL}/documents/"
-            "{document.pk}/annotations/{note.pk}/"
+            f"{document.pk}/annotations/{note.pk}/"
         )
         if query:
             src = f"{src}?{query}"
