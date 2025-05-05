@@ -1442,7 +1442,6 @@ class TestNoteAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Note.objects.filter(pk=note.pk).exists()
 
-
 @pytest.mark.django_db()
 class TestSectionAPI:
     def test_list(self, client, document):
@@ -1909,6 +1908,93 @@ class TestEntityAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert document.legacy_entities_2.count() == 0
 
+
+@pytest.mark.django_db()
+class TestBulkDataSearchAPI:
+    def test_keys_list_unauthenticated(factory):
+        request = factory.get("/api/documents/data/keys/")
+        view = KeyViewSet.as_view({"get": "list"})
+        response = view(request)
+        assert response.status_code == 200
+        assert response.data == []
+
+
+    def test_keys_list_authenticated_user(factory, user):
+        doc = DocumentFactory(user=user, data={"color": ["red"], "state": ["ma"]})
+        request = factory.get("/api/documents/data/keys/")
+        force_authenticate(request, user=user)
+        view = KeyViewSet.as_view({"get": "list"})
+        response = view(request)
+        assert response.status_code == 200
+        assert sorted(response.data) == sorted(doc.data.keys())
+
+
+    def test_keys_list_private_document(factory, user):
+        other_user = User.objects.create_user(username="other", password="pass")
+        DocumentFactory(user=other_user, access=Access.private, data={"hidden": ["yes"]})
+        request = factory.get("/api/documents/data/keys/")
+        force_authenticate(request, user=user)
+        view = KeyViewSet.as_view({"get": "list"})
+        response = view(request)
+        assert response.status_code == 200
+        assert response.data == []
+
+
+    def test_keys_list_with_project_filter(factory, user):
+        project = ProjectFactory(users=[user])
+        doc = DocumentFactory(user=user, projects=[project], data={"color": ["red"]})
+        DocumentFactory(user=user, data={"state": ["ca"]})  # Not in project
+
+        request = factory.get(f"/api/documents/data/keys/?project={project.id}")
+        force_authenticate(request, user=user)
+        view = KeyViewSet.as_view({"get": "list"})
+        response = view(request)
+        assert response.status_code == 200
+        assert response.data == ["color"]
+
+
+    def test_key_values_authenticated_user(factory, user):
+        doc = DocumentFactory(user=user, data={"color": ["red", "blue"]})
+        request = factory.get("/api/documents/data/keys/color/values/")
+        force_authenticate(request, user=user)
+        view = KeyValueViewSet.as_view({"get": "list"})
+        response = view(request, key="color")
+        assert response.status_code == 200
+        assert sorted(response.data) == sorted(["red", "blue"])
+
+
+    def test_key_values_private_document(factory, user):
+        other_user = User.objects.create_user(username="other", password="pass")
+        DocumentFactory(user=other_user, access=Access.private, data={"secret": ["top"]})
+        request = factory.get("/api/documents/data/keys/secret/values/")
+        force_authenticate(request, user=user)
+        view = KeyValueViewSet.as_view({"get": "list"})
+        response = view(request, key="secret")
+        assert response.status_code == 200
+        assert response.data == []
+
+
+    def test_key_values_with_project_filter(factory, user):
+        project = ProjectFactory(users=[user])
+        DocumentFactory(user=user, projects=[project], data={"color": ["green"]})
+        DocumentFactory(user=user, data={"color": ["red"]})  # Not in project
+
+        request = factory.get(f"/api/documents/data/keys/color/values/?project={project.id}")
+        force_authenticate(request, user=user)
+        view = KeyValueViewSet.as_view({"get": "list"})
+        response = view(request, key="color")
+        assert response.status_code == 200
+        assert response.data == ["green"]
+
+
+    def test_key_values_invalid_key(factory, user):
+        DocumentFactory(user=user, data={"valid_key": ["yes"]})
+        request = factory.get("/api/documents/data/keys/invalid key!/values/")
+        force_authenticate(request, user=user)
+        view = KeyValueViewSet.as_view({"get": "list"})
+        response = view(request, key="invalid key!")
+        assert response.status_code == 400
+        assert "error" in response.data
 
 @pytest.mark.django_db()
 class TestOEmbed:

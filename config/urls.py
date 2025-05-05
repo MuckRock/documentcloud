@@ -29,6 +29,8 @@ from documentcloud.addons.views import (
 from documentcloud.core.views import FileServer, account_logout, mailgun
 from documentcloud.documents.views import (
     DataViewSet,
+    KeyViewSet,
+    KeyValueViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
@@ -69,7 +71,12 @@ router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 router.register("flatpages", FlatPageViewSet)
 router.register("statistics", StatisticsViewSet)
-
+router.register("documents/data/keys", KeyViewSet, basename="data-keys")
+router.register(
+    r"documents/data/keys/(?P<key>[^/]+)/values",
+    KeyValueViewSet,
+    basename="data-values",
+)
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)

@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db.models import CharField, F, Func, Q, Value, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -12,7 +12,9 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 
 # Standard Library
+import json
 import logging
+import re
 import sys
 from functools import lru_cache
 
@@ -1784,3 +1786,66 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         post_process.delay(document_pk, request.data)
 
         return Response("OK", status=status.HTTP_200_OK)
+
+
+class KeyViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    queryset = Document.objects.none()  # Required to satisfy DRF but unused
+
+    def list(self, request, *args, **kwargs):
+        queryset = Document.objects.get_viewable(request.user)
+
+        project_id = request.query_params.get("project")
+        if project_id:
+            queryset = queryset.filter(projects__id=project_id)
+
+        keys = (
+            queryset.annotate(key=Func(F("data"), function="jsonb_object_keys"))
+            .values_list("key", flat=True)
+            .order_by("key")
+            .distinct()
+        )
+
+        return Response(sorted(keys))
+
+
+class KeyValueViewSet(viewsets.GenericViewSet):
+    queryset = Document.objects.none()  # Required to satisfy DRF but unused
+
+    def list(self, request, key=None):
+        # Provided keys must be alphanumeric
+        if not re.match(r"^[a-zA-Z0-9_]+$", key):
+            return Response(
+                {"error": "Key must be an alphanumeric string."}, status=400
+            )
+        project_id = request.query_params.get("project")
+        queryset = Document.objects.get_viewable(request.user)
+        if project_id:
+            queryset = queryset.filter(projects__id=project_id)
+
+        values = (
+            queryset.annotate(
+                value=Func(
+                    F("data"),
+                    Value(key),
+                    function="jsonb_extract_path_text",
+                    template="%(function)s(%(expressions)s)",
+                    output_field=CharField(),
+                )
+            )
+            .values_list("value", flat=True)
+            .order_by("value")
+            .distinct()
+        )
+
+        flattened_values = [
+            item
+            for value in values
+            if value
+            for item in (
+                json.loads(value)
+                if isinstance(json.loads(value), list)
+                else [json.loads(value)]
+            )
+        ]
+
+        return Response(flattened_values)
