@@ -1442,6 +1442,7 @@ class TestNoteAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Note.objects.filter(pk=note.pk).exists()
 
+
 @pytest.mark.django_db()
 class TestSectionAPI:
     def test_list(self, client, document):
@@ -1911,90 +1912,76 @@ class TestEntityAPI:
 
 @pytest.mark.django_db()
 class TestBulkDataSearchAPI:
-    def test_keys_list_unauthenticated(factory):
-        request = factory.get("/api/documents/data/keys/")
-        view = KeyViewSet.as_view({"get": "list"})
-        response = view(request)
+    def test_keys_list_unauthenticated(self, client):
+        response = client.get("/api/documents/data/keys/")
         assert response.status_code == 200
-        assert response.data == []
+        assert response.json() == []
 
-
-    def test_keys_list_authenticated_user(factory, user):
-        doc = DocumentFactory(user=user, data={"color": ["red"], "state": ["ma"]})
-        request = factory.get("/api/documents/data/keys/")
-        force_authenticate(request, user=user)
-        view = KeyViewSet.as_view({"get": "list"})
-        response = view(request)
+    def test_keys_list_authenticated_user(self, client, user):
+        doc1 = DocumentFactory(user=user, data={"color": ["red"], "state": ["ma"]})
+        doc2 = DocumentFactory(user=user, data={"shape": ["circle"], "state": ["ny"]})
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/")
         assert response.status_code == 200
-        assert sorted(response.data) == sorted(doc.data.keys())
+        expected_keys = set(doc1.data.keys()) | set(doc2.data.keys())
+        assert sorted(response.json()) == sorted(expected_keys)
 
-
-    def test_keys_list_private_document(factory, user):
-        other_user = User.objects.create_user(username="other", password="pass")
-        DocumentFactory(user=other_user, access=Access.private, data={"hidden": ["yes"]})
-        request = factory.get("/api/documents/data/keys/")
-        force_authenticate(request, user=user)
-        view = KeyViewSet.as_view({"get": "list"})
-        response = view(request)
+    def test_keys_list_private_document(self, client, user):
+        other_user = UserFactory()
+        DocumentFactory(
+            user=other_user, access=Access.private, data={"hidden": ["yes"]}
+        )
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/")
         assert response.status_code == 200
-        assert response.data == []
+        assert response.json() == []
 
-
-    def test_keys_list_with_project_filter(factory, user):
-        project = ProjectFactory(users=[user])
-        doc = DocumentFactory(user=user, projects=[project], data={"color": ["red"]})
+    def test_keys_list_with_project_filter(self, client, user):
+        document_in_proj = DocumentFactory(
+            user=user, data={"color": ["red"]}
+        )  # in project
         DocumentFactory(user=user, data={"state": ["ca"]})  # Not in project
-
-        request = factory.get(f"/api/documents/data/keys/?project={project.id}")
-        force_authenticate(request, user=user)
-        view = KeyViewSet.as_view({"get": "list"})
-        response = view(request)
+        project = ProjectFactory(user=user, documents=[document_in_proj])
+        client.force_login(user)
+        response = client.get(f"/api/documents/data/keys/?project={project.id}")
         assert response.status_code == 200
-        assert response.data == ["color"]
+        assert response.json() == ["color"]
 
-
-    def test_key_values_authenticated_user(factory, user):
-        doc = DocumentFactory(user=user, data={"color": ["red", "blue"]})
-        request = factory.get("/api/documents/data/keys/color/values/")
-        force_authenticate(request, user=user)
-        view = KeyValueViewSet.as_view({"get": "list"})
-        response = view(request, key="color")
+    def test_key_values_authenticated_user(self, client, user):
+        DocumentFactory(user=user, data={"color": ["red", "blue"]})
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/color/values/")
         assert response.status_code == 200
-        assert sorted(response.data) == sorted(["red", "blue"])
+        assert sorted(response.json()) == sorted(["red", "blue"])
 
-
-    def test_key_values_private_document(factory, user):
-        other_user = User.objects.create_user(username="other", password="pass")
-        DocumentFactory(user=other_user, access=Access.private, data={"secret": ["top"]})
-        request = factory.get("/api/documents/data/keys/secret/values/")
-        force_authenticate(request, user=user)
-        view = KeyValueViewSet.as_view({"get": "list"})
-        response = view(request, key="secret")
+    def test_key_values_private_document(self, client, user):
+        other_user = UserFactory()
+        DocumentFactory(
+            user=other_user, access=Access.private, data={"secret": ["top"]}
+        )
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/secret/values/")
         assert response.status_code == 200
-        assert response.data == []
+        assert response.json() == []
 
-
-    def test_key_values_with_project_filter(factory, user):
-        project = ProjectFactory(users=[user])
-        DocumentFactory(user=user, projects=[project], data={"color": ["green"]})
+    def test_key_values_with_project_filter(self, client, user):
+        document_in_proj = DocumentFactory(user=user, data={"color": ["green"]})
         DocumentFactory(user=user, data={"color": ["red"]})  # Not in project
-
-        request = factory.get(f"/api/documents/data/keys/color/values/?project={project.id}")
-        force_authenticate(request, user=user)
-        view = KeyValueViewSet.as_view({"get": "list"})
-        response = view(request, key="color")
+        project = ProjectFactory(user=user, documents=[document_in_proj])
+        client.force_login(user)
+        response = client.get(
+            f"/api/documents/data/keys/color/values/?project={project.id}"
+        )
         assert response.status_code == 200
-        assert response.data == ["green"]
+        assert response.json() == ["green"]
 
-
-    def test_key_values_invalid_key(factory, user):
+    def test_key_values_invalid_key(self, client, user):
         DocumentFactory(user=user, data={"valid_key": ["yes"]})
-        request = factory.get("/api/documents/data/keys/invalid key!/values/")
-        force_authenticate(request, user=user)
-        view = KeyValueViewSet.as_view({"get": "list"})
-        response = view(request, key="invalid key!")
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/invalid key!/values/")
         assert response.status_code == 400
-        assert "error" in response.data
+        assert "error" in response.json()
+
 
 @pytest.mark.django_db()
 class TestOEmbed:

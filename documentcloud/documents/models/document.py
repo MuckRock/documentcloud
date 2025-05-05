@@ -34,7 +34,6 @@ from documentcloud.documents.querysets import DocumentQuerySet
 logger = logging.getLogger(__name__)
 
 
-
 class Document(models.Model):
     """A document uploaded to DocumentCloud"""
 

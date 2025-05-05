@@ -29,12 +29,12 @@ from documentcloud.addons.views import (
 from documentcloud.core.views import FileServer, account_logout, mailgun
 from documentcloud.documents.views import (
     DataViewSet,
-    KeyViewSet,
-    KeyValueViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
     EntityViewSet as LegacyEntity2ViewSet,
+    KeyValueViewSet,
+    KeyViewSet,
     LegacyEntityViewSet,
     ModificationViewSet,
     NoteViewSet,
