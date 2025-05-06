@@ -72,19 +72,38 @@ class TestDocumentOEmbed:
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
         assert (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?responsive=1"
-            in response["html"]
-        )
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{self.document.pk}-{self.document.slug}/"
+            "?embed=1&amp;responsive=1"
+        ) in response["html"]
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
         assert (
             'style="border: 1px solid #aaa; width: 100%; height: 800px;'
-            in response["html"]
-        )
+        ) in response["html"]
         assert (
             'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
             in response["html"]
         )
+
+    def test_document_oembed_query_passthrough(self):
+        """Test that query parameters are passed through to the iFrame src"""
+        request = self.factory.get("/oembed/")
+        request.user = self.user
+        query = Query("responsive=1&fullscreen=1&title=0")
+
+        response = self.document_oembed.response(
+            request, query, max_width=600, max_height=None, pk=123
+        )
+
+        # Check that the response contains an iframe with expected attributes
+        assert '<iframe src="' in response["html"]
+        # Since the text is HTML, we need to encode the ampersands
+        assert (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{self.document.pk}-{self.document.slug}/"
+            "?embed=1&amp;responsive=1&amp;fullscreen=1&amp;title=0"
+        ) in response["html"]
 
     def test_document_oembed_get_dimensions(self):
         """Test the get_dimensions method of DocumentOEmbed"""
@@ -116,7 +135,9 @@ class TestDocumentOEmbed:
         context = self.document_oembed.get_context(self.document, query, extra)
 
         expected_src = (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123-test-document/?param=value"
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{self.document.pk}-{self.document.slug}/"
+            "?embed=1&param=value"
         )
         assert context["src"] == expected_src
         assert context["width"] == 600
@@ -209,9 +230,9 @@ class TestPageOEmbed:
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
         assert (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1/?responsive=1"
-            in response["html"]
-        )
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/1/"
+            "?embed=1&amp;responsive=1"
+        ) in response["html"]
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
         assert (
@@ -247,7 +268,7 @@ class TestPageOEmbed:
         context = self.page_oembed.get_context(self.document, query, extra, page=2)
 
         expected_src = (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2/?param=value"
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/pages/2/?embed=1&param=value"
         )
         assert context["src"] == expected_src
         assert context["width"] == 600
@@ -323,9 +344,9 @@ class TestNoteOEmbed:
         # Check that the response contains an iframe with expected attributes
         assert '<iframe src="' in response["html"]
         assert (
-            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/?responsive=1"
-            in response["html"]
-        )
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/123/annotations/456/"
+            "?embed=1&amp;responsive=1"
+        ) in response["html"]
         assert 'title="Test Note (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="100%" height="500px"' in response["html"]
         assert 'style="border: 1px solid #aaa;' in response["html"]
