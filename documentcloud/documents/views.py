@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models import CharField, F, Func, Q, Value, prefetch_related_objects
+from django.db.models import F, Func, JSONField, Q, Value, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -12,7 +12,6 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 
 # Standard Library
-import json
 import logging
 import re
 import sys
@@ -1788,14 +1787,20 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response("OK", status=status.HTTP_200_OK)
 
 
-class KeyViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    queryset = Document.objects.none()  # Required to satisfy DRF but unused
+class KeyViewSet(viewsets.ViewSet):
+    queryset = Document.objects.none()
 
     def list(self, request, *args, **kwargs):
         queryset = Document.objects.get_viewable(request.user)
-
         project_id = request.query_params.get("project")
-        if project_id:
+        if project_id is not None:
+            try:
+                project_id = int(project_id)
+            except ValueError:
+                return Response(
+                    {"error": "Invalid project ID. Must be an integer."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             queryset = queryset.filter(projects__id=project_id)
 
         keys = (
@@ -1805,31 +1810,39 @@ class KeyViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             .distinct()
         )
 
-        return Response(sorted(keys))
+        key_name = request.query_params.get("key_name")
+        if key_name:
+            if not re.fullmatch(DATA_KEY_REGEX, key_name):
+                return Response(
+                    {
+                        "error": "key_name must be alphanumeric (letters, digits, and underscores only)."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            keys = [k for k in keys if k.lower().startswith(key_name.lower())]
+
+        return Response(keys)
 
 
-class KeyValueViewSet(viewsets.GenericViewSet):
-    queryset = Document.objects.none()  # Required to satisfy DRF but unused
+class KeyValueViewSet(viewsets.ViewSet):
+    queryset = Document.objects.none()
 
     def list(self, request, key=None):
-        # Provided keys must be alphanumeric
-        if not re.match(r"^[a-zA-Z0-9_]+$", key):
-            return Response(
-                {"error": "Key must be an alphanumeric string."}, status=400
-            )
-        project_id = request.query_params.get("project")
         queryset = Document.objects.get_viewable(request.user)
+        project_id = request.query_params.get("project")
         if project_id:
+            try:
+                project_id = int(project_id)
+            except ValueError:
+                return Response({"error": "Project ID must be an integer."}, status=400)
             queryset = queryset.filter(projects__id=project_id)
-
         values = (
             queryset.annotate(
                 value=Func(
                     F("data"),
                     Value(key),
-                    function="jsonb_extract_path_text",
-                    template="%(function)s(%(expressions)s)",
-                    output_field=CharField(),
+                    function="jsonb_extract_path",
+                    output_field=JSONField(),
                 )
             )
             .values_list("value", flat=True)
@@ -1841,11 +1854,16 @@ class KeyValueViewSet(viewsets.GenericViewSet):
             item
             for value in values
             if value
-            for item in (
-                json.loads(value)
-                if isinstance(json.loads(value), list)
-                else [json.loads(value)]
-            )
+            for item in (value if isinstance(value, list) else [value])
         ]
+
+        value_name = request.query_params.get("value_name")
+        if value_name:
+            value_name_regex = r"(?i)^" + re.escape(value_name)
+            flattened_values = [
+                value
+                for value in flattened_values
+                if re.search(value_name_regex, str(value))
+            ]
 
         return Response(flattened_values)

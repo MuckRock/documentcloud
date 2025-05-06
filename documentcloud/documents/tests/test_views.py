@@ -1979,8 +1979,7 @@ class TestBulkDataSearchAPI:
         DocumentFactory(user=user, data={"valid_key": ["yes"]})
         client.force_login(user)
         response = client.get("/api/documents/data/keys/invalid key!/values/")
-        assert response.status_code == 400
-        assert "error" in response.json()
+        assert response.status_code == 404
 
 
 @pytest.mark.django_db()
