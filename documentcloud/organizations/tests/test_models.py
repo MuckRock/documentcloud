@@ -4,6 +4,7 @@ import pytest
 # DocumentCloud
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.tests.factories import OrganizationFactory
+from documentcloud.users.models import User
 from documentcloud.users.tests.factories import UserFactory
 
 
@@ -18,6 +19,10 @@ class TestOrganization:
         org = OrganizationFactory(members=users[0:2])
         # user 1 and 2 in dupe org
         dupe_org = OrganizationFactory(members=users[1:3])
+        # set active orgs
+        users[0].organization = org
+        users[1].organization = dupe_org
+        users[2].organization = dupe_org
 
         dupe_org.merge(org.uuid)
 
@@ -26,6 +31,10 @@ class TestOrganization:
             assert org.has_member(users[user_id])
         # user 3 not in org
         assert not org.has_member(users[3])
+
+        # all users have exactly one active org
+        for user in User.objects.all():
+            assert user.organization
 
         # no users in dupe_org
         assert dupe_org.users.count() == 0
