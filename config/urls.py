@@ -27,12 +27,15 @@ from documentcloud.addons.views import (
     scraper_dashboard,
 )
 from documentcloud.core.views import FileServer, account_logout, mailgun
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.views import (
     DataViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
     EntityViewSet as LegacyEntity2ViewSet,
+    KeyValueViewSet,
+    KeyViewSet,
     LegacyEntityViewSet,
     ModificationViewSet,
     NoteViewSet,
@@ -69,8 +72,12 @@ router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 router.register("flatpages", FlatPageViewSet)
 router.register("statistics", StatisticsViewSet)
-
-
+router.register("documents/data/keys", KeyViewSet, basename="data-keys")
+router.register(
+    rf"documents/data/keys/(?P<key>{DATA_KEY_REGEX})/values",
+    KeyValueViewSet,
+    basename="data-values",
+)
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)

@@ -1911,6 +1911,78 @@ class TestEntityAPI:
 
 
 @pytest.mark.django_db()
+class TestBulkDataSearchAPI:
+    def test_keys_list_unauthenticated(self, client):
+        response = client.get("/api/documents/data/keys/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_keys_list_authenticated_user(self, client, user):
+        doc1 = DocumentFactory(user=user, data={"color": ["red"], "state": ["ma"]})
+        doc2 = DocumentFactory(user=user, data={"shape": ["circle"], "state": ["ny"]})
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/")
+        assert response.status_code == 200
+        expected_keys = set(doc1.data.keys()) | set(doc2.data.keys())
+        assert sorted(response.json()) == sorted(expected_keys)
+
+    def test_keys_list_private_document(self, client, user):
+        other_user = UserFactory()
+        DocumentFactory(
+            user=other_user, access=Access.private, data={"hidden": ["yes"]}
+        )
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_keys_list_with_project_filter(self, client, user):
+        document_in_proj = DocumentFactory(
+            user=user, data={"color": ["red"]}
+        )  # in project
+        DocumentFactory(user=user, data={"state": ["ca"]})  # Not in project
+        project = ProjectFactory(user=user, documents=[document_in_proj])
+        client.force_login(user)
+        response = client.get(f"/api/documents/data/keys/?project={project.id}")
+        assert response.status_code == 200
+        assert response.json() == ["color"]
+
+    def test_key_values_authenticated_user(self, client, user):
+        DocumentFactory(user=user, data={"color": ["red", "blue"]})
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/color/values/")
+        assert response.status_code == 200
+        assert sorted(response.json()) == sorted(["red", "blue"])
+
+    def test_key_values_private_document(self, client, user):
+        other_user = UserFactory()
+        DocumentFactory(
+            user=other_user, access=Access.private, data={"secret": ["top"]}
+        )
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/secret/values/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_key_values_with_project_filter(self, client, user):
+        document_in_proj = DocumentFactory(user=user, data={"color": ["green"]})
+        DocumentFactory(user=user, data={"color": ["red"]})  # Not in project
+        project = ProjectFactory(user=user, documents=[document_in_proj])
+        client.force_login(user)
+        response = client.get(
+            f"/api/documents/data/keys/color/values/?project={project.id}"
+        )
+        assert response.status_code == 200
+        assert response.json() == ["green"]
+
+    def test_key_values_invalid_key(self, client, user):
+        DocumentFactory(user=user, data={"valid_key": ["yes"]})
+        client.force_login(user)
+        response = client.get("/api/documents/data/keys/invalid key!/values/")
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db()
 class TestOEmbed:
     def test_oembed(self, client, note):
         """Test oEmbed endpoints"""

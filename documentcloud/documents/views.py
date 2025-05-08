@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db.models import F, Func, JSONField, Q, Value, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -13,6 +13,7 @@ from rest_framework.response import Response
 
 # Standard Library
 import logging
+import re
 import sys
 from functools import lru_cache
 
@@ -21,6 +22,7 @@ import environ
 import pysolr
 from django_filters import rest_framework as django_filters
 from drf_spectacular.openapi import OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
@@ -1492,17 +1494,29 @@ class DataViewSet(viewsets.ViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
-    @extend_schema(tags=["document_data"])
+    @extend_schema(
+        tags=["document_data"],
+        description="List all of the key/value pairs for a single document. The key for tags is _tag",
+    )
     def list(self, request, document_pk=None):
         document = self.get_object()
         return Response(document.data)
 
-    @extend_schema(tags=["document_data"])
+    @extend_schema(
+        tags=["document_data"],
+        description=(
+            "Return the value of an individual key in the data dictionary. "
+            "`id` is the key name you are looking to return values for. Example: color: blue"
+        ),
+    )
     def retrieve(self, request, pk=None, document_pk=None):
         document = self.get_object()
         return Response(document.data.get(pk))
 
-    @extend_schema(tags=["document_data"])
+    @extend_schema(
+        tags=["document_data"],
+        description="Bulk update the key/value pairs on a document",
+    )
     @transaction.atomic
     def update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -1515,7 +1529,10 @@ class DataViewSet(viewsets.ViewSet):
         document.index_on_commit(field_updates={f"data_{pk}": "set"})
         return Response(document.data)
 
-    @extend_schema(tags=["document_data"])
+    @extend_schema(
+        tags=["document_data"],
+        description="Do a partial update on the key/value pairs on a document",
+    )
     @transaction.atomic
     def partial_update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -1784,3 +1801,150 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         post_process.delay(document_pk, request.data)
 
         return Response("OK", status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=["document_data"],
+    description="List all unique `keys` from the `data` field of all documents viewable by the user. "
+    "You can optionally filter by project ID or a partial key name prefix.",
+    parameters=[
+        OpenApiParameter(
+            name="project",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description="Filter keys to those appearing in documents within the specified project ID.",
+        ),
+        OpenApiParameter(
+            name="key_name",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description="Filter keys by a case-insensitive prefix. Must be alphanumeric or underscores only.",
+        ),
+    ],
+    responses={
+        200: {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        400: {"type": "object", "properties": {"error": {"type": "string"}}},
+    },
+)
+class KeyViewSet(viewsets.ViewSet):
+    queryset = Document.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        """View keys that are present in documents visible to you.
+        You may filter for keys by which project they are present in
+        or by a partial key name.
+        """
+        queryset = Document.objects.get_viewable(request.user)
+        project_id = request.query_params.get("project")
+        if project_id is not None:
+            try:
+                project_id = int(project_id)
+            except ValueError:
+                return Response(
+                    {"error": "Invalid project ID. Must be an integer."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            queryset = queryset.filter(projects__id=project_id)
+
+        keys = (
+            queryset.annotate(key=Func(F("data"), function="jsonb_object_keys"))
+            .values_list("key", flat=True)
+            .order_by("key")
+            .distinct()
+        )
+
+        key_name = request.query_params.get("key_name")
+        if key_name:
+            if not re.fullmatch(DATA_KEY_REGEX, key_name):
+                return Response(
+                    {
+                        "error": "key_name must be alphanumeric (letters, digits, and underscores only)."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            keys = [k for k in keys if k.lower().startswith(key_name.lower())]
+
+        return Response(keys)
+
+
+@extend_schema(
+    tags=["document_data"],
+    description="List all unique values for a specific `key` across documents viewable by the user. "
+    "You can optionally filter by project ID or a partial value prefix.",
+    parameters=[
+        OpenApiParameter(
+            name="project",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description="Filter values to those appearing in documents within the specified project ID.",
+        ),
+        OpenApiParameter(
+            name="value_name",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description="Filter values by a case-insensitive prefix.",
+        ),
+    ],
+    responses={
+        200: {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        400: {"type": "object", "properties": {"error": {"type": "string"}}},
+    },
+)
+class KeyValueViewSet(viewsets.ViewSet):
+    queryset = Document.objects.none()
+
+    def list(self, request, key=None):
+        """Given a key, this will return values
+        present for that key in the documents visible
+        to the requesting user. You may filter the resulting values
+        by which project they are present in or by a partial value name.
+        """
+        queryset = Document.objects.get_viewable(request.user)
+        project_id = request.query_params.get("project")
+        if project_id:
+            try:
+                project_id = int(project_id)
+            except ValueError:
+                return Response({"error": "Project ID must be an integer."}, status=400)
+            queryset = queryset.filter(projects__id=project_id)
+        values = (
+            queryset.annotate(
+                value=Func(
+                    F("data"),
+                    Value(key),
+                    function="jsonb_extract_path",
+                    output_field=JSONField(),
+                )
+            )
+            .values_list("value", flat=True)
+            .order_by("value")
+            .distinct()
+        )
+
+        flattened_values = [
+            item
+            for value in values
+            if value
+            for item in (value if isinstance(value, list) else [value])
+        ]
+
+        value_name = request.query_params.get("value_name")
+        if value_name:
+            value_name_regex = r"(?i)^" + re.escape(value_name)
+            flattened_values = [
+                value
+                for value in flattened_values
+                if re.search(value_name_regex, str(value))
+            ]
+
+        return Response(flattened_values)
