@@ -38,7 +38,11 @@ from documentcloud.documents.views import (
     NoteViewSet,
     RedactionViewSet,
     SectionViewSet,
+    DocumentDataViewSet,
+    DocumentDataKeyViewSet
 )
+
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.entities.views import EntityOccurrenceViewSet, EntityViewSet
 from documentcloud.flatpages.views import FlatPageViewSet
@@ -69,7 +73,8 @@ router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 router.register("flatpages", FlatPageViewSet)
 router.register("statistics", StatisticsViewSet)
-
+router.register("documents/data", DocumentDataViewSet, basename="documents-data")
+router.register(r"documents/(?P<document_pk>\d+)/data", DataViewSet, basename="document-data")
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
@@ -79,7 +84,6 @@ documents_router.register("legacy_entities_2", LegacyEntity2ViewSet)
 documents_router.register("legacy_entities", LegacyEntityViewSet)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
-documents_router.register("data", DataViewSet, basename="data")
 documents_router.register("redactions", RedactionViewSet, basename="redactions")
 documents_router.register(
     "modifications", ModificationViewSet, basename="modifications"
