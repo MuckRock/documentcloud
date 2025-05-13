@@ -1,7 +1,8 @@
 # Django
 from django.conf import settings
+from django.contrib.postgres.fields import JSONField
 from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db.models import F, Func, Q, Value, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -19,8 +20,6 @@ from functools import lru_cache
 # Third Party
 import environ
 import pysolr
-from django.contrib.postgres.fields import JSONField
-from django.db.models import Func, Value, F
 from django_filters import rest_framework as django_filters
 from drf_spectacular.openapi import OpenApiParameter
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
