@@ -1,8 +1,7 @@
 # Django
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
-from django.db import transaction
-from django.db.models import F, Func, Q, Value, prefetch_related_objects
+from django.db import connection, transaction
+from django.db.models import Func, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -13,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 
 # Standard Library
+import json
 import logging
 import sys
 from functools import lru_cache
@@ -1787,81 +1787,97 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response("OK", status=status.HTTP_200_OK)
 
 
-class DocumentDataViewSet(viewsets.ViewSet):
-    queryset = Document.objects.none()
+class DocumentDataViewSet(viewsets.GenericViewSet):
+    lookup_value_regex = DATA_KEY_REGEX
+
+    def get_queryset(self):
+        return (
+            Document.objects.get_viewable(self.request.user).order_by().values("data")
+        )
 
     def list(self, request):
+        """Return all keys and all of their values
+        for documents visible to the user.  You may filter
+        by project and partial key name
         """
-        Return all key/value pairs (flattened) for documents viewable by the user.
-        Optional filtering by project ID.
+        # XXX Should the results be paginated?
+
+        # You must specify a project for now for performance reasons
+        # It may be possible to use an index to remove this restriction
+        # if desired
+        if "project" not in request.GET:
+            raise serializers.ValidationError("You must specify a project")
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # We interpolate the queryset's query into the custom SQL
+        query = str(queryset.query)
+        sql = f"""
+        SELECT key, jsonb_agg(values)
+        FROM (
+            SELECT DISTINCT key, jsonb_array_elements(data->key) AS values
+            FROM ({query}) d, jsonb_object_keys(data) AS key
+            WHERE jsonb_typeof(data->key) = 'array'
+        ) kv
+        WHERE key LIKE %s
+        GROUP BY key
+        ORDER BY key
         """
-        queryset = Document.objects.get_viewable(request.user)
-        project_id = request.query_params.get("project")
-        if project_id:
-            try:
-                project_id = int(project_id)
-            except ValueError:
-                return Response({"error": "Invalid project ID"}, status=400)
-            queryset = queryset.filter(projects__id=project_id)
+        key = request.GET.get("key", "") + "%"
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [key])
+            data = cursor.fetchall()
 
-        # Extract key/value pairs using jsonb_each_text
-        annotated = (
-            queryset.annotate(
-                kv=Func(F("data"), function="jsonb_each", output_field=JSONField())
-            )
-            .values_list("kv", flat=True)
-            .distinct()
-        )
-        print(annotated)
+        # The JSON is returned as a string for some reason,
+        # so we parse it
+        return Response({k: json.loads(v)} for k, v in data)
 
-        return Response(annotated)
-
-
-class DocumentDataKeyViewSet(viewsets.ViewSet):
-    queryset = Document.objects.none()
-
-    def list(self, request, key=None):
+    def retrieve(self, request, pk=None):
         """Given a key, this will return values
         present for that key in the documents visible
         to the requesting user. You may filter the resulting values
         by which project they are present in or by a partial value name.
         """
-        queryset = Document.objects.get_viewable(request.user)
-        project_id = request.query_params.get("project")
-        if project_id:
-            try:
-                project_id = int(project_id)
-            except ValueError:
-                return Response({"error": "Project ID must be an integer."}, status=400)
-            queryset = queryset.filter(projects__id=project_id)
-        values = (
+        # XXX Should the results be paginated?
+
+        # You must specify a project for now for performance reasons
+        # It may be possible to use an index to remove this restriction
+        # if desired
+        if "project" not in request.GET:
+            raise serializers.ValidationError("You must specify a project")
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        queryset = (
             queryset.annotate(
-                value=Func(
-                    F("data"),
-                    Value(key),
-                    function="jsonb_extract_path",
-                    output_field=JSONField(),
+                values=Func(
+                    f"data__{pk}",
+                    function="jsonb_array_elements",
                 )
             )
-            .values_list("value", flat=True)
-            .order_by("value")
+            .values_list("values", flat=True)
+            .order_by("values")
             .distinct()
         )
+        if "value" in request.GET:
+            # We could do this filter using custom SQL, but embedding the above
+            # query resulted in SQL errors for me.  It is also a bit much
+            # and might be considered a pre-mature optimization
+            data = [v for v in queryset if v.startswith(request.GET["value"])]
+        else:
+            data = queryset
 
-        flattened_values = [
-            item
-            for value in values
-            if value
-            for item in (value if isinstance(value, list) else [value])
-        ]
+        return Response(data)
 
-        value_name = request.query_params.get("value_name")
-        if value_name:
-            value_name_regex = r"(?i)^" + re.escape(value_name)
-            flattened_values = [
-                value
-                for value in flattened_values
-                if re.search(value_name_regex, str(value))
-            ]
+    class Filter(django_filters.FilterSet):
+        project = ModelMultipleChoiceFilter(
+            model=Project,
+            field_name="projects",
+            help_text=("Filter by which projects a document belongs to"),
+        )
 
-        return Response(flattened_values)
+        class Meta:
+            model = Document
+            fields = ["project"]
+
+    filterset_class = Filter
