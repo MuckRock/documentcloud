@@ -30,7 +30,6 @@ from documentcloud.core.views import FileServer, account_logout, mailgun
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.views import (
     DataViewSet,
-    DocumentDataKeyViewSet,
     DocumentDataViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
