@@ -59,7 +59,6 @@ docs/lambda.png
 target/
 
 # pyenv
-.python-version
 .ipython
 
 # celery beat schedule file
