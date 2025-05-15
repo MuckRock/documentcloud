@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db import connection, transaction
+from django.db.models import Func, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 
 # Standard Library
+import json
 import logging
 import sys
 from functools import lru_cache
@@ -1784,3 +1785,99 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         post_process.delay(document_pk, request.data)
 
         return Response("OK", status=status.HTTP_200_OK)
+
+
+class DocumentDataViewSet(viewsets.GenericViewSet):
+    lookup_value_regex = DATA_KEY_REGEX
+
+    def get_queryset(self):
+        return (
+            Document.objects.get_viewable(self.request.user).order_by().values("data")
+        )
+
+    def list(self, request):
+        """Return all keys and all of their values
+        for documents visible to the user.  You may filter
+        by project and partial key name
+        """
+        # XXX Should the results be paginated?
+
+        # You must specify a project for now for performance reasons
+        # It may be possible to use an index to remove this restriction
+        # if desired
+        if "project" not in request.GET:
+            raise serializers.ValidationError("You must specify a project")
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # We interpolate the queryset's query into the custom SQL
+        query = str(queryset.query)
+        sql = f"""
+        SELECT key, jsonb_agg(values)
+        FROM (
+            SELECT DISTINCT key, jsonb_array_elements(data->key) AS values
+            FROM ({query}) d, jsonb_object_keys(data) AS key
+            WHERE jsonb_typeof(data->key) = 'array'
+        ) kv
+        WHERE key LIKE %s
+        GROUP BY key
+        ORDER BY key
+        """
+        key = request.GET.get("key", "") + "%"
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [key])
+            data = cursor.fetchall()
+
+        # The JSON is returned as a string for some reason,
+        # so we parse it
+        return Response({k: json.loads(v)} for k, v in data)
+
+    def retrieve(self, request, pk=None):
+        """Given a key, this will return values
+        present for that key in the documents visible
+        to the requesting user. You may filter the resulting values
+        by which project they are present in or by a partial value name.
+        """
+        # XXX Should the results be paginated?
+
+        # You must specify a project for now for performance reasons
+        # It may be possible to use an index to remove this restriction
+        # if desired
+        if "project" not in request.GET:
+            raise serializers.ValidationError("You must specify a project")
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        queryset = (
+            queryset.annotate(
+                values=Func(
+                    f"data__{pk}",
+                    function="jsonb_array_elements",
+                )
+            )
+            .values_list("values", flat=True)
+            .order_by("values")
+            .distinct()
+        )
+        if "value" in request.GET:
+            # We could do this filter using custom SQL, but embedding the above
+            # query resulted in SQL errors for me.  It is also a bit much
+            # and might be considered a pre-mature optimization
+            data = [v for v in queryset if v.startswith(request.GET["value"])]
+        else:
+            data = queryset
+
+        return Response(data)
+
+    class Filter(django_filters.FilterSet):
+        project = ModelMultipleChoiceFilter(
+            model=Project,
+            field_name="projects",
+            help_text=("Filter by which projects a document belongs to"),
+        )
+
+        class Meta:
+            model = Document
+            fields = ["project"]
+
+    filterset_class = Filter
