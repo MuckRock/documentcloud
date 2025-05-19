@@ -573,11 +573,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ],
     )
     def list(self, request, *args, **kwargs):
-        """ List documents using Postgres. Although this endpoint offers
-            some similar filters to those on Solr, documents_list does not
-            support full text search of the document collection. 
+        """ List documents with optional filters using Postgres. This is not to be confused with search.
+            This endpoint does not support full text search of the document collection. 
             For that, you are looking for documents_search across.
-            If you are looking for text search within a single document, 
+            If you are looking for text search within a single document to return text highlights,
             you are looking for documents_search_within.
         """
         return super().list(request, *args, **kwargs)
