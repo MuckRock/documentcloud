@@ -1126,10 +1126,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @action(detail=False, methods=["get"])
     def search(self, request):
         """
-        Search across all documents on DocumentCloud with
-        full text search using Solr.
-        View our search documentation for a full parameter list:
-        https://www.documentcloud.org/help/search/
+        Search across all documents on DocumentCloud with full text search using Solr.
+        Consult our [search documentation](https://www.documentcloud.org/help/search/) for a full parameter list.
         This endpoint does return a full count, but does not provide a previous link.
         """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
@@ -1176,8 +1174,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         Search within a single document using Solr.
         This will return up to 25 text highlights
         per response page for your query.
-        View our search documentation for a full parameter list:
-        https://www.documentcloud.org/help/search/
+        Consult our [search documentation](https://www.documentcloud.org/help/search/) for a full parameter list.
         """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
