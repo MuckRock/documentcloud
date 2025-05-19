@@ -573,11 +573,15 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ],
     )
     def list(self, request, *args, **kwargs):
-        """ List documents with optional filters using Postgres. This is not to be confused with search.
-            This endpoint does not support full text search of the document collection. 
-            For that, you are looking for documents_search across.
-            If you are looking for text search within a single document to return text highlights,
-            you are looking for documents_search_within.
+        """List documents with optional filters. This is not to be confused with search.
+        This endpoint does not support full text search of the document collection.
+        For that, you are looking for
+        [documents_search_across](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_across)
+        If you are looking for text search within a single document to return text highlights,
+        you are looking for
+        [documents_search_within_single_document](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_within_single_document)
+        For performance reasons, this endpoint will not return a count
+        of all objects, only a link to next and previous responses.
         """
         return super().list(request, *args, **kwargs)
 
@@ -1123,10 +1127,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @action(detail=False, methods=["get"])
     def search(self, request):
         """
-            Search across all documents on DocumentCloud with
-            full text search using Solr. 
-            View our search documentation for a full parameter list:
-            https://www.documentcloud.org/help/search/
+        Search across all documents on DocumentCloud with
+        full text search using Solr.
+        View our search documentation for a full parameter list:
+        https://www.documentcloud.org/help/search/
+        This endpoint does return a full count, but does not provide a previous link.
         """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
@@ -1169,11 +1174,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
         """
-            Search within a single document using Solr.
-            This will return up to 25 text highlights
-            per response page for your query. 
-            View our search documentation for a full parameter list:
-            https://www.documentcloud.org/help/search/
+        Search within a single document using Solr.
+        This will return up to 25 text highlights
+        per response page for your query.
+        View our search documentation for a full parameter list:
+        https://www.documentcloud.org/help/search/
         """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
