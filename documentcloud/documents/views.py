@@ -576,12 +576,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         """List documents with optional filters. This is not to be confused with search.
         This endpoint does not support full text search of the document collection.
         For that, you are looking for
-        [documents_search_across](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_across)
-        If you are looking for text search within a single document to return text highlights,
-        you are looking for
+        [documents_search_across](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_across).
+        If you are looking for text search within a single document to return text highlights, then
         [documents_search_within_single_document](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_within_single_document)
-        For performance reasons, this endpoint will not return a count
-        of all objects, only a link to next and previous responses.
+        is the correct endpoint. For performance reasons, this endpoint will not return a count of all objects,
+        only a link to next and previous.
         """
         return super().list(request, *args, **kwargs)
 
