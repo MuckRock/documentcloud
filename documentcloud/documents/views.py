@@ -573,6 +573,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ],
     )
     def list(self, request, *args, **kwargs):
+        """ List documents using Postgres. Although this endpoint offers
+            some similar filters to those on Solr, documents_list does not
+            support full text search of the document collection. 
+            For that, you are looking for documents_search across.
+            If you are looking for text search within a single document, 
+            you are looking for documents_search_within.
+        """
         return super().list(request, *args, **kwargs)
 
     @extend_schema(
@@ -1116,7 +1123,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @extend_schema(operation_id="documents_search_across")
     @action(detail=False, methods=["get"])
     def search(self, request):
-        """Search across all documents on DocumentCloud"""
+        """
+            Search across all documents on DocumentCloud with
+            full text search using Solr. 
+            View our search documentation for a full parameter list:
+            https://www.documentcloud.org/help/search/
+        """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
@@ -1157,7 +1169,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @extend_schema(operation_id="documents_search_within_single_document")
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
-        """Search within a single document"""
+        """
+            Search within a single document using Solr.
+            This will return up to 25 text highlights
+            per response page for your query. 
+            View our search documentation for a full parameter list:
+            https://www.documentcloud.org/help/search/
+        """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
