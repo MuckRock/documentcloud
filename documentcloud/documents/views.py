@@ -573,6 +573,15 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ],
     )
     def list(self, request, *args, **kwargs):
+        """List documents with optional filters. This is not to be confused with search.
+        This endpoint does not support full text search of the document collection.
+        For that, you are looking for
+        [documents_search_across](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_across).
+        If you are looking for text search within a single document to return text highlights, then
+        [documents_search_within_single_document](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_within_single_document)
+        is the correct endpoint. For performance reasons, this endpoint will not return a count of all objects,
+        only a link to next and previous.
+        """
         return super().list(request, *args, **kwargs)
 
     @extend_schema(
@@ -1116,7 +1125,11 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @extend_schema(operation_id="documents_search_across")
     @action(detail=False, methods=["get"])
     def search(self, request):
-        """Search across all documents on DocumentCloud"""
+        """
+        Search across all documents on DocumentCloud with full text search using Solr.
+        Consult our [search documentation](https://www.documentcloud.org/help/search/) for a full parameter list.
+        This endpoint does return a full count, but does not provide a previous link.
+        """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
@@ -1157,7 +1170,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     @extend_schema(operation_id="documents_search_within_single_document")
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
-        """Search within a single document"""
+        """
+        Search within a single document using Solr.
+        This will return up to 25 text highlights
+        per response page for your query.
+        Consult our [search documentation](https://www.documentcloud.org/help/search/) for a full parameter list.
+        """
         if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
             return Response(
                 {
