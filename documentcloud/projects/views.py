@@ -96,7 +96,27 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     @extend_schema(
-        request=ProjectSerializer,
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "Title of the project",
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 1000,
+                        "description": "Optional description of the project",
+                    },
+                    "private": {
+                        "type": "boolean",
+                        "description": "Whether the project is private",
+                    },
+                },
+                "required": ["title"],
+            }
+        },
         responses={201: ProjectSerializer},
         examples=[
             OpenApiExample(
