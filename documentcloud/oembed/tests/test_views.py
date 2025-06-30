@@ -10,7 +10,6 @@ import pytest
 # DocumentCloud
 from documentcloud.oembed.oembed import OEmbed
 from documentcloud.oembed.registry import register
-from documentcloud.projects.oembed import ProjectOEmbed
 from documentcloud.projects.tests.factories import ProjectFactory
 
 
