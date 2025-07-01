@@ -2,10 +2,12 @@
 from django.contrib import admin, messages
 from django.db.models import JSONField
 from django.forms import widgets
+from django.http import HttpResponse
 from django.http.response import HttpResponseRedirect
 from django.urls import path, reverse
 
 # Standard Library
+import csv
 import json
 
 # DocumentCloud
@@ -13,6 +15,7 @@ from documentcloud.addons.models import (
     AddOn,
     AddOnDisableLog,
     AddOnEvent,
+    AddOnRun,
     GitHubAccount,
     GitHubInstallation,
     VisualAddOn,
@@ -101,6 +104,62 @@ class AddOnEventAdmin(admin.ModelAdmin):
     list_filter = ["event"]
     date_hierarchy = "updated_at"
     autocomplete_fields = ["addon", "user"]
+
+
+@admin.register(AddOnRun)
+class AddOnRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "addon",
+        "user",
+        "run_id",
+        "status",
+        "rating",
+        "credits_spent",
+        "created_at",
+        "updated_at",
+    )
+    list_select_related = ("addon", "user")
+    search_fields = ("addon__name", "user__email", "status")
+    date_hierarchy = "created_at"
+    actions = ["export_runs_as_csv"]
+    readonly_fields = [f.name for f in AddOnRun._meta.fields]
+
+    def export_runs_as_csv(self, request, queryset):
+        """Export selected Add-On Runs to CSV."""
+        field_names = [
+            "addon_id",
+            "user_id",
+            "run_id",
+            "status",
+            "rating",
+            "credits_spent",
+            "created_at",
+            "updated_at",
+        ]
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = "attachment; filename=addon_runs.csv"
+
+        writer = csv.writer(response)
+        writer.writerow(field_names)
+
+        for run in queryset:
+            writer.writerow(
+                [
+                    run.addon_id,
+                    run.user_id,
+                    run.run_id,
+                    run.status,
+                    run.rating,
+                    run.credits_spent,
+                    run.created_at.isoformat(),
+                    run.updated_at.isoformat(),
+                ]
+            )
+
+        return response
+
+    export_runs_as_csv.short_description = "Export selected runs to CSV"
 
 
 @admin.register(AddOnDisableLog)
