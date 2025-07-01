@@ -14,15 +14,11 @@ class StatisticsAdmin(admin.ModelAdmin):
 
     def export_statistics_as_csv(self, request, queryset):
         """Export selected DocumentCloud statistics to CSV."""
+
         field_names = [
-            "date",
-            "total_documents",
-            "total_documents_public",
-            "total_documents_private",
-            "total_documents_organization",
-            "total_pages",
-            "total_notes",
-            "total_projects",
+            field.name
+            for field in Statistics._meta.get_fields()
+            if not field.auto_created
         ]
 
         response = HttpResponse(content_type="text/csv")
@@ -33,19 +29,15 @@ class StatisticsAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow(field_names)
 
-        for stat in queryset:
-            writer.writerow(
-                [
-                    stat.date.isoformat(),
-                    stat.total_documents,
-                    stat.total_documents_public,
-                    stat.total_documents_private,
-                    stat.total_documents_organization,
-                    stat.total_pages,
-                    stat.total_notes,
-                    stat.total_projects,
-                ]
-            )
+        for obj in queryset:
+            row = []
+            for field_name in field_names:
+                value = getattr(obj, field_name)
+                if field_name == "date":
+                    row.append(value.isoformat() if value else "")
+                else:
+                    row.append(value)
+            writer.writerow(row)
 
         return response
 
