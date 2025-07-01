@@ -20,7 +20,8 @@ class ProjectOEmbed(RichOEmbed):
     patterns = [
         # manager url
         re.compile(
-            rf"^{DOCCLOUD_URL_REGEX}/projects/(?P<full>(?P<proj_pk>[0-9]+)[\w-]*)(/|\?|$)"
+            rf"^{DOCCLOUD_URL_REGEX}/projects/"
+            rf"(?P<full>(?P<proj_pk>[0-9]+)[\w-]*)(/|\?|$)"
         ),
         re.compile(
             rf"^{DOCCLOUD_URL_REGEX}/projects/[\w-]*?(?P<proj_pk>[0-9]+)(/|\?|$)"
