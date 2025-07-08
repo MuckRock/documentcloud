@@ -70,7 +70,10 @@ class DocumentOEmbed(RichOEmbed):
 
     def get_style(self, document, max_width=None, max_height=None):
         width, height = document.page_size(0)
-        style = f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
+        style = (
+            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%;"
+            f" height: 100%; aspect-ratio: {width} / {height};"
+        )
 
         if max_width:
             style += f" max-width: {max_width}px;"
@@ -109,7 +112,10 @@ class PageOEmbed(DocumentOEmbed):
 
     def get_style(self, document, max_width=None, max_height=None, page=0):
         width, height = document.page_size(page)
-        style = f"border: none; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
+        style = (
+            f"border: none; width: 100%; height: 100%;"
+            f" aspect-ratio: {width} / {height};"
+        )
 
         if max_width:
             style += f" max-width: {max_width}px;"
@@ -155,7 +161,7 @@ class NoteOEmbed(RichOEmbed):
         if query:
             src = f"{src}&{query}"
 
-        width, height, note_width, note_height = self.get_dimensions(document, note)
+        note_width, note_height = self.get_dimensions(document, note)
 
         context = {
             "src": src,
@@ -175,13 +181,16 @@ class NoteOEmbed(RichOEmbed):
         note_width = width * (note.x2 - note.x1)
         note_height = height * (note.y2 - note.y1)
 
-        return (width, height, note_width, note_height)
+        return (note_width, note_height)
 
     def get_style(self, document, note, max_width=None, max_height=None):
 
-        width, height, note_width, note_height = self.get_dimensions(document, note)
+        note_width, note_height = self.get_dimensions(document, note)
 
-        style = f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {note_width} / {note_height};"
+        style = (
+            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%;"
+            f" height: 100%; aspect-ratio: {note_width} / {note_height};"
+        )
         if max_width:
             style += f" max-width: {max_width}px;"
         if max_height:
