@@ -1,4 +1,5 @@
 # Django
+from turtle import width
 from django.conf import settings
 from django.test import RequestFactory
 
@@ -28,6 +29,7 @@ class TestDocumentOEmbed:
         self.document.get_absolute_url.return_value = (
             f"/documents/{self.document.pk}-{self.document.slug}/"
         )
+        self.document.page_size.return_value = (1200, 800)
 
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
@@ -62,6 +64,8 @@ class TestDocumentOEmbed:
             request, query, max_width=600, max_height=None, pk=123
         )
 
+        width, height = self.document_oembed.get_dimensions(self.document, None, None)
+
         # Check response properties
         assert response["version"] == "1.0"
         assert response["type"] == "rich"
@@ -77,14 +81,11 @@ class TestDocumentOEmbed:
             "?embed=1&amp;responsive=1"
         ) in response["html"]
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
-        assert 'width="600" height="400"' in response["html"]
         assert (
-            'style="border: 1px solid #aaa; width: 100%; height: 800px;'
-        ) in response["html"]
-        assert (
-            'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
+            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
             in response["html"]
         )
+        assert 'sandbox="allow-scripts allow-same-origin' in response["html"]
 
     def test_document_oembed_query_passthrough(self):
         """Test that query parameters are passed through to the iFrame src"""
@@ -124,8 +125,8 @@ class TestDocumentOEmbed:
 
         # Test with no max dimensions
         width, height = self.document_oembed.get_dimensions(self.document, None, None)
-        assert width == 800  # Should be default
-        assert height == 533  # 800/1.5 = 533.33...
+        assert width == 1200  # Should be default
+        assert height == 800  # 1200/1.5 = 800
 
     def test_document_oembed_get_context(self):
         """Test the get_context method of DocumentOEmbed"""
@@ -147,27 +148,36 @@ class TestDocumentOEmbed:
     def test_document_oembed_get_style(self):
         """Test the get_style method of DocumentOEmbed"""
         # Test responsive with no max dimensions
-        style = self.document_oembed.get_style(None, None)
-        assert style == " width: 100%; height: 800px; height: calc(100vh - 100px);"
+        width, height = (1200, 800)
+
+        style = self.document_oembed.get_style(self.document, None, None)
+
+        assert (
+            style
+            == f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
+        )
 
         # Test with max_width only
-        style = self.document_oembed.get_style(600, None)
+        style = self.document_oembed.get_style(self.document, 600, None)
         assert (
-            style == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            style
+            == f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height}; "
             "max-width: 600px;"
         )
 
         # Test with max_height only
-        style = self.document_oembed.get_style(None, 400)
+        style = self.document_oembed.get_style(self.document, None, 400)
         assert (
-            style == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            style
+            == f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height}; "
             "max-height: 400px;"
         )
 
         # Test with both max dimensions
-        style = self.document_oembed.get_style(600, 400)
+        style = self.document_oembed.get_style(self.document, 600, 400)
         assert (
-            style == " width: 100%; height: 800px; height: calc(100vh - 100px); "
+            style
+            == f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height}; "
             "max-width: 600px; max-height: 400px;"
         )
 
@@ -186,6 +196,7 @@ class TestPageOEmbed:
         self.document.get_absolute_url.return_value = (
             f"/documents/{self.document.pk}-{self.document.slug}/"
         )
+        self.document.page_size.return_value = (1200, 800)
 
         # Mock the Document manager
         self.document_queryset = mock.MagicMock()
@@ -220,6 +231,8 @@ class TestPageOEmbed:
             request, query, max_width=600, max_height=None, pk=123, page=1
         )
 
+        width, height = self.document.page_size(0)
+
         # Check response properties
         assert response["version"] == "1.0"
         assert response["type"] == "rich"
@@ -236,11 +249,12 @@ class TestPageOEmbed:
         assert 'title="Test Document (Hosted by DocumentCloud)"' in response["html"]
         assert 'width="600" height="400"' in response["html"]
         assert (
-            'style="border: 1px solid #aaa; width: 100%; height: 800px;'
+            f"border: none; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
             in response["html"]
         )
+        assert 'sandbox="allow-scripts allow-same-origin"' in response["html"]
         assert (
-            'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
+            f'<script src="{settings.DOCCLOUD_EMBED_URL}/embed/resize.js"></script>'
             in response["html"]
         )
 
@@ -257,8 +271,8 @@ class TestPageOEmbed:
 
         # Test with no max dimensions
         width, height = self.page_oembed.get_dimensions(self.document, None, None)
-        assert width == 800  # Should be default
-        assert height == 533  # Should be calculated based on aspect ratio
+        assert width == 1200  # Should be default
+        assert height == 800  # Should be calculated based on aspect ratio
 
     def test_page_oembed_get_context(self):
         """Test the get_context method of PageOEmbed"""
@@ -291,11 +305,16 @@ class TestNoteOEmbed:
         self.document.get_absolute_url.return_value = (
             f"/documents/{self.document.pk}-{self.document.slug}/"
         )
+        self.document.page_size.return_value = (1200, 800)
 
         # Mock the Note
         self.note = mock.MagicMock()
         self.note.title = "Test Note"
         self.note.pk = 456
+        self.note.x1 = 0
+        self.note.x2 = 0.5
+        self.note.y1 = 0
+        self.note.y2 = 0.5
 
         # Mock Document.notes.get_viewable
         note_queryset = mock.MagicMock()
@@ -335,6 +354,9 @@ class TestNoteOEmbed:
         response = self.note_oembed.response(
             request, query, max_width=600, max_height=None, doc_pk=123, pk=456
         )
+        width, height, note_width, note_height = self.note_oembed.get_dimensions(
+            self.document, self.note
+        )
 
         # Check response properties
         assert response["version"] == "1.0"
@@ -348,9 +370,14 @@ class TestNoteOEmbed:
             "?embed=1&amp;responsive=1"
         ) in response["html"]
         assert 'title="Test Note (Hosted by DocumentCloud)"' in response["html"]
-        assert 'width="100%" height="500px"' in response["html"]
-        assert 'style="border: 1px solid #aaa;' in response["html"]
+        assert f'width="{note_width}" height="{note_height}"' in response["html"]
         assert (
-            'sandbox="allow-scripts allow-same-origin allow-popups allow-forms'
+            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {note_width} / {note_height};"
+            in response["html"]
+        )
+        assert 'sandbox="allow-scripts allow-same-origin' in response["html"]
+
+        assert (
+            f'<script src="{settings.DOCCLOUD_EMBED_URL}/embed/resize.js"></script>'
             in response["html"]
         )

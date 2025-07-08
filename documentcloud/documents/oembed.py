@@ -17,6 +17,8 @@ DOCCLOUD_URL_REGEX = (
     + r")?documentcloud[.]org"
 )
 
+RESIZE_SCRIPT = f"{settings.DOCCLOUD_EMBED_URL}/embed/resize.js"
+
 
 @register
 class DocumentOEmbed(RichOEmbed):
@@ -33,7 +35,7 @@ class DocumentOEmbed(RichOEmbed):
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
         width, height = self.get_dimensions(document, max_width, max_height)
-        style = self.get_style(max_width, max_height)
+        style = self.get_style(document, max_width, max_height)
         oembed = {
             "title": document.title,
             "width": width,
@@ -54,8 +56,8 @@ class DocumentOEmbed(RichOEmbed):
         return {"src": src, **extra}
 
     def get_dimensions(self, document, max_width, max_height):
-        default_width = 800
-        aspect_ratio = document.aspect_ratio
+        width, height = document.page_size(0)
+        aspect_ratio = width / height
         if max_width and max_height:
             # preserve user intention and break aspect ratio
             return max_width, max_height
@@ -64,12 +66,11 @@ class DocumentOEmbed(RichOEmbed):
         elif max_height:
             return int(max_height * aspect_ratio), max_height
         else:
-            return default_width, int(default_width / aspect_ratio)
+            return width, height
 
-    def get_style(self, max_width, max_height):
-        # Responsive is now the default width setting
-        # 100% width and 100vh - 100px height (800px fallback for old browsers)
-        style = " width: 100%; height: 800px; height: calc(100vh - 100px);"
+    def get_style(self, document, max_width=None, max_height=None):
+        width, height = document.page_size(0)
+        style = f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
 
         if max_width:
             style += f" max-width: {max_width}px;"
@@ -102,8 +103,19 @@ class PageOEmbed(DocumentOEmbed):
             src = f"{src}&{query}"
         return {
             "src": src,
+            "resize_script": RESIZE_SCRIPT,
             **extra,
         }
+
+    def get_style(self, document, max_width=None, max_height=None, page=0):
+        width, height = document.page_size(page)
+        style = f"border: none; width: 100%; height: 100%; aspect-ratio: {width} / {height};"
+
+        if max_width:
+            style += f" max-width: {max_width}px;"
+        if max_height:
+            style += f" max-height: {max_height}px;"
+        return style
 
 
 @register
@@ -142,10 +154,36 @@ class NoteOEmbed(RichOEmbed):
         src = f"{src}?embed=1"
         if query:
             src = f"{src}&{query}"
+
+        width, height, note_width, note_height = self.get_dimensions(document, note)
+
         context = {
             "src": src,
             "title": note.title,
+            "style": self.get_style(document, note, max_width, max_height),
+            "width": note_width,
+            "height": note_height,
+            "resize_script": RESIZE_SCRIPT,
         }
         template = get_template(self.template)
         oembed["html"] = template.render(context)
         return self.oembed(**oembed)
+
+    def get_dimensions(self, document, note):
+        page = note.page_number - 1
+        width, height = document.page_size(page)
+        note_width = width * (note.x2 - note.x1)
+        note_height = height * (note.y2 - note.y1)
+
+        return (width, height, note_width, note_height)
+
+    def get_style(self, document, note, max_width=None, max_height=None):
+
+        width, height, note_width, note_height = self.get_dimensions(document, note)
+
+        style = f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%; height: 100%; aspect-ratio: {note_width} / {note_height};"
+        if max_width:
+            style += f" max-width: {max_width}px;"
+        if max_height:
+            style += f" max-height: {max_height}px;"
+        return style
