@@ -254,7 +254,7 @@ class TestPageOEmbed:
         )
         assert 'sandbox="allow-scripts allow-same-origin"' in response["html"]
         assert (
-            f'<script src="{settings.DOCCLOUD_EMBED_URL}/embed/resize.js"></script>'
+            f'<script src="{settings.DOCCLOUD_EMBED_URL}/embed/dc-resize.js"></script>'
             in response["html"]
         )
 
@@ -378,6 +378,6 @@ class TestNoteOEmbed:
         assert 'sandbox="allow-scripts allow-same-origin' in response["html"]
 
         assert (
-            f'<script src="{settings.DOCCLOUD_EMBED_URL}/embed/resize.js"></script>'
+            f'<script src="{settings.DOCCLOUD_EMBED_URL}/embed/dc-resize.js"></script>'
             in response["html"]
         )

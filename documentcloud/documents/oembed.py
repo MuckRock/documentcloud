@@ -17,7 +17,7 @@ DOCCLOUD_URL_REGEX = (
     + r")?documentcloud[.]org"
 )
 
-RESIZE_SCRIPT = f"{settings.DOCCLOUD_EMBED_URL}/embed/resize.js"
+RESIZE_SCRIPT = f"{settings.DOCCLOUD_EMBED_URL}/embed/dc-resize.js"
 
 
 @register
