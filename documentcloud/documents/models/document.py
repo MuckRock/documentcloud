@@ -339,7 +339,7 @@ class Document(models.Model):
 
         try:
             dimensions = uncrunch(self.page_spec)[page]
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, IndexError):
             return default
 
         width, height = [float(d) for d in dimensions.split("x")]
@@ -354,7 +354,7 @@ class Document(models.Model):
 
         try:
             dimensions = uncrunch(self.page_spec)[page]
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, IndexError):
             return default
 
         width, height = [float(d) for d in dimensions.split("x")]
