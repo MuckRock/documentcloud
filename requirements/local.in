@@ -12,6 +12,7 @@ pytest
 pytest-sugar
 pytest-mock
 -e git+https://github.com/elritsch/python-sharedmock#egg=sharedmock
+pytest-watch
 
 # Code quality
 # ------------------------------------------------------------------------------

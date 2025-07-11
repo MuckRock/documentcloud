@@ -339,12 +339,27 @@ class Document(models.Model):
 
         try:
             dimensions = uncrunch(self.page_spec)[page]
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, IndexError):
             return default
 
         width, height = [float(d) for d in dimensions.split("x")]
 
         return width / height
+
+    def page_size(self, page):
+        "Return the width and height of a given page, as a tuple"
+        default = (8.5, 11.0)
+        if not self.page_spec:
+            return default
+
+        try:
+            dimensions = uncrunch(self.page_spec)[page]
+        except (ValueError, KeyError, IndexError):
+            return default
+
+        width, height = [float(d) for d in dimensions.split("x")]
+
+        return (width, height)
 
     def get_page_text(self, page_number):
         try:
