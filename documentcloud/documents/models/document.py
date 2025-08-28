@@ -17,7 +17,7 @@ from io import BytesIO
 import boto3
 import pymupdf
 import requests
-from listcrunch import uncrunch
+from listcrunch import crunch, uncrunch
 from pikepdf import Page as PikePage, Pdf, Rectangle
 
 # DocumentCloud
@@ -646,6 +646,21 @@ class Document(models.Model):
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
 
+        # We only want the first page of the page spec in Solr
+        # We also want to ensure we do not have more than 2 decimal places
+        # in the dimensions
+        if self.page_spec:
+            page_spec = crunch(
+                [
+                    "x".join(
+                        f"{float(i):.2f}"
+                        for i in uncrunch(self.page_spec)[0].split("x")
+                    )
+                ]
+            )
+        else:
+            page_spec = self.page_spec
+
         solr_document = {
             "id": self.pk,
             "type": "document",
@@ -661,7 +676,7 @@ class Document(models.Model):
             "created_at": format_date(self.created_at),
             "updated_at": format_date(self.updated_at),
             "page_count": self.page_count,
-            "page_spec": self.page_spec,
+            "page_spec": page_spec,
             "projects": project_ids,
             "projects_edit_access": project_edit_access_ids,
             "original_extension": self.original_extension,
