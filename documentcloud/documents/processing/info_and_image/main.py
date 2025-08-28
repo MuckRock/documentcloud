@@ -867,7 +867,7 @@ def extract_image(data, _context=None):
                 width, height = extract_single_page(
                     doc_id, slug, access, page, page_number, large_image_path
                 )
-                page_dimension = f"{width}x{height}"
+                page_dimension = f"{width:.2f}x{height:.2f}"
 
                 if not partial:
                     # Update the page dimensions in Redis atomically
@@ -1399,7 +1399,7 @@ def import_document(data, _context=None):
                 page = doc.load_page(page_number)
                 # Grab page dimensions
                 width, height = page.width, page.height
-                page_dimension = f"{width}x{height}"
+                page_dimension = f"{width:.2f}x{height:.2f}"
 
                 # Assemble page spec piece-by-piece
                 pagespec[page_dimension].append(page_number)
