@@ -7,7 +7,7 @@ on:
       - master
       - staging
 env:
-  PYENV_VERSION: '3.12'
+  PYENV_VERSION: "3.12"
   DJANGO_SECRET_KEY: ${{secrets.SECRET_KEY}}
   DJANGO_SETTINGS_MODULE: config.settings.test
   DATABASE_URL: postgres://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/test
@@ -36,7 +36,7 @@ env:
   DOCUMENT_BUCKET: ${{secrets.DOCUMENT_BUCKET}}
   REDIS_PROCESSING_PASSWORD: ""
   SAM_CLI_TELEMETRY: 0
-  
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -46,14 +46,12 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout
+          5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
         with:
-            submodules: recursive
+          submodules: recursive
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -75,10 +73,8 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout
+          5s --health-retries 5
       postgres:
         image: postgres
         env:
@@ -87,9 +83,7 @@ jobs:
           POSTGRES_DB: test
         # Set health checks to wait until postgres has started
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s
           --health-retries 5
         ports:
           # Maps tcp port 5432 on service container to the host
@@ -106,7 +100,7 @@ jobs:
         run: |
           pip install -r requirements/local.txt
       - name: Test
-        run:  pytest documentcloud -m "not solr"
+        run: pytest documentcloud -m "not solr"
         env:
           # use the credentials for the service container
           PG_USER: test
