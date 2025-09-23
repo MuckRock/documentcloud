@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
+      - staging
+
+env:
+  PYENV_VERSION: '3.10'
+  DJANGO_SECRET_KEY: ${{secrets.SECRET_KEY}}
+  DJANGO_SETTINGS_MODULE: config.settings.test
+  DATABASE_URL: postgres://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/test
+  DOC_PROCESSING_URL: http://localhost/process
+  CELERY_BROKER_URL: ""
+  ENVIRONMENT: local
+  API_CALLBACK: http://localhost
+  DJANGO_COOKIE_DOMAIN: .test.documentcloud.org
+  REDIS_PROCESSING_URL: redis://localhost:6379
+  PROCESSING_TOKEN: PROCESSING_TOKEN
+  MINIO_URL: minio.documentcloud.org
+  MINIO_ACCES_KEY: ${{ secrets.JWT_VERIFYING_KEY }}
+  MINIO_SECRET_KEY: ${{ secrets.JWT_VERIFYING_KEY }}
+  SERVERLESS: False
+  AWS_DEFAULT_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+  AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+  PROGRESS_URL: http://localhost/progress
+  TIMEOUTS: 15,30,60,120
+  IMPORT_URL: http://localhost/import
+  SIDEKICK_PROCESSING_URL: http://localhost/process
+  REDIS_URL: redis://localhost:6379
+  JWT_VERIFYING_KEY: ${{ secrets.JWT_VERIFYING_KEY }}
+  SQUARELET_KEY: ${{secrets.SQUARELET_SECRET}}
+  SQUARELET_SECRET: ${{secrets.SQUARELET_KEY}}
+  DOCUMENT_BUCKET: ${{secrets.DOCUMENT_BUCKET}}
+  REDIS_PROCESSING_PASSWORD: ""
+  SAM_CLI_TELEMETRY: 0
+
+
+
+  
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+            submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip" # caching pip dependencies
+
+      - name: Install pip
+        run: |
+          wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
+          python3 get-pip.py
+
+      - name: Install
+        run: |
+          pip install -r requirements/local.txt
+
+      - name: Lint
+        run: pylint documentcloud
+
+      - name: Isort
+        run: isort --check-only -rc documentcloud
+
+      - name: Formatting
+        run: black --check documentcloud --exclude migrations
+
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: ${{ secrets.PG_PASSWORD }}
+          POSTGRES_DB: test
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip" # caching pip dependencies
+
+      - name: Install pip
+        run: |
+          wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
+          python3 get-pip.py
+
+      - name: Install requirements
+        run: |
+          pip install -r requirements/local.txt
+
+
+      - name: Test
+        run:  pytest documentcloud -m "not solr"
+        env:
+          # use the credentials for the service container
+          PG_USER: test
+          PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+          DATABASE_URL: postgres://test:postgres@127.0.0.1:5432/test
+
