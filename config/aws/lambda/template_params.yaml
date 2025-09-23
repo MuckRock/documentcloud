@@ -215,7 +215,7 @@ Resources:
   ConvertDocFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: python3.8
+      Runtime: python3.10
       Handler: main.run_document_conversion
       CodeUri: ./awsbin/document_conversion
       # Trigger function via SNS
