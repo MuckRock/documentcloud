@@ -166,7 +166,7 @@ class NoteOEmbed(RichOEmbed):
         context = {
             "src": src,
             "title": note.title,
-            "style": self.get_style(document, note, max_width, max_height),
+            "style": self.get_style(max_width, max_height),
             "width": note_width,
             "height": note_height,
             "resize_script": RESIZE_SCRIPT,
@@ -183,13 +183,11 @@ class NoteOEmbed(RichOEmbed):
 
         return (note_width, note_height)
 
-    def get_style(self, document, note, max_width=None, max_height=None):
-
-        note_width, note_height = self.get_dimensions(document, note)
+    def get_style(self, max_width=None, max_height=None):
 
         style = (
-            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%;"
-            f" height: 100%; aspect-ratio: {note_width} / {note_height};"
+            "border: 1px solid #d8dee2; border-radius: 0.5rem;"
+            " width: 100%; height: 300px;"
         )
         if max_width:
             style += f" max-width: {max_width}px;"

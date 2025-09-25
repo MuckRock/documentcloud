@@ -354,9 +354,6 @@ class TestNoteOEmbed:
         response = self.note_oembed.response(
             request, query, max_width=600, max_height=None, doc_pk=123, pk=456
         )
-        note_width, note_height = self.note_oembed.get_dimensions(
-            self.document, self.note
-        )
 
         # Check response properties
         assert response["version"] == "1.0"
@@ -370,10 +367,9 @@ class TestNoteOEmbed:
             "?embed=1&amp;responsive=1"
         ) in response["html"]
         assert 'title="Test Note (Hosted by DocumentCloud)"' in response["html"]
-        assert f'width="{note_width}" height="{note_height}"' in response["html"]
         assert (
-            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%;"
-            f" height: 100%; aspect-ratio: {note_width} / {note_height};"
+            "border: 1px solid #d8dee2; border-radius: 0.5rem;"
+            " width: 100%; height: 300px;"
         ) in response["html"]
         assert 'sandbox="allow-scripts allow-same-origin' in response["html"]
 
