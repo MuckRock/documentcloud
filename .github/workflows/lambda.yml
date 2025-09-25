@@ -1,0 +1,26 @@
+name: Post-Deploy Lambda
+
+on:
+  deployment:
+
+jobs:
+  deploy-lambdas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Show deployment info
+        run: |
+          echo "Deployment SHA: $GITHUB_SHA"
+          echo "Deployment ref: $GITHUB_REF"
+          echo "Deployment environment: $DEPLOYMENT_ENVIRONMENT"
+
+      - name: Run Lambda deploy
+        run: |
+          if [[ "$DEPLOYMENT_ENVIRONMENT" == "documentcloud-staging" ]]; then
+            echo "Deploying staging lambda updates"
+            bash config/aws/lambda/codeship_deploy_lambdas.sh staging-lambda --staging
+          else
+            echo "Deploying production lambda updates"
+            bash config/aws/lambda/codeship_deploy_lambdas.sh prod-lambda
+          fi
