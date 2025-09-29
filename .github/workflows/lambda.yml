@@ -11,8 +11,6 @@ jobs:
 
       - name: Show deployment info
         run: |
-          echo "Deployment SHA: $GITHUB_SHA"
-          echo "Deployment ref: $GITHUB_REF"
           echo "Deployment environment: $DEPLOYMENT_ENVIRONMENT"
 
       - name: Run Lambda deploy
