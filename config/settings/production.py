@@ -4,7 +4,6 @@ import os
 
 # Third Party
 import sentry_sdk
-from ipware import get_client_ip
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -73,6 +72,11 @@ AWS_S3_OBJECT_PARAMETERS = {
 AWS_DEFAULT_ACL = None
 # https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#settings
 AWS_S3_REGION_NAME = env("DJANGO_AWS_S3_REGION_NAME", default=None)
+
+CLOUDFLARE_HOSTS = env.list(
+    "CLOUDFLARE_HOSTS",
+    default=["https://www.documentcloud.org", "https://embed.documentcloud.org"],
+)
 
 # STATIC
 # ------------------------
