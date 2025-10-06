@@ -702,9 +702,14 @@ class Document(models.Model):
         return solr_document
 
     def invalidate_cache(self):
-        """Invalidate public CDN cache for this document's underlying file"""
+        """
+        Invalidate public CDN cache for this document's underlying file,
+        plus frontend URLs in Cloudflare
+        """
         logger.info("Invalidating cache for %s", self.pk)
         doc_path = self.doc_path[self.doc_path.index("/") :]
+
+        # cloudfront
         distribution_id = settings.CLOUDFRONT_DISTRIBUTION_ID
         if distribution_id:
             # we want the doc path without the s3 bucket name
@@ -716,15 +721,25 @@ class Document(models.Model):
                     "CallerReference": str(uuid.uuid4()),
                 },
             )
+
+        # cloudflare
         cloudflare_email = settings.CLOUDFLARE_API_EMAIL
         cloudflare_key = settings.CLOUDFLARE_API_KEY
         cloudflare_zone = settings.CLOUDFLARE_API_ZONE
-        url = settings.PUBLIC_ASSET_URL + doc_path[1:]
+        asset_url = settings.PUBLIC_ASSET_URL + doc_path[1:]
+
+        if self.access == Access.public:
+            public_urls = [
+                host + self.get_absolute_url() for host in settings.CLOUDFLARE_HOSTS
+            ] + [asset_url]
+        else:
+            public_urls = [asset_url]
+
         if cloudflare_zone:
             requests.post(
                 "https://api.cloudflare.com/client/v4/zones/"
                 f"{cloudflare_zone}/purge_cache",
-                json={"files": [url]},
+                json={"files": public_urls},
                 headers={
                     "X-Auth-Email": cloudflare_email,
                     "X-Auth-Key": cloudflare_key,
