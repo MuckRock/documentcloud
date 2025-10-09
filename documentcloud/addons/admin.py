@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib import admin, messages
 from django.db.models import JSONField
 from django.forms import widgets
@@ -128,7 +129,10 @@ class AddOnRunAdmin(admin.ModelAdmin):
         """Export selected Add-On Runs to CSV."""
         field_names = [
             "addon_id",
+            "addon_name",
             "user_id",
+            "user_name",
+            "user_email",
             "run_id",
             "status",
             "rating",
@@ -143,11 +147,28 @@ class AddOnRunAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow(field_names)
 
-        for run in queryset:
+        limited_queryset = queryset.select_related("addon", "user").only(
+            "addon_id",
+            "user_id",
+            "run_id",
+            "status",
+            "rating",
+            "credits_spent",
+            "created_at",
+            "updated_at",
+            "addon__name",
+            "user__name",
+            "user__email",
+        )
+
+        for run in limited_queryset.iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
             writer.writerow(
                 [
                     run.addon_id,
+                    run.addon.name,
                     run.user_id,
+                    run.user.name,
+                    run.user.email,
                     run.run_id,
                     run.status,
                     run.rating,

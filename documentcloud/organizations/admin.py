@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib import admin
 from django.http import HttpResponse
 
@@ -41,7 +42,7 @@ class AICreditLogAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow(field_names)
 
-        for log in queryset:
+        for log in queryset.iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
             writer.writerow(
                 [
                     str(log.organization),
