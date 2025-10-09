@@ -290,6 +290,9 @@ ADMIN_URL = "admin/"
 ADMINS = [("Mitchell Kotler", "mitch@muckrock.com")]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
+# Chunk size for CSV exports using .iterator() to process large querysets
+# without loading all records into memory at once
+CSV_EXPORT_CHUNK_SIZE = env.int("CSV_EXPORT_CHUNK_SIZE", default=2000)
 
 # LOGGING
 # ------------------------------------------------------------------------------

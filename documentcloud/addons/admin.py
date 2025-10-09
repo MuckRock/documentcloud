@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib import admin, messages
 from django.db.models import JSONField
 from django.forms import widgets
@@ -160,7 +161,7 @@ class AddOnRunAdmin(admin.ModelAdmin):
             "user__email",
         )
 
-        for run in limited_queryset.iterator(chunk_size=2000):
+        for run in limited_queryset.iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
             writer.writerow(
                 [
                     run.addon_id,

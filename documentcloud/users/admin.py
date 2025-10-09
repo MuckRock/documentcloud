@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib import admin
 from django.http.response import HttpResponse
 from django.urls.conf import re_path
@@ -47,7 +48,7 @@ class UserAdmin(SAUserAdmin):
         writer.writerow(["username", "name", "email", "last_login", "date_joined"])
         for user in User.objects.only(
             "username", "name", "email", "last_login", "created_at"
-        ).iterator(chunk_size=2000):
+        ).iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
             writer.writerow(
                 [
                     user.username,
