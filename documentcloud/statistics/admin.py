@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib import admin
 from django.http import HttpResponse
 
@@ -29,7 +30,7 @@ class StatisticsAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow(field_names)
 
-        for obj in queryset:
+        for obj in queryset.iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
             row = []
             for field_name in field_names:
                 value = getattr(obj, field_name)
