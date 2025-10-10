@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.contrib import admin, messages
-from django.db.models import JSONField
+from django.db.models import JSONField, Q
 from django.forms import widgets
 from django.http import HttpResponse
 from django.http.response import HttpResponseRedirect
@@ -124,6 +124,19 @@ class AddOnRunAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     actions = ["export_runs_as_csv"]
     readonly_fields = [f.name for f in AddOnRun._meta.fields]
+
+    def get_search_results(self, request, queryset, search_term):
+        """Avoid collation issue when searching add-on runs"""
+        if search_term:
+            queryset = queryset.filter(
+                Q(addon__name__icontains=search_term)
+                | Q(user__email__icontains=search_term)
+                | Q(status__icontains=search_term)
+            )
+            use_distinct = False
+        else:
+            use_distinct = False
+        return queryset, use_distinct
 
     def export_runs_as_csv(self, request, queryset):
         """Export selected Add-On Runs to CSV."""
