@@ -392,7 +392,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "documentcloud.addons.tasks.dispatch_events",
         "schedule": crontab(minute="*/5"),
     },
+    "permission_digest": {
+        "task": "documentcloud.users.tasks.permission_digest",
+        "schedule": crontab(day_of_week="mon", hour=7, minute=0),
+    },
 }
+
+PERMISSIONS_DIGEST_EMAILS = env.list("PERMISSIONS_DIGEST_EMAILS", default=[])
 
 # django-compressor
 # ------------------------------------------------------------------------------
