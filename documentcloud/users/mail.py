@@ -2,6 +2,9 @@
 from django.conf import settings
 from django.contrib.auth.models import Group
 
+# Standard Library
+from datetime import date
+
 # DocumentCloud
 from documentcloud.core.mail import Email
 from documentcloud.users.models import User
@@ -13,7 +16,7 @@ class PermissionsDigest(Email):
     template = "users/email/permissions.html"
 
     def __init__(self, **kwargs):
-        kwargs["subject"] = "Permissions Digest"
+        kwargs["subject"] = f"{date.today()} DocumentCloud Permissions Digest"
         kwargs["to"] = settings.PERMISSIONS_DIGEST_EMAILS
         kwargs["extra_context"] = self.get_context()
         super().__init__(**kwargs)
