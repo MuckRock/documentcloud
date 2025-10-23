@@ -1,6 +1,9 @@
 # Django
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.admin.filters import SimpleListFilter
+from django.contrib.auth.models import Permission
+from django.db.models.query_utils import Q
 from django.http.response import HttpResponse
 from django.urls.conf import re_path
 
@@ -14,9 +17,29 @@ from squarelet_auth.users.admin import UserAdmin as SAUserAdmin
 from documentcloud.users.models import User
 
 
+class PermissionFilter(SimpleListFilter):
+    """Filter for users by permission"""
+
+    title = "Permission"
+    parameter_name = "permission"
+    template = "admin/dropdown_filter.html"
+
+    def lookups(self, request, model_admin):
+        return Permission.objects.values_list("pk", "name")
+
+    def queryset(self, request, queryset):
+        return queryset.filter(
+            Q(user_permissions=self.value())
+            | Q(groups__permissions=self.value())
+            | Q(is_superuser=True)
+        ).distinct()
+
+
 @admin.register(User)
 class UserAdmin(SAUserAdmin):
     """User Admin"""
+
+    list_filter = SAUserAdmin.list_filter + (PermissionFilter,)
 
     def get_urls(self):
         """Add custom URLs here"""
