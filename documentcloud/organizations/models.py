@@ -130,6 +130,19 @@ class Organization(AbstractOrganization):
         self.addons.update(organization=other)
         self.visual_addons.update(organization=other)
 
+        # transfer children to the other organization
+        self.children.update(parent=other)
+
+        # transfer group memberships
+        groups = self.groups.all()
+        other.groups.add(*groups)
+        self.groups.clear()
+
+        # transfer members
+        members = self.members.all()
+        other.members.add(*members)
+        self.members.clear()
+
         self.merged = other
 
     def calc_ai_credits_per_month(self, users):
@@ -147,19 +160,53 @@ class Organization(AbstractOrganization):
         initial_amount = amount
         ai_credit_count = {"monthly": 0, "regular": 0}
         organization = Organization.objects.select_for_update().get(pk=self.pk)
+        if organization.parent and organization.parent.share_resources:
+            parent = Organization.objects.select_for_update().get(
+                pk=organization.parent_id
+            )
+        else:
+            parent = None
+        groups = organization.groups.filter(share_resources=True).select_for_update()
 
+        # Deduct from own resources first
         ai_credit_count["monthly"] = min(amount, organization.monthly_ai_credits)
         amount -= ai_credit_count["monthly"]
 
         ai_credit_count["regular"] = min(amount, organization.number_ai_credits)
         amount -= ai_credit_count["regular"]
 
-        if amount > 0:
-            raise InsufficientAICreditsError(amount)
-
         organization.monthly_ai_credits -= ai_credit_count["monthly"]
         organization.number_ai_credits -= ai_credit_count["regular"]
         organization.save()
+
+        # Then deduct from parent resources
+        if parent:
+            parent_monthly = min(amount, parent.monthly_ai_credits)
+            ai_credit_count["monthly"] += parent_monthly
+            amount -= parent_monthly
+            parent.monthly_ai_credits -= parent_monthly
+
+            parent_regular = min(amount, parent.number_ai_credits)
+            ai_credit_count["regular"] += parent_regular
+            amount -= parent_regular
+            parent.number_ai_credits -= parent_regular
+            parent.save()
+
+        # Then deduct from group resources
+        for group in groups:
+            group_monthly = min(amount, group.monthly_ai_credits)
+            ai_credit_count["monthly"] += group_monthly
+            amount -= group_monthly
+            group.monthly_ai_credits -= group_monthly
+
+            group_regular = min(amount, group.number_ai_credits)
+            ai_credit_count["regular"] += group_regular
+            amount -= group_regular
+            group.number_ai_credits -= group_regular
+            group.save()
+
+        if amount > 0:
+            raise InsufficientAICreditsError(amount)
 
         organization.ai_credit_logs.create(
             user_id=user_id,
@@ -169,6 +216,24 @@ class Organization(AbstractOrganization):
         )
 
         return ai_credit_count
+
+    def get_total_number_ai_credits(self):
+        """Get total number AI credits including parent and groups"""
+        number_ai_credits = self.number_ai_credits
+        if self.parent and self.parent.share_resources:
+            number_ai_credits += self.parent.number_ai_credits
+        for group in self.groups.filter(share_resources=True):
+            number_ai_credits += group.number_ai_credits
+        return number_ai_credits
+
+    def get_total_monthly_ai_credits(self):
+        """Get total monthly AI credits including parent and groups"""
+        monthly_ai_credits = self.monthly_ai_credits
+        if self.parent and self.parent.share_resources:
+            monthly_ai_credits += self.parent.monthly_ai_credits
+        for group in self.groups.filter(share_resources=True):
+            monthly_ai_credits += group.monthly_ai_credits
+        return monthly_ai_credits
 
 
 class AICreditLog(models.Model):
