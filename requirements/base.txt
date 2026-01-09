@@ -429,7 +429,7 @@ sqlparse==0.4.4
     # via
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.13
+squarelet-auth==0.1.14
     # via -r requirements/base.in
 stack-data==0.3.0
     # via ipython
