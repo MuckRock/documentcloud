@@ -1818,8 +1818,6 @@ class DocumentDataViewSet(viewsets.GenericViewSet):
         for documents visible to the user.  You may filter
         by project and partial key name
         """
-        # XXX Should the results be paginated?
-
         # You must specify a project for now for performance reasons
         # It may be possible to use an index to remove this restriction
         # if desired
@@ -1856,8 +1854,6 @@ class DocumentDataViewSet(viewsets.GenericViewSet):
         to the requesting user. You may filter the resulting values
         by which project they are present in or by a partial value name.
         """
-        # XXX Should the results be paginated?
-
         # You must specify a project for now for performance reasons
         # It may be possible to use an index to remove this restriction
         # if desired
