@@ -290,6 +290,9 @@ ADMIN_URL = "admin/"
 ADMINS = [("Mitchell Kotler", "mitch@muckrock.com")]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
+# Chunk size for CSV exports using .iterator() to process large querysets
+# without loading all records into memory at once
+CSV_EXPORT_CHUNK_SIZE = env.int("CSV_EXPORT_CHUNK_SIZE", default=2000)
 
 # LOGGING
 # ------------------------------------------------------------------------------
@@ -389,7 +392,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "documentcloud.addons.tasks.dispatch_events",
         "schedule": crontab(minute="*/5"),
     },
+    "permission_digest": {
+        "task": "documentcloud.users.tasks.permission_digest",
+        "schedule": crontab(day_of_week="mon", hour=7, minute=0),
+    },
 }
+
+PERMISSIONS_DIGEST_EMAILS = env.list("PERMISSIONS_DIGEST_EMAILS", default=[])
 
 # django-compressor
 # ------------------------------------------------------------------------------
@@ -614,6 +623,7 @@ CLOUDFRONT_DISTRIBUTION_ID = env("CLOUDFRONT_DISTRIBUTION_ID", default="")
 CLOUDFLARE_API_EMAIL = env("CLOUDFLARE_API_EMAIL", default="")
 CLOUDFLARE_API_KEY = env("CLOUDFLARE_API_KEY", default="")
 CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")
+CLOUDFLARE_HOSTS = env.list("CLOUDFLARE_HOSTS", default=[])
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 

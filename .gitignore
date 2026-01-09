@@ -301,3 +301,6 @@ embedding/
 !config/solr/lib/*
 
 scratch/
+
+CLAUDE.md
+.claude

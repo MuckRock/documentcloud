@@ -1,6 +1,7 @@
 # Django
+from django.conf import settings
 from django.contrib import admin, messages
-from django.db.models import JSONField
+from django.db.models import JSONField, Q
 from django.forms import widgets
 from django.http import HttpResponse
 from django.http.response import HttpResponseRedirect
@@ -124,11 +125,27 @@ class AddOnRunAdmin(admin.ModelAdmin):
     actions = ["export_runs_as_csv"]
     readonly_fields = [f.name for f in AddOnRun._meta.fields]
 
+    def get_search_results(self, request, queryset, search_term):
+        """Avoid collation issue when searching add-on runs"""
+        if search_term:
+            queryset = queryset.filter(
+                Q(addon__name__icontains=search_term)
+                | Q(user__email__icontains=search_term)
+                | Q(status__icontains=search_term)
+            )
+            use_distinct = False
+        else:
+            use_distinct = False
+        return queryset, use_distinct
+
     def export_runs_as_csv(self, request, queryset):
         """Export selected Add-On Runs to CSV."""
         field_names = [
             "addon_id",
+            "addon_name",
             "user_id",
+            "user_name",
+            "user_email",
             "run_id",
             "status",
             "rating",
@@ -143,11 +160,28 @@ class AddOnRunAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow(field_names)
 
-        for run in queryset:
+        limited_queryset = queryset.select_related("addon", "user").only(
+            "addon_id",
+            "user_id",
+            "run_id",
+            "status",
+            "rating",
+            "credits_spent",
+            "created_at",
+            "updated_at",
+            "addon__name",
+            "user__name",
+            "user__email",
+        )
+
+        for run in limited_queryset.iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
             writer.writerow(
                 [
                     run.addon_id,
+                    run.addon.name,
                     run.user_id,
+                    run.user.name,
+                    run.user.email,
                     run.run_id,
                     run.status,
                     run.rating,
