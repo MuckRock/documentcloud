@@ -249,13 +249,30 @@ class Organization(AbstractOrganization):
         return number_ai_credits
 
     def get_total_monthly_ai_credits(self):
-        """Get total monthly AI credits including parent and groups"""
+        """Get total monthly AI credits remaining including parent and groups"""
         monthly_ai_credits = self.monthly_ai_credits
         if self.parent and self.parent.share_resources:
             monthly_ai_credits += self.parent.monthly_ai_credits
         for group in self.groups.filter(share_resources=True):
             monthly_ai_credits += group.monthly_ai_credits
         return monthly_ai_credits
+
+    def get_total_monthly_ai_credits_allowance(self):
+        """
+        Get the total monthly AI credits allowance, including parent and shared groups.
+        This is the amount that monthly_credits will reset to each month.
+        """
+        total = self.ai_credits_per_month
+
+        # Include parent if it shares resources
+        if self.parent and self.parent.share_resources:
+            total += self.parent.ai_credits_per_month
+
+        # Include groups that share resources
+        for group in self.groups.filter(share_resources=True):
+            total += group.ai_credits_per_month
+
+        return total
 
 
 class AICreditLog(models.Model):
