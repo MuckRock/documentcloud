@@ -98,9 +98,23 @@ class UserViewSet(
         return super().retrieve(request, *args, **kwargs)
 
     def get_queryset(self):
-        return User.objects.get_viewable(self.request.user).preload(
-            self.request.user, self.request.query_params.get("expand", "")
-        )
+        """
+        Return viewable users, with optional prefetching to avoid N+1 queries.
+        """
+        expand = self.request.query_params.get("expand", "")
+
+        # Base queryset
+        qs = User.objects.get_viewable(self.request.user)
+
+        # Prefetch related fields if expanding organization
+        if "organization" in expand:
+            qs = qs.select_related(
+                "organization",  # user's active organization
+                "organization__parent",  # organization's parent
+            ).prefetch_related(
+                "organization__groups"  # organization's groups
+            )
+        return qs.preload(self.request.user, expand)
 
     def get_object(self):
         """Allow one to lookup themselves by specifying `me` as the pk"""
