@@ -82,10 +82,16 @@ class OrganizationSerializer(serializers.ModelSerializer):
         if "monthly_credits" in self.fields:
             # skip checks if we have already removed the fields
             request = self.context and self.context.get("request")
+            view = self.context and self.context.get("view")
+            action = view.action if view else None
             user = request and request.user
             is_org = isinstance(instance, Organization)
             if not (
-                is_org and user and user.is_authenticated and instance.has_member(user)
+                is_org
+                and user
+                and user.is_authenticated
+                and instance.has_member(user)
+                and action == "retrieve"
             ):
                 # only members may see AI credit information
                 self.fields.pop("monthly_credits")
