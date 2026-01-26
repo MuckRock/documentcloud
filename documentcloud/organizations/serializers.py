@@ -19,21 +19,23 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "Only viewable by organization members."
         ),
     )
-    monthly_credits = serializers.IntegerField(
-        source="monthly_ai_credits",
+    monthly_credits = serializers.SerializerMethodField(
+        label=_("Monthly Credits"),
         read_only=True,
         help_text=(
             "Number of monthly premium credits this organization has left. "
             "This will reset to monthly_credit_allowance on credit_reset_date. "
+            "This includes shared credits from parents and groups. "
             "Only viewable be organization members."
         ),
     )
-    purchased_credits = serializers.IntegerField(
-        source="number_ai_credits",
+    purchased_credits = serializers.SerializerMethodField(
+        label=_("Purchased Credits"),
         read_only=True,
         help_text=(
             "Number of purchased premium credits. "
             "These do not reset or expire. "
+            "This includes shared credits from parents and groups. "
             "Only viewable by organization members."
         ),
     )
@@ -45,8 +47,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "Only viewable by organization members."
         ),
     )
-    monthly_credit_allowance = serializers.IntegerField(
-        source="ai_credits_per_month",
+    monthly_credit_allowance = serializers.SerializerMethodField(
         read_only=True,
         help_text=(
             "The amount of credits that monthly_credits will reset to. "
@@ -81,10 +82,16 @@ class OrganizationSerializer(serializers.ModelSerializer):
         if "monthly_credits" in self.fields:
             # skip checks if we have already removed the fields
             request = self.context and self.context.get("request")
+            view = self.context and self.context.get("view")
+            action = view.action if view else None
             user = request and request.user
             is_org = isinstance(instance, Organization)
             if not (
-                is_org and user and user.is_authenticated and instance.has_member(user)
+                is_org
+                and user
+                and user.is_authenticated
+                and instance.has_member(user)
+                and action == "retrieve"
             ):
                 # only members may see AI credit information
                 self.fields.pop("monthly_credits")
@@ -101,6 +108,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
             return obj.entitlement.name
         else:
             return "Free"
+
+    def get_monthly_credits(self, obj):
+        return obj.get_total_monthly_ai_credits()
+
+    def get_purchased_credits(self, obj):
+        return obj.get_total_number_ai_credits()
+
+    def get_monthly_credit_allowance(self, obj):
+        return obj.get_total_monthly_ai_credits_allowance()
 
 
 class AICreditSerializer(serializers.Serializer):
