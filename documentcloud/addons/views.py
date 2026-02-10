@@ -490,7 +490,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     serializer_class = AddOnRunSerializer
     queryset = AddOnRun.objects.none()
     lookup_field = "uuid"
-    permit_list_expands = ["addon"]
+    permit_list_expands = ["addon", "event"]
     filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
