@@ -139,6 +139,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         fields = [
             "uuid",
             "addon",
+            "event",
             "user",
             "status",
             "progress",
@@ -158,13 +159,17 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "uuid": {"read_only": True},
             "addon": {"queryset": AddOn.objects.none()},
+            "event": {"read_only": True},
             "user": {"read_only": True},
             "status": {"read_only": True},
             "file_name": {"write_only": True},
             "created_at": {"read_only": True},
             "updated_at": {"read_only": True},
         }
-        expandable_fields = {"addon": ("documentcloud.addons.AddOnSerializer", {})}
+        expandable_fields = {
+            "addon": ("documentcloud.addons.AddOnSerializer", {}),
+            "event": ("documentcloud.addons.AddOnEventSerializer", {}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
