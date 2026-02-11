@@ -712,6 +712,8 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         queryset = AddOnRun.objects.get_viewable(self.request.user)
         if is_expanded(self.request, "addon"):
             queryset = queryset.select_related("addon")
+        if is_expanded(self.request, "event"):
+            queryset = queryset.select_related("event")
         return queryset
 
     def perform_create(self, serializer):
