@@ -204,6 +204,7 @@ documents](#project-documents).
 | publish_at           | Date Time    | Not Required       | A timestamp when to automatically make this document public                                                                                                      |
 | published_url        | URL          | Not Required       | The URL where this document is embedded                                                                                                                          |
 | related_article      | URL          | Not Required       | The URL for the article about this document                                                                                                                      |
+| revision_control     | Boolean      | Not Required       | Turns revision control on for this document - requires a premium account                                                                                         |
 | remaining            | JSON         | Read Only          | The number of pages left for text and image processing - only included if `remaining` is included as a `GET` parameter                                           |
 | slug                 | String       | Read Only          | The slug is a URL safe version of the title                                                                                                                      |
 | source               | String       | Not Required       | The source who produced the document                                                                                                                             |
@@ -212,7 +213,7 @@ documents](#project-documents).
 | updated_at           | Date Time    | Read Only          | Time stamp when the document was last updated                                                                                                                    |
 | user                 | Integer      | Read Only          | The ID for the [user](#users) this document belongs to                                                                                                           |
 
-[Expandable fields](#expandable-fields): user, organization, projects, sections, notes
+[Expandable fields](#expandable-fields): user, organization, projects, sections, notes, revisions
 
 ### Uploading a Document
 
@@ -547,6 +548,25 @@ Entity kinds include
 - `mid` &mdash; Boolean filter for entities which do or do not have a MID
 - `wikipedia_url` &mdash; Boolean filter for entities which do or do not have a Wikipedia URL
 
+### Revisions
+
+User's with premium accounts may activate revision control using the
+`revision_control` parameter on their documents.  Enabling revision control
+will save a copy of the PDF whenever you take a destructive action, such as
+re-processing, redacting, or modifying the document.  There are no dedicated
+endpoints for revisions.  They can be viewed by passing `revisions` to the
+expand field when viewing documents.
+
+#### Fields
+
+| Field      | Type      | Options   | Description                                                     |
+| ---------- | --------- | --------- | --------------------------------------                          |
+| version    | Integer   | Read Only | The version number - it increments for each new version created |
+| user       | User      | Read Only | The user who performed the action which created the new version |
+| created_at | Date Time | Read Only | Time stamp when this revision was created                       |
+| comment    | String    | Read Only | A brief description of what changed in this revision            |
+| url        | URL       | Read Only | A link to the PDF that corresponds to this version              |
+
 ## Projects
 
 Projects are collections of documents. They can be used for organizing groups
@@ -635,9 +655,8 @@ These endpoints allow you to browse, add and remove documents from a project
     will be added.
 - `PATCH /api/projects/<project_id>/documents/` - Bulk partial update documents
   in the project
-  - This endpoint will not create or delete any documents in the project. It
-    will simply update the metadata for each document passed in. It expects
-    every document in the list to already be included in the project.
+  - This endpoint will create or update any documents in the project. It
+    will not delete any documents currently in the project.
 - `DELETE /api/projects/<project_id>/documents/` - Bulk remove documents from
   the project
   - You should specify which document IDs you want to delete using the
@@ -688,19 +707,38 @@ DocumentCloud API.
 
 ### Fields
 
-| Field      | Type    | Options   | Description                                                                                             |
-| ---------- | ------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| ID         | Integer | Read Only | The ID for the organization                                                                             |
-| avatar_url | URL     | Read Only | A URL pointing to an avatar for the organization &mdash; normally a logo for the company                |
-| individual | Bool    | Read Only | Is this organization for the sole use of an individual                                                  |
-| name       | String  | Read Only | The name of the organization                                                                            |
-| slug       | String  | Read Only | The slug is a URL safe version of the name                                                              |
-| uuid       | UUID    | Read Only | UUID which links this organization to the corresponding organization on the [MuckRock Accounts Site][3] |
+| Field                    | Type    | Options   | Description                                                                                                                                                                  |
+| ----------               | ------- | --------- | -------------------------------------------------------------------------------------------------------                                                                      |
+| ID                       | Integer | Read Only | The ID for the organization                                                                                                                                                  |
+| avatar_url               | URL     | Read Only | A URL pointing to an avatar for the organization &mdash; normally a logo for the company                                                                                     |
+| individual               | Bool    | Read Only | Is this organization for the sole use of an individual                                                                                                                       |
+| name                     | String  | Read Only | The name of the organization                                                                                                                                                 |
+| slug                     | String  | Read Only | The slug is a URL safe version of the name                                                                                                                                   |
+| uuid                     | UUID    | Read Only | UUID which links this organization to the corresponding organization on the [MuckRock Accounts Site][3]                                                                      |
+| monthly_credits          | Integer | Read Only | Number of monthly premium credits this organization has left.  This will reset to `monthly_credit_allowance` on `credit_reset_date`.  Only viewable be organization members. |
+| purchased_credits        | Integer | Read Only | Number of purchased premium credits.  These do not reset or expire. Only viewable by organization members.                                                                   |
+| credit_reset_date        | Date    | Read Only | The date that `monthly_credits` reset.  Only viewable by organization members.                                                                                               |
+| monthly_credit_allowance | Integer | Read Only | The amount of credits that `monthly_credits` will reset to. Only viewable by organization members.                                                                           |
+| plan                     | String  | Read Only | The name of the plan this organization is subscribed to. Only viewable by organization members.                                                                              |
 
 ### Endpoints
 
 - `GET /api/organizations/` - List organizations
 - `GET /api/organizations/<id>/` - Get an organization
+
+## Organization Premium Credits
+
+Certain add-ons may want to charge premium credits to an organization to pay for third party services which charge per API call.  They can do so using the following API:
+
+### Fields
+
+| Field       | Type    | Options   | Description                                                                                                  |
+| ----------  | ------- | --------- | -------------------------------------------------------------------------------------------------------      |
+| ai_credits  | Integer | Required  | The number of premium credits to charge                                                                      |
+| note        | String  | Optional  | An optional note describing what the charges are for                                                         |
+| addonrun_id | UUID    | Optional  | The UUID for the add-on run to link to the charge.  Optional, but should be used when called from an add-on. |
+
+- `POST /api/organizations/<id>/ai_credits/` - Charge credits to an organization.  Returns a 400 response code if the organization does not have enough credits.
 
 ## Users
 
@@ -742,7 +780,7 @@ edit and run your add-ons.
 | ------------- | ------------ | ---------------- | ----------------------------------------------------------------------------------- |
 | ID            | Integer      | Read Only        | The ID for the add-on                                                               |
 | access        | String       | Read Only        | The [access level](#access-levels) for the add-on (will be settable in the future)  |
-| active        | Bool         | Default: `false` | Whether this add-on is active for you                                               |
+| active        | Bool         | Default: `false` | Whether this add-on is pinned for you                                               |
 | created_at    | Date Time    | Read Only        | Time stamp when this add-on was created                                             |
 | name          | String       | Read Only        | The name of the add-on (set in the configuration)                                   |
 | organization  | Integer      | Not Required     | The ID for the [organization](#organizations) this add-on belongs to                |
@@ -751,7 +789,7 @@ edit and run your add-ons.
 | updated_at    | Date Time    | Read Only        | Time stamp when the add-on was last updated                                         |
 | user          | Integer      | Read Only        | The ID for the [user](#users) this add-on belongs to                                |
 
-Your active add-ons are showed to you in the web interface.
+Your pinned add-ons are shown to you in the add-on sidebar.
 
 ### Endpoints
 
@@ -762,7 +800,7 @@ Your active add-ons are showed to you in the web interface.
 
 ### Filters
 
-- `active` &mdash; Filter by only your active or inactive add-ons 
+- `active` &mdash; Filter by only your pinned add-ons
 - `query` &mdash; Searches for add-ons which contain the query in their name or description
 
 ### Add-On Runs

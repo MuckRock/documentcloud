@@ -8,6 +8,11 @@ from django.views.generic.base import RedirectView
 from rest_framework import permissions
 
 # Third Party
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 from rest_framework_nested.routers import NestedDefaultRouter
 
 # DocumentCloud
@@ -16,13 +21,16 @@ from documentcloud.addons.views import (
     AddOnRunFileServer,
     AddOnRunViewSet,
     AddOnViewSet,
+    VisualAddOnProxy,
     dashboard,
     github_webhook,
     scraper_dashboard,
 )
 from documentcloud.core.views import FileServer, account_logout, mailgun
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.views import (
     DataViewSet,
+    DocumentDataViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
@@ -44,6 +52,7 @@ from documentcloud.projects.views import (
 )
 from documentcloud.sidekick.routers import SidekickRouter
 from documentcloud.sidekick.views import SidekickViewSet
+from documentcloud.statistics.views import StatisticsViewSet
 from documentcloud.users.views import MessageView, UserViewSet
 
 
@@ -52,6 +61,7 @@ class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
 
 
 router = BulkDefaultRouter()
+router.register("documents/data", DocumentDataViewSet, basename="documents-data")
 router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
@@ -61,7 +71,7 @@ router.register("addon_runs", AddOnRunViewSet)
 router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 router.register("flatpages", FlatPageViewSet)
-
+router.register("statistics", StatisticsViewSet)
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
@@ -92,6 +102,12 @@ urlpatterns = [
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
     path("api/", include(sidekick_router.urls)),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/redoc/",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
     path("api/", include("documentcloud.oembed.urls")),
     path("api/messages/", MessageView.as_view(), name="message-create"),
     # Social Django
@@ -105,6 +121,16 @@ urlpatterns = [
         "files/addon-runs/<uuid:uuid>/",
         AddOnRunFileServer.as_view(),
         name="addon-run-file",
+    ),
+    path(
+        "visual/<slug:slug>/",
+        VisualAddOnProxy.as_view(),
+        name="visual_addon_proxy",
+    ),
+    path(
+        "visual/<slug:slug>/<path:path>",
+        VisualAddOnProxy.as_view(),
+        name="visual_addon_proxy",
     ),
     path("github-webhook/", github_webhook, name="github-webhook"),
     path("mailgun/", mailgun, name="mailgun"),

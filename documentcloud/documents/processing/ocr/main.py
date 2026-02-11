@@ -9,6 +9,7 @@ from pathlib import Path
 # Third Party
 import boto3
 import environ
+import pymupdf
 from botocore.client import Config
 from cpuprofile import profile_cpu
 from PIL import Image
@@ -29,6 +30,7 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
+    from documentcloud.common.utils import graft_page
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
     from documentcloud.documents.processing.ocr.tess import Tesseract
@@ -43,6 +45,7 @@ else:
         publisher,
         storage,
     )
+    from common.utils import graft_page
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
@@ -221,8 +224,6 @@ def ocr_page_tesseract(doc_id, ocr_code, tmp_files, upload_text_path, access):
 
 def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_number):
     """Use Textract OCR to render a txt file"""
-    with open(tmp_files["img"], "rb") as document:
-        image_bytes = bytearray(document.read())
 
     textract = boto3.client(
         "textract",
@@ -230,16 +231,18 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
         config=Config(retries={"max_attempts": 10, "mode": "adaptive"}),
     )
 
-    response = textract.detect_document_text(Document={"Bytes": image_bytes})
+    with open(tmp_files["img"], "rb") as document:
+        img = Image.open(document).convert("RGB")
+        document.seek(0)
+        response = textract.detect_document_text(
+            Document={"Bytes": bytearray(document.read())}
+        )
 
     logger.info("[OCR PAGE] textract doc_id %s", doc_id)
 
-    lines = []
-    for item in response["Blocks"]:
-        if item["BlockType"] == "LINE":
-            lines.append(item["Text"])
-
-    text = "\n".join(lines)
+    text = "\n".join(
+        item["Text"] for item in response["Blocks"] if item["BlockType"] == "LINE"
+    )
 
     with storage.open(upload_text_path, "w", access=access) as new_text_file:
         # upload text file to s3
@@ -272,7 +275,17 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
 
     logger.info("[OCR PAGE] textract extracted text position  stored doc_id %s", doc_id)
 
-    return text, b""
+    # create the overlay PDF
+
+    pdf = pymupdf.open()
+    pdf_page = pdf.new_page(
+        width=img.width,
+        height=img.height,
+    )
+
+    graft_page(words, pdf_page)
+
+    return text, pdf.tobytes()
 
 
 @pubsub_function(REDIS, OCR_TOPIC)
@@ -361,6 +374,7 @@ def run_tesseract(data, _context=None):
                             "slug": slug,
                             "access": access,
                             "partial": partial,
+                            "ocr_engine": ocr_engine,
                         }
                     ),
                 )
@@ -375,6 +389,7 @@ def run_tesseract(data, _context=None):
                         "slug": slug,
                         "access": access,
                         "ocr_code": ocr_code,
+                        "ocr_engine": ocr_engine,
                         "partial": partial,
                         "in_memory": True,
                     }

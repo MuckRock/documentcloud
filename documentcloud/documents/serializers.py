@@ -12,6 +12,7 @@ import re
 from copy import deepcopy
 
 # Third Party
+from drf_spectacular.utils import extend_schema_field
 from rest_flex_fields import FlexFieldsModelSerializer
 
 # DocumentCloud
@@ -146,6 +147,22 @@ class DocumentSerializer(FlexFieldsModelSerializer):
 
     pages = PageSerializer(required=False, write_only=True, many=True)
 
+    data = serializers.JSONField(
+        label=_("Custom Metadata"),
+        required=False,
+        help_text=_(
+            "A JSON object containing custom metadata for the document. "
+            "The keys should be alphanumeric strings, "
+            "and the values should be arrays of strings."
+        ),
+    )
+
+    asset_url = serializers.SerializerMethodField(
+        label=_("Asset URL"),
+        read_only=True,
+        help_text=_("The base URL to load this document's static assets from"),
+    )
+
     class Meta:
         model = Document
         list_serializer_class = BulkListSerializer
@@ -270,9 +287,9 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             and "projects" in self.fields
             and isinstance(self.fields["projects"], ManyRelatedField)
         ):
-            self.fields[
-                "projects"
-            ].child_relation.queryset = Project.objects.get_addable(user)
+            self.fields["projects"].child_relation.queryset = (
+                Project.objects.get_addable(user)
+            )
 
     def _init_presigned_url(self, request, user, is_document, is_list):
         """Only shown presigned url if needed"""
@@ -407,6 +424,18 @@ class DocumentSerializer(FlexFieldsModelSerializer):
         return value
 
     def validate_pages(self, value):
+        positions_present = any("positions" in page for page in value)
+        if len(value) > settings.MAX_PAGES:
+            raise serializers.ValidationError(
+                f"`pages` length must be less than {settings.MAX_PAGES}"
+            )
+        if positions_present:
+            for page_a, page_b in zip(value, value[1:]):
+                if page_b["page_number"] - page_a["page_number"] != 1:
+                    raise serializers.ValidationError(
+                        "`pages` must contain consecutive page numbers if positions "
+                        "are present"
+                    )
         for page in value:
             if page["page_number"] >= self.instance.page_count:
                 raise serializers.ValidationError(
@@ -433,23 +462,31 @@ class DocumentSerializer(FlexFieldsModelSerializer):
             )
         return attrs
 
+    @extend_schema_field(serializers.URLField())
     def get_presigned_url(self, obj):
         """Return the presigned URL to upload the file to"""
         return storage.presign_url(obj.original_path, "put_object")
 
+    @extend_schema_field(serializers.BooleanField())
     def get_edit_access(self, obj):
         request = self.context.get("request")
         if not request:
             return False
         return request.user.has_perm("documents.change_document", obj)
 
+    @extend_schema_field(serializers.URLField())
     def get_canonical_url(self, obj):
-        return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}"
+        return f"{settings.DOCCLOUD_URL}/documents/{obj.pk}-{obj.slug}/"
 
     def bulk_create_attrs(self, attrs):
         """Set the slug on bulk creation"""
         attrs["slug"] = slugify(attrs["title"])
         return attrs
+
+    @extend_schema_field(serializers.CharField())
+    def get_asset_url(self, obj):
+        """Return the asset URL"""
+        return obj.asset_url
 
 
 class DocumentErrorSerializer(serializers.ModelSerializer):
@@ -534,6 +571,7 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
             raise serializers.ValidationError("`y1` must be less than `y2`")
         return attrs
 
+    @extend_schema_field(serializers.BooleanField())
     def get_edit_access(self, obj):
         request = self.context.get("request")
         if not request:
@@ -588,6 +626,8 @@ class EntityDateSerializer(serializers.ModelSerializer):
 
 
 class DataSerializer(serializers.Serializer):
+    """Custom metadata for a document in JSON format"""
+
     # pylint: disable=abstract-method
     values = serializers.ListSerializer(
         child=serializers.CharField(max_length=DATA_VALUE_LENGTH)
@@ -831,7 +871,12 @@ class RevisionSerializer(serializers.ModelSerializer):
         fields = ["version", "user", "created_at", "comment", "url"]
 
     def get_url(self, obj):
+        if obj.comment == "Initial":
+            # the initial revision will use the original extension
+            extension = obj.document.original_extension
+        else:
+            extension = "pdf"
         return (
             f"{settings.DOCCLOUD_API_URL}/files/documents/{obj.document.pk}/"
-            f"revisions/{obj.version:04d}-{obj.document.slug}.pdf"
+            f"revisions/{obj.version:04d}-{obj.document.slug}.{extension}"
         )

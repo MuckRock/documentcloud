@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db import connection, transaction
+from django.db.models import Func, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 
 # Standard Library
+import json
 import logging
 import sys
 from functools import lru_cache
@@ -20,6 +21,8 @@ from functools import lru_cache
 import environ
 import pysolr
 from django_filters import rest_framework as django_filters
+from drf_spectacular.openapi import OpenApiParameter
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from requests.exceptions import RequestException
 from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
@@ -34,6 +37,9 @@ from documentcloud.core.permissions import (
     DocumentErrorTokenPermissions,
     DocumentPostProcessPermissions,
     DocumentTokenPermissions,
+)
+from documentcloud.core.utils import (  # pylint:disable=unused-import
+    ProcessingTokenAuthenticationScheme,
 )
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
@@ -92,6 +98,8 @@ logger = logging.getLogger(__name__)
 # served beneath that route.  We set the 'no-cache' Cache-Control header to disable
 # the caching for all views besides the ones we explicitly set
 
+# pylint: disable=too-many-lines, line-too-long, too-many-public-methods
+
 
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="retrieve")
@@ -109,6 +117,620 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     permission_classes = (
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
     )
+
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        operation_id="documents_bulk_partial_update",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
+    def bulk_partial_update(self, request, *args, **kwargs):
+        return super().bulk_partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        operation_id="documents_bulk_update",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "access": {
+                        "type": "string",
+                        "description": "The access level for the document either public, private, or organization.",
+                        "default": "private",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": "Custom metadata",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A brief description of the document",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language the document is in",
+                        "default": "eng",
+                    },
+                    "noindex": {
+                        "type": "boolean",
+                        "description": "Ask search engines and DocumentCloud search to not index this document",
+                    },
+                    "ocr_engine": {
+                        "type": "string",
+                        "description": "Specifies which OCR engine to use on documents",
+                    },
+                    "organization": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Organization the document belongs to. "
+                        "Can be updated if the current user owns the document and the document is either private "
+                        "or in an organization they are a member of. "
+                        "The new organization must also be one the user is a member of.",
+                    },
+                    "original_extension": {
+                        "type": "string",
+                        "description": "The original file extension of the document",
+                        "default": "pdf",
+                    },
+                    "publish_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "A timestamp when to automatically make this document public",
+                    },
+                    "published_url": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL where this document is embedded",
+                    },
+                    "related_article": {
+                        "type": "string",
+                        "format": "url",
+                        "description": "The URL for the article about this document",
+                    },
+                    "revision_control": {
+                        "type": "boolean",
+                        "description": "Turns revision control on for this document",
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The source who produced the document",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The document's title",
+                    },
+                    "user": {
+                        "type": "integer",
+                        "readOnly": False,
+                        "description": "Owner of the document. "
+                        "Changing the owner requires the current user to own "
+                        "the document and for the document to either be private "
+                        "or belong to an organization they are a member of. "
+                        "The new owner must belong to at least one organization that the current owner is a member of.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+    )
+    def bulk_update(self, request, *args, **kwargs):
+        return super().bulk_update(request, *args, **kwargs)
+
+    @extend_schema(
+        operation_id="documents_bulk_destroy",
+    )
+    def bulk_destroy(self, request, *args, **kwargs):
+        return super().bulk_destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+        },
+        examples=[
+            OpenApiExample(
+                "List Documents",
+                description="A response from a request to retrieve a list of documents.",
+                value=[
+                    {
+                        "id": 1,
+                        "access": "public",
+                        "admin_noindex": False,
+                        "asset_url": "https://s3.documentcloud.org/",
+                        "canonical_url": "https://www.documentcloud.org/documents/1-a-i-g-bailout-the-inspector-generals-report/",
+                        "created_at": "2010-02-22T19:48:08.738905Z",
+                        "description": "Neil Barofsky's report concludes that officials overseeing the rescue of the American International Group might have overpaid other banks to wrap up A.I.G.'s financial obligations.",
+                        "edit_access": True,
+                        "file_hash": "",
+                        "noindex": False,
+                        "language": "eng",
+                        "organization": 1,
+                        "original_extension": "pdf",
+                        "page_count": 47,
+                        "page_spec": "612.0x792.0:0-46",
+                        "projects": [46386],
+                        "publish_at": None,
+                        "published_url": "",
+                        "related_article": "",
+                        "revision_control": False,
+                        "slug": "a-i-g-bailout-the-inspector-generals-report",
+                        "source": "Office of the Special Inspector General for T.A.R.P.",
+                        "status": "success",
+                        "title": "A.I.G. Bailout: The Inspector General's Report",
+                        "updated_at": "2020-11-10T16:23:31.154198Z",
+                        "user": 1,
+                    },
+                    {
+                        "id": 2,
+                        "access": "public",
+                        "admin_noindex": False,
+                        "asset_url": "https://s3.documentcloud.org/",
+                        "canonical_url": "https://www.documentcloud.org/documents/2-president-obamas-health-care-proposal/",
+                        "created_at": "2010-02-22T19:57:44.131650Z",
+                        "description": "On Feb. 22, 2010, the Obama Administration released a detailed proposal outlining the President's plan for a compromise among the House and Senate versions of a health care bill, and Republican concerns.",
+                        "edit_access": True,
+                        "file_hash": "",
+                        "noindex": False,
+                        "language": "eng",
+                        "organization": 1,
+                        "original_extension": "pdf",
+                        "page_count": 11,
+                        "page_spec": "612.0x792.0:0-10",
+                        "projects": [],
+                        "publish_at": None,
+                        "published_url": "",
+                        "related_article": "",
+                        "revision_control": False,
+                        "slug": "president-obamas-health-care-proposal",
+                        "source": "whitehouse.gov",
+                        "status": "success",
+                        "title": "President Obama's Health Care Proposal",
+                        "updated_at": "2020-11-10T16:23:31.180653Z",
+                        "user": 1,
+                    },
+                ],
+            )
+        ],
+    )
+    def list(self, request, *args, **kwargs):
+        """List documents with optional filters. This is not to be confused with search.
+        This endpoint does not support full text search of the document collection.
+        For that, you are looking for
+        [documents_search_across](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_across).
+        If you are looking for text search within a single document to return text highlights, then
+        [documents_search_within_single_document](https://api.www.documentcloud.org/api/schema/redoc/#tag/documents/operation/documents_search_within_single_document)
+        is the correct endpoint. For performance reasons, this endpoint will not return a count of all objects,
+        only a link to next and previous.
+        """
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={
+            200: DocumentSerializer,
+            400: OpenApiResponse(description="Bad request"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+        examples=[
+            OpenApiExample(
+                "Retrieve Document",
+                description="A response from a request to retrieve an existing document.",
+                value={
+                    "id": 1,
+                    "access": "public",
+                    "admin_noindex": False,
+                    "asset_url": "https://s3.documentcloud.org/",
+                    "canonical_url": "https://www.documentcloud.org/documents/1-a-i-g-bailout-the-inspector-generals-report/",
+                    "created_at": "2010-02-22T19:48:08.738905Z",
+                    "data": {},
+                    "description": "Neil Barofsky's report concludes that officials overseeing the rescue of the American International Group might have overpaid other banks to wrap up A.I.G.'s financial obligations.",
+                    "edit_access": True,
+                    "file_hash": "",
+                    "noindex": False,
+                    "language": "eng",
+                    "organization": 1,
+                    "original_extension": "pdf",
+                    "page_count": 47,
+                    "page_spec": "612.0x792.0:0-46",
+                    "projects": [46386],
+                    "publish_at": None,
+                    "published_url": "",
+                    "related_article": "",
+                    "revision_control": False,
+                    "slug": "a-i-g-bailout-the-inspector-generals-report",
+                    "source": "Office of the Special Inspector General for T.A.R.P.",
+                    "status": "success",
+                    "title": "A.I.G. Bailout: The Inspector General's Report",
+                    "updated_at": "2020-11-10T16:23:31.154198Z",
+                    "user": 1,
+                },
+            )
+        ],
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        request=DocumentSerializer,
+        responses={
+            201: DocumentSerializer,
+            400: OpenApiResponse(description="Invalid parameters specified"),
+            403: OpenApiResponse(description="Permission denied"),
+            404: OpenApiResponse(description="Resource not found"),
+        },
+        examples=[
+            OpenApiExample(
+                "Create Document",
+                description="A request to create a new document by a file URL.",
+                value={
+                    "title": "New Document Title",
+                    "file_url": "https://example.com/path/to/document.pdf",
+                    "access": "public",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create Document Response",
+                description="Response when a document is successfully created.",
+                value={
+                    "id": 1,
+                    "access": "public",
+                    "asset_url": "https://s3.documentcloud.org/",
+                    "canonical_url": "https://www.documentcloud.org/documents/1-new-document-slug/",
+                    "created_at": "2025-02-16T00:00:00.000000Z",
+                    "description": "",
+                    "edit_access": True,
+                    "file_hash": "",
+                    "file_url": "https://example.com/path/to/document.pdf",
+                    "language": "eng",
+                    "noindex": False,
+                    "original_extension": "pdf",
+                    "page_count": 10,
+                    "projects": [],
+                    "publish_at": "",
+                    "published_url": "",
+                    "related_article": "",
+                    "revision_control": False,
+                    "slug": "new-document-slug",
+                    "source": "",
+                    "status": "success",
+                    "title": "New Document Title",
+                    "updated_at": "2025-02-16T00:00:00.000000Z",
+                    "user": 1,
+                },
+            ),
+        ],
+    )
+    def create(self, request, *args, **kwargs):
+        """
+        There are two supported ways to upload documents — directly uploading the file to our storage servers
+        or by providing a URL to a publicly available PDF or other supported file type.
+        To upload another supported file type you will need to include the original_extension field documented above.
+
+        <strong> Direct File Upload Flow </strong>
+
+        POST /api/documents/
+
+        To initiate an upload, you will first create the document. You may specify all writable document fields
+        (besides file_url). The response will contain all the fields for the document, with two being of note
+        for this flow: presigned_url and id.
+
+        If you would like to upload files in bulk, you may POST a list of JSON objects to /api/documents/ instead of a single object.
+        The response will contain a list of document objects.
+
+        PUT <presigned_url>
+
+        Next, you will PUT the binary data for the file to the given presigned_url.
+        The presigned URL is valid for 5 minutes.
+        You may obtain a new URL by issuing a GET request to /api/documents/document_id/.
+
+        If you are bulk uploading, you will still need to issue a single PUT to the corresponding presigned_url for each file.
+
+        POST /api/documents/document_id/process/
+
+        Finally, you will begin processing of the document.
+        Note that this endpoint accepts only one optional parameter — force_ocr which, if set to true,
+        will OCR the document even if it contains embedded text.
+
+        If you are uploading in bulk you can issue a
+        single POST to /api/document/process/ which will begin processing in bulk.
+        You should pass a list of objects containing the document IDs
+        of the documents you would like to being processing. You may optionally specify force_ocr for each document.
+
+
+
+        <strong> URL Upload Flow </strong>
+
+        POST /api/documents/
+
+        If you set file_url to a URL pointing to a publicly accessible PDF,
+        our servers will fetch the PDF and begin processing it automatically.
+
+        You may also send a list of document objects with file_url set to bulk upload files using this flow.
+
+        """
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         valid_token = (
@@ -178,7 +800,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             documents, file_urls, force_ocrs, ocr_engines
         ):
             document.index_on_commit()
-            document.create_revision(self.request.user.pk, "Initial", copy=True)
             if file_url is not None:
                 transaction.on_commit(
                     # fmt: off
@@ -204,6 +825,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 document, data=request.data, context=self.get_serializer_context()
             )
             serializer.is_valid(raise_exception=True)
+            if document.status == Status.nofile:
+                # create an initial revision only if this is the initial processing,
+                # ie it was in status nofile before this
+                # A revision will be made post processing whether this is the
+                # initial processing or not
+                document.create_revision(document.user.pk, "Initial", copy=True)
             document.status = Status.pending
             document.save()
             self._process(
@@ -213,6 +840,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             )
             return Response("OK", status=status.HTTP_200_OK)
 
+    @extend_schema(operation_id="documents_process_bulk_create")
     @transaction.atomic
     @action(detail=False, url_path="process", methods=["post"])
     def bulk_process(self, request):
@@ -251,6 +879,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         for document in documents:
             self._process(document, force_ocr[document.pk], ocr_engine[document.pk])
+            if document.status == Status.nofile:
+                # create an initial revision only if this is the initial processing,
+                # ie it was in status nofile before this
+                # A revision will be made post processing whether this is the
+                # initial processing or not
+                document.create_revision(document.user.pk, "Initial", copy=True)
         documents.update(status=Status.pending)
         return Response("OK", status=status.HTTP_200_OK)
 
@@ -333,7 +967,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def perform_update(self, serializer):
         # work for regular and bulk updates
 
+        logger.info("[DOC UPDATE] start perform update")
+
         bulk = getattr(serializer, "many", False)
+        logger.info("[DOC UPDATE] bulk %s", bulk)
 
         if bulk:
             validated_datas = sorted(
@@ -347,12 +984,14 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             validated_datas = [serializer.validated_data]
             instances = [serializer.instance]
 
+        logger.info("[DOC UPDATE] instances: %s", [i.pk for i in instances])
         self._update_validate_processing(instances, validated_datas)
 
         old_accesses = [i.access for i in instances]
         old_processings = [i.processing for i in instances]
         old_data_keys = [i.data.keys() for i in instances]
         old_revision_controls = [i.revision_control for i in instances]
+        logger.info("[DOC UPDATE] do perform")
         super().perform_update(serializer)
 
         # refresh from database after performing update
@@ -360,6 +999,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             instances = sorted(serializer.instance, key=lambda i: i.id)
         else:
             instances = [serializer.instance]
+
+        logger.info("[DOC UPDATE] pre-loop")
 
         for (
             instance,
@@ -386,6 +1027,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
+        logger.info("[DOC UPDATE] update access %s", document.pk)
         # do update_access if access changed to or from public
         if old_access != document.access and Access.public in (
             old_access,
@@ -407,6 +1049,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_solr(self, document, old_processing, old_data_keys, validated_data):
         """Update solr index after updating a document"""
+        logger.info("[DOC UPDATE] update solr %s", document.pk)
         # update solr index
         if old_processing and document.status == Status.success:
             # if it was processed succesfully, do a full index with text
@@ -433,11 +1076,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
     def _update_cache(self, document, old_processing):
         """Invalidate the cache when finished processing a detructive operation"""
+        logger.info("[DOC UPDATE] update cache %s", document.pk)
         if old_processing and not document.processing and document.cache_dirty:
             transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
 
     def _run_addons(self, document, old_processing):
         """Run upload add-ons once the document is succesfully processed"""
+        logger.info("[DOC UPDATE] run addons %s", document.pk)
         if old_processing and document.status == Status.success:
             events = AddOnEvent.objects.filter(
                 event=Event.upload,
@@ -453,13 +1098,19 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 event.dispatch(document_pk=document.pk)
 
     def _set_page_text(self, document, pages):
+        logger.info("[DOC UPDATE] set page text %s", document.pk)
         if pages is not None:
             set_page_text.delay(document.pk, pages)
 
     def _create_revision(self, document, old_processing, old_revision_control):
         # create an intial revision when revision control is turned on
+        logger.info("[DOC UPDATE] create revision %s", document.pk)
         if not old_revision_control and document.revision_control:
-            document.create_revision(self.request.user.pk, "Initial", copy=True)
+            if document.revisions.exists():
+                comment = "Re-enable"
+            else:
+                comment = "Enable"
+            document.create_revision(self.request.user.pk, comment, copy=True)
 
         # if revision control is turned on and we finished processing succesfully,
         # copy the PDF to the latest revision
@@ -472,8 +1123,22 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             if last_revision:
                 last_revision.copy()
 
+    @extend_schema(operation_id="documents_search_across")
     @action(detail=False, methods=["get"])
     def search(self, request):
+        """
+        Search across all documents on DocumentCloud with full text search using Solr.
+        Consult our [search documentation](https://www.documentcloud.org/help/search/) for a full parameter list.
+        This endpoint does return a full count, but does not provide a previous link.
+        """
+        if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
+            return Response(
+                {
+                    "error": "Anonymous searching has been disabled due to server load",
+                    "code": "anon disabled",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         try:
             response = search(request.user, request.query_params)
         except pysolr.SolrError as exc:
@@ -503,8 +1168,22 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             return Response(response)
 
+    @extend_schema(operation_id="documents_search_within_single_document")
     @action(detail=True, url_path="search", methods=["get"])
     def page_search(self, request, pk=None):
+        """
+        Search within a single document using Solr.
+        This will return up to 25 text highlights
+        per response page for your query.
+        Consult our [search documentation](https://www.documentcloud.org/help/search/) for a full parameter list.
+        """
+        if settings.SOLR_DISABLE_ANON and request.user.is_anonymous:
+            return Response(
+                {
+                    "error": "Anonymous searching has been disabled due to server load",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         query = request.query_params.get("q", "*:*")
         try:
             results = SOLR.search(
@@ -527,8 +1206,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         else:
             return Response(results.highlighting.get(pk, {}))
 
-    @action(detail=False, methods=["get"])
-    def pending(self, request):
+    @action(detail=False, methods=["get"], url_path="pending")
+    def bulk_pending(self, request):
         """Get the progress status on all of the current users pending documents"""
         if not self.request.user or not self.request.user.is_authenticated:
             return Response([])
@@ -552,10 +1231,46 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             )
             return Response([])
 
+    @action(detail=True, methods=["get"], url_path="pending")
+    def pending(self, request, pk=None):  # pylint:disable = unused-argument
+        """Get the processing progress of a single pending document"""
+        document = self.get_object()
+
+        if not request.user.is_authenticated or document.user != request.user:
+            return Response({})
+
+        if document.status != Status.pending:
+            return Response({})
+
+        try:
+            response = httpsub.post(
+                settings.PROGRESS_URL,
+                json={"doc_ids": [document.id]},
+                timeout=settings.PROGRESS_TIMEOUT,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return Response(data[0] if data else {})
+        except RequestException as exc:
+            logger.warning(
+                "Error getting progress for document %s: %s",
+                document.id,
+                exc,
+                exc_info=sys.exc_info(),
+            )
+            return Response({})
+
     class Filter(django_filters.FilterSet):
-        user = ModelMultipleChoiceFilter(model=User)
-        organization = ModelMultipleChoiceFilter(model=Organization)
-        project = ModelMultipleChoiceFilter(model=Project, field_name="projects")
+        user = ModelMultipleChoiceFilter(model=User, help_text="Filter by users")
+        organization = ModelMultipleChoiceFilter(
+            model=Organization,
+            help_text="Filter by which organization the document belongs to",
+        )
+        project = ModelMultipleChoiceFilter(
+            model=Project,
+            field_name="projects",
+            help_text=("Filter by which projects a document belongs to"),
+        )
         access = ChoicesFilter(choices=Access)
         status = ChoicesFilter(choices=Status)
 
@@ -583,6 +1298,14 @@ class DocumentErrorViewSet(
     permission_classes = (
         DjangoObjectPermissionsOrAnonReadOnly | DocumentErrorTokenPermissions,
     )
+
+    @extend_schema(tags=["document_errors"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_errors"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):
@@ -618,6 +1341,30 @@ class NoteViewSet(FlexFieldsModelViewSet):
     serializer_class = NoteSerializer
     permit_list_expands = ["user", "organization"]
     queryset = Note.objects.none()
+
+    @extend_schema(tags=["document_notes"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_notes"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
 
     @lru_cache()
     def get_queryset(self):
@@ -669,6 +1416,30 @@ class SectionViewSet(viewsets.ModelViewSet):
     serializer_class = SectionSerializer
     queryset = Section.objects.none()
 
+    @extend_schema(tags=["document_sections"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(tags=["document_sections"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
     @lru_cache()
     def get_queryset(self):
         """Only fetch documents viewable to this user"""
@@ -711,6 +1482,17 @@ class EntityDateViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return document.dates.all()
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="document_pk",
+            type=int,
+            description="The ID of the document",
+            required=True,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DataViewSet(viewsets.ViewSet):
     # pylint: disable=unused-argument
@@ -729,14 +1511,17 @@ class DataViewSet(viewsets.ViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
+    @extend_schema(tags=["document_data"])
     def list(self, request, document_pk=None):
         document = self.get_object()
         return Response(document.data)
 
+    @extend_schema(tags=["document_data"])
     def retrieve(self, request, pk=None, document_pk=None):
         document = self.get_object()
         return Response(document.data.get(pk))
 
+    @extend_schema(tags=["document_data"])
     @transaction.atomic
     def update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -749,6 +1534,7 @@ class DataViewSet(viewsets.ViewSet):
         document.index_on_commit(field_updates={f"data_{pk}": "set"})
         return Response(document.data)
 
+    @extend_schema(tags=["document_data"])
     @transaction.atomic
     def partial_update(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -776,6 +1562,7 @@ class DataViewSet(viewsets.ViewSet):
         document.index_on_commit(field_updates={f"data_{pk}": "set"})
         return Response(document.data)
 
+    @extend_schema(tags=["document_data"])
     @transaction.atomic
     def destroy(self, request, pk=None, document_pk=None):
         document = self.get_object(edit=True)
@@ -788,6 +1575,17 @@ class DataViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="document_pk",
+            type=int,
+            description="The ID of the document",
+            required=True,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = RedactionSerializer
@@ -809,6 +1607,7 @@ class RedactionViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
+    @extend_schema(tags=["document_redactions"])
     def create(self, request, *args, **kwargs):
         with transaction.atomic():
 
@@ -937,6 +1736,17 @@ class EntityViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 ANGLE_TABLE = {"": 0, "cc": 1, "hw": 2, "ccw": 3}
 
 
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="document_pk",
+            type=int,
+            description="The ID of the document",
+            required=True,
+            location=OpenApiParameter.PATH,
+        )
+    ]
+)
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ModificationSpecSerializer
@@ -951,6 +1761,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             self.permission_denied(self.request, "You may not edit this document")
         return document
 
+    @extend_schema(tags=["document_modifications"])
     def create(self, request, *args, **kwargs):
         document = self.get_object()
         serializer = self.get_serializer(data={"data": request.data})
@@ -979,6 +1790,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(tags=["document_modifications"])
     @transaction.atomic
     @action(detail=False, methods=["post"])
     def post_process(self, request, document_pk=None):
@@ -991,3 +1803,95 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         post_process.delay(document_pk, request.data)
 
         return Response("OK", status=status.HTTP_200_OK)
+
+
+class DocumentDataViewSet(viewsets.GenericViewSet):
+    lookup_value_regex = DATA_KEY_REGEX
+
+    def get_queryset(self):
+        return (
+            Document.objects.get_viewable(self.request.user).order_by().values("data")
+        )
+
+    def list(self, request):
+        """Return all keys and all of their values
+        for documents visible to the user.  You may filter
+        by project and partial key name
+        """
+        # You must specify a project for now for performance reasons
+        # It may be possible to use an index to remove this restriction
+        # if desired
+        if "project" not in request.GET:
+            raise serializers.ValidationError("You must specify a project")
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # We interpolate the queryset's query into the custom SQL
+        query = str(queryset.query)
+        sql = f"""
+        SELECT key, jsonb_agg(values)
+        FROM (
+            SELECT DISTINCT key, jsonb_array_elements(data->key) AS values
+            FROM ({query}) d, jsonb_object_keys(data) AS key
+            WHERE jsonb_typeof(data->key) = 'array'
+        ) kv
+        WHERE key LIKE %s
+        GROUP BY key
+        ORDER BY key
+        """
+        key = request.GET.get("key", "") + "%"
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [key])
+            data = cursor.fetchall()
+
+        # The JSON is returned as a string for some reason,
+        # so we parse it
+        return Response({k: json.loads(v)} for k, v in data)
+
+    def retrieve(self, request, pk=None):
+        """Given a key, this will return values
+        present for that key in the documents visible
+        to the requesting user. You may filter the resulting values
+        by which project they are present in or by a partial value name.
+        """
+        # You must specify a project for now for performance reasons
+        # It may be possible to use an index to remove this restriction
+        # if desired
+        if "project" not in request.GET:
+            raise serializers.ValidationError("You must specify a project")
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        queryset = (
+            queryset.annotate(
+                values=Func(
+                    f"data__{pk}",
+                    function="jsonb_array_elements",
+                )
+            )
+            .values_list("values", flat=True)
+            .order_by("values")
+            .distinct()
+        )
+        if "value" in request.GET:
+            # We could do this filter using custom SQL, but embedding the above
+            # query resulted in SQL errors for me.  It is also a bit much
+            # and might be considered a pre-mature optimization
+            data = [v for v in queryset if v.startswith(request.GET["value"])]
+        else:
+            data = queryset
+
+        return Response(data)
+
+    class Filter(django_filters.FilterSet):
+        project = ModelMultipleChoiceFilter(
+            model=Project,
+            field_name="projects",
+            help_text=("Filter by which projects a document belongs to"),
+        )
+
+        class Meta:
+            model = Document
+            fields = ["project"]
+
+    filterset_class = Filter

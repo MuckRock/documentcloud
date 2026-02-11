@@ -1,8 +1,6 @@
 # Django
-from celery import chord
+from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
-from celery.schedules import crontab
-from celery.task import periodic_task, task
 from django.conf import settings
 from django.db import transaction
 from django.db.utils import DatabaseError
@@ -48,7 +46,7 @@ if settings.ENVIRONMENT.startswith("local"):
     )
 
 
-@task(autoretry_for=(HTTPError,), retry_backoff=30)
+@shared_task(autoretry_for=(HTTPError,), retry_backoff=30)
 def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
     """Download a file to S3 when given a URL on document creation"""
     document = Document.objects.get(pk=document_pk)
@@ -72,6 +70,7 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
             document.save()
             document.index_on_commit(field_updates={"status": "set"})
     else:
+        document.create_revision(document.user.pk, "Initial", copy=True)
         document.status = Status.pending
         document.save()
         document.index_on_commit(field_updates={"status": "set"})
@@ -120,7 +119,7 @@ def _httpsub_submit(url, document_pk, json, task_):
             raise
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
@@ -148,7 +147,7 @@ def process(document_pk, user_pk, org_pk, force_ocr, ocr_engine):
     document.create_revision(user_pk, "Processing")
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
@@ -172,7 +171,7 @@ def redact(document_pk, user_pk, redactions):
     document.create_revision(user_pk, "Redacting")
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
@@ -196,7 +195,7 @@ def modify(document_pk, user_pk, modification_data):
     document.create_revision(user_pk, "Modifying")
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
     retry_kwargs={"max_retries": settings.HTTPSUB_RETRY_LIMIT},
@@ -211,7 +210,7 @@ def process_cancel(document_pk):
     )
 
 
-@task(autoretry_for=(SoftTimeLimitExceeded,))
+@shared_task(autoretry_for=(SoftTimeLimitExceeded,))
 def delete_document_files(path):
     """Delete all of the files from storage for the given path"""
     # For AWS, can delete 1000 files at a time - if we hit the time limit,
@@ -219,7 +218,9 @@ def delete_document_files(path):
     storage.delete(path)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_delete(document_pk):
     # delete document from solr index
     SOLR.delete(id=str(document_pk))
@@ -233,57 +234,47 @@ def solr_delete(document_pk):
 
 # was seeing connection errors - seemed to be an issue with celery or redis
 # putting in retries for now to ensure tasks are run
-@task(autoretry_for=(redis.exceptions.ConnectionError,))
-def update_access(document_pk, status, access):
+@shared_task(autoretry_for=(redis.exceptions.ConnectionError,))
+def update_access(document_pk, status, access, marker=None):
     """Update the access settings for all assets for the given document"""
     document = Document.objects.get(pk=document_pk)
     logger.info(
-        "update access: %d - %s - %d", document_pk, document.title, document.access
+        "[UPDATE ACCESS]: %d - %s - %d", document_pk, document.title, document.access
     )
 
-    files = storage.list(document.path)
+    files = storage.list(document.path, marker, limit=settings.UPDATE_ACCESS_CHUNK_SIZE)
     # do not ever make revision PDFs public
     revision_prefix = f"{document.path}revisions/"
-    files = [f for f in files if not f.startswith(revision_prefix)]
-    tasks = []
-    for i in range(0, len(files), settings.UPDATE_ACCESS_CHUNK_SIZE):
-        tasks.append(
-            do_update_access.s(files[i : i + settings.UPDATE_ACCESS_CHUNK_SIZE], access)
-        )
+    update_files = [f for f in files if not f.startswith(revision_prefix)]
+    storage.async_set_access(update_files, access)
 
-    # run all do_update_access tasks in parallel, then run finish_update_access
-    # after they have all completed
-    chord(tasks, finish_update_access.si(document_pk, status, access)).delay()
+    if len(files) == settings.UPDATE_ACCESS_CHUNK_SIZE:
+        # there may be more files left, re-run, starting where we left off
+        logger.info("[UPDATE ACCESS] start: %s - %s", files[0], access)
+        update_access.delay(document_pk, status, access, files[-1])
+        logger.info("[UPDATE ACCESS] done:  %s - %s", files[0], access)
+    else:
+        # we are done
+        logger.info("[UPDATE ACCESS] finish %s %s %s", document_pk, status, access)
+        with transaction.atomic():
+            field_updates = {"status": "set"}
+            kwargs = {}
+            if access == Access.public:
+                # if we were switching to public, update the access now
+                kwargs["access"] = Access.public
+                field_updates["access"] = "set"
+                # also set the publication date
+                kwargs["publication_date"] = date.today()
 
-
-@task
-def do_update_access(files, access):
-    """Update access settings for a single chunk of assets"""
-    logger.info("START do update access: %s - %s", files[0], access)
-    storage.async_set_access(files, access)
-    logger.info("DONE: do update access: %s - %s", files[0], access)
-
-
-@task
-def finish_update_access(document_pk, status, access):
-    """Upon finishing an access update, reset the status"""
-    logger.info("Finish update access %s %s %s", document_pk, status, access)
-    with transaction.atomic():
-        field_updates = {"status": "set"}
-        kwargs = {}
-        if access == Access.public:
-            # if we were switching to public, update the access now
-            kwargs["access"] = Access.public
-            field_updates["access"] = "set"
-            # also set the pulbication date
-            kwargs["publication_date"] = date.today()
-
-        Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
-        document = Document.objects.get(pk=document_pk)
-        document.index_on_commit(field_updates=field_updates)
+            # update the document status and re-index into solr
+            Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
+            document.index_on_commit(field_updates=field_updates)
 
 
-@task
+@shared_task(
+    time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
+    soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
+)
 def set_page_text(document_pk, page_text_infos):
     """Update the text information for a document"""
     # pylint: disable=broad-except
@@ -315,43 +306,51 @@ def set_page_text(document_pk, page_text_infos):
 # new solr
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_index(document_pk, solr_document=None, field_updates=None, index_text=False):
     """Index a single, possibly partial document into Solr"""
     solr.index_single(document_pk, solr_document, field_updates, index_text)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_reindex_single(collection_name, document_pk):
     """Re-index a single document into a new Solr collection"""
     solr.reindex_single(collection_name, document_pk)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_index_batch(document_pks, field_updates):
     """Index a batch of documents with the same field updates"""
     solr.index_batch(document_pks, field_updates)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_reindex_batch(collection_name, document_pks):
     """Re-index a batch of documents into a new Solr collection"""
     solr.reindex_batch(collection_name, document_pks)
 
 
-@periodic_task(run_every=crontab(minute=30))
+@shared_task
 def solr_index_dirty(timestamp=None):
     """Index dirty documents"""
     solr.index_dirty(timestamp)
 
 
-@task
+@shared_task
 def solr_index_dirty_continue(timestamp):
     """Continue indexing dirty documents"""
     solr.index_dirty_continue(timestamp)
 
 
-@task(
+@shared_task(
     time_limit=settings.CELERY_SLOW_TASK_TIME_LIMIT,
     soft_time_limit=settings.CELERY_SLOW_TASK_SOFT_TIME_LIMIT,
     autoretry_for=(SoftTimeLimitExceeded,),
@@ -362,7 +361,7 @@ def solr_reindex_all(collection_name, after_timestamp=None, delete_timestamp=Non
     solr.reindex_all(collection_name, after_timestamp, delete_timestamp)
 
 
-@task
+@shared_task
 def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
     """Continue re-indexing all documents"""
     solr.reindex_continue(collection_name, after_timestamp, delete_timestamp)
@@ -372,7 +371,7 @@ def solr_reindex_continue(collection_name, after_timestamp, delete_timestamp):
 
 
 # This could take a while for long documents
-@task(soft_time_limit=60 * 30, time_limit=60 * 32)
+@shared_task(soft_time_limit=60 * 30, time_limit=60 * 32)
 def extract_entities(document_pk):
     try:
         document = Document.objects.get(pk=document_pk)
@@ -382,7 +381,7 @@ def extract_entities(document_pk):
     entity_extraction.extract_entities(document)
 
 
-@periodic_task(run_every=600)
+@shared_task
 @transaction.atomic
 def publish_scheduled_documents():
     """Make documents public based on publish_at field"""
@@ -412,7 +411,7 @@ def publish_scheduled_documents():
         document.index_on_commit(field_updates={"status": "set"})
 
 
-@task
+@shared_task
 def invalidate_cache(document_pk):
     """Invalidate the CloudFront and CloudFlare caches"""
     document = Document.objects.get(pk=document_pk)
@@ -424,7 +423,7 @@ def invalidate_cache(document_pk):
 # page modifications
 
 
-@task
+@shared_task
 def post_process(document_pk, modification_data):
     document = Document.objects.get(pk=document_pk)
     modifications.post_process(document, modification_data)
@@ -433,18 +432,24 @@ def post_process(document_pk, modification_data):
 # notes
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_index_note(note_pk):
     solr.index_note(note_pk)
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_delete_note(note_pk):
     # delete document from solr index
     SOLR_NOTES.delete(id=str(note_pk))
 
 
-@task(autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF)
+@shared_task(
+    autoretry_for=(pysolr.SolrError,), retry_backoff=settings.SOLR_RETRY_BACKOFF
+)
 def solr_batch_notes(collection_name, note_pks):
     """Re-index a batch of notes into a new Solr collection"""
     solr.batch_notes(collection_name, note_pks)

@@ -12,6 +12,7 @@ pytest
 pytest-sugar
 pytest-mock
 -e git+https://github.com/elritsch/python-sharedmock#egg=sharedmock
+pytest-watch
 
 # Code quality
 # ------------------------------------------------------------------------------
@@ -35,6 +36,9 @@ python-Levenshtein
 Unidecode
 opencv-python
 requests-mock
-fasttext
+fasttext==0.9.3
 scikit-learn
 
+# Documentation
+# ------------------------------------------------------------------------------
+drf-spectacular

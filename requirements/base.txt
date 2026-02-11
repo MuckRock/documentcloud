@@ -16,7 +16,7 @@ aioitertools==0.10.0
     # via aiobotocore
 aiosignal==1.2.0
     # via aiohttp
-amqp==2.6.1
+amqp==5.3.1
     # via kombu
 argon2-cffi==19.1.0
     # via -r requirements/base.in
@@ -32,7 +32,7 @@ attrs==19.3.0
     #   jsonschema
 backcall==0.1.0
     # via ipython
-billiard==3.6.4.0
+billiard==4.2.1
     # via celery
 bleach==6.0.0
     # via -r requirements/base.in
@@ -50,7 +50,7 @@ botocore==1.24.21
     #   s3transfer
 cachetools==3.1.1
     # via google-auth
-celery==4.4.7
+celery==5.4.0
     # via
     #   -r requirements/base.in
     #   squarelet-auth
@@ -66,6 +66,18 @@ charset-normalizer==2.1.0
     # via
     #   aiohttp
     #   requests
+click==8.1.7
+    # via
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
+click-didyoumean==0.3.1
+    # via celery
+click-plugins==1.1.1
+    # via celery
+click-repl==0.3.0
+    # via celery
 cpuprofile==1.0.1
     # via -r requirements/base.in
 cryptography==35.0.0
@@ -76,6 +88,8 @@ cssselect==1.1.0
     # via premailer
 cssutils==1.0.2
     # via premailer
+daily-active-users==0.1.2
+    # via -r requirements/base.in
 decorator==4.4.0
     # via
     #   gcsfs
@@ -89,6 +103,7 @@ deprecation==2.1.0
 django==4.2.2
     # via
     #   -r requirements/base.in
+    #   daily-active-users
     #   django-appconf
     #   django-choices
     #   django-cors-headers
@@ -103,6 +118,7 @@ django==4.2.2
     #   djangorestframework-simplejwt
     #   dogslow
     #   drf-nested-routers
+    #   drf-spectacular
     #   rest-social-auth
     #   squarelet-auth
 django-appconf==1.0.3
@@ -149,6 +165,7 @@ djangorestframework==3.14.0
     #   django-parler-rest
     #   djangorestframework-simplejwt
     #   drf-nested-routers
+    #   drf-spectacular
     #   rest-social-auth
 djangorestframework-simplejwt==4.8.0
     # via -r requirements/base.in
@@ -157,6 +174,8 @@ dogslow==1.2
 drf-flex-fields==1.0.0
     # via -r requirements/base.in
 drf-nested-routers==0.91
+    # via -r requirements/base.in
+drf-spectacular==0.28.0
     # via -r requirements/base.in
 ecdsa==0.13.2
     # via python-jose
@@ -204,6 +223,8 @@ idna==2.8
     # via
     #   requests
     #   yarl
+inflection==0.5.1
+    # via drf-spectacular
 ipython==8.5.0
     # via -r requirements/base.in
 jedi==0.18.1
@@ -213,8 +234,10 @@ jmespath==0.9.4
     #   boto3
     #   botocore
 jsonschema==3.2.0
-    # via -r requirements/base.in
-kombu==4.6.11
+    # via
+    #   -r requirements/base.in
+    #   drf-spectacular
+kombu==5.4.2
     # via celery
 libcst==0.4.1
     # via google-cloud-language
@@ -222,6 +245,8 @@ listcrunch==1.0.0
     # via -r requirements/base.in
 llvmlite==0.38.1
     # via numba
+logzio-python-handler==4.1.1
+    # via -r requirements/base.in
 luqum==0.8.1
     # via -r requirements/base.in
 lxml==4.9.1
@@ -251,7 +276,7 @@ oauthlib==3.1.0
     #   social-auth-core
 orderedmultidict==1.0.1
     # via furl
-packaging==21.3
+packaging==24.1
     # via
     #   deprecation
     #   pikepdf
@@ -279,13 +304,16 @@ ply==3.11
 premailer==3.0.0
     # via django-premailer
 prompt-toolkit==3.0.38
-    # via ipython
+    # via
+    #   click-repl
+    #   ipython
 proto-plus==1.13.0
     # via google-cloud-language
-protobuf==3.14.0
+protobuf==4.25.2
     # via
     #   google-api-core
     #   googleapis-common-protos
+    #   logzio-python-handler
     #   proto-plus
 ptyprocess==0.6.0
     # via pexpect
@@ -308,12 +336,14 @@ pyjwt==2.3.0
     # via
     #   djangorestframework-simplejwt
     #   social-auth-core
-pyparsing==2.4.2
-    # via packaging
+pymupdf==1.25.3
+    # via -r requirements/base.in
 pyrsistent==0.18.0
     # via jsonschema
 python-dateutil==2.8.2
-    # via botocore
+    # via
+    #   botocore
+    #   celery
 python-jose==3.3.0
     # via social-auth-core
 python-redis-lock[django]==3.3.1
@@ -325,11 +355,12 @@ python3-openid==3.1.0
 pytz==2022.1
     # via
     #   -r requirements/base.in
-    #   celery
     #   djangorestframework
     #   google-api-core
 pyyaml==5.3.1
-    # via libcst
+    # via
+    #   drf-spectacular
+    #   libcst
 rcssmin==1.1.1
     # via
     #   -r requirements/base.in
@@ -343,6 +374,7 @@ requests==2.28.1
     # via
     #   gcsfs
     #   google-api-core
+    #   logzio-python-handler
     #   premailer
     #   pysolr
     #   requests-oauthlib
@@ -380,7 +412,6 @@ six==1.15.0
     #   grpcio
     #   jsonschema
     #   orderedmultidict
-    #   protobuf
     #   python-dateutil
 smart-open==1.8.4
     # via -r requirements/base.in
@@ -398,7 +429,7 @@ sqlparse==0.4.4
     # via
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.3
+squarelet-auth==0.1.14
     # via -r requirements/base.in
 stack-data==0.3.0
     # via ipython
@@ -408,7 +439,7 @@ traitlets==5.3.0
     # via
     #   ipython
     #   matplotlib-inline
-typing-extensions==4.4.0
+typing-extensions==4.15.0
     # via
     #   -r requirements/base.in
     #   asgiref
@@ -416,16 +447,23 @@ typing-extensions==4.4.0
     #   typing-inspect
 typing-inspect==0.6.0
     # via libcst
+tzdata==2024.2
+    # via
+    #   celery
+    #   kombu
 unidecode==1.1.1
     # via -r requirements/base.in
+uritemplate==4.1.1
+    # via drf-spectacular
 urllib3==1.26.10
     # via
     #   botocore
     #   requests
-vine==1.3.0
+vine==5.1.0
     # via
     #   amqp
     #   celery
+    #   kombu
 wand==0.6.6
     # via pdfplumber
 wcwidth==0.1.8

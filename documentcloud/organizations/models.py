@@ -112,6 +112,39 @@ class Organization(AbstractOrganization):
     def _choose_entitlement(self, entitlements):
         return max(entitlements, key=lambda e: e["resources"].get("base_ai_credits", 0))
 
+    @transaction.atomic
+    def merge(self, uuid):
+        """Merge this organization into another"""
+        other = Organization.objects.get(uuid=uuid)
+        logger.info("Merge orgs: %d %d", self.pk, other.pk)
+
+        # add all users not already in the other organization
+        self.memberships.exclude(user__in=other.users.all()).update(organization=other)
+        other.memberships.filter(
+            user__in=self.memberships.filter(active=True).values("user")
+        ).update(active=True)
+        self.memberships.all().delete()
+
+        self.documents.update(organization=other)
+        self.notes.update(organization=other)
+        self.addons.update(organization=other)
+        self.visual_addons.update(organization=other)
+
+        # transfer children to the other organization
+        self.children.update(parent=other)
+
+        # transfer group memberships
+        groups = self.groups.all()
+        other.groups.add(*groups)
+        self.groups.clear()
+
+        # transfer members
+        members = self.members.all()
+        other.members.add(*members)
+        self.members.clear()
+
+        self.merged = other
+
     def calc_ai_credits_per_month(self, users):
         """Calculate how many AI credits an organization gets per month on this plan
         for a given number of users"""
@@ -123,23 +156,79 @@ class Organization(AbstractOrganization):
 
     @transaction.atomic
     def use_ai_credits(self, amount, user_id, note):
-        """Try to deduct AI credits from the organization's balance"""
+        """Try to deduct AI credits from the organization's balance
+
+        Consumes AI credits in priority order:
+        1. Own monthly AI credits
+        2. Own regular (purchased) AI credits
+        3. Parent monthly AI credits (if parent.share_resources=True)
+        4. Parent regular AI credits (if parent.share_resources=True)
+        5. Group monthly AI credits (for each group where group.share_resources=True)
+        6. Group regular AI credits (for each group where group.share_resources=True)
+
+        Args:
+            amount: Number of AI credits to consume
+            user_id: ID of the user consuming the credits
+            note: Description of what the credits are being used for
+
+        Returns:
+            dict: {"monthly": count, "regular": count} - breakdown of consumed credits
+
+        Raises:
+            InsufficientAICreditsError: If not enough AI credits available across
+            all sources
+        """
         initial_amount = amount
         ai_credit_count = {"monthly": 0, "regular": 0}
+
+        # Lock this organization and related organizations for update to prevent
+        # race conditions
         organization = Organization.objects.select_for_update().get(pk=self.pk)
+        if organization.parent and organization.parent.share_resources:
+            parent = Organization.objects.select_for_update().get(
+                pk=organization.parent_id
+            )
+        else:
+            parent = None
+        groups = organization.groups.filter(share_resources=True).select_for_update()
 
-        ai_credit_count["monthly"] = min(amount, organization.monthly_ai_credits)
-        amount -= ai_credit_count["monthly"]
+        def deduct_credits(amount, organization, field):
+            """Helper to deduct AI credits from a specific field on an organization"""
+            # Calculate how much to deduct: take up to the amount requested,
+            # but no more than what's available in this field
+            deduct_amount = min(amount, getattr(organization, field))
+            amount -= deduct_amount
+            setattr(organization, field, getattr(organization, field) - deduct_amount)
+            # Return remaining amount needed and how much we deducted
+            return amount, deduct_amount
 
-        ai_credit_count["regular"] = min(amount, organization.number_ai_credits)
-        amount -= ai_credit_count["regular"]
+        # Build list of organizations to consume from in priority order
+        organizations = [organization]
+        if parent:
+            organizations.append(parent)
+        organizations.extend(groups)
+
+        # Consume AI credits from each organization in priority order
+        for current_organization in organizations:
+            # For each organization, consume monthly credits first, then regular
+            for field, count in [
+                ("monthly_ai_credits", "monthly"),
+                ("number_ai_credits", "regular"),
+            ]:
+                amount, deduct_amount = deduct_credits(
+                    amount, current_organization, field
+                )
+                ai_credit_count[count] += deduct_amount
+                if amount == 0:
+                    break
+            current_organization.save()
+            if amount == 0:
+                break
 
         if amount > 0:
+            # Raising an error here will cancel the current atomic transaction
+            # No changes to the organizations will be committed to the database
             raise InsufficientAICreditsError(amount)
-
-        organization.monthly_ai_credits -= ai_credit_count["monthly"]
-        organization.number_ai_credits -= ai_credit_count["regular"]
-        organization.save()
 
         organization.ai_credit_logs.create(
             user_id=user_id,
@@ -149,6 +238,41 @@ class Organization(AbstractOrganization):
         )
 
         return ai_credit_count
+
+    def get_total_number_ai_credits(self):
+        """Get total number AI credits including parent and groups"""
+        number_ai_credits = self.number_ai_credits
+        if self.parent and self.parent.share_resources:
+            number_ai_credits += self.parent.number_ai_credits
+        for group in self.groups.filter(share_resources=True):
+            number_ai_credits += group.number_ai_credits
+        return number_ai_credits
+
+    def get_total_monthly_ai_credits(self):
+        """Get total monthly AI credits remaining including parent and groups"""
+        monthly_ai_credits = self.monthly_ai_credits
+        if self.parent and self.parent.share_resources:
+            monthly_ai_credits += self.parent.monthly_ai_credits
+        for group in self.groups.filter(share_resources=True):
+            monthly_ai_credits += group.monthly_ai_credits
+        return monthly_ai_credits
+
+    def get_total_monthly_ai_credits_allowance(self):
+        """
+        Get the total monthly AI credits allowance, including parent and shared groups.
+        This is the amount that monthly_credits will reset to each month.
+        """
+        total = self.ai_credits_per_month
+
+        # Include parent if it shares resources
+        if self.parent and self.parent.share_resources:
+            total += self.parent.ai_credits_per_month
+
+        # Include groups that share resources
+        for group in self.groups.filter(share_resources=True):
+            total += group.ai_credits_per_month
+
+        return total
 
 
 class AICreditLog(models.Model):

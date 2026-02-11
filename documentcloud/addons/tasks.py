@@ -1,7 +1,6 @@
 # Django
+from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
-from celery.schedules import crontab
-from celery.task import periodic_task, task
 from django.db.models.expressions import F
 from django.db.models.query_utils import Q
 from django.utils import timezone
@@ -20,10 +19,10 @@ from documentcloud.users.models import User
 logger = logging.getLogger(__name__)
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,),
     retry_backoff=30,
-    retry_kwargs={"max_retries": 10},
+    retry_kwargs={"max_retries": 9},
 )
 def find_run_id(uuid):
     """Find the GitHub Actions run ID from the AddOnRun's UUID"""
@@ -46,14 +45,14 @@ def find_run_id(uuid):
             find_run_id.retry(
                 args=[uuid],
                 countdown=2**find_run_id.request.retries,
-                max_retries=10,
+                max_retries=9,
             )
         except MaxRetriesExceededError:
             logger.error("Failed to find run ID: %s", uuid)
             AddOnRun.objects.filter(uuid=uuid).update(status="failure")
 
 
-@task
+@shared_task
 def set_run_status(uuid):
     logger.info("[SET RUN STATUS] uuid %s", uuid)
     run = AddOnRun.objects.get(uuid=uuid)
@@ -63,7 +62,7 @@ def set_run_status(uuid):
         set_run_status.apply_async(args=[uuid], countdown=5)
 
 
-@task
+@shared_task
 def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=None):
     # pylint: disable=too-many-arguments
     logger.info("[DISPATCH] uuid %s", uuid)
@@ -78,11 +77,11 @@ def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=Non
             logger.info("[DISPATCH] retry uuid %s exc %s", uuid, exc)
             dispatch.retry(max_retries=6, retry_backoff=10, retry_jitter=True)
         except MaxRetriesExceededError:
-            logger.error("Failed to dispatch: %s exc", uuid, exc)
+            logger.error("Failed to dispatch: %s exc %s", uuid, exc)
             AddOnRun.objects.filter(uuid=uuid).update(status="failure")
 
 
-@task
+@shared_task
 def cancel(uuid):
     logger.info("[CANCEL] uuid %s", uuid)
     run = AddOnRun.objects.get(uuid=uuid)
@@ -96,7 +95,7 @@ def cancel(uuid):
         )
 
 
-@task(
+@shared_task(
     autoretry_for=(RequestException,), retry_backoff=30, retry_kwargs={"max_retries": 8}
 )
 def update_config(repository):
@@ -104,7 +103,7 @@ def update_config(repository):
         addon.update_config()
 
 
-@periodic_task(run_every=crontab(minute="*/5"))
+@shared_task
 def dispatch_events():
     """Run scheduled add-ons"""
     # get current time - minute should be disvisible by 5 due to crontab

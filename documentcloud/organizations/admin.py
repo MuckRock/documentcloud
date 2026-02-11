@@ -1,5 +1,10 @@
 # Django
+from django.conf import settings
 from django.contrib import admin
+from django.http import HttpResponse
+
+# Standard Library
+import csv
 
 # Third Party
 from squarelet_auth.organizations.admin import OrganizationAdmin as SAOrganizationAdmin
@@ -27,6 +32,30 @@ class OrganizationAdmin(SAOrganizationAdmin):
 class AICreditLogAdmin(admin.ModelAdmin):
     """AI Credit Log Admin"""
 
+    def export_ai_credit_logs(self, request, queryset):
+        """Export selected AI credit logs as CSV."""
+        field_names = ["organization", "user", "amount", "note", "created_at"]
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = "attachment; filename=ai_credit_logs.csv"
+
+        writer = csv.writer(response)
+        writer.writerow(field_names)
+
+        for log in queryset.iterator(chunk_size=settings.CSV_EXPORT_CHUNK_SIZE):
+            writer.writerow(
+                [
+                    str(log.organization),
+                    str(log.user),
+                    log.amount,
+                    log.note,
+                    log.created_at.isoformat(),
+                ]
+            )
+
+        return response
+
+    export_ai_credit_logs.short_description = "Export selected AI credit logs to CSV"
     list_display = (
         "organization",
         "user",
@@ -39,3 +68,4 @@ class AICreditLogAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     fields = ("organization", "user", "amount", "note", "created_at")
     readonly_fields = ("organization", "user", "amount", "note", "created_at")
+    actions = [export_ai_credit_logs]

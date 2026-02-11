@@ -4,7 +4,6 @@ import os
 
 # Third Party
 import sentry_sdk
-from ipware import get_client_ip
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -73,6 +72,11 @@ AWS_S3_OBJECT_PARAMETERS = {
 AWS_DEFAULT_ACL = None
 # https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#settings
 AWS_S3_REGION_NAME = env("DJANGO_AWS_S3_REGION_NAME", default=None)
+
+CLOUDFLARE_HOSTS = env.list(
+    "CLOUDFLARE_HOSTS",
+    default=["https://www.documentcloud.org", "https://embed.documentcloud.org"],
+)
 
 # STATIC
 # ------------------------
@@ -162,14 +166,26 @@ LOGGING = {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
-        }
+        },
+        "logzioFormat": {"validate": False},
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        }
+        },
+        "logzio": {
+            "class": "logzio.handler.LogzioHandler",
+            "level": "INFO",
+            "formatter": "logzioFormat",
+            "token": env("LOGZIO_TOKEN", default=""),
+            "logzio_type": "django",
+            "logs_drain_timeout": 5,
+            "url": "https://listener.logz.io:8071",
+            "debug": True,
+            "network_timeout": 10,
+        },
     },
     "root": {"level": "INFO", "handlers": ["console"]},
     "loggers": {
@@ -186,6 +202,11 @@ LOGGING = {
             "propagate": False,
         },
         "apscheduler": {"level": "ERROR", "handlers": ["console"], "propagate": False},
+        "http_requests": {
+            "level": "INFO",
+            "handlers": ["logzio"],
+            "propogate": False,
+        },
     },
 }
 if env.bool("LOG_SQL", default=False):
@@ -258,27 +279,3 @@ CELERY_TASK_ROUTES = {"documentcloud.documents.tasks.solr_*": {"queue": "solr"}}
 # ------------------------------------------------------------------------------
 INSTALLED_APPS = ["scout_apm.django"] + INSTALLED_APPS  # noqa F405
 SCOUT_NAME = env("SCOUT_NAME")
-
-# Moesif
-# ------------------------------------------------------------------------------
-MOESIF_ID = env("MOESIF_ID", default=None)
-if MOESIF_ID:
-    MIDDLEWARE += ["moesifdjango.middleware.moesif_middleware"]
-    INSTALLED_APPS += ["moesifdjango"]
-    MOESIF_MIDDLEWARE = {
-        "APPLICATION_ID": MOESIF_ID,
-        "LOG_BODY": True,
-        "LOCAL_DEBUG": env.bool("MOESIF_LOCAL_DEBUG", default=False),
-        "USE_CELERY": True,
-        "CELERY_BROKER_URL": CELERY_BROKER_URL,
-        "SKIP": lambda request, response: request.headers.get("referer", "").startswith(
-            DOCCLOUD_EMBED_URL
-        )
-        or request.headers.get("origin", "").startswith(DOCCLOUD_EMBED_URL),
-        "IDENTIFY_USER": lambda request, response: request.user.pk
-        if request.user and request.user.is_authenticated
-        else get_client_ip(request)[0],
-        "IDENTIFY_COMPANY": lambda request, response: request.user.organization.pk
-        if request.user and request.user.is_authenticated
-        else None,
-    }

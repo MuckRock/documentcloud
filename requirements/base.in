@@ -4,7 +4,7 @@ Pillow
 rcssmin
 argon2-cffi
 redis
-celery<5
+celery
 python-redis-lock[django]
 furl
 ipython
@@ -14,6 +14,7 @@ markdown
 html2text
 jsonschema
 bleach
+daily-active-users
 
 # Django
 # ------------------------------------------------------------------------------
@@ -75,7 +76,14 @@ google-cloud-language
 # PDF
 pdfplumber
 pikepdf
+pymupdf
 
 # sidekick
 numba
 scipy
+
+
+logzio-python-handler
+
+# Documentation 
+drf-spectacular

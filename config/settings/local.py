@@ -19,6 +19,7 @@ ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "api.dev.documentcloud.org
 # https://docs.djangoproject.com/en/2.2/ref/settings/#session-cookie-domain
 SESSION_COOKIE_DOMAIN = ".dev.documentcloud.org"
 CSRF_COOKIE_DOMAIN = ".dev.documentcloud.org"
+SESSION_COOKIE_SAMESITE = None
 
 # EMAIL
 # ------------------------------------------------------------------------------

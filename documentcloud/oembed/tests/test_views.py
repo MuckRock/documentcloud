@@ -10,6 +10,7 @@ import pytest
 # DocumentCloud
 from documentcloud.oembed.oembed import OEmbed
 from documentcloud.oembed.registry import register
+from documentcloud.projects.tests.factories import ProjectFactory
 
 
 @register
@@ -79,3 +80,23 @@ class TestOEmbedView:
         """Test an oembed call with a non-matching URL"""
         response = client.get("/api/oembed/", {"url": "https://www.example.com/foo/"})
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db()
+class TestProjectOEmbedView:
+
+    @pytest.mark.parametrize("title", ["Test", "123-Test", "Test-456", "789-Test-123"])
+    @pytest.mark.parametrize("url_t", ["{pk}", "{slug}-{pk}", "{pk}-{slug}"])
+    def test(self, client, title, url_t):
+        """Test project oembed view"""
+
+        proj = ProjectFactory.create(title=title)
+        url = "https://www.documentcloud.org/projects/" + url_t.format(
+            pk=proj.pk, slug=proj.slug
+        )
+        response = client.get(
+            "/api/oembed/",
+            {"url": url},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["title"] == proj.title

@@ -5,10 +5,8 @@ from rest_framework.generics import get_object_or_404
 
 # Standard Library
 import re
-import time
 
 # DocumentCloud
-from documentcloud.common.path import page_image_path, page_text_path
 from documentcloud.documents.models import Document
 from documentcloud.oembed.oembed import RichOEmbed
 from documentcloud.oembed.registry import register
@@ -18,6 +16,8 @@ DOCCLOUD_URL_REGEX = (
     + settings.OEMBED_URL_REGEX
     + r")?documentcloud[.]org"
 )
+
+RESIZE_SCRIPT = f"{settings.DOCCLOUD_EMBED_URL}/embed/dc-resize.js"
 
 
 @register
@@ -34,10 +34,8 @@ class DocumentOEmbed(RichOEmbed):
         document = get_object_or_404(
             Document.objects.get_viewable(request.user), pk=kwargs["pk"]
         )
-
-        responsive = query.params.get("responsive") == "1"
         width, height = self.get_dimensions(document, max_width, max_height)
-        style = self.get_style(responsive, max_width, max_height)
+        style = self.get_style(document, max_width, max_height)
         oembed = {
             "title": document.title,
             "width": width,
@@ -52,13 +50,14 @@ class DocumentOEmbed(RichOEmbed):
 
     def get_context(self, document, query, extra, **kwargs):
         src = settings.DOCCLOUD_EMBED_URL + document.get_absolute_url()
+        src = f"{src}?embed=1"
         if query:
-            src = f"{src}?{query}"
+            src = f"{src}&{query}"
         return {"src": src, **extra}
 
     def get_dimensions(self, document, max_width, max_height):
-        default_width = 700
-        aspect_ratio = document.aspect_ratio
+        width, height = document.page_size(0)
+        aspect_ratio = width / height
         if max_width and max_height:
             # preserve user intention and break aspect ratio
             return max_width, max_height
@@ -67,15 +66,14 @@ class DocumentOEmbed(RichOEmbed):
         elif max_height:
             return int(max_height * aspect_ratio), max_height
         else:
-            return default_width, int(default_width / aspect_ratio)
+            return width, height
 
-    def get_style(self, responsive, max_width, max_height):
-        if not responsive:
-            # Don't apply any extra styling if not responsive
-            return ""
-
-        # 100% width and 100vh - 100px height (800px fallback for old browsers)
-        style = " width: 100%; height: 800px; height: calc(100vh - 100px);"
+    def get_style(self, document, max_width=None, max_height=None):
+        width, height = document.page_size(0)
+        style = (
+            f"border: 1px solid #d8dee2; border-radius: 0.5rem; width: 100%;"
+            f" height: 100%; aspect-ratio: {width} / {height};"
+        )
 
         if max_width:
             style += f" max-width: {max_width}px;"
@@ -100,34 +98,30 @@ class PageOEmbed(DocumentOEmbed):
         ),
     ]
 
-    def get_dimensions(self, document, max_width, max_height):
-        default_width = 700
-        if max_width:
-            return (min(max_width, default_width), None)
-        else:
-            return default_width, None
-
     def get_context(self, document, query, extra, **kwargs):
         page = int(kwargs["page"])
-        timestamp = int(time.time())
-        # pylint: disable=consider-using-f-string
+        src = f"{settings.DOCCLOUD_EMBED_URL}/documents/{document.pk}/pages/{page}/"
+        src = f"{src}?embed=1"
+        if query:
+            src = f"{src}&{query}"
         return {
-            "page": page,
-            "page_url": "{}{}#document/p{}".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), page
-            ),
-            "img_url": "{}?ts={}".format(
-                page_image_path(document.pk, document.slug, page - 1, "xlarge"),
-                timestamp,
-            ),
-            "text_url": "{}?ts={}".format(
-                page_text_path(document.pk, document.slug, page - 1), timestamp
-            ),
-            "user_org_string": f"{document.user.name} ({document.organization})",
-            "app_url": settings.DOCCLOUD_URL,
-            "enhance_src": f"{settings.DOCCLOUD_URL}/embed/enhance.js",
+            "src": src,
+            "resize_script": RESIZE_SCRIPT,
             **extra,
         }
+
+    def get_style(self, document, max_width=None, max_height=None, page=0):
+        width, height = document.page_size(page)
+        style = (
+            f"border: none; width: 100%; height: 100%;"
+            f" aspect-ratio: {width} / {height};"
+        )
+
+        if max_width:
+            style += f" max-width: {max_width}px;"
+        if max_height:
+            style += f" max-height: {max_height}px;"
+        return style
 
 
 @register
@@ -150,7 +144,6 @@ class NoteOEmbed(RichOEmbed):
             r"notes/(?P<pk>[0-9]+)/?$"
         ),
     ]
-    width = 750
 
     def response(self, request, query, max_width=None, max_height=None, **kwargs):
         document = get_object_or_404(
@@ -159,25 +152,45 @@ class NoteOEmbed(RichOEmbed):
         note = get_object_or_404(
             document.notes.get_viewable(request.user, document), pk=kwargs["pk"]
         )
+        oembed = {"title": note.title}
+        src = (
+            f"{settings.DOCCLOUD_EMBED_URL}/documents/"
+            f"{document.pk}/annotations/{note.pk}/"
+        )
+        src = f"{src}?embed=1"
+        if query:
+            src = f"{src}&{query}"
 
-        height = None
-        if max_width and max_width < self.width:
-            width = max_width
-        else:
-            width = self.width
-        oembed = {"title": note.title, "width": width, "height": height}
-        # pylint: disable=consider-using-f-string
+        note_width, note_height = self.get_dimensions(document, note)
+
         context = {
-            "pk": note.pk,
-            "loader_src": f"{settings.DOCCLOUD_URL}/notes/loader.js",
-            "note_src": "{}{}annotations/{}.js".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
-            ),
-            "note_html_src": "{}{}annotations/{}".format(
-                settings.DOCCLOUD_EMBED_URL, document.get_absolute_url(), note.pk
-            ),
-            **oembed,
+            "src": src,
+            "title": note.title,
+            "style": self.get_style(max_width, max_height),
+            "width": note_width,
+            "height": note_height,
+            "resize_script": RESIZE_SCRIPT,
         }
         template = get_template(self.template)
         oembed["html"] = template.render(context)
         return self.oembed(**oembed)
+
+    def get_dimensions(self, document, note):
+        page = note.page_number - 1
+        width, height = document.page_size(page)
+        note_width = width * (note.x2 - note.x1)
+        note_height = height * (note.y2 - note.y1)
+
+        return (note_width, note_height)
+
+    def get_style(self, max_width=None, max_height=None):
+
+        style = (
+            "border: 1px solid #d8dee2; border-radius: 0.5rem;"
+            " width: 100%; height: 300px;"
+        )
+        if max_width:
+            style += f" max-width: {max_width}px;"
+        if max_height:
+            style += f" max-height: {max_height}px;"
+        return style

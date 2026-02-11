@@ -24,6 +24,7 @@ from documentcloud.addons.querysets import (
     AddOnEventQuerySet,
     AddOnQuerySet,
     AddOnRunQuerySet,
+    VisualAddOnQuerySet,
 )
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.mail import send_mail
@@ -33,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 class AddOn(models.Model):
-
     objects = AddOnQuerySet.as_manager()
 
     organization = models.ForeignKey(
@@ -212,6 +212,11 @@ class AddOn(models.Model):
                 self.parameters["description"] = self._render_markdown(
                     self.parameters["description"]
                 )
+
+            if "instructions" in self.parameters:
+                self.parameters["instructions"] = self._render_markdown(
+                    self.parameters["instructions"]
+                )
         except yaml.YAMLError:
             self.error = True
         self.save()
@@ -347,6 +352,12 @@ class AddOnRun(models.Model):
         default="",
     )
 
+    credits_spent = models.IntegerField(
+        _("credits spent"),
+        default=0,
+        help_text=_("The amount of premium credits spent by this run"),
+    )
+
     created_at = AutoCreatedField(
         _("created at"),
         help_text=_("Timestamp of when the add-on was ran"),
@@ -456,14 +467,34 @@ class AddOnRun(models.Model):
                         "[SET STATUS] disabling %s - %s", self.uuid, self.status
                     )
                     # disable the event
+                    self.event.disable_logs.create(
+                        previous_event_state=self.event.event
+                    )
                     self.event.event = Event.disabled
                     self.event.save()
-                    send_mail(
-                        subject="Your scheduled Add-On run has been disabled",
-                        user=self.event.user,
-                        template="addons/email/disabled.html",
-                        extra_context={"run": self},
-                    )
+                    self.send_disabled_email()
+
+    def send_disabled_email(self):
+        """Send an email when an addon is disabled"""
+        # Fetch footer content from config
+        footer_content = self.addon.parameters.get("custom_disabled_email_footer")
+
+        if footer_content:
+            # If footer content exists, use the base_disabled.html template
+            template = "addons/email/base_disabled.html"
+            extra_context = {"run": self, "footer_content": footer_content}
+        else:
+            # If footer content doesn't exist, use the disabled.html template
+            template = "addons/email/disabled.html"
+            extra_context = {"run": self}
+
+        # Send the email using the appropriate template
+        send_mail(
+            subject="Your scheduled Add-On run has been disabled",
+            user=self.event.user,
+            template=template,
+            extra_context=extra_context,
+        )
 
     def cancel(self):
         """Cancel the run if it is still running"""
@@ -567,6 +598,47 @@ class AddOnEvent(models.Model):
             )
 
 
+class AddOnDisableLog(models.Model):
+    """Log usage of Add-On Disables"""
+
+    # Reference to the AddOnEvent
+    addon_event = models.ForeignKey(
+        verbose_name=_("event reference"),
+        to="addons.AddOnEvent",
+        on_delete=models.PROTECT,
+        related_name="disable_logs",
+        help_text=_("Reference to the Add-On Event"),
+    )
+
+    created_at = AutoCreatedField(
+        _("created at"),
+        help_text=_("Timestamp of when the add-on disable log was created"),
+        db_index=True,
+    )
+    previous_event_state = models.IntegerField(
+        _("previous event state"),
+        choices=Event.choices,
+        help_text=_("The event state of the Add-On before disable"),
+    )
+
+    reverted = models.BooleanField(
+        _("reverted"),
+        default=False,
+        help_text=_("Indicates whether this disable log has been reverted"),
+    )
+
+    @transaction.atomic
+    def revert_event(self):
+        # Logic to revert the event
+        self.addon_event.event = self.previous_event_state
+        self.addon_event.save()
+        self.reverted = True
+        self.save()
+
+    class Meta:
+        verbose_name = "Add-On Disable Log"
+
+
 class GitHubAccount(models.Model):
     """A linked GitHub account"""
 
@@ -651,3 +723,55 @@ class GitHubInstallation(models.Model):
                     token = resp["token"]
                     cache.set(key, token, expire_in - 10)
         return token
+
+
+class VisualAddOn(models.Model):
+
+    objects = VisualAddOnQuerySet.as_manager()
+
+    user = models.ForeignKey(
+        verbose_name=_("user"),
+        to="users.User",
+        on_delete=models.PROTECT,
+        related_name="visual_addons",
+        help_text=_("The user who owns this visual add-on"),
+    )
+    organization = models.ForeignKey(
+        verbose_name=_("organization"),
+        to="organizations.Organization",
+        on_delete=models.PROTECT,
+        related_name="visual_addons",
+        help_text=_("The organization that owns this visual add-on"),
+    )
+    access = models.IntegerField(
+        _("access"),
+        choices=Access.choices,
+        default=Access.private,
+        help_text=_("Designates who may access this document by default"),
+    )
+
+    name = models.CharField(
+        _("name"),
+        max_length=255,
+        help_text=_("The visual add-on's name"),
+    )
+    slug = models.SlugField(
+        _("slug"),
+        max_length=255,
+    )
+
+    url = models.URLField(
+        _("URL"),
+        help_text=_("URL of the Visual AddOn"),
+    )
+
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the add-on was created")
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"), help_text=_("Timestamp of when the add-on was last updated")
+    )
+
+    @property
+    def removed(self):
+        return False

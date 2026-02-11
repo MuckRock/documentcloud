@@ -1,4 +1,4 @@
-boto3==1.10.14
+boto3==1.21.21
 smart-open==1.8.4
 pdfplumber==0.5.28
 pikepdf==5.4.0

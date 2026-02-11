@@ -3,6 +3,7 @@ Base settings to build other settings files upon.
 """
 
 # Django
+from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -80,6 +81,8 @@ THIRD_PARTY_APPS = [
     "squarelet_auth.apps.SquareletAuthConfig",
     "django_premailer",
     "robots",
+    "daily_active_users.apps.DailyActiveUsersConfig",
+    "drf_spectacular",
 ]
 
 LOCAL_APPS = [
@@ -119,6 +122,9 @@ SOCIAL_AUTH_SQUARELET_AUTH_EXTRA_ARGUMENTS = {"intent": "documentcloud"}
 SOCIAL_AUTH_TRAILING_SLASH = False
 SOCIAL_AUTH_SANITIZE_REDIRECTS = env.bool(
     "SOCIAL_AUTH_SANITIZE_REDIRECTS", default=True
+)
+SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS = env.list(
+    "SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS", default=[]
 )
 
 SOCIAL_AUTH_PIPELINE = (
@@ -168,8 +174,11 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "social_django.middleware.SocialAuthExceptionMiddleware",
+    "documentcloud.core.middleware.RateLimitAnonymousUsers",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "documentcloud.core.middleware.LogHTTPMiddleware",
+    "daily_active_users.middleware.DailyActiveUserMiddleware",
 ]
 
 # STATIC
@@ -281,6 +290,9 @@ ADMIN_URL = "admin/"
 ADMINS = [("Mitchell Kotler", "mitch@muckrock.com")]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
+# Chunk size for CSV exports using .iterator() to process large querysets
+# without loading all records into memory at once
+CSV_EXPORT_CHUNK_SIZE = env.int("CSV_EXPORT_CHUNK_SIZE", default=2000)
 
 # LOGGING
 # ------------------------------------------------------------------------------
@@ -294,14 +306,14 @@ LOGGING = {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s "
             "%(process)d %(thread)d %(message)s"
-        }
+        },
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        }
+        },
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
@@ -350,6 +362,44 @@ CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int(
     "CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=20 * 1024
 )
 
+
+CELERY_BEAT_SCHEDULE = {
+    "store_statistics": {
+        "task": "documentcloud.statistics.tasks.store_statistics",
+        "schedule": crontab(hour=5, minute=30),
+        "options": {
+            "time_limit": 3600,
+            "soft_time_limit": 3600,
+        },
+    },
+    "db_cleanup": {
+        "task": "documentcloud.statistics.tasks.db_cleanup",
+        "schedule": crontab(hour=6, minute=0),
+        "options": {
+            "time_limit": 1800,
+            "soft_time_limit": 1740,
+        },
+    },
+    "solr_index_dirty": {
+        "task": "documentcloud.documents.tasks.solr_index_dirty",
+        "schedule": crontab(minute=30),
+    },
+    "publish_scheduled_documents": {
+        "task": "documentcloud.documents.tasks.publish_scheduled_documents",
+        "schedule": 600,
+    },
+    "dispatch_events": {
+        "task": "documentcloud.addons.tasks.dispatch_events",
+        "schedule": crontab(minute="*/5"),
+    },
+    "permission_digest": {
+        "task": "documentcloud.users.tasks.permission_digest",
+        "schedule": crontab(day_of_week="mon", hour=7, minute=0),
+    },
+}
+
+PERMISSIONS_DIGEST_EMAILS = env.list("PERMISSIONS_DIGEST_EMAILS", default=[])
+
 # django-compressor
 # ------------------------------------------------------------------------------
 # https://django-compressor.readthedocs.io/en/latest/quickstart/#installation
@@ -375,7 +425,18 @@ REST_FRAMEWORK = {
     "DEFAULT_VERSIONING_CLASS": "documentcloud.core.versioning.QueryParameterVersioning",
     "DEFAULT_VERSION": env("REST_FRAMEWORK_DEFAULT_VERSION", default="1.0"),
     "ALLOWED_VERSIONS": ["1.0", "2.0"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "DocumentCloud API",
+    # 'DESCRIPTION': 'Your project description',
+    "VERSION": "2.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # OTHER SETTINGS
+    "PREPROCESSING_HOOKS": ["documentcloud.core.utils.custom_preprocessing_hook"],
+}
+
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
 ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=100)
 
@@ -440,7 +501,7 @@ LOGIN_URL = "/accounts/login/squarelet"
 LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
 LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
-SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = None
 
 SIMPLE_JWT = {
     "ALGORITHM": "RS256",
@@ -508,6 +569,8 @@ SOLR_ADD_NOTES = env.bool("SOLR_ADD_NOTES", default=True)
 SOLR_INDEX_NOTES = env.bool("SOLR_INDEX_NOTES", default=True)
 SOLR_QUERY_NOTES = env.bool("SOLR_QUERY_NOTES", default=True)
 
+SOLR_DISABLE_ANON = env.bool("SOLR_DISABLE_ANON", default=False)
+
 # OEmbed
 # ------------------------------------------------------------------------------
 OEMBED_PROVIDER_NAME = env("OEMBED_PROVIDER_NAME", default="DocumentCloud")
@@ -560,6 +623,7 @@ CLOUDFRONT_DISTRIBUTION_ID = env("CLOUDFRONT_DISTRIBUTION_ID", default="")
 CLOUDFLARE_API_EMAIL = env("CLOUDFLARE_API_EMAIL", default="")
 CLOUDFLARE_API_KEY = env("CLOUDFLARE_API_KEY", default="")
 CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")
+CLOUDFLARE_HOSTS = env.list("CLOUDFLARE_HOSTS", default=[])
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
@@ -605,3 +669,25 @@ LANGUAGES = (
     ("ru", _("Russian")),
     ("uk", _("Ukrainian")),
 )
+
+# Anonymous User Rate Limit
+# ------------------------------------------------------------------------------
+ANON_RL_ENABLE = env.bool("ANON_RL_ENABLE", default=True)
+ANON_RL_LIMIT = env.int("ANON_RL_LIMIT", default=500)
+ANON_RL_TIMEOUT = env.int("ANON_RL_TIMEOUT", default=60 * 60 * 24)
+ANON_RL_EXCLUDE_PATHS = env.list(
+    "ANON_RL_EXCLUDE_PATHS", default=["/accounts/login/squarelet"]
+)
+ANON_RL_MESSAGE = env(
+    "ANON_RL_MESSAGE",
+    default="As an anonymous user you have been blocked for going over "
+    "500 API calls per 24 hour period.  Please create a free account at "
+    "https://accounts.muckrock.com/accounts/signup/?intent=documentcloud "
+    "in order to increase your limit.  If you believe you are seeing this "
+    "message in error, please contact info@documentcloud.org",
+)
+
+# Page validation
+# ------------------------------------------------------------------------------
+MAX_PAGES = env.int("MAX_PAGES", default=50)
+GRAFT_DEBUG = env.bool("GRAFT_DEBUG", default=False)

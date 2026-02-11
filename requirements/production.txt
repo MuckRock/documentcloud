@@ -26,12 +26,10 @@ aiosignal==1.2.0
     # via
     #   -r requirements/./base.txt
     #   aiohttp
-amqp==2.6.1
+amqp==5.3.1
     # via
     #   -r requirements/./base.txt
     #   kombu
-apscheduler==3.7.0
-    # via moesifdjango
 argon2-cffi==19.1.0
     # via -r requirements/./base.txt
 asgiref==3.7.2
@@ -56,7 +54,7 @@ backcall==0.1.0
     # via
     #   -r requirements/./base.txt
     #   ipython
-billiard==3.6.4.0
+billiard==4.2.1
     # via
     #   -r requirements/./base.txt
     #   celery
@@ -82,7 +80,7 @@ cachetools==3.1.1
     # via
     #   -r requirements/./base.txt
     #   google-auth
-celery==4.4.7
+celery==5.4.0
     # via
     #   -r requirements/./base.txt
     #   django-celery-email
@@ -107,6 +105,25 @@ charset-normalizer==2.1.0
     #   -r requirements/./base.txt
     #   aiohttp
     #   requests
+click==8.1.7
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
+click-didyoumean==0.3.1
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+click-plugins==1.1.1
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+click-repl==0.3.0
+    # via
+    #   -r requirements/./base.txt
+    #   celery
 collectfast==2.2.0
     # via -r requirements/production.in
 cpuprofile==1.0.1
@@ -126,6 +143,8 @@ cssutils==1.0.2
     # via
     #   -r requirements/./base.txt
     #   premailer
+daily-active-users==0.1.2
+    # via -r requirements/./base.txt
 decorator==4.4.0
     # via
     #   -r requirements/./base.txt
@@ -144,6 +163,7 @@ django==4.2.2
     # via
     #   -r requirements/./base.txt
     #   collectfast
+    #   daily-active-users
     #   django-anymail
     #   django-appconf
     #   django-celery-email
@@ -161,6 +181,7 @@ django==4.2.2
     #   djangorestframework-simplejwt
     #   dogslow
     #   drf-nested-routers
+    #   drf-spectacular
     #   rest-social-auth
     #   squarelet-auth
 django-anymail[mailgun]==10.0
@@ -218,6 +239,7 @@ djangorestframework==3.14.0
     #   django-parler-rest
     #   djangorestframework-simplejwt
     #   drf-nested-routers
+    #   drf-spectacular
     #   rest-social-auth
 djangorestframework-simplejwt==4.8.0
     # via -r requirements/./base.txt
@@ -227,6 +249,10 @@ drf-flex-fields==1.0.0
     # via -r requirements/./base.txt
 drf-nested-routers==0.91
     # via -r requirements/./base.txt
+drf-spectacular==0.28.0
+    # via
+    #   -r requirements/./base.txt
+    #   -r requirements/production.in
 ecdsa==0.13.2
     # via
     #   -r requirements/./base.txt
@@ -292,12 +318,12 @@ idna==2.8
     #   requests
     #   urllib3
     #   yarl
+inflection==0.5.1
+    # via
+    #   -r requirements/./base.txt
+    #   drf-spectacular
 ipython==8.5.0
     # via -r requirements/./base.txt
-isodatetimehandler==1.0.2
-    # via
-    #   moesifapi
-    #   moesifdjango
 jedi==0.18.1
     # via
     #   -r requirements/./base.txt
@@ -307,13 +333,11 @@ jmespath==0.9.4
     #   -r requirements/./base.txt
     #   boto3
     #   botocore
-jsonpickle==2.0.0
-    # via
-    #   moesifapi
-    #   moesifdjango
 jsonschema==3.2.0
-    # via -r requirements/./base.txt
-kombu==4.6.11
+    # via
+    #   -r requirements/./base.txt
+    #   drf-spectacular
+kombu==5.4.2
     # via
     #   -r requirements/./base.txt
     #   celery
@@ -327,6 +351,8 @@ llvmlite==0.38.1
     # via
     #   -r requirements/./base.txt
     #   numba
+logzio-python-handler==4.1.1
+    # via -r requirements/./base.txt
 luqum==0.8.1
     # via -r requirements/./base.txt
 lxml==4.9.1
@@ -340,14 +366,6 @@ matplotlib-inline==0.1.3
     # via
     #   -r requirements/./base.txt
     #   ipython
-moesifapi==1.4.1
-    # via
-    #   moesifdjango
-    #   moesifpythonrequest
-moesifdjango==2.3.3
-    # via -r requirements/production.in
-moesifpythonrequest==0.3.0
-    # via moesifdjango
 multidict==4.7.5
     # via
     #   -r requirements/./base.txt
@@ -357,8 +375,6 @@ mypy-extensions==0.4.3
     # via
     #   -r requirements/./base.txt
     #   typing-inspect
-nose==1.3.7
-    # via moesifdjango
 numba==0.55.2
     # via -r requirements/./base.txt
 numpy==1.22.4
@@ -375,7 +391,7 @@ orderedmultidict==1.0.1
     # via
     #   -r requirements/./base.txt
     #   furl
-packaging==21.3
+packaging==24.1
     # via
     #   -r requirements/./base.txt
     #   deprecation
@@ -418,16 +434,18 @@ premailer==3.0.0
 prompt-toolkit==3.0.38
     # via
     #   -r requirements/./base.txt
+    #   click-repl
     #   ipython
 proto-plus==1.13.0
     # via
     #   -r requirements/./base.txt
     #   google-cloud-language
-protobuf==3.14.0
+protobuf==4.25.2
     # via
     #   -r requirements/./base.txt
     #   google-api-core
     #   googleapis-common-protos
+    #   logzio-python-handler
     #   proto-plus
 psutil==5.7.3
     # via scout-apm
@@ -468,12 +486,10 @@ pyjwt==2.3.0
     #   -r requirements/./base.txt
     #   djangorestframework-simplejwt
     #   social-auth-core
+pymupdf==1.25.3
+    # via -r requirements/./base.txt
 pyopenssl==19.1.0
     # via urllib3
-pyparsing==2.4.2
-    # via
-    #   -r requirements/./base.txt
-    #   packaging
 pyrsistent==0.18.0
     # via
     #   -r requirements/./base.txt
@@ -482,8 +498,7 @@ python-dateutil==2.8.2
     # via
     #   -r requirements/./base.txt
     #   botocore
-    #   moesifapi
-    #   moesifdjango
+    #   celery
 python-jose==3.3.0
     # via
     #   -r requirements/./base.txt
@@ -499,14 +514,12 @@ python3-openid==3.1.0
 pytz==2022.1
     # via
     #   -r requirements/./base.txt
-    #   apscheduler
-    #   celery
     #   djangorestframework
     #   google-api-core
-    #   tzlocal
 pyyaml==5.3.1
     # via
     #   -r requirements/./base.txt
+    #   drf-spectacular
     #   libcst
 rcssmin==1.1.1
     # via
@@ -523,9 +536,7 @@ requests==2.28.1
     #   django-anymail
     #   gcsfs
     #   google-api-core
-    #   moesifapi
-    #   moesifdjango
-    #   moesifpythonrequest
+    #   logzio-python-handler
     #   premailer
     #   pysolr
     #   requests-oauthlib
@@ -563,7 +574,6 @@ sentry-sdk==1.0.0
 six==1.15.0
     # via
     #   -r requirements/./base.txt
-    #   apscheduler
     #   argon2-cffi
     #   asttokens
     #   bleach
@@ -575,7 +585,6 @@ six==1.15.0
     #   grpcio
     #   jsonschema
     #   orderedmultidict
-    #   protobuf
     #   pyopenssl
     #   python-dateutil
 smart-open==1.8.4
@@ -599,7 +608,7 @@ sqlparse==0.4.4
     #   -r requirements/./base.txt
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.3
+squarelet-auth==0.1.14
     # via -r requirements/./base.txt
 stack-data==0.3.0
     # via
@@ -614,7 +623,7 @@ traitlets==5.3.0
     #   -r requirements/./base.txt
     #   ipython
     #   matplotlib-inline
-typing-extensions==4.4.0
+typing-extensions==4.15.0
     # via
     #   -r requirements/./base.txt
     #   asgiref
@@ -625,10 +634,17 @@ typing-inspect==0.6.0
     # via
     #   -r requirements/./base.txt
     #   libcst
-tzlocal==2.1
-    # via apscheduler
+tzdata==2024.2
+    # via
+    #   -r requirements/./base.txt
+    #   celery
+    #   kombu
 unidecode==1.1.1
     # via -r requirements/./base.txt
+uritemplate==4.1.1
+    # via
+    #   -r requirements/./base.txt
+    #   drf-spectacular
 urllib3[secure]==1.26.10
     # via
     #   -r requirements/./base.txt
@@ -637,11 +653,12 @@ urllib3[secure]==1.26.10
     #   requests
     #   scout-apm
     #   sentry-sdk
-vine==1.3.0
+vine==5.1.0
     # via
     #   -r requirements/./base.txt
     #   amqp
     #   celery
+    #   kombu
 wand==0.6.6
     # via
     #   -r requirements/./base.txt

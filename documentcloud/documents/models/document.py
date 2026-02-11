@@ -1,6 +1,5 @@
 # Django
 from django.conf import settings
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.db.models import Q
 from django.db.models.aggregates import Max
@@ -12,29 +11,27 @@ import logging
 import sys
 import time
 import uuid
+from io import BytesIO
 
 # Third Party
 import boto3
+import pymupdf
 import requests
-from listcrunch import uncrunch
+from listcrunch import crunch, uncrunch
+from pikepdf import Page as PikePage, Pdf, Rectangle
 
 # DocumentCloud
 from documentcloud.common import path
 from documentcloud.common.environment import storage
 from documentcloud.common.extensions import EXTENSIONS
+from documentcloud.common.utils import graft_page
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
-from documentcloud.core.utils import slugify
+from documentcloud.core.utils import format_date, slugify
 from documentcloud.documents.choices import Access, Status
-from documentcloud.documents.querysets import DocumentQuerySet, NoteQuerySet
+from documentcloud.documents.querysets import DocumentQuerySet
 
 logger = logging.getLogger(__name__)
-
-
-def format_date(date):
-    if date is None:
-        return None
-    return date.replace(tzinfo=None).isoformat() + "Z"
 
 
 class Document(models.Model):
@@ -342,12 +339,27 @@ class Document(models.Model):
 
         try:
             dimensions = uncrunch(self.page_spec)[page]
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, IndexError):
             return default
 
         width, height = [float(d) for d in dimensions.split("x")]
 
         return width / height
+
+    def page_size(self, page):
+        "Return the width and height of a given page, as a tuple"
+        default = (8.5, 11.0)
+        if not self.page_spec:
+            return default
+
+        try:
+            dimensions = uncrunch(self.page_spec)[page]
+        except (ValueError, KeyError, IndexError):
+            return default
+
+        width, height = [float(d) for d in dimensions.split("x")]
+
+        return (width, height)
 
     def get_page_text(self, page_number):
         try:
@@ -399,6 +411,7 @@ class Document(models.Model):
             return {"pages": [], "updated": None}
 
     def set_page_text(self, page_text_infos):
+        logger.info("[SET PAGE TEXT] get all page text %d", self.pk)
         # get the json text
         json_text = self.get_all_page_text()
 
@@ -411,8 +424,14 @@ class Document(models.Model):
             )
         file_names = []
         file_contents = []
+
+        logger.info("[SET PAGE TEXT] init graft pdf %d", self.pk)
+
+        positions_present = any("positions" in page for page in page_text_infos)
+
         for page_text_info in page_text_infos:
             page = page_text_info["page_number"]
+            logger.info("[SET PAGE TEXT] %d - page %d", self.pk, page)
             text = page_text_info["text"]
             ocr = page_text_info.get("ocr")
             file_names.append(path.page_text_path(self.pk, self.slug, page))
@@ -424,14 +443,17 @@ class Document(models.Model):
                 "ocr": ocr,
                 "updated": timestamp,
             }
-            if page_text_info.get("positions"):
-                file_names.append(
-                    path.page_text_position_path(self.pk, self.slug, page)
-                )
-                positions = [
-                    {**p.pop("metadata", {}), **p} for p in page_text_info["positions"]
-                ]
-                file_contents.append(json.dumps(positions).encode("utf-8"))
+
+        if positions_present:
+            doc_contents = self._set_page_positions(
+                page_text_infos,
+                file_names,
+                file_contents,
+            )
+            if doc_contents is not None:
+                # upload grafted pdf
+                file_names.append(self.doc_path)
+                file_contents.append(doc_contents)
 
         # set the full text
         concatenated_text = b"\n\n".join(
@@ -445,11 +467,144 @@ class Document(models.Model):
         file_contents.append(json.dumps(json_text).encode("utf-8"))
 
         # upload the text to S3
-        logger.info("[SET PAGE TEXT] upload %d", self.pk)
+        logger.info(
+            "[SET PAGE TEXT] upload %d - %d mb",
+            self.pk,
+            sum(len(i) for i in file_contents) / 1000 / 1000,
+        )
+        for name, contents in zip(file_names, file_contents):
+            logger.info(
+                "[SET PAGE TEXT] upload %d - %s: %d mb",
+                self.pk,
+                name,
+                len(contents) / 1000 / 1000,
+            )
         # reverse the lists to upload the larger files first
         storage.async_upload(file_names[::-1], file_contents[::-1], access=self.access)
 
         return json_text
+
+    def _set_page_positions(self, pages, file_names, file_contents):
+        """Handle grafting page positions back into the document"""
+
+        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
+        start_page = pages[0]["page_number"]
+        stop_page = pages[-1]["page_number"]
+
+        visible_text = self._check_visible_text(current_pdf, start_page, stop_page)
+        logger.info(
+            "[SET PAGE TEXT] %d - visible text detected: %s", self.pk, visible_text
+        )
+        if visible_text:
+            # merging when we need to flatten visible text causes excessive memory usage
+            return None
+
+        grafted_pdf, base_pdf_stream = self._init_graft_pdf(
+            current_pdf,
+            start_page,
+            stop_page,
+            visible_text,
+        )
+
+        for page in pages:
+            page_number = page["page_number"]
+            if page.get("positions"):
+                logger.info(
+                    "[SET PAGE TEXT] %d - positions page %d", self.pk, page_number
+                )
+                file_names.append(
+                    path.page_text_position_path(self.pk, self.slug, page_number)
+                )
+                positions = [{**p.pop("metadata", {}), **p} for p in page["positions"]]
+                file_contents.append(json.dumps(positions).encode("utf-8"))
+
+                logger.info("[SET PAGE TEXT] %d - graft page %d", self.pk, page_number)
+                # create the overlay file
+                graft_page(page["positions"], grafted_pdf[page_number - start_page])
+
+        # merge the overlay pages back onto the original document
+        if visible_text:
+            contents = self._merge_overlay_visible(
+                current_pdf,
+                grafted_pdf,
+                start_page,
+                stop_page,
+            )
+        else:
+            contents = self._merge_overlay(
+                base_pdf_stream,
+                grafted_pdf,
+                start_page,
+                stop_page,
+            )
+        current_pdf.close()
+        grafted_pdf.close()
+
+        return contents
+
+    def _merge_overlay(self, base_pdf_stream, grafted_pdf, start_page, stop_page):
+        """Merge the text only overlay pages back in to the base PDF"""
+        base_pdf = Pdf.open(base_pdf_stream)
+        overlay_pdf = Pdf.open(BytesIO(grafted_pdf.tobytes()))
+
+        for i in range(start_page, stop_page + 1):
+            base_page = PikePage(base_pdf.pages[i])
+            overlay_page = PikePage(overlay_pdf.pages[i - start_page])
+            base_page.add_overlay(overlay_page, Rectangle(*base_page.trimbox))
+
+        buffer = BytesIO()
+        base_pdf.save(buffer)
+        buffer.seek(0)
+        return buffer.read()
+
+    def _merge_overlay_visible(self, current_pdf, grafted_pdf, start_page, stop_page):
+        """Merge the flatten grafted pages back into the PDF"""
+        logger.info(
+            "[MERGE OVERLAY VISIBLE] %d - start - %d - %d",
+            self.pk,
+            start_page,
+            stop_page,
+        )
+        current_pdf.delete_pages(start_page, stop_page)
+        current_pdf.insert_pdf(grafted_pdf, start_at=start_page)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - tobytes", self.pk)
+        contents = current_pdf.tobytes(deflate=True, garbage=2, use_objstms=True)
+        logger.info("[MERGE OVERLAY VISIBLE] %d - tobytes done", self.pk)
+        return contents
+
+    def _check_visible_text(self, current_pdf, start_page, stop_page):
+        """Check if the pages contain visible text"""
+        for pdf_page in current_pdf.pages(start_page, stop_page + 1):
+            text_trace = pdf_page.get_texttrace()
+            for trace in text_trace:
+                # zero opacity means the text is transparant
+                # text type 3 is hidden text
+                if trace["opacity"] != 0 and trace["type"] != 3:
+                    return True
+        return False
+
+    def _init_graft_pdf(self, current_pdf, start_page, stop_page, visible_text):
+        """Initialize a new PDF to graft OCR text onto"""
+        grafted_pdf = pymupdf.open()
+        buffer = BytesIO()
+
+        for pdf_page in current_pdf.pages(start_page, stop_page + 1):
+            new_pdf_page = grafted_pdf.new_page(
+                width=pdf_page.rect.width,
+                height=pdf_page.rect.height,
+            )
+            if visible_text:
+                pdf_pix_map = pdf_page.get_pixmap(dpi=300, colorspace="RGB")
+                new_pdf_page.insert_image(rect=pdf_page.rect, pixmap=pdf_pix_map)
+            else:
+                pdf_page.add_redact_annot(pdf_page.rect)
+                pdf_page.apply_redactions(
+                    images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                    graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+                )
+
+        current_pdf.save(buffer)
+        return grafted_pdf, buffer
 
     def solr(self, fields=None, index_text=False):
         """Get a solr document to index the current document
@@ -491,6 +646,21 @@ class Document(models.Model):
         ]
         data = {f"data_{key}": values for key, values in self.data.items()}
 
+        # We only want the first page of the page spec in Solr
+        # We also want to ensure we do not have more than 2 decimal places
+        # in the dimensions
+        if self.page_spec:
+            page_spec = crunch(
+                [
+                    "x".join(
+                        f"{float(i):.2f}"
+                        for i in uncrunch(self.page_spec)[0].split("x")
+                    )
+                ]
+            )
+        else:
+            page_spec = self.page_spec
+
         solr_document = {
             "id": self.pk,
             "type": "document",
@@ -506,6 +676,7 @@ class Document(models.Model):
             "created_at": format_date(self.created_at),
             "updated_at": format_date(self.updated_at),
             "page_count": self.page_count,
+            "page_spec": page_spec,
             "projects": project_ids,
             "projects_edit_access": project_edit_access_ids,
             "original_extension": self.original_extension,
@@ -531,9 +702,14 @@ class Document(models.Model):
         return solr_document
 
     def invalidate_cache(self):
-        """Invalidate public CDN cache for this document's underlying file"""
+        """
+        Invalidate public CDN cache for this document's underlying file,
+        plus frontend URLs in Cloudflare
+        """
         logger.info("Invalidating cache for %s", self.pk)
         doc_path = self.doc_path[self.doc_path.index("/") :]
+
+        # cloudfront
         distribution_id = settings.CLOUDFRONT_DISTRIBUTION_ID
         if distribution_id:
             # we want the doc path without the s3 bucket name
@@ -545,15 +721,25 @@ class Document(models.Model):
                     "CallerReference": str(uuid.uuid4()),
                 },
             )
+
+        # cloudflare
         cloudflare_email = settings.CLOUDFLARE_API_EMAIL
         cloudflare_key = settings.CLOUDFLARE_API_KEY
         cloudflare_zone = settings.CLOUDFLARE_API_ZONE
-        url = settings.PUBLIC_ASSET_URL + doc_path[1:]
+        asset_url = settings.PUBLIC_ASSET_URL + doc_path[1:]
+
+        if self.access == Access.public:
+            public_urls = [
+                host + self.get_absolute_url() for host in settings.CLOUDFLARE_HOSTS
+            ] + [asset_url]
+        else:
+            public_urls = [asset_url]
+
         if cloudflare_zone:
             requests.post(
                 "https://api.cloudflare.com/client/v4/zones/"
                 f"{cloudflare_zone}/purge_cache",
-                json={"files": [url]},
+                json={"files": public_urls},
                 headers={
                     "X-Auth-Email": cloudflare_email,
                     "X-Auth-Key": cloudflare_key,
@@ -579,7 +765,8 @@ class Document(models.Model):
                 comment=comment,
             )
             if copy:
-                revision.copy()
+                use_original_extension = comment == "Initial"
+                revision.copy(use_original_extension)
 
 
 class DeletedDocument(models.Model):
@@ -650,174 +837,6 @@ class Page(models.Model):
         return f"Page {self.page_number} of {self.document.title}"
 
 
-class Note(models.Model):
-    """A note on a document"""
-
-    objects = NoteQuerySet.as_manager()
-
-    document = models.ForeignKey(
-        verbose_name=_("document"),
-        to="documents.Document",
-        on_delete=models.CASCADE,
-        related_name="notes",
-        help_text=_("The document this note belongs to"),
-    )
-    user = models.ForeignKey(
-        verbose_name=_("user"),
-        to="users.User",
-        on_delete=models.PROTECT,
-        related_name="notes",
-        # This is set to false so we can import notes
-        # which are made by users who haven't been imported yet
-        # Once migration from old DocumentCloud is complete, this should
-        # be set back to True
-        db_constraint=False,
-        help_text=_("The user who created this note"),
-    )
-    organization = models.ForeignKey(
-        verbose_name=_("organization"),
-        to="organizations.Organization",
-        on_delete=models.PROTECT,
-        related_name="notes",
-        help_text=_("The organization this note was created within"),
-    )
-    page_number = models.IntegerField(
-        _("page number"), help_text=_("Which page this note appears on")
-    )
-    access = models.IntegerField(
-        _("access"),
-        choices=Access.choices,
-        help_text=_("Designates who may access this document by default"),
-    )
-    title = models.TextField(_("title"), help_text=_("A title for the note"))
-    content = models.TextField(
-        _("content"), blank=True, help_text=_("The contents of the note")
-    )
-    x1 = models.FloatField(
-        _("x1"),
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_(
-            "The left-most coordinate of the note in percantage of the page size"
-        ),
-    )
-    x2 = models.FloatField(
-        _("x2"),
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_(
-            "The right-most coordinate of the note in percantage of the page size"
-        ),
-    )
-    y1 = models.FloatField(
-        _("y1"),
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_(
-            "The top-most coordinate of the note in percantage of the page size"
-        ),
-    )
-    y2 = models.FloatField(
-        _("y2"),
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text=_(
-            "The bottom-most coordinate of the note in percantage of the page size"
-        ),
-    )
-    created_at = AutoCreatedField(
-        _("created at"), help_text=_("Timestamp of when the note was created")
-    )
-    updated_at = AutoLastModifiedField(
-        _("updated at"), help_text=_("Timestamp of when the note was last updated")
-    )
-    solr_dirty = models.BooleanField(
-        _("solr dirty"),
-        default=True,
-        help_text=_("Tracks if the Solr Index is out of date with the SQL model"),
-    )
-
-    class Meta:
-        ordering = ("document", "page_number")
-
-    def detach(self):
-        """Turns the note into a page note and places at page 0"""
-        self.page_number = 0
-        self.x1 = None
-        self.x2 = None
-        self.y1 = None
-        self.y2 = None
-
-    def rotate(self, rotation_amount):
-        """Rotates the note by the specified amount"""
-        # rotation_amount % 4:
-        #   0 -> unchanged
-        #   1 -> clockwise
-        #   2 -> halfway
-        #   3 -> counter-clockwise
-        rotation_amount = rotation_amount % 4
-        if rotation_amount == 0:
-            return  # unchanged
-
-        # If the note is a page note (no coordinates), rotation has no effect
-        if None in (self.x1, self.x2, self.y1, self.y2):
-            return
-
-        if rotation_amount == 1:
-            self.x1, self.x2, self.y1, self.y2 = (
-                (1 - self.y2),
-                (1 - self.y1),
-                self.x1,
-                self.x2,
-            )
-        elif rotation_amount == 2:
-            self.x1, self.x2, self.y1, self.y2 = (
-                (1 - self.x2),
-                (1 - self.x1),
-                (1 - self.y2),
-                (1 - self.y1),
-            )
-        elif rotation_amount == 3:
-            self.x1, self.x2, self.y1, self.y2 = (
-                self.y1,
-                self.y2,
-                (1 - self.x2),
-                (1 - self.x1),
-            )
-
-    def __str__(self):
-        return self.title
-
-    def save(self, *args, **kwargs):
-        """Mark this model's solr index as being out of date on every save"""
-        self.solr_dirty = True
-        super().save(*args, **kwargs)
-
-    def solr(self):
-        """Get a solr document to index this note"""
-        return {
-            "id": self.pk,
-            "document_s": self.document_id,
-            "type": "note",
-            "user": self.user_id,
-            "organization": self.organization_id,
-            "access": Access.attributes[self.access],
-            "page_count": self.page_number,
-            "title": self.title,
-            "description": self.content,
-            "created_at": format_date(self.created_at),
-            "updated_at": format_date(self.updated_at),
-            "x1_f": self.x1,
-            "x2_f": self.x2,
-            "y1_f": self.y1,
-            "y2_f": self.y2,
-        }
-
-
 class Section(models.Model):
     """A section of a document"""
 
@@ -872,14 +891,21 @@ class Revision(models.Model):
         unique_together = [("document", "version")]
         ordering = ("version",)
 
-    def copy(self):
-        """Copy the current PDF to this revision"""
+    def copy(self, use_original_extension=False):
+        """Copy the current document to this revision"""
+        if use_original_extension:
+            extension = self.document.original_extension
+            source = self.document.original_path
+        else:
+            extension = "pdf"
+            source = self.document.doc_path
+
         destination = path.doc_revision_path(
-            self.document.pk, self.document.slug, self.version
+            self.document.pk, self.document.slug, self.version, extension
         )
         if storage.exists(destination):
             logger.warning(
                 "[REVISION] Copy to destination already exists: %s", destination
             )
         else:
-            storage.copy(self.document.doc_path, destination)
+            storage.copy(source, destination)

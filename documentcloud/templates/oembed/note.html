@@ -1,8 +1,2 @@
-<div id="DC-note-{{ pk }}" class="DC-embed DC-embed-note DC-note-container" style="max-width:{{ width }}px"></div>
-<script src="{{ loader_src }}"></script>
-<script>
-  dc.embed.loadNote('{{ note_src }}');
-</script>
-<noscript>
-  <a href="{{ note_html_src }}">View note</a>
-</noscript>
+<iframe src="{{ src }}" title="{{ title }} (Hosted by DocumentCloud)" width="{{width}}" height="{{height}}" style="{{ style }}" sandbox="allow-scripts allow-same-origin"></iframe>
+<script src="{{resize_script}}"></script>

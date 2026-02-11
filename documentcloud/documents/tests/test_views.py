@@ -4,6 +4,9 @@ from django.db import connection, reset_queries
 from django.test.utils import override_settings
 from rest_framework import status
 
+# Standard Library
+import json
+
 # Third Party
 import pytest
 
@@ -302,7 +305,7 @@ class TestDocumentAPI:
     def test_bulk_create(self, client, user, django_assert_num_queries):
         """Create multiple documents"""
         client.force_authenticate(user=user)
-        with django_assert_num_queries(9):
+        with django_assert_num_queries(11):
             response = client.post(
                 "/api/documents/",
                 [{"title": "Test 1"}, {"title": "Test 2"}, {"title": "Test 3"}],
@@ -652,14 +655,17 @@ class TestDocumentAPI:
     def test_bulk_update(self, client, user):
         """Test updating multiple documents"""
         client.force_authenticate(user=user)
-        documents = DocumentFactory.create_batch(3, user=user, access=Access.private)
+        documents = DocumentFactory.create_batch(7, user=user, access=Access.private)
         response = client.patch(
             "/api/documents/",
-            [{"id": d.pk, "source": "Daily Planet"} for d in documents[:2]],
+            [{"id": d.pk, "source": "Daily Planet"} for d in documents[:4]],
             format="json",
         )
         assert response.status_code == status.HTTP_200_OK
-        assert Document.objects.filter(source="Daily Planet").count() == 2
+        response_json = json.loads(response.content)
+        assert len(response_json) == 4
+
+        assert Document.objects.filter(source="Daily Planet").count() == 4
 
     def test_bulk_update_bad(self, client, user):
         """Test updating multiple documents, without permissions for all"""
@@ -774,7 +780,7 @@ class TestDocumentAPI:
         """Test bulk update queries for permission checking"""
         documents = DocumentFactory.create_batch(10, user=user, access=Access.public)
         client.force_authenticate(user=user)
-        with django_assert_num_queries(13):
+        with django_assert_num_queries(15):
             response = client.patch(
                 "/api/documents/",
                 [{"id": d.pk, "source": "My source"} for d in documents],
@@ -938,7 +944,7 @@ class TestDocumentAPI:
         )
         documents = DocumentFactory.create_batch(2, user=user)
         client.force_authenticate(user=user)
-        with django_assert_num_queries(8):
+        with django_assert_num_queries(10):
             response = client.post(
                 "/api/documents/process/",
                 [{"id": d.pk} for d in documents],
@@ -1104,10 +1110,10 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         # turning revision control on creates an initial revision
         assert document.revisions.count() == 1
-        assert document.revisions.last().comment == "Initial"
+        assert document.revisions.last().comment == "Enable"
         mock_copy.assert_called_with(
             document.doc_path,
-            path.doc_revision_path(document.pk, document.slug, 1),
+            path.doc_revision_path(document.pk, document.slug, 1, "pdf"),
         )
 
         # create another revision
@@ -1121,7 +1127,7 @@ class TestDocumentAPI:
         # creating the revision does not copy yet
         mock_copy.assert_called_with(
             document.doc_path,
-            path.doc_revision_path(document.pk, document.slug, 1),
+            path.doc_revision_path(document.pk, document.slug, 1, "pdf"),
         )
         # patching the document to success copies the document
         client.force_authenticate(user=None)
@@ -1132,7 +1138,7 @@ class TestDocumentAPI:
         )
         mock_copy.assert_called_with(
             document.doc_path,
-            path.doc_revision_path(document.pk, document.slug, 2),
+            path.doc_revision_path(document.pk, document.slug, 2, "pdf"),
         )
 
         # view the revisions

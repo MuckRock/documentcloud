@@ -6,7 +6,6 @@ ENV PYTHONUNBUFFERED 1
 USER root
 
 RUN apt-get -qq -y update && \
-  apt-get -qq -y upgrade && \
   apt-get -qq -y install \
   # Pip dependencies
   python3-pip \

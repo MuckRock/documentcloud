@@ -40,5 +40,5 @@ def test_project_rules():
         (view_collaborator, private_project, True, False),
     ]:
         assert user.has_perm("projects.view_project", project) is can_view
-        assert user.has_perm("projects.change_project", project) is can_change
+        assert user.has_perm("projects.change_project_all", project) is can_change
         assert user.has_perm("projects.delete_project", project) is can_change

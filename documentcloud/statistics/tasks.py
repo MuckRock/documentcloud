@@ -1,7 +1,6 @@
 # Django
+from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
-from celery.schedules import crontab
-from celery.task import periodic_task
 from django.core.management import call_command
 from django.db.models import Sum
 from django.db.models.aggregates import Count
@@ -20,10 +19,9 @@ from documentcloud.statistics.models import Statistics
 
 logger = logging.getLogger(__name__)
 
+
 # This is using UTC time instead of the local timezone
-@periodic_task(
-    run_every=crontab(hour=5, minute=30), time_limit=3600, soft_time_limit=3600
-)
+@shared_task
 def store_statistics():
     """Store the daily statistics"""
 
@@ -117,9 +115,7 @@ def store_statistics():
     logger.info("[STORE STATS] Done")
 
 
-@periodic_task(
-    run_every=crontab(hour=6, minute=0), time_limit=1800, soft_time_limit=1740
-)
+@shared_task
 def db_cleanup():
     """Call some management commands to clean up the database"""
     logger.info("Starting DB Clean up")

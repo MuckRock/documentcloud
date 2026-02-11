@@ -22,6 +22,8 @@ from documentcloud.documents.search_escape import escape
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.projects.choices import CollaboratorAccess
+from documentcloud.projects.models import Project
+from documentcloud.projects.serializers import ProjectSerializer
 from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
 
@@ -106,7 +108,7 @@ def search(user, query_params):
     # "sort" or "order" query param takes precedence, then "sort:" filter passed in the
     # query, then fall back to default of score
     sort_param = query_params.get("sort", query_params.get("order", sort_order))
-    if sort_param and sort_param.startswith(("data_", "-data_")) and user.is_staff:
+    if sort_param and sort_param.startswith(("data_", "-data_")):
         if sort_param.startswith("-"):
             order = "desc"
             sort_param = sort_param[1:]
@@ -655,6 +657,8 @@ def _format_response(results, query_params, user, escaped, page_data):
         results = _expand_users(results)
     if "organization" in expands:
         results = _expand_organizations(results)
+    if "projects" in expands:
+        results = _expand_projects(results)
 
     response = {
         "count": count,
@@ -776,9 +780,9 @@ def _highlight_notes(response, text_query):
 def _add_canonical_url(results):
 
     for result in results:
-        result[
-            "canonical_url"
-        ] = f"{settings.DOCCLOUD_URL}/documents/{result['id']}-{result.get('slug', '')}"
+        doc_id = result["id"]
+        slug = result.get("slug", "")
+        result["canonical_url"] = f"{settings.DOCCLOUD_URL}/documents/{doc_id}-{slug}/"
     return results
 
 
@@ -827,6 +831,10 @@ def _expand_organizations(results):
     )
 
 
+def _expand_projects(results):
+    return _expand_list(results, "projects", Project.objects.all(), ProjectSerializer)
+
+
 def _expand(results, key, queryset, serializer):
     # DocumentCloud
     from documentcloud.documents.tasks import solr_index
@@ -840,6 +848,16 @@ def _expand(results, key, queryset, serializer):
             solr_index.delay(result["id"])
         else:
             result[key] = obj_dict.get(result[key])
+    return results
+
+
+def _expand_list(results, key, queryset, serializer):
+    ids = {i for r in results if key in r for i in r[key]}
+    objs = queryset.filter(pk__in=ids)
+    obj_dict = {obj.pk: serializer(obj).data for obj in objs}
+    for result in results:
+        if key in result:
+            result[key] = [obj_dict.get(i) for i in result[key]]
     return results
 
 

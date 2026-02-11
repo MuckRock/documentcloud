@@ -1,4 +1,5 @@
 """Custom querysets for organization app"""
+
 # Django
 from django.db import models
 from django.db.models import Q

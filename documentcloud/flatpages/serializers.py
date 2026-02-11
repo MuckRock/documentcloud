@@ -11,3 +11,8 @@ class FlatPageSerializer(serializers.ModelSerializer):
             "title",
             "content",
         ]
+        extra_kwargs = {
+            "url": {"help_text": "URL of the flatpage"},
+            "title": {"help_text": "Title of the flatpage"},
+            "content": {"help_text": "The content of the flatpage"},
+        }
