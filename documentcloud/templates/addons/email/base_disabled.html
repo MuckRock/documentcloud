@@ -5,7 +5,7 @@
   <p>
     Your scheduled run of the Add-On {{ run.addon.name }} has not run
     succesfully the last five times it was ran.  We have therefore disabled the
-    scheduled run.  <a href="{{ settings.DOCCLOUD_URL }}/app?q=#add-ons/{{ run.addon.repository }}/{{ run.event.id }}">View the scheduled run details here.</a>
+    scheduled run.  <a href="{{ settings.DOCCLOUD_URL }}/add-ons/{{ run.addon.repository }}/{{ run.event.id }}/">View the scheduled run details here.</a>
   </p>
   <p>
     {{ footer_content|urlize }}

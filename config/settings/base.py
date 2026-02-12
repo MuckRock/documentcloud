@@ -498,7 +498,7 @@ SIDEKICK_PROCESSING_URL = env("SIDEKICK_PROCESSING_URL", default="")
 
 # Auth
 LOGIN_URL = "/accounts/login/squarelet"
-LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
+LOGIN_REDIRECT_URL = DOCCLOUD_URL
 LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
 SESSION_COOKIE_SAMESITE = None
