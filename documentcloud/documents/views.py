@@ -1909,3 +1909,15 @@ class DocumentDataViewSet(viewsets.GenericViewSet):
             fields = ["project"]
 
     filterset_class = Filter
+
+
+class SavedSearchViewSet(viewsets.ModelViewSet):
+    serializer_class = SavedSearchSerializer
+    permission_classes = (IsAuthenticated,)
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        return SavedSearch.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
