@@ -31,6 +31,7 @@ from documentcloud.documents.models import (
     LegacyEntity,
     Note,
     Revision,
+    SavedSearch,
     Section,
 )
 from documentcloud.drf_bulk.serializers import BulkListSerializer
@@ -880,3 +881,14 @@ class RevisionSerializer(serializers.ModelSerializer):
             f"{settings.DOCCLOUD_API_URL}/files/documents/{obj.document.pk}/"
             f"revisions/{obj.version:04d}-{obj.document.slug}.{extension}"
         )
+
+
+class SavedSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedSearch
+        fields = ["uuid", "name", "query", "created_at", "updated_at"]
+        extra_kwargs = {
+            "uuid": {"read_only": True},
+            "created_at": {"read_only": True},
+            "updated_at": {"read_only": True},
+        }
