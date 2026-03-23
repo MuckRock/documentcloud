@@ -68,8 +68,8 @@ class PageNumberPagination(pagination.PageNumberPagination):
 
 class CursorPagination(pagination.CursorPagination):
     ordering = "pk"
-    page_size = 25
-    max_page_size = 1000
+    page_size = settings.DEFAULT_PAGE_SIZE
+    max_page_size = settings.MAX_PAGE_SIZE
     page_size_query_param = "per_page"
 
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 volumes:
   local_postgres15_data: {}
   local_postgres15_data_backups: {}
@@ -8,7 +6,6 @@ volumes:
   local_minio_data: {}
 
 services:
-
   documentcloud_django: &django
     build:
       context: .
@@ -34,7 +31,6 @@ services:
       squarelet_default:
         aliases:
           - internal.api.dev.documentcloud.org
-
 
   documentcloud_postgres:
     build:

@@ -440,6 +440,9 @@ SPECTACULAR_SETTINGS = {
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
 ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=100)
 
+DEFAULT_PAGE_SIZE = env.int("DEFAULT_PAGE_SIZE", default=25)
+MAX_PAGE_SIZE = env.int("MAX_PAGE_SIZE", default=1000)
+
 # django-extensions
 # ------------------------------------------------------------------------------
 # https://django-extensions.readthedocs.io/en/latest/installation_instructions.html#configuration
