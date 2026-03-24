@@ -3,6 +3,7 @@ from django.conf import settings
 from django.http.request import QueryDict
 
 # Standard Library
+import math
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -595,8 +596,10 @@ def _paginate_page(query_params, user):
             f"The selected `page` value of {page} is over the limit of {max_page}"
         )
     start = (page - 1) * rows
-    # Request one extra row to detect whether a next page exists
-    return {"rows": rows + 1, "start": start}, {"page": page, "rows": rows}
+    # Request one extra row to detect whether a next page exists,
+    # but never exceed max_page_size
+    solr_rows = rows + 1 if rows < max_page_size else rows
+    return {"rows": solr_rows, "start": start}, {"page": page, "rows": rows}
 
 
 def _paginate_cursor(query_params, user):
@@ -627,10 +630,13 @@ def _format_response(results, query_params, user, escaped, page_data):
 
     if "page" in page_data:
         page = page_data["page"]
-        # For page-number pagination, we requested per_page + 1 rows to
-        # detect whether more results exist without relying on hit counts.
-        has_more = len(results.docs) > per_page
-        results.docs = results.docs[:per_page]
+        # When we could request per_page + 1, use the extra row to detect
+        # whether more results exist. Otherwise fall back to hit counts.
+        if len(results.docs) > per_page:
+            has_more = True
+            results.docs = results.docs[:per_page]
+        else:
+            has_more = page < math.ceil(results.hits / per_page)
 
         if has_more:
             query_params["page"] = page + 1
