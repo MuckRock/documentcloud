@@ -113,16 +113,6 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-    path(
-        "api/documents/search/saved/",
-        saved_search_list,
-        name="savedsearch-list",
-    ),
-    path(
-        "api/documents/search/saved/<uuid:uuid>/",
-        saved_search_detail,
-        name="savedsearch-detail",
-    ),
     path("api/", include("documentcloud.oembed.urls")),
     path("api/messages/", MessageView.as_view(), name="message-create"),
     # Social Django
