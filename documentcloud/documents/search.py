@@ -596,7 +596,10 @@ def _paginate_page(query_params, user):
             f"The selected `page` value of {page} is over the limit of {max_page}"
         )
     start = (page - 1) * rows
-    return {"rows": rows, "start": start}, {"page": page, "rows": rows}
+    # Request one extra row to detect whether a next page exists,
+    # but never exceed max_page_size
+    solr_rows = rows + 1 if rows < max_page_size else rows
+    return {"rows": solr_rows, "start": start}, {"page": page, "rows": rows}
 
 
 def _paginate_cursor(query_params, user):
@@ -615,7 +618,7 @@ def _paginate_cursor(query_params, user):
         CursorPagination.page_size,
         max_value=max_page_size,
     )
-    return {"rows": rows, "cursorMark": cursor}, {}
+    return {"rows": rows, "cursorMark": cursor}, {"rows": rows}
 
 
 def _format_response(results, query_params, user, escaped, page_data):
@@ -623,11 +626,19 @@ def _format_response(results, query_params, user, escaped, page_data):
     base_url = f"{settings.DOCCLOUD_API_URL}/api/documents/search/"
     query_params = query_params.copy()
 
+    per_page = page_data["rows"]
+
     if "page" in page_data:
         page = page_data["page"]
-        per_page = page_data["rows"]
-        max_page = math.ceil(results.hits / per_page)
-        if page < max_page:
+        # When we could request per_page + 1, use the extra row to detect
+        # whether more results exist. Otherwise fall back to hit counts.
+        if len(results.docs) > per_page:
+            has_more = True
+            results.docs = results.docs[:per_page]
+        else:
+            has_more = page < math.ceil(results.hits / per_page)
+
+        if has_more:
             query_params["page"] = page + 1
             next_url = f"{base_url}?{query_params.urlencode()}"
         else:
@@ -639,6 +650,8 @@ def _format_response(results, query_params, user, escaped, page_data):
         else:
             previous_url = None
     else:
+        # For cursor pagination, Solr's nextCursorMark equality check
+        # reliably detects the last page without needing the N+1 trick.
         if query_params.get("cursor", "*") == results.nextCursorMark:
             next_url = None
         else:
