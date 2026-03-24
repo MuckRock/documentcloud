@@ -167,6 +167,28 @@ class TestSearch:
         response = self.search(str(url.query))
         self.assert_documents(response["results"], slice_=slice(10, 20))
 
+    def test_search_last_page_next_is_none(self):
+        """Test that the last page of results has next=None"""
+
+        # With 11 documents and per_page=10, page 1 should have next
+        response = self.search("")
+        assert response["next"] is not None
+        assert response["count"] == 11
+
+        # Page 2 (the last page) should have next=None
+        url = furl(response["next"])
+        response = self.search(str(url.query))
+        assert response["next"] is None
+        assert len(response["results"]) == 1
+
+    def test_search_exact_page_boundary_next_is_none(self):
+        """Test that next=None when results exactly fill the page"""
+
+        # With 11 documents and per_page=11, all results fit on one page
+        response = self.search("per_page=11")
+        assert response["next"] is None
+        assert len(response["results"]) == 11
+
     def test_search_per_page(self):
         """Test fetching a different number of results per page"""
 
