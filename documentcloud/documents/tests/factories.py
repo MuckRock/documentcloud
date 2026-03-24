@@ -123,3 +123,12 @@ class EntityOccurrenceFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "documents.EntityOccurrence"
+
+
+class SavedSearchFactory(factory.django.DjangoModelFactory):
+    user = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
+    name = factory.Sequence(lambda n: f"Saved Search {n}")
+    query = factory.Faker("sentence")
+
+    class Meta:
+        model = "documents.SavedSearch"
