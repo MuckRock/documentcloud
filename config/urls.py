@@ -93,10 +93,7 @@ projects_router.register("users", CollaborationViewSet)
 sidekick_router = SidekickRouter(router, "projects", lookup="project")
 sidekick_router.register("sidekick", SidekickViewSet)
 
-saved_search_list = SavedSearchViewSet.as_view({"get": "list", "post": "create"})
-saved_search_detail = SavedSearchViewSet.as_view(
-    {"get": "retrieve", "patch": "partial_update", "put": "update", "delete": "destroy"}
-)
+router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/api/"), name="index"),
@@ -110,16 +107,6 @@ urlpatterns = [
         "api/schema/redoc/",
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
-    ),
-    path(
-        "api/documents/search/saved/",
-        saved_search_list,
-        name="savedsearch-list",
-    ),
-    path(
-        "api/documents/search/saved/<uuid:uuid>/",
-        saved_search_detail,
-        name="savedsearch-detail",
     ),
     path("api/", include("documentcloud.oembed.urls")),
     path("api/messages/", MessageView.as_view(), name="message-create"),
