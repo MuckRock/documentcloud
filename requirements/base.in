@@ -1,6 +1,6 @@
 pytz
 python-slugify
-Pillow
+Pillow==12.1.1
 rcssmin
 argon2-cffi
 redis
@@ -18,45 +18,45 @@ daily-active-users
 
 # Django
 # ------------------------------------------------------------------------------
-django<5
+django==5.2.12
 django-environ
 django-model-utils
-django-compressor
+django-compressor>=4.5
 django-redis
-django-choices
-django-filter
+django-filter>=23.0
 django-extensions
 django-autoslug
 django-premailer
 rules
 squarelet-auth
 dogslow
-django-debug-toolbar
+django-debug-toolbar==6.2.0
 django-cprofile-middleware
 django-robots
 django-ipware
 django-parler
 
 # Django REST Framework
-djangorestframework
-rest-social-auth
-social-auth-core[openidconnect]
+djangorestframework==3.16.1
+rest-social-auth==9.0.0
+social-auth-core
 django-cors-headers
-djangorestframework_simplejwt
+djangorestframework_simplejwt==5.5.1
 drf-nested-routers
-cryptography # support RS256 for JWT
+cryptography==46.0.0 # support RS256 for JWT
 drf-flex-fields
 django-parler-rest
 
 # Cloud providers
-gcsfs
+gcsfs>=2023.6.0
 google-cloud-pubsub
 boto3
 smart-open
 aioboto3
 
 # to resolve version issues
-wrapt==1.11.2
+wrapt>=1.14.0,<2
+
 
 # Processing
 cpuprofile
@@ -67,23 +67,22 @@ numpy
 typing-extensions
 
 # Solr
--e git+https://github.com/MuckRock/pysolr.git@958db93824d6ba58c3183cee43f8cfd8c26165ba#egg=pysolr
+pysolr
 luqum
 
 # entity extraction
-google-cloud-language
+google-cloud-language>=2.11.0
 
 # PDF
 pdfplumber
 pikepdf
 pymupdf
 
-# sidekick
-numba
-scipy
-
-
+# Logging
 logzio-python-handler
 
 # Documentation 
 drf-spectacular
+
+# Python 2 compatibility some packages still require
+six==1.17.0

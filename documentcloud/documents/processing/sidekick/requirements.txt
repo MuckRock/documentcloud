@@ -1,9 +1,0 @@
--r cloud-requirements.txt
-
-aioboto3==6.5.0
-django-environ==0.4.5
-furl==2.1.0
-pebble==4.5.0
-redis==3.4.1
-requests==2.22.0
-sentry-sdk==0.14.0

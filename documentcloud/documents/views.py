@@ -116,7 +116,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     serializer_class = DocumentSerializer
     queryset = Document.objects.none()
     permission_classes = (
-        DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
+        IsAuthenticated| DocumentTokenPermissions,
     )
 
     @extend_schema(

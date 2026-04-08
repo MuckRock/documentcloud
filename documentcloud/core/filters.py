@@ -71,12 +71,12 @@ class ModelMultipleChoiceFilter(
 
 class ChoicesFilter(django_filters.TypedMultipleChoiceFilter):
     """A choices filter configured to work how we want our choice filters to work
-    `choices` kwarg should be an instanceof DjangoChoices
+    `choices` kwarg should be an instance of IntegerChoices/TextChoices
     """
 
     def __init__(self, *args, **kwargs):
         choices = kwargs.pop("choices")
-        kwargs["choices"] = list(choices.labels.items())
-        kwargs["coerce"] = lambda x: getattr(choices, x)
+        kwargs["choices"] = [(member.name, member.label) for member in choices]
+        kwargs["coerce"] = lambda x: next(m for m in choices if m.name == x)
         kwargs["widget"] = QueryArrayWidget
         super().__init__(*args, **kwargs)

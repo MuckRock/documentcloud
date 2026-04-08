@@ -1,13 +1,18 @@
 # Django
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# Third Party
-from djchoices import ChoiceItem, DjangoChoices
 
+class EntityAccess(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
 
-class EntityAccess(DjangoChoices):
-    # `api` specifies if this attribute should be accessible via the API
     # Free and public to all.
-    public = ChoiceItem(0, _("Public"), api=True)
+    public = 0, _("Public"), True
     # Visible to both the owner and her organization.
-    private = ChoiceItem(2, _("Private"), api=True)
+    private = 2, _("Private"), True
