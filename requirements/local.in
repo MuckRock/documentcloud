@@ -2,9 +2,10 @@
 
 Werkzeug
 ipdb
-Sphinx
+Sphinx>8
 psycopg2 --no-binary psycopg2
 pip-tools
+pip-audit
 
 # Testing
 # ------------------------------------------------------------------------------
@@ -34,10 +35,7 @@ fakeredis
 # ------------------------------------------------------------------------------
 python-Levenshtein
 Unidecode
-opencv-python
 requests-mock
-fasttext==0.9.3
-scikit-learn
 
 # Documentation
 # ------------------------------------------------------------------------------

@@ -1,25 +1,19 @@
-# FROM python:3.6-alpine
-FROM matthewfeickert/docker-python3-ubuntu:3.10.5
-
+FROM python:3.12-slim
 ENV PYTHONUNBUFFERED 1
-
 USER root
 
 RUN apt-get -qq -y update && \
   apt-get -qq -y install \
-  # Pip dependencies
-  python3-pip \
+  # Build dependencies
+  build-essential \
   # Postgres dependencies
   libpq-dev postgresql-client python3-psycopg2 \
   # Tesseract dependencies
-  libjpeg-turbo8 libtiff5 \
+  libjpeg62-turbo libtiff6 \
   # LibreOffice dependencies
-  libnss3-dev libcurl4-nss-dev libxslt1-dev libpixman-1-0 libxcb-render0-dev && \
-  # Symlink bash and python
-  ln -sf bash /bin/sh && rm -f /usr/bin/python && \
-  ln -s /usr/bin/python3 /usr/bin/python && \
-  curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py && \
-  python3 get-pip.py --force-reinstall
+  libnss3-dev libcurl4-openssl-dev libxslt1-dev libpixman-1-0 libxcb-render0-dev \
+  # Utilities
+  curl git
 
 # set up makecert root CA
 RUN curl http://localhost/rootCA.pem > /usr/local/share/ca-certificates/rootCA.crt && update-ca-certificates
