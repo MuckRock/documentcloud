@@ -12,9 +12,9 @@ RUN apt-get -qq -y update && apt-get -qq -y install \
 RUN groupadd -r django \
     && useradd -r -g django django
 
-# Requirements are installed here to ensure they will be cached.
+# Requirements are installed here to ensure they will be cached. 
 COPY ./requirements /requirements
-RUN pip install --no-cache-dir -r /requirements/production.txt \
+RUN pip install --upgrade "pip>=26,<27" && pip install --no-cache-dir -r /requirements/production.txt \
     && rm -rf /requirements
 
 COPY ./compose/production/django/entrypoint /entrypoint

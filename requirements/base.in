@@ -1,6 +1,6 @@
 pytz
 python-slugify
-Pillow==12.1.1
+Pillow
 rcssmin
 argon2-cffi
 redis
@@ -18,45 +18,44 @@ daily-active-users
 
 # Django
 # ------------------------------------------------------------------------------
-django==5.2.12
+django<6
 django-environ
 django-model-utils
-django-compressor>=4.5
+django-compressor
 django-redis
-django-filter>=23.0
+django-filter
 django-extensions
 django-autoslug
 django-premailer
 rules
 squarelet-auth
 dogslow
-django-debug-toolbar==6.2.0
+django-debug-toolbar
 django-cprofile-middleware
 django-robots
 django-ipware
 django-parler
 
 # Django REST Framework
-djangorestframework==3.16.1
-rest-social-auth==9.0.0
+djangorestframework
+rest-social-auth
 social-auth-core
 django-cors-headers
-djangorestframework_simplejwt==5.5.1
+djangorestframework_simplejwt
 drf-nested-routers
-cryptography==46.0.0 # support RS256 for JWT
+cryptography>=46.0.7 # support RS256 for JWT
 drf-flex-fields
 django-parler-rest
 
 # Cloud providers
-gcsfs>=2023.6.0
+gcsfs
 google-cloud-pubsub
-boto3
 smart-open
-aioboto3
+aioboto3>=15
+boto3
 
 # to resolve version issues
 wrapt>=1.14.0,<2
-
 
 # Processing
 cpuprofile
@@ -71,7 +70,7 @@ pysolr
 luqum
 
 # entity extraction
-google-cloud-language>=2.11.0
+google-cloud-language
 
 # PDF
 pdfplumber
@@ -86,3 +85,4 @@ drf-spectacular
 
 # Python 2 compatibility some packages still require
 six==1.17.0
+

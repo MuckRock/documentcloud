@@ -6,9 +6,13 @@
 #
 --no-binary psycopg2
 
-aioboto3==9.6.0
+aioboto3==15.5.0
     # via -r requirements/base.txt
-aiobotocore[boto3]==2.3.0
+aiobotocore[boto3]==2.25.1
+    # via
+    #   -r requirements/base.txt
+    #   aioboto3
+aiofiles==25.1.0
     # via
     #   -r requirements/base.txt
     #   aioboto3
@@ -16,7 +20,7 @@ aiohappyeyeballs==2.6.1
     # via
     #   -r requirements/base.txt
     #   aiohttp
-aiohttp==3.10.5
+aiohttp==3.13.5
     # via
     #   -r requirements/base.txt
     #   aiobotocore
@@ -25,7 +29,7 @@ aioitertools==0.10.0
     # via
     #   -r requirements/base.txt
     #   aiobotocore
-aiosignal==1.2.0
+aiosignal==1.4.0
     # via
     #   -r requirements/base.txt
     #   aiohttp
@@ -63,12 +67,12 @@ billiard==4.2.1
     #   celery
 bleach==6.0.0
     # via -r requirements/base.txt
-boto3==1.21.21
+boto3==1.40.61
     # via
     #   -r requirements/base.txt
     #   aiobotocore
     #   django-storages
-botocore==1.24.21
+botocore==1.40.61
     # via
     #   -r requirements/base.txt
     #   aiobotocore
@@ -79,24 +83,21 @@ celery==5.4.0
     #   -r requirements/base.txt
     #   django-celery-email
     #   squarelet-auth
-certifi==2019.6.16
+certifi==2026.2.25
     # via
     #   -r requirements/base.txt
     #   requests
+    #   scout-apm
     #   sentry-sdk
-    #   urllib3
 cffi==2.0.0
     # via
     #   -r requirements/base.txt
     #   argon2-cffi-bindings
     #   cryptography
-chardet==3.0.4
-    # via
-    #   -r requirements/base.txt
-    #   pdfminer-six
 charset-normalizer==2.1.0
     # via
     #   -r requirements/base.txt
+    #   pdfminer-six
     #   requests
 click==8.1.7
     # via
@@ -121,14 +122,12 @@ collectfast==2.2.0
     # via -r requirements/production.in
 cpuprofile==1.0.1
     # via -r requirements/base.txt
-cryptography==46.0.0
+cryptography==46.0.7
     # via
     #   -r requirements/base.txt
-    #   django-anymail
     #   google-auth
-    #   pyopenssl
+    #   pdfminer-six
     #   social-auth-core
-    #   urllib3
 cssselect==1.1.0
     # via
     #   -r requirements/base.txt
@@ -153,7 +152,7 @@ deprecated==1.3.1
     # via
     #   -r requirements/base.txt
     #   pikepdf
-django==5.2.12
+django==5.2.13
     # via
     #   -r requirements/base.txt
     #   collectfast
@@ -179,7 +178,7 @@ django==5.2.12
     #   rest-social-auth
     #   social-auth-app-django
     #   squarelet-auth
-django-anymail[mailgun]==10.0
+django-anymail[mailgun]==14.0
     # via -r requirements/production.in
 django-appconf==1.0.3
     # via
@@ -222,7 +221,7 @@ django-redis==5.0.0
     #   python-redis-lock
 django-robots==6.1
     # via -r requirements/base.txt
-django-storages[boto3]==1.12.3
+django-storages[boto3]==1.14.6
     # via
     #   -r requirements/production.in
     #   collectfast
@@ -255,21 +254,22 @@ frozenlist==1.8.0
     #   -r requirements/base.txt
     #   aiohttp
     #   aiosignal
-fsspec==2025.10.0
+fsspec==2026.3.0
     # via
     #   -r requirements/base.txt
     #   gcsfs
 furl==2.1.0
     # via -r requirements/base.txt
-gcsfs==2025.10.0
+gcsfs==2026.3.0
     # via -r requirements/base.txt
-google-api-core[grpc]==2.17.1
+google-api-core[grpc]==2.29.0
     # via
     #   -r requirements/base.txt
     #   google-cloud-core
     #   google-cloud-language
     #   google-cloud-pubsub
     #   google-cloud-storage
+    #   google-cloud-storage-control
 google-auth==2.49.1
     # via
     #   -r requirements/base.txt
@@ -278,7 +278,9 @@ google-auth==2.49.1
     #   google-auth-oauthlib
     #   google-cloud-core
     #   google-cloud-language
+    #   google-cloud-pubsub
     #   google-cloud-storage
+    #   google-cloud-storage-control
 google-auth-oauthlib==1.3.1
     # via
     #   -r requirements/base.txt
@@ -289,9 +291,13 @@ google-cloud-core==2.5.1
     #   google-cloud-storage
 google-cloud-language==2.19.0
     # via -r requirements/base.txt
-google-cloud-pubsub==2.10.0
+google-cloud-pubsub==2.36.0
     # via -r requirements/base.txt
-google-cloud-storage==3.4.1
+google-cloud-storage==3.10.1
+    # via
+    #   -r requirements/base.txt
+    #   gcsfs
+google-cloud-storage-control==1.6.1
     # via
     #   -r requirements/base.txt
     #   gcsfs
@@ -310,7 +316,7 @@ googleapis-common-protos[grpc]==1.73.0
     #   google-api-core
     #   grpc-google-iam-v1
     #   grpcio-status
-grpc-google-iam-v1==0.12.7
+grpc-google-iam-v1==0.14.4
     # via
     #   -r requirements/base.txt
     #   google-cloud-pubsub
@@ -332,17 +338,21 @@ gunicorn==20.1.0
     # via -r requirements/production.in
 html2text==2020.1.16
     # via -r requirements/base.txt
-idna==2.8
+idna==3.7
     # via
     #   -r requirements/base.txt
+    #   django-anymail
     #   requests
-    #   urllib3
     #   yarl
+importlib-metadata==8.4.0
+    # via
+    #   -r requirements/base.txt
+    #   opentelemetry-api
 inflection==0.5.1
     # via
     #   -r requirements/base.txt
     #   drf-spectacular
-ipython==8.5.0
+ipython==8.10.0
     # via -r requirements/base.txt
 jedi==0.18.1
     # via
@@ -351,6 +361,7 @@ jedi==0.18.1
 jmespath==0.9.4
     # via
     #   -r requirements/base.txt
+    #   aiobotocore
     #   boto3
     #   botocore
 jsonschema==3.2.0
@@ -363,7 +374,7 @@ kombu==5.4.2
     #   celery
 listcrunch==1.0.0
     # via -r requirements/base.txt
-logzio-python-handler==4.1.1
+logzio-python-handler==4.1.9
     # via -r requirements/base.txt
 luqum==0.8.1
     # via -r requirements/base.txt
@@ -372,15 +383,16 @@ lxml==6.0.2
     #   -r requirements/base.txt
     #   pikepdf
     #   premailer
-markdown==3.4.1
+markdown==3.8.1
     # via -r requirements/base.txt
 matplotlib-inline==0.1.3
     # via
     #   -r requirements/base.txt
     #   ipython
-multidict==4.7.5
+multidict==6.7.1
     # via
     #   -r requirements/base.txt
+    #   aiobotocore
     #   aiohttp
     #   yarl
 numpy==2.2.6
@@ -390,6 +402,20 @@ oauthlib==3.1.0
     #   -r requirements/base.txt
     #   requests-oauthlib
     #   social-auth-core
+opentelemetry-api==1.40.0
+    # via
+    #   -r requirements/base.txt
+    #   google-cloud-pubsub
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-sdk==1.40.0
+    # via
+    #   -r requirements/base.txt
+    #   google-cloud-pubsub
+opentelemetry-semantic-conventions==0.61b0
+    # via
+    #   -r requirements/base.txt
+    #   opentelemetry-sdk
 orderedmultidict==1.0.1
     # via
     #   -r requirements/base.txt
@@ -402,11 +428,11 @@ parso==0.8.3
     # via
     #   -r requirements/base.txt
     #   jedi
-pdfminer-six==20200517
+pdfminer-six==20251230
     # via
     #   -r requirements/base.txt
     #   pdfplumber
-pdfplumber==0.5.28
+pdfplumber==0.11.9
     # via -r requirements/base.txt
 pebble==4.5.0
     # via -r requirements/base.txt
@@ -441,17 +467,22 @@ prompt-toolkit==3.0.38
 propcache==0.4.1
     # via
     #   -r requirements/base.txt
+    #   aiohttp
     #   yarl
 proto-plus==1.27.1
     # via
     #   -r requirements/base.txt
+    #   google-api-core
     #   google-cloud-language
     #   google-cloud-pubsub
-protobuf==4.25.2
+    #   google-cloud-storage-control
+protobuf==5.29.6
     # via
     #   -r requirements/base.txt
     #   google-api-core
     #   google-cloud-language
+    #   google-cloud-pubsub
+    #   google-cloud-storage-control
     #   googleapis-common-protos
     #   grpc-google-iam-v1
     #   grpcio-status
@@ -481,10 +512,6 @@ pycparser==2.19
     # via
     #   -r requirements/base.txt
     #   cffi
-pycryptodome==3.10.1
-    # via
-    #   -r requirements/base.txt
-    #   pdfminer-six
 pygments==2.20.0
     # via
     #   -r requirements/base.txt
@@ -496,8 +523,10 @@ pyjwt==2.12.1
     #   social-auth-core
 pymupdf==1.25.3
     # via -r requirements/base.txt
-pyopenssl==19.1.0
-    # via urllib3
+pypdfium2==5.7.0
+    # via
+    #   -r requirements/base.txt
+    #   pdfplumber
 pyrsistent==0.18.0
     # via
     #   -r requirements/base.txt
@@ -507,6 +536,7 @@ pysolr==3.11.0
 python-dateutil==2.9.0.post0
     # via
     #   -r requirements/base.txt
+    #   aiobotocore
     #   botocore
     #   celery
 python-redis-lock[django]==3.3.1
@@ -519,7 +549,7 @@ python3-openid==3.1.0
     #   social-auth-core
 pytz==2022.1
     # via -r requirements/base.txt
-pyyaml==5.3.1
+pyyaml==6.0.3
     # via
     #   -r requirements/base.txt
     #   drf-spectacular
@@ -532,7 +562,7 @@ redis==3.4.1
     #   -r requirements/base.txt
     #   django-redis
     #   python-redis-lock
-requests==2.32.5
+requests==2.33.0
     # via
     #   -r requirements/base.txt
     #   django-anymail
@@ -558,13 +588,13 @@ rjsmin==1.2.5
     #   django-compressor
 rules==2.1
     # via -r requirements/base.txt
-s3transfer==0.5.2
+s3transfer==0.14.0
     # via
     #   -r requirements/base.txt
     #   boto3
-scout-apm==2.17.0
+scout-apm==3.5.3
     # via -r requirements/production.in
-sentry-sdk==1.0.0
+sentry-sdk==2.57.0
     # via -r requirements/production.in
 six==1.17.0
     # via
@@ -575,7 +605,6 @@ six==1.17.0
     #   furl
     #   jsonschema
     #   orderedmultidict
-    #   pyopenssl
     #   python-dateutil
 smart-open==7.5.1
     # via -r requirements/base.txt
@@ -589,11 +618,7 @@ social-auth-core[openidconnect]==4.7.0
     #   rest-social-auth
     #   social-auth-app-django
     #   squarelet-auth
-sortedcontainers==2.4.0
-    # via
-    #   -r requirements/base.txt
-    #   pdfminer-six
-sqlparse==0.4.4
+sqlparse==0.5.4
     # via
     #   -r requirements/base.txt
     #   django
@@ -616,8 +641,12 @@ traitlets==5.3.0
 typing-extensions==4.15.0
     # via
     #   -r requirements/base.txt
+    #   aiosignal
     #   collectfast
     #   grpcio
+    #   opentelemetry-api
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
 tzdata==2024.2
     # via
     #   -r requirements/base.txt
@@ -629,7 +658,7 @@ uritemplate==4.1.1
     # via
     #   -r requirements/base.txt
     #   drf-spectacular
-urllib3[secure]==1.26.10
+urllib3==2.6.3
     # via
     #   -r requirements/base.txt
     #   botocore
@@ -643,10 +672,6 @@ vine==5.1.0
     #   amqp
     #   celery
     #   kombu
-wand==0.6.6
-    # via
-    #   -r requirements/base.txt
-    #   pdfplumber
 wcwidth==0.1.8
     # via
     #   -r requirements/base.txt
@@ -666,6 +691,10 @@ yarl==1.23.0
     # via
     #   -r requirements/base.txt
     #   aiohttp
+zipp==3.19.1
+    # via
+    #   -r requirements/base.txt
+    #   importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
