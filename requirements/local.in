@@ -2,7 +2,7 @@
 
 Werkzeug
 ipdb
-Sphinx>8
+Sphinx
 psycopg2 --no-binary psycopg2
 pip-tools
 pip-audit
