@@ -123,7 +123,7 @@ class TestUserAPI:
     def test_retrieve_me_anonymous(self, client):
         """me endpoint doesn't work for logged out users"""
         response = client.get("/api/users/me/")
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update(self, client, user):
         """Test setting a users active org"""
