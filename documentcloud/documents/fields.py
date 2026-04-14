@@ -4,12 +4,9 @@ from rest_framework import serializers
 
 class ChoiceField(serializers.ChoiceField):
     """Choice field enhanced to use the choices label and ability to omit choices"""
+
     def __init__(self, choices, **kwargs):
-        choices = [
-            (member.value, member.name)
-            for member in choices
-            if member.api
-        ]
+        choices = [(member.value, member.name) for member in choices if member.api]
         self.choice_map = {label: value for value, label in choices}
         super().__init__(choices, **kwargs)
 

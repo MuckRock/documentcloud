@@ -374,7 +374,7 @@ class Page:
 
     def set_desired_transform(self, page_object, x, y, width, height):
         # Get the bounds of the text object
-        (left, bottom, right, top) = self.get_bounds(page_object)
+        left, bottom, right, top = self.get_bounds(page_object)
 
         # Transform to origin
         self.workspace.fpdf_page_obj_transform(
