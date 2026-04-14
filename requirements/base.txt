@@ -286,11 +286,15 @@ multidict==6.7.1
     #   aiohttp
     #   yarl
 numpy==2.2.6
-    # via -r requirements/base.in
+    # via
+    #   -r requirements/base.in
+    #   opencv-python-headless
 oauthlib==3.1.0
     # via
     #   requests-oauthlib
     #   social-auth-core
+opencv-python-headless==4.13.0.92
+    # via -r requirements/base.in
 opentelemetry-api==1.40.0
     # via
     #   google-cloud-pubsub

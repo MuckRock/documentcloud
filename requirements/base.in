@@ -61,6 +61,7 @@ wrapt>=1.14.0,<2
 cpuprofile
 listcrunch
 numpy
+opencv-python-headless
 
 # Typing
 typing-extensions
