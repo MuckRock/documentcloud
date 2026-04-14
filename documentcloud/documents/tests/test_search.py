@@ -106,6 +106,7 @@ def setup_solr(django_db_setup, django_db_blocker):
             for note in notes.values():
                 solr_notes.add([note.solr()])
             solr.commit()
+            solr_notes.commit()
             yield
         finally:
             Document.objects.all().delete()

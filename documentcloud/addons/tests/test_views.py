@@ -262,9 +262,9 @@ class TestAddOnRunAPI:
 
     def test_destroy(self, client, mocker):
         """Destroying an addon run cancels it"""
-        cancel = mocker.patch.object(AddOnRun, "cancel")
+        cancel = mocker.patch("documentcloud.addons.views.cancel.delay")
         run = AddOnRunFactory()
         client.force_authenticate(user=run.user)
         response = client.delete(f"/api/addon_runs/{run.uuid}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert cancel.called_once()
+        cancel.assert_called_once()
