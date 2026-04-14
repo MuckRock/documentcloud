@@ -11,7 +11,7 @@ class EntityAccess(models.IntegerChoices):
             obj._label_ = label
         obj.api = api
         return obj
-
+    # pylint:disable=invalid-name
     # Free and public to all.
     public = 0, _("Public"), True
     # Visible to both the owner and her organization.

@@ -12,6 +12,7 @@ class CollaboratorAccess(models.IntegerChoices):
         obj.api = api
         return obj
 
+    # pylint:disable = invalid-name
     # This collaborator has read access
     view = 0, _("View"), True
     # This collaborator can edit the documents in the project

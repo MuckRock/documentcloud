@@ -11,7 +11,7 @@ class Language(models.TextChoices):
             obj._label_ = label
         obj.ocr_code = ocr_code if ocr_code is not None else value
         return obj
-
+    # pylint: disable = invalid-name
     afrikaans = "afr", _("Afrikaans")
     amharic = "amh", _("Amharic")
     arabic = "ara", _("Arabic")
