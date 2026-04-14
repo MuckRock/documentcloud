@@ -849,7 +849,7 @@ class EntityOccurrenceSerializer(serializers.ModelSerializer):
     def get_occurrences(self, obj):
         def fix(entity):
             value = entity.pop("kind", 0)
-            entity["kind"] = OccurrenceKind.attributes.get(value, value)
+            entity["kind"] = OccurrenceKind(value).name if value in OccurrenceKind.values else value
             return entity
 
         return [fix(e) for e in obj.occurrences]
