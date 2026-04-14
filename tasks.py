@@ -31,7 +31,7 @@ def test(
     slow_switch = "" if slow else '-m "not slow"'
     warnings = "-e PYTHONWARNINGS=always" if warnings else ""
     filters = f"-k {keywords}" if keywords else ""
-
+    c.run(f"{COMPOSE_PREFIX} up -d documentcloud_test_solr")
     c.run(
         COMPOSE_RUN_OPT_USER.format(
             opt=f"-e DJANGO_SETTINGS_MODULE=config.settings.test {warnings}",

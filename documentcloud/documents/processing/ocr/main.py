@@ -30,9 +30,9 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
-    from documentcloud.common.utils import graft_page
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
+    from documentcloud.common.utils import graft_page
     from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
     # Third Party
@@ -45,12 +45,11 @@ else:
         publisher,
         storage,
     )
-    from common.utils import graft_page
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
+    from common.utils import graft_page
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
-
     from tess import Tesseract
 
     sentry_sdk.init(

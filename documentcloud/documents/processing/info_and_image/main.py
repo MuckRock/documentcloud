@@ -36,7 +36,6 @@ logging.getLogger("pdfminer").setLevel(logging.WARNING)
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
     # DocumentCloud
-    from documentcloud.documents.processing.info_and_image import graft
     from documentcloud.common import access_choices, path, redis_fields
     from documentcloud.common.environment import (
         encode_pubsub_data,
@@ -45,11 +44,12 @@ if env.str("ENVIRONMENT").startswith("local"):
         storage,
     )
     from documentcloud.common.serverless import utils
-    from documentcloud.common.serverless.utils import REDIS_TTL
     from documentcloud.common.serverless.error_handling import (
         pubsub_function,
         pubsub_function_import,
     )
+    from documentcloud.common.serverless.utils import REDIS_TTL
+    from documentcloud.documents.processing.info_and_image import graft
     from documentcloud.documents.processing.info_and_image.graft_adapter import (
         GraftContext,
     )
@@ -60,7 +60,6 @@ if env.str("ENVIRONMENT").startswith("local"):
 else:
     # Third Party
     import graft
-
     # only initialize sentry on serverless
     import sentry_sdk
     from common import access_choices, path, redis_fields
@@ -71,8 +70,8 @@ else:
         storage,
     )
     from common.serverless import utils
-    from common.serverless.utils import REDIS_TTL
     from common.serverless.error_handling import pubsub_function, pubsub_function_import
+    from common.serverless.utils import REDIS_TTL
     from graft_adapter import GraftContext
     from pdfium import StorageHandler, Workspace
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration

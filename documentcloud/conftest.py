@@ -32,7 +32,6 @@ def pytest_ignore_collect(collection_path, config):
     return collection_path.is_dir() and collection_path.is_symlink()
 
 
-
 @pytest.fixture
 def user():
     return UserFactory()
