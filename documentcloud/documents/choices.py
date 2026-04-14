@@ -11,7 +11,7 @@ class Access(models.IntegerChoices):
             obj._label_ = label
         obj.api = api
         return obj
-
+    # pylint: disable = invalid-name
     # Free and public to all.
     public = 0, _("Public"), True
     # Visible to both the owner and her organization.
@@ -30,7 +30,7 @@ class Status(models.IntegerChoices):
             obj._label_ = label
         obj.api = api
         return obj
-
+    # pylint: disable = invalid-name
     # The document is in a normal successful state
     success = 0, _("Success"), True
     # The document is processing, but readable during the operation
@@ -53,7 +53,7 @@ class EntityKind(models.IntegerChoices):
             obj._label_ = label
         obj.api = api
         return obj
-
+    # pylint: disable = invalid-name
     unknown = 0, _("Unknown"), True
     person = 1, _("Person"), True
     location = 2, _("Location"), True
@@ -77,7 +77,7 @@ class OccurrenceKind(models.IntegerChoices):
             obj._label_ = label
         obj.api = api
         return obj
-
+    # pylint: disable = invalid-name
     unknown = 0, _("Unknown"), True
     proper = 1, _("Proper"), True
     common = 2, _("Common"), True

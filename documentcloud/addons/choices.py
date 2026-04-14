@@ -11,7 +11,7 @@ class Event(models.IntegerChoices):
             obj._label_ = label
         obj.api = api
         return obj
-
+    # pylint:disable = invalid-name
     disabled = 0, _("Disabled"), True
     hourly = 1, _("Hourly"), True
     daily = 2, _("Daily"), True
