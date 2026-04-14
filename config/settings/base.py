@@ -439,6 +439,9 @@ SPECTACULAR_SETTINGS = {
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
 ANON_PAGE_LIMIT = env.int("ANON_PAGE_LIMIT", default=100)
 
+DEFAULT_PAGE_SIZE = env.int("DEFAULT_PAGE_SIZE", default=25)
+MAX_PAGE_SIZE = env.int("MAX_PAGE_SIZE", default=1000)
+
 # django-extensions
 # ------------------------------------------------------------------------------
 # https://django-extensions.readthedocs.io/en/latest/installation_instructions.html#configuration
@@ -497,7 +500,7 @@ PROGRESS_TIMEOUT = env.int("PROGRESS_TIMEOUT", default=1)
 
 # Auth
 LOGIN_URL = "/accounts/login/squarelet"
-LOGIN_REDIRECT_URL = DOCCLOUD_URL + "/app"
+LOGIN_REDIRECT_URL = DOCCLOUD_URL
 LOGOUT_REDIRECT_URL = DOCCLOUD_URL
 # This lets us send the session cookie to the API
 SESSION_COOKIE_SAMESITE = None
@@ -561,6 +564,7 @@ SOLR_RETRY_BACKOFF = env.int("SOLR_RETRY_BACKOFF", default=300)
 SOLR_HL_SNIPPETS = env.int("SOLR_HL_SNIPPETS", default=25)
 SOLR_USE_HL = env.bool("SOLR_USE_HL", default=True)
 SOLR_HL_MULTI_TERM = env("SOLR_HL_MULTI_TERM", default="true")
+SOLR_HL_WEIGHT_MATCHES = env("SOLR_HL_WEIGHT_MATCHES", default="false")
 SOLR_TIMEOUT = env.int("SOLR_TIMEOUT", default=20)
 SOLR_ANON_MAX_ROWS = env.int("SOLR_ANON_MAX_ROWS", default=25)
 SOLR_ADD_EDIT_ACCESS = env.bool("SOLR_ADD_EDIT_ACCESS", default=False)

@@ -129,6 +129,7 @@ def search(user, query_params):
         "sort": sort,
         "hl": "on" if use_hl else "off",
         "hl.highlightMultiTerm": settings.SOLR_HL_MULTI_TERM,
+        "hl.weightMatches": settings.SOLR_HL_WEIGHT_MATCHES,
         **page_query_data,
     }
     if (

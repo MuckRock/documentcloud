@@ -37,6 +37,7 @@ from documentcloud.documents.views import (
     ModificationViewSet,
     NoteViewSet,
     RedactionViewSet,
+    SavedSearchViewSet,
     SectionViewSet,
 )
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
@@ -91,6 +92,7 @@ projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
+router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/api/"), name="index"),

@@ -9,6 +9,7 @@ import pytest
 from documentcloud.documents.tests.factories import (
     DocumentFactory,
     NoteFactory,
+    SavedSearchFactory,
     SectionFactory,
 )
 from documentcloud.entities.tests.factories import (
@@ -74,6 +75,11 @@ def organization():
 @pytest.fixture
 def pro_organization():
     return ProfessionalOrganizationFactory()
+
+
+@pytest.fixture
+def saved_search():
+    return SavedSearchFactory()
 
 
 @pytest.fixture
