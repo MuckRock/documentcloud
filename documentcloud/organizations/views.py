@@ -11,9 +11,7 @@ from drf_spectacular.utils import OpenApiExample, extend_schema
 
 # DocumentCloud
 from documentcloud.addons.models import AddOnRun
-from documentcloud.core.permissions import (
-    OrganizationAICreditsPermissions
-)
+from documentcloud.core.permissions import OrganizationAICreditsPermissions
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import (
