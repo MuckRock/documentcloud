@@ -396,12 +396,16 @@ multidict==6.7.1
     #   aiohttp
     #   yarl
 numpy==2.2.6
-    # via -r requirements/base.txt
+    # via
+    #   -r requirements/base.txt
+    #   opencv-python-headless
 oauthlib==3.1.0
     # via
     #   -r requirements/base.txt
     #   requests-oauthlib
     #   social-auth-core
+opencv-python-headless==4.13.0.92
+    # via -r requirements/base.txt
 opentelemetry-api==1.40.0
     # via
     #   -r requirements/base.txt

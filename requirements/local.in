@@ -10,7 +10,7 @@ pip-audit
 # Testing
 # ------------------------------------------------------------------------------
 pytest
-pytest-sugar
+pytest-sugar>=1
 pytest-mock
 -e git+https://github.com/elritsch/python-sharedmock#egg=sharedmock
 pytest-watch
