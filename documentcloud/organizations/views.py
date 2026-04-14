@@ -2,7 +2,7 @@
 from django.db.models.expressions import F, Value
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import DjangoObjectPermissions
 from rest_framework.response import Response
 
 # Third Party
@@ -11,10 +11,7 @@ from drf_spectacular.utils import OpenApiExample, extend_schema
 
 # DocumentCloud
 from documentcloud.addons.models import AddOnRun
-from documentcloud.core.permissions import (
-    DjangoObjectPermissionsOrAnonReadOnly,
-    OrganizationAICreditsPermissions,
-)
+from documentcloud.core.permissions import OrganizationAICreditsPermissions
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.serializers import (
@@ -25,9 +22,8 @@ from documentcloud.organizations.serializers import (
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrganizationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [DjangoObjectPermissions]
     queryset = Organization.objects.none()
-    permission_classes = (DjangoObjectPermissionsOrAnonReadOnly,)
 
     @extend_schema(
         request=None,

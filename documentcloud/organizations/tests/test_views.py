@@ -19,17 +19,20 @@ from documentcloud.organizations.tests.factories import (
 
 @pytest.mark.django_db()
 class TestOrganizationAPI:
-    def test_list(self, client):
+    def test_list(self, client, user):
         """List organizations"""
+        client.force_authenticate(user=user)
         size = 10
-        OrganizationFactory.create_batch(size)
+        OrganizationFactory.create_batch(size, individual=False)
         response = client.get("/api/organizations/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
-        assert len(response_json["results"]) == size
+        # +1 for the user's individual organization created by the user fixture
+        assert len(response_json["results"]) == size + 1
 
-    def test_list_id_in_filter(self, client):
+    def test_list_id_in_filter(self, client, user):
         """List organizations"""
+        client.force_authenticate(user=user)
         size = 10
         orgs = OrganizationFactory.create_batch(size)
         some_ids = [str(o.id) for o in orgs[:5]]
@@ -38,8 +41,9 @@ class TestOrganizationAPI:
         response_json = json.loads(response.content)
         assert len(response_json["results"]) == len(some_ids)
 
-    def test_list_filter(self, client):
+    def test_list_filter(self, client, user):
         """List organizations"""
+        client.force_authenticate(user=user)
         names = ["abcdef", "ABC123", "abcxyz", "xyz123", "x12345", "qwerty"]
         for name in names:
             OrganizationFactory.create(name=name)
@@ -51,19 +55,32 @@ class TestOrganizationAPI:
             response_json = json.loads(response.content)
             assert len(response_json["results"]) == size
 
-    def test_retrieve(self, client, organization):
+    def test_retrieve(self, client, user, organization):
         """Test retrieving an organization"""
+        client.force_authenticate(user=user)
         response = client.get(f"/api/organizations/{organization.pk}/")
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         serializer = OrganizationSerializer(organization)
         assert response_json == serializer.data
 
-    def test_retrieve_bad(self, client):
+    def test_retrieve_bad(self, client, user):
         """Cannot view a private organization"""
+        client.force_authenticate(user=user)
         organization = OrganizationFactory(private=True)
         response = client.get(f"/api/organizations/{organization.pk}/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_list_unauthenticated(self, client):
+        """Unauthenticated users cannot list organizations"""
+        OrganizationFactory.create_batch(3)
+        response = client.get("/api/organizations/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_retrieve_unauthenticated(self, client, organization):
+        """Unauthenticated users cannot retrieve an organization"""
+        response = client.get(f"/api/organizations/{organization.pk}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_ai_credits(self, client, pro_organization, user):
         """Test charging AI credits"""
