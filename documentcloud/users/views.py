@@ -31,6 +31,7 @@ class UserViewSet(
     viewsets.GenericViewSet,
 ):
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
     queryset = User.objects.none()
     permit_list_expands = ["organization"]
 
