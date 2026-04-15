@@ -49,8 +49,6 @@ from documentcloud.projects.views import (
     ProjectMembershipViewSet,
     ProjectViewSet,
 )
-from documentcloud.sidekick.routers import SidekickRouter
-from documentcloud.sidekick.views import SidekickViewSet
 from documentcloud.statistics.views import StatisticsViewSet
 from documentcloud.users.views import MessageView, UserViewSet
 
@@ -76,8 +74,12 @@ documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document
 documents_router.register("notes", NoteViewSet)
 documents_router.register("sections", SectionViewSet)
 documents_router.register("entities", EntityOccurrenceViewSet)
-documents_router.register("legacy_entities_2", LegacyEntity2ViewSet)
-documents_router.register("legacy_entities", LegacyEntityViewSet)
+documents_router.register(
+    "legacy_entities_2", LegacyEntity2ViewSet, basename="legacyentity2"
+)
+documents_router.register(
+    "legacy_entities", LegacyEntityViewSet, basename="legacyentity"
+)
 documents_router.register("dates", EntityDateViewSet)
 documents_router.register("errors", DocumentErrorViewSet)
 documents_router.register("data", DataViewSet, basename="data")
@@ -90,9 +92,6 @@ projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
-sidekick_router = SidekickRouter(router, "projects", lookup="project")
-sidekick_router.register("sidekick", SidekickViewSet)
-
 router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
 
 urlpatterns = [
@@ -101,7 +100,6 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("api/", include(documents_router.urls)),
     path("api/", include(projects_router.urls)),
-    path("api/", include(sidekick_router.urls)),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/redoc/",

@@ -1,15 +1,21 @@
 # Django
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# Third Party
-from djchoices import ChoiceItem, DjangoChoices
 
+class CollaboratorAccess(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
 
-class CollaboratorAccess(DjangoChoices):
-    # `api` specifies if this attribute should be accessible via the API
+    # pylint:disable = invalid-name
     # This collaborator has read access
-    view = ChoiceItem(0, _("View"), api=True)
+    view = 0, _("View"), True
     # This collaborator can edit the documents in the project
-    edit = ChoiceItem(1, _("Edit"), api=True)
-    # This collaborator  can edit the documents and the project itself
-    admin = ChoiceItem(2, _("Admin"), api=True)
+    edit = 1, _("Edit"), True
+    # This collaborator can edit the documents and the project itself
+    admin = 2, _("Admin"), True

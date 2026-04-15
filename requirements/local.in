@@ -5,11 +5,12 @@ ipdb
 Sphinx
 psycopg2 --no-binary psycopg2
 pip-tools
+pip-audit
 
 # Testing
 # ------------------------------------------------------------------------------
 pytest
-pytest-sugar
+pytest-sugar>=1
 pytest-mock
 -e git+https://github.com/elritsch/python-sharedmock#egg=sharedmock
 pytest-watch
@@ -20,7 +21,7 @@ flake8
 coverage
 black
 pylint-django
-pylint-celery
+pylint>=3,<4
 
 # Django
 # ------------------------------------------------------------------------------
@@ -34,10 +35,7 @@ fakeredis
 # ------------------------------------------------------------------------------
 python-Levenshtein
 Unidecode
-opencv-python
 requests-mock
-fasttext==0.9.3
-scikit-learn
 
 # Documentation
 # ------------------------------------------------------------------------------

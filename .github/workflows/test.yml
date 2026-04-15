@@ -1,5 +1,4 @@
 name: CI
-
 on:
   workflow_dispatch:
   pull_request:
@@ -7,9 +6,8 @@ on:
     branches:
       - master
       - staging
-
 env:
-  PYENV_VERSION: '3.10'
+  PYENV_VERSION: '3.12'
   DJANGO_SECRET_KEY: ${{secrets.SECRET_KEY}}
   DJANGO_SETTINGS_MODULE: config.settings.test
   DATABASE_URL: postgres://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/test
@@ -38,15 +36,10 @@ env:
   DOCUMENT_BUCKET: ${{secrets.DOCUMENT_BUCKET}}
   REDIS_PROCESSING_PASSWORD: ""
   SAM_CLI_TELEMETRY: 0
-
-
-
   
-
 jobs:
   check:
     runs-on: ubuntu-latest
-
     services:
       redis:
         image: redis
@@ -63,30 +56,19 @@ jobs:
             submodules: recursive
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           cache: "pip" # caching pip dependencies
-
-      - name: Install pip
-        run: |
-          wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
-          python3 get-pip.py
-
       - name: Install
         run: |
           pip install -r requirements/local.txt
-
       - name: Lint
         run: pylint documentcloud
-
       - name: Isort
         run: isort --check-only -rc documentcloud
-
       - name: Formatting
         run: black --check documentcloud --exclude migrations
-
   test:
     runs-on: ubuntu-latest
-
     services:
       redis:
         image: redis
@@ -97,7 +79,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
       postgres:
         image: postgres
         env:
@@ -113,28 +94,17 @@ jobs:
         ports:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
-
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           cache: "pip" # caching pip dependencies
-
-      - name: Install pip
-        run: |
-          wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
-          python3 get-pip.py
-
       - name: Install requirements
         run: |
           pip install -r requirements/local.txt
-
-
       - name: Test
         run:  pytest documentcloud -m "not solr"
         env:
@@ -142,4 +112,3 @@ jobs:
           PG_USER: test
           PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
           DATABASE_URL: postgres://test:postgres@127.0.0.1:5432/test
-

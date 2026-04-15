@@ -1,55 +1,87 @@
 # Django
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# Third Party
-from djchoices import ChoiceItem, DjangoChoices
 
+class Access(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
 
-class Access(DjangoChoices):
-    # `api` specifies if this attribute should be accessible via the API
+    # pylint: disable = invalid-name
     # Free and public to all.
-    public = ChoiceItem(0, _("Public"), api=True)
+    public = 0, _("Public"), True
     # Visible to both the owner and her organization.
-    organization = ChoiceItem(1, _("Organization"), api=True)
+    organization = 1, _("Organization"), True
     # The document is only visible to its owner.
-    private = ChoiceItem(2, _("Private"), api=True)
+    private = 2, _("Private"), True
     # The document has been taken down (perhaps temporary).
-    invisible = ChoiceItem(3, _("Invisible"), api=False)
+    invisible = 3, _("Invisible"), False
 
 
-class Status(DjangoChoices):
-    # `api` specifies if this attribute should be accessible via the API
-    # The document is in a normal succesful state
-    success = ChoiceItem(0, _("Success"), api=True)
+class Status(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
+
+    # pylint: disable = invalid-name
+    # The document is in a normal successful state
+    success = 0, _("Success"), True
     # The document is processing, but readable during the operation
-    readable = ChoiceItem(1, _("Readable"), api=True)
+    readable = 1, _("Readable"), True
     # The document is processing, and not currently readable
-    pending = ChoiceItem(2, _("Pending"), api=True)
+    pending = 2, _("Pending"), True
     # There was an error processing the document
-    error = ChoiceItem(3, _("Error"), api=True)
+    error = 3, _("Error"), True
     # There is no file yet
-    nofile = ChoiceItem(4, _("No file"), api=True)
+    nofile = 4, _("No file"), True
     # The file is deleted
-    deleted = ChoiceItem(5, _("Deleted"), api=False)
+    deleted = 5, _("Deleted"), False
 
 
-class EntityKind(DjangoChoices):
-    unknown = ChoiceItem(0, _("Unknown"), api=True)
-    person = ChoiceItem(1, _("Person"), api=True)
-    location = ChoiceItem(2, _("Location"), api=True)
-    organization = ChoiceItem(3, _("Organization"), api=True)
-    event = ChoiceItem(4, _("Event"), api=True)
-    work_of_art = ChoiceItem(5, _("Work_Of_Art"), api=True)
-    consumer_good = ChoiceItem(6, _("Consumer_Good"), api=True)
-    other = ChoiceItem(7, _("Other"), api=True)
-    phone_number = ChoiceItem(9, _("Phone_Number"), api=True)
-    address = ChoiceItem(10, _("Address"), api=True)
-    date = ChoiceItem(11, _("Date"), api=True)
-    number = ChoiceItem(12, _("Number"), api=True)
-    price = ChoiceItem(13, _("Price"), api=True)
+class EntityKind(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
+
+    # pylint: disable = invalid-name
+    unknown = 0, _("Unknown"), True
+    person = 1, _("Person"), True
+    location = 2, _("Location"), True
+    organization = 3, _("Organization"), True
+    event = 4, _("Event"), True
+    work_of_art = 5, _("Work_Of_Art"), True
+    consumer_good = 6, _("Consumer_Good"), True
+    other = 7, _("Other"), True
+    phone_number = 9, _("Phone_Number"), True
+    address = 10, _("Address"), True
+    date = 11, _("Date"), True
+    number = 12, _("Number"), True
+    price = 13, _("Price"), True
 
 
-class OccurrenceKind(DjangoChoices):
-    unknown = ChoiceItem(0, _("Unknown"), api=True)
-    proper = ChoiceItem(1, _("Proper"), api=True)
-    common = ChoiceItem(2, _("Common"), api=True)
+class OccurrenceKind(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
+
+    # pylint: disable = invalid-name
+    unknown = 0, _("Unknown"), True
+    proper = 1, _("Proper"), True
+    common = 2, _("Common"), True

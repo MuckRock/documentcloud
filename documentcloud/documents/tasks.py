@@ -12,11 +12,11 @@ import sys
 from datetime import date
 
 # Third Party
-import pysolr
 import redis
 from requests.exceptions import HTTPError, RequestException
 
 # DocumentCloud
+import pysolr
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.documents import entity_extraction, modifications, solr

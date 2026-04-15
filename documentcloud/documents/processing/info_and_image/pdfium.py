@@ -33,7 +33,7 @@ c_uint8_p = POINTER(c_uint8)
 INT_MAX = 2147483647
 
 # Adapted from https://github.com/gersonkurz/pydfium
-
+# pylint: disable=too-many-positional-arguments
 
 class FPDFLibraryConfig(Structure):
     _fields_ = [
@@ -129,7 +129,7 @@ class Bitmap:
         img = PIL.Image.frombuffer(
             "RGBA", (self.width, self.height), bitmap.contents, "raw", "RGBA", 0, 1
         )
-        # pylint: disable=invalid-name, unbalanced-tuple-unpacking
+        # pylint: disable=unbalanced-tuple-unpacking
         b, g, r, _a = img.split()
         img = PIL.Image.merge("RGB", (r, g, b))
         return img
@@ -374,7 +374,7 @@ class Page:
 
     def set_desired_transform(self, page_object, x, y, width, height):
         # Get the bounds of the text object
-        (left, bottom, right, top) = self.get_bounds(page_object)
+        left, bottom, right, top = self.get_bounds(page_object)
 
         # Transform to origin
         self.workspace.fpdf_page_obj_transform(

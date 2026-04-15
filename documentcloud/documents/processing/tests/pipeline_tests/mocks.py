@@ -8,10 +8,8 @@ import functools
 from contextlib import ExitStack
 from unittest.mock import patch
 
-# Third Party
-from config import celery_app
-
 # DocumentCloud
+from config import celery_app
 from documentcloud.common import path
 from documentcloud.common.serverless.utils import get_redis, initialize
 from documentcloud.documents.processing.tests.pipeline_tests.fake_pdf import FakePage
@@ -48,7 +46,7 @@ def patch_env(env):
 
 
 # Mock methods
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument, too-many-positional-arguments
 def page_loaded(page):
     pass
 

@@ -18,12 +18,11 @@ daily-active-users
 
 # Django
 # ------------------------------------------------------------------------------
-django<5
+django<6
 django-environ
 django-model-utils
 django-compressor
 django-redis
-django-choices
 django-filter
 django-extensions
 django-autoslug
@@ -40,34 +39,35 @@ django-parler
 # Django REST Framework
 djangorestframework
 rest-social-auth
-social-auth-core[openidconnect]
+social-auth-core
 django-cors-headers
 djangorestframework_simplejwt
 drf-nested-routers
-cryptography # support RS256 for JWT
+cryptography>=46.0.7 # support RS256 for JWT
 drf-flex-fields
 django-parler-rest
 
 # Cloud providers
 gcsfs
 google-cloud-pubsub
-boto3
 smart-open
-aioboto3
+aioboto3>=15
+boto3
 
 # to resolve version issues
-wrapt==1.11.2
+wrapt>=1.14.0,<2
 
 # Processing
 cpuprofile
 listcrunch
 numpy
+opencv-python-headless
 
 # Typing
 typing-extensions
 
 # Solr
--e git+https://github.com/MuckRock/pysolr.git@958db93824d6ba58c3183cee43f8cfd8c26165ba#egg=pysolr
+pysolr
 luqum
 
 # entity extraction
@@ -78,12 +78,12 @@ pdfplumber
 pikepdf
 pymupdf
 
-# sidekick
-numba
-scipy
-
-
+# Logging
 logzio-python-handler
 
 # Documentation 
 drf-spectacular
+
+# Python 2 compatibility some packages still require
+six==1.17.0
+

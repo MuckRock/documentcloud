@@ -8,13 +8,13 @@ from datetime import datetime
 from unittest.mock import Mock
 
 # Third Party
-import pysolr
 import pytest
 import pytz
 from furl import furl
 from luqum.parser import parser
 
 # DocumentCloud
+import pysolr
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.search import (
@@ -44,7 +44,7 @@ from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.models import User
 from documentcloud.users.tests.factories import UserFactory
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods, too-many-positional-arguments
 
 
 @pytest.fixture(scope="class")
@@ -106,6 +106,7 @@ def setup_solr(django_db_setup, django_db_blocker):
             for note in notes.values():
                 solr_notes.add([note.solr()])
             solr.commit()
+            solr_notes.commit()
             yield
         finally:
             Document.objects.all().delete()
