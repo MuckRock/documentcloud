@@ -21,7 +21,7 @@ flake8
 coverage
 black
 pylint-django
-pylint-celery
+pylint>=3,<4
 
 # Django
 # ------------------------------------------------------------------------------

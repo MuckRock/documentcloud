@@ -128,6 +128,7 @@ def finish_import_task(data):
 
     return finish_import_process.delay(data)
 
+
 def retry_errors_task(data):
     # DocumentCloud
     from documentcloud.documents.tasks import retry_errors_local
