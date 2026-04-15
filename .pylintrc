@@ -1,7 +1,6 @@
 [MASTER]
-# https://stackoverflow.com/a/39207275/10952222
-init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.join(os.path.dirname(find_pylintrc()), 'documentcloud'))"
-load-plugins=pylint_django, pylint_celery
+init-hook="import sys, os; sys.path.insert(0, '/app'); os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.local')"
+load-plugins=pylint_django
 ignore=migrations
 
 [FORMAT]
@@ -11,7 +10,7 @@ max-args=6
 
 [MESSAGES CONTROL]
 enable=useless-suppression
-disable=missing-docstring,too-many-ancestors,too-few-public-methods,no-else-return,no-member,attribute-defined-outside-init,similarities,import-outside-toplevel,cyclic-import,raise-missing-from,django-not-configured
+disable=missing-docstring,too-many-ancestors,too-few-public-methods,no-else-return,no-member,attribute-defined-outside-init,similarities,import-outside-toplevel,cyclic-import,raise-missing-from,django-not-configured,wrong-import-order,wrong-import-position
 
 [TYPECHECK]
 generated-members=REQUEST,acl_users,aq_parent,"[a-zA-Z]+_set{1,2}",save,delete
