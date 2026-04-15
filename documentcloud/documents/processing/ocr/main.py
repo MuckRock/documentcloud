@@ -18,7 +18,7 @@ env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# pylint: disable=import-error
+# pylint: disable=import-error, too-many-positional-arguments
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):

@@ -32,7 +32,7 @@ from documentcloud.documents.choices import Access
 
 logger = logging.getLogger(__name__)
 
-
+# pylint:disable=too-many-positional-arguments
 class AddOn(models.Model):
     objects = AddOnQuerySet.as_manager()
 
