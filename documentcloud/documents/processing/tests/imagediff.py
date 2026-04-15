@@ -18,7 +18,7 @@ import numpy as np
 # Local
 from .report_generator import ReportGenerator
 
-
+# pylint: disable=too-many-positional-arguments
 def same_images(
     test_image: str,
     expected_image: str,

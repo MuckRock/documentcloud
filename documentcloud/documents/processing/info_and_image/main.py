@@ -31,7 +31,7 @@ logging.getLogger("pdfminer").setLevel(logging.WARNING)
 # remove this when done with import code
 # pylint: disable=too-many-lines
 
-# pylint: disable=import-error
+# pylint: disable=import-error, too-many-positional-arguments
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -327,7 +327,6 @@ def redact_document_and_overwrite(doc_id, slug, access, redactions):
 
 def get_redis_pagespec(doc_id):
     """Get the dimensions of all pages in a convenient format using Redis"""
-    # pylint: disable=too-many-nested-blocks
     dimensions_field = redis_fields.dimensions(doc_id)
 
     pipeline = REDIS.pipeline()

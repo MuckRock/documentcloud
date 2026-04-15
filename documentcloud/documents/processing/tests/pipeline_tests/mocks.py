@@ -46,7 +46,7 @@ def patch_env(env):
 
 
 # Mock methods
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument, too-many-positional-arguments
 def page_loaded(page):
     pass
 

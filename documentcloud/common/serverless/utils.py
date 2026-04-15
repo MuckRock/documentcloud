@@ -21,7 +21,7 @@ from ..environment import encode_pubsub_data, publisher
 
 env = environ.Env()
 
-# pylint: disable=import-error
+# pylint: disable=import-error, too-many-positional-arguments
 
 if not env.str("ENVIRONMENT").startswith("local"):
     # in production, log errors to sentry

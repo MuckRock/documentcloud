@@ -44,7 +44,7 @@ from documentcloud.projects.tests.factories import ProjectFactory
 from documentcloud.users.models import User
 from documentcloud.users.tests.factories import UserFactory
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods, too-many-positional-arguments
 
 
 @pytest.fixture(scope="class")
