@@ -94,7 +94,6 @@ projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
-
 router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
 saved_search_list = SavedSearchViewSet.as_view({"get": "list", "post": "create"})
 saved_search_detail = SavedSearchViewSet.as_view(
