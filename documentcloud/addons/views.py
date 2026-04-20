@@ -1004,6 +1004,7 @@ def github_webhook(request):
         uid=data["sender"]["id"], defaults={"name": data["sender"]["login"]}
     )
     if data.get("action") in ["added", "created"]:
+        repos = []
         logger.info("[GITHUB WEBHOOK] %s", data["action"])
         installation, _created = GitHubInstallation.objects.get_or_create(
             iid=data["installation"]["id"],
@@ -1022,11 +1023,11 @@ def github_webhook(request):
             with transaction.atomic():
                 AddOn.objects.update_or_create(
                     repository=repo["full_name"],
-                    defaults=dict(
-                        github_account=acct,
-                        github_installation=installation,
-                        removed=False,
-                    ),
+                    defaults={
+                        "github_account": acct,
+                        "github_installation": installation,
+                        "removed": False,
+                    },
                 )
                 transaction.on_commit(
                     lambda r=repo: update_config.delay(r["full_name"])
@@ -1165,7 +1166,7 @@ class VisualAddOnProxy(APIView):
             url += "/"
         url += kwargs.get("path", "")
 
-        response = requests.get(url)
+        response = requests.get(url, timeout=(10, 30))
         return HttpResponse(
             content=response.content,
             status=response.status_code,

@@ -17,7 +17,7 @@ def processing_auth(func):
         headers = event["headers"]
 
         if headers.get(AUTHORIZATION) != f"processing-token {PROCESSING_TOKEN}":
-            raise Exception("Authentication Failed.")
+            raise PermissionError("Authentication Failed.")
 
         # If all passes, auth succeeded
         return func(*args, **kwargs)

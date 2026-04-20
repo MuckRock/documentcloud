@@ -18,6 +18,7 @@ from functools import lru_cache
 
 # Third Party
 import environ
+import pysolr
 from django_filters import rest_framework as django_filters
 from drf_spectacular.openapi import OpenApiParameter
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
@@ -26,7 +27,6 @@ from rest_flex_fields import FlexFieldsModelViewSet
 from rest_flex_fields.utils import split_levels
 
 # DocumentCloud
-import pysolr
 from documentcloud.addons.choices import Event
 from documentcloud.addons.models import AddOnEvent
 from documentcloud.common.environment import httpsub

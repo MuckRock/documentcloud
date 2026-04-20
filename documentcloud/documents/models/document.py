@@ -744,6 +744,7 @@ class Document(models.Model):
                     "X-Auth-Email": cloudflare_email,
                     "X-Auth-Key": cloudflare_key,
                 },
+                timeout=10,
             )
 
     def index_on_commit(self, **kwargs):
