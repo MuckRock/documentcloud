@@ -94,12 +94,6 @@ projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
-<<<<<<< django_5_upgrade
-=======
-sidekick_router = SidekickRouter(router, "projects", lookup="project")
-sidekick_router.register("sidekick", SidekickViewSet)
-
->>>>>>> staging
 router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
 
 urlpatterns = [
