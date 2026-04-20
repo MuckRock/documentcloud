@@ -30,7 +30,6 @@ from documentcloud.core.views import FileServer, account_logout, mailgun
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.views import (
     DataViewSet,
-    DocumentDataViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
@@ -60,7 +59,6 @@ class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
 
 
 router = BulkDefaultRouter()
-router.register("documents/data", DocumentDataViewSet, basename="documents-data")
 router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
