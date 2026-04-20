@@ -196,7 +196,7 @@ class AwsStorage:
 
     def fetch_url(self, url, file_name, access, auth=None):
         with self.open(file_name, "wb", access=access) as out_file, requests.get(
-            url, stream=True, auth=auth
+            url, stream=True, auth=auth, timeout=(10, 60)
         ) as response:
             response.raise_for_status()
             for chunk in response.iter_content(chunk_size=10 * 1024 * 1024):

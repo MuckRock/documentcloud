@@ -64,7 +64,7 @@ jobs:
       - name: Lint
         run: pylint documentcloud
       - name: Isort
-        run: isort --check-only -rc documentcloud
+        run: isort --check-only --diff documentcloud
       - name: Formatting
         run: black --check documentcloud --exclude migrations
   test:

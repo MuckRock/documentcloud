@@ -35,6 +35,7 @@ INT_MAX = 2147483647
 # Adapted from https://github.com/gersonkurz/pydfium
 # pylint: disable=too-many-positional-arguments
 
+
 class FPDFLibraryConfig(Structure):
     _fields_ = [
         ("version", c_int),

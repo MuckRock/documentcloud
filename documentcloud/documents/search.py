@@ -9,12 +9,12 @@ from collections import defaultdict
 from datetime import datetime
 
 # Third Party
+import pysolr
 from luqum.parser import ParseError, parser
 from luqum.tree import BaseOperation, Boost, Group, Not, Prohibit, Range, Unary, Word
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
-import pysolr
 from documentcloud.core.pagination import CursorPagination, PageNumberPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.models import Document
@@ -132,6 +132,7 @@ def search(user, query_params):
         "hl.weightMatches": settings.SOLR_HL_WEIGHT_MATCHES,
         **page_query_data,
     }
+    original_text_query = text_query
     if (
         settings.SOLR_QUERY_NOTES
         and user.is_authenticated
@@ -140,7 +141,6 @@ def search(user, query_params):
     ):
         # turn note queries on for all pro users
         # *:* returns all documents, do not enable note queries
-        original_text_query = text_query
         text_query = _add_note_query(text_query, user)
         kwargs["uf"] = "* _query_ -projects_edit_access"
         query_notes = True
