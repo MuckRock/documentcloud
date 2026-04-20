@@ -1805,6 +1805,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
         return Response("OK", status=status.HTTP_200_OK)
 
+
 class SavedSearchViewSet(viewsets.ModelViewSet):
     serializer_class = SavedSearchSerializer
     permission_classes = (IsAuthenticated,)
