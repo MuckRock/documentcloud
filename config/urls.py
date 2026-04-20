@@ -27,8 +27,10 @@ from documentcloud.addons.views import (
     scraper_dashboard,
 )
 from documentcloud.core.views import FileServer, account_logout, mailgun
+from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.views import (
     DataViewSet,
+    DocumentDataViewSet,
     DocumentErrorViewSet,
     DocumentViewSet,
     EntityDateViewSet,
@@ -58,6 +60,7 @@ class BulkNestedDefaultRouter(BulkRouterMixin, NestedDefaultRouter):
 
 
 router = BulkDefaultRouter()
+router.register("documents/data", DocumentDataViewSet, basename="documents-data")
 router.register("documents", DocumentViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("projects", ProjectViewSet)
@@ -68,7 +71,6 @@ router.register("addon_events", AddOnEventViewSet)
 router.register("entities", EntityViewSet, basename="entities")
 router.register("flatpages", FlatPageViewSet)
 router.register("statistics", StatisticsViewSet)
-
 
 documents_router = BulkNestedDefaultRouter(router, "documents", lookup="document")
 documents_router.register("notes", NoteViewSet)
@@ -92,6 +94,12 @@ projects_router = BulkNestedDefaultRouter(router, "projects", lookup="project")
 projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
+<<<<<<< django_5_upgrade
+=======
+sidekick_router = SidekickRouter(router, "projects", lookup="project")
+sidekick_router.register("sidekick", SidekickViewSet)
+
+>>>>>>> staging
 router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
 
 urlpatterns = [
