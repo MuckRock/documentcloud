@@ -768,7 +768,7 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
                 image_width,
                 max(round(img_buffer.height * (image_width / img_buffer.width)), 1),
             ),
-            Image.ANTIALIAS,
+            Image.LANCZOS,
         )
 
         mem_file = io.BytesIO()
