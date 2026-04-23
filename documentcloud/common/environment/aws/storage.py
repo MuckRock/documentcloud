@@ -65,7 +65,7 @@ class AwsStorage:
         transport_params = {
             "client": self.s3_client,
         }
-        if "w" in mode: # Setting these kwargs only make sense in a write context
+        if "w" in mode:  # Setting these kwargs only make sense in a write context
             writeable_kwargs = {}
             if content_type is None:
                 # attempt to guess content type if not specified
