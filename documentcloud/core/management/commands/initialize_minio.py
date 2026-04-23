@@ -1,9 +1,14 @@
+# Django
+from django.core.management.base import BaseCommand
+
+# Standard Library
 import json
+
+# Third Party
 import boto3
 import environ
 from botocore.client import Config
 from botocore.exceptions import ClientError
-from django.core.management.base import BaseCommand
 
 env = environ.Env()
 
@@ -30,7 +35,7 @@ class Command(BaseCommand):
             self.stdout.write("Bucket already exists")
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
-            if error_code == "404": # Bucket doesn't exist, create it
+            if error_code == "404":  # Bucket doesn't exist, create it
                 client.create_bucket(Bucket="documents")
                 self.stdout.write("Created documents bucket")
             else:
@@ -39,12 +44,14 @@ class Command(BaseCommand):
         # Set public read policy
         policy = {
             "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::documents/*"
-            }]
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "s3:GetObject",
+                    "Resource": "arn:aws:s3:::documents/*",
+                }
+            ],
         }
         client.put_bucket_policy(Bucket="documents", Policy=json.dumps(policy))
         self.stdout.write("Minio initialized successfully")
