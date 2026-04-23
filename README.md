@@ -56,10 +56,7 @@ You must first have these set up and ready to go:
       ```
 12. Go to [Django admin for DocumentCloud](https://api.dev.documentcloud.org/admin) and add the required static [flat page](https://api.dev.documentcloud.org/admin/flatpages/flatpage/) called `/tipofday/`. It can be blank. Do not prefix the URL with `/pages/`. Specifying the `Site` as `example.com` is alright.
 13. Create an initial Minio bucket to simulate AWS S3 locally:
-    - Reference your DocumentCloud `.django` file for these variables:
-    - Visit the `MINIO_URL` with a browser, likely at [this address](http://minio.documentcloud.org:9000), and login with the minio `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY`
-    - At the bottom right corner click the round plus button and then click the first circle that appears above it to "create bucket".
-    - Create a bucket called `documents`
+    - Run `inv initialize-minio`
 14. Upload a document:
     - **Check your memory allocation on Docker is at least 7gb.** A sign that you do not have enough memory allocated is if containers are randomly failing or if your system is swapping heavily, especially when uploading documents.
     - The "upload" button should not be grayed out (if it is, check your user organization Verified Journalist status above)

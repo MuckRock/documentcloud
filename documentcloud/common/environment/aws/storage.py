@@ -62,7 +62,6 @@ class AwsStorage:
         # https://github.com/piskvorky/smart_open/blob/develop/CHANGELOG.md#500-30-mar-2021
         # See migration guide here:
         # https://github.com/piskvorky/smart_open/blob/develop/MIGRATING_FROM_OLDER_VERSIONS.rst
-        # This is only called locally, serverless lambda has its own stack that uses smart_open 1.8.4
         transport_params = {
             "client": self.s3_client,
         }
