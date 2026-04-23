@@ -463,7 +463,7 @@ DOCCLOUD_EMBED_URL = env(
 BASE_URL = DOCCLOUD_URL
 
 PUBLIC_ASSET_URL = env(
-    "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
+    "PUBLIC_ASSET_URL", default="https://minio.documentcloud.org/documents/"
 )
 PRIVATE_ASSET_URL = env("PRIVATE_ASSET_URL", default=f"{DOCCLOUD_API_URL}/files/")
 
