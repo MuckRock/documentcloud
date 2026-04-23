@@ -70,9 +70,10 @@ CONFIG = [
             {
                 "name": "MinIO",
                 "envvars": [
-                    ("MINIO_ACCESS_KEY", lambda: random_string(64)),
-                    ("MINIO_SECRET_KEY", lambda: random_string(64)),
-                    ("MINIO_URL", "http://minio.documentcloud.org:9000"),
+                    ("MINIO_ROOT_USER", lambda: random_string(64)),
+                    ("MINIO_ROOT_PASSWORD", lambda: random_string(64)),
+                    ("MINIO_URL", "https://minio.documentcloud.org"),
+                    ("AWS_CA_BUNDLE", "/etc/ssl/certs/ca-certificates.crt"),
                 ],
             },
         ],

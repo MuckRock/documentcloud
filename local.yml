@@ -50,16 +50,18 @@ services:
     image: redis:5.0
 
   documentcloud_minio:
-    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
     volumes:
       - local_minio_data:/data
     ports:
       - "9000:9000"
-    command: server /data
+      - "9001:9001"
+    command: server /data --console-address ":9001"
     env_file:
       - ./.envs/.local/.django
     networks:
       default:
+      squarelet_default:
         aliases:
           - minio.documentcloud.org
 
