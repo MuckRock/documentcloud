@@ -58,23 +58,29 @@ class AwsStorage:
         return bucket.Object(key).content_length
 
     def open(self, file_name, mode="rb", content_type=None, access=None):
-
+        # This logic changed with smart_open 5.0
+        # https://github.com/piskvorky/smart_open/blob/develop/CHANGELOG.md#500-30-mar-2021
+        # See migration guide here:
+        # https://github.com/piskvorky/smart_open/blob/develop/MIGRATING_FROM_OLDER_VERSIONS.rst
+        # This is only called locally, serverless lambda has its own stack that uses smart_open 1.8.4
         transport_params = {
-            "resource_kwargs": self.resource_kwargs,
-            "multipart_upload_kwargs": {},
+            "client": self.s3_client,
         }
-
-        if content_type is None:
-            # attempt to guess content type if not specified
-            content_type = mimetypes.guess_type(file_name)[0]
-
-        if content_type is not None:
-            # set content type if we have one
-            transport_params["multipart_upload_kwargs"]["ContentType"] = content_type
-
-        if access is not None:
-            transport_params["multipart_upload_kwargs"]["ACL"] = ACLS[access]
-
+        if "w" in mode: # Setting these kwargs only make sense in a write context
+            writeable_kwargs = {}
+            if content_type is None:
+                # attempt to guess content type if not specified
+                content_type = mimetypes.guess_type(file_name)[0]
+            if content_type is not None:
+                # set content type if we have one
+                writeable_kwargs["ContentType"] = content_type
+            if access is not None:
+                writeable_kwargs["ACL"] = ACLS[access]
+            if writeable_kwargs:
+                # Guard against no writeable kwargs provided
+                transport_params["client_kwargs"] = {
+                    "S3.Client.create_multipart_upload": writeable_kwargs
+                }
         return smart_open.open(
             f"s3://{file_name}", mode, transport_params=transport_params
         )
