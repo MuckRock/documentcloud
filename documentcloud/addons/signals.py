@@ -20,7 +20,7 @@ def update_github_account(user, data, **_kwargs):
     """Save the GitHub account information when a user is updated"""
     logger.info("Update GitHub Account information")
     for acct in data.get("social_accounts", []):
-        if acct["provider"] != "github_app":
+        if acct["provider"] != "github":
             continue
         if acct["tokens"]:
             token = acct["tokens"][0]["token"]
