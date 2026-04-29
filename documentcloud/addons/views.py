@@ -8,7 +8,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
-from django.db.models.fields.related import ForeignKey
 from django.db.models.functions.text import Concat
 from django.http.response import (
     Http404,
