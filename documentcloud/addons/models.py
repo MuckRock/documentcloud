@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.db import models, transaction
+from django.db.models import F, Q
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -567,6 +568,15 @@ class AddOnEvent(models.Model):
         _("updated at"),
         help_text=_("Timestamp of when the add-on event was last updated"),
     )
+
+    class Meta:
+        indexes = [
+            models.Index(
+                F("parameters__site"),
+                name="addonevent_param_site_idx",
+                condition=Q(parameters__has_key="site"),
+            ),
+        ]
 
     def __str__(self):
         return f"Event: {self.addon_id} - {self.event}"
