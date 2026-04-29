@@ -741,6 +741,11 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             model=AddOn, help_text="Filter runs by a specific add-on ID."
         )
         dismissed = django_filters.BooleanFilter(help_text="Was this run dismissed?")
+        site = django_filters.CharFilter(
+            field_name="event__parameters__site",
+            lookup_expr="exact",
+            help_text="Filter runs by the `site` value in the event's parameters.",
+        )
 
         class Meta:
             model = AddOnRun
@@ -970,6 +975,11 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             field_name="addon",
             lookup_expr="exact",
             help_text="Filter events by a specific add-on ID.",
+        )
+        site = django_filters.CharFilter(
+            field_name="parameters__site",
+            lookup_expr="exact",
+            help_text="Filter events by the `site` value in their parameters.",
         )
 
         class Meta:
