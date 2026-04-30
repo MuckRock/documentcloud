@@ -272,7 +272,6 @@ class TestAddOnRunAPI:
         response = client.delete(f"/api/addon_runs/{run.uuid}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         cancel.assert_called_once()
-        assert cancel.called_once()
 
     def test_filter_site(self, client):
         """Filter runs by event parameters.site"""
