@@ -8,7 +8,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
-from django.db.models.fields.related import ForeignKey
 from django.db.models.functions.text import Concat
 from django.http.response import (
     Http404,
@@ -741,6 +740,11 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             model=AddOn, help_text="Filter runs by a specific add-on ID."
         )
         dismissed = django_filters.BooleanFilter(help_text="Was this run dismissed?")
+        site = django_filters.CharFilter(
+            field_name="event__parameters__site",
+            lookup_expr="exact",
+            help_text="Filter runs by the `site` value in the event's parameters.",
+        )
 
         class Meta:
             model = AddOnRun
@@ -970,6 +974,11 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             field_name="addon",
             lookup_expr="exact",
             help_text="Filter events by a specific add-on ID.",
+        )
+        site = django_filters.CharFilter(
+            field_name="parameters__site",
+            lookup_expr="exact",
+            help_text="Filter events by the `site` value in their parameters.",
         )
 
         class Meta:
