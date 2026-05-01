@@ -1,12 +1,12 @@
 -r cloud-requirements.txt
 
-Pillow==9.2.0
-aioboto3==9.6.0
+Pillow==12.1.1
+aioboto3==15.5.0
 django-environ==0.4.5
 furl==2.1.0
-listcrunch==0.1.0
+listcrunch==1.0.0
 pebble==4.5.0
 redis==3.4.1
-requests==2.22.0
+requests==2.33.0
 sentry-sdk==0.14.0
 pymupdf==1.25.3

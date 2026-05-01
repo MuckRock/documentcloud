@@ -1,12 +1,11 @@
-boto3==1.26.115
-smart-open==1.8.4
-
-Pillow==9.2.0
+boto3==1.40.61
+smart-open==7.5.1
+Pillow==12.1.1
 cpuprofile==1.0.1
 django-environ==0.4.5
 furl==2.1.0
 pebble==4.5.0
 redis==3.4.1
-requests==2.22.0
+requests==2.33.0
 sentry-sdk==0.14.0
 pymupdf==1.25.3
