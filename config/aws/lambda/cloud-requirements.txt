@@ -1,2 +1,2 @@
-boto3==1.10.14
-smart-open==1.8.4
+boto3==1.40.61
+smart-open==7.5.1

@@ -1,4 +1,4 @@
-boto3==1.21.21
-smart-open==1.8.4
-pdfplumber==0.5.28
-pikepdf==5.4.0
+boto3==1.40.61
+smart-open==7.5.1
+pdfplumber==0.11.9
+pikepdf==10.5.1
