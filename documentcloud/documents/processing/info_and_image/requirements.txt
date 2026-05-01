@@ -8,5 +8,5 @@ listcrunch==1.0.0
 pebble==4.5.0
 redis==3.4.1
 requests==2.33.0
-sentry-sdk==0.14.0
+sentry-sdk==2.57.0
 pymupdf==1.25.3

@@ -1,2 +1,3 @@
 boto3==1.40.61
 smart-open==7.5.1
+setuptools<81
