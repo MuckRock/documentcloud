@@ -77,9 +77,10 @@ class AwsStorage:
                 writeable_kwargs["ACL"] = ACLS[access]
             if writeable_kwargs:
                 # Guard against no writeable kwargs provided
-                # smart_open 7.x passes client_kwargs
-                # directly to put_object/create_multipart_upload
-                transport_params["client_kwargs"] = writeable_kwargs
+                transport_params["client_kwargs"] = {
+                    "S3.Client.put_object": writeable_kwargs,
+                    "S3.Client.create_multipart_upload": writeable_kwargs,
+                }
         return smart_open.open(
             f"s3://{file_name}", mode, transport_params=transport_params
         )
