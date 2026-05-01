@@ -2,7 +2,7 @@ boto3==1.40.61
 smart-open==7.5.1
 Pillow==12.1.1
 cpuprofile==1.0.1
-django-environ==0.4.5
+django-environ==0.13.0
 furl==2.1.0
 pebble==4.5.0
 redis==3.4.1

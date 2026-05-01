@@ -133,7 +133,7 @@ django-cprofile-middleware==1.0.5
     # via -r requirements/base.in
 django-debug-toolbar==6.2.0
     # via -r requirements/base.in
-django-environ==0.4.5
+django-environ==0.13.0
     # via -r requirements/base.in
 django-extensions==3.2.3
     # via -r requirements/base.in
