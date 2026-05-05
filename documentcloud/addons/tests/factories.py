@@ -1,6 +1,9 @@
 # Third Party
 import factory
 
+# DocumentCloud
+from documentcloud.addons.choices import Event
+
 
 class AddOnFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Add-On {n}")
@@ -32,6 +35,16 @@ class AddOnRunFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = "addons.AddOnRun"
+
+
+class AddOnEventFactory(factory.django.DjangoModelFactory):
+    addon = factory.SubFactory("documentcloud.addons.tests.factories.AddOnFactory")
+    user = factory.SubFactory("documentcloud.users.tests.factories.UserFactory")
+    event = Event.disabled
+    parameters = {}
+
+    class Meta:
+        model = "addons.AddOnEvent"
 
 
 class GitHubAccountFactory(factory.django.DjangoModelFactory):

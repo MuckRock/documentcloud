@@ -11,7 +11,11 @@ import pytest
 # DocumentCloud
 from documentcloud.addons.models import AddOn, AddOnRun
 from documentcloud.addons.serializers import AddOnRunSerializer, AddOnSerializer
-from documentcloud.addons.tests.factories import AddOnFactory, AddOnRunFactory
+from documentcloud.addons.tests.factories import (
+    AddOnEventFactory,
+    AddOnFactory,
+    AddOnRunFactory,
+)
 from documentcloud.documents.choices import Access
 from documentcloud.users.tests.factories import UserFactory
 
@@ -268,3 +272,81 @@ class TestAddOnRunAPI:
         response = client.delete(f"/api/addon_runs/{run.uuid}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert cancel.called_once()
+
+    def test_filter_site(self, client):
+        """Filter runs by event parameters.site"""
+        user = UserFactory()
+        site = "https://www.example.com"
+        matching_event = AddOnEventFactory(
+            user=user, parameters={"site": site, "selector": "*"}
+        )
+        other_event = AddOnEventFactory(
+            user=user, parameters={"site": "https://www.other.com"}
+        )
+        no_site_event = AddOnEventFactory(user=user, parameters={"selector": "*"})
+        matching_run = AddOnRunFactory(user=user, event=matching_event)
+        AddOnRunFactory(user=user, event=other_event)
+        AddOnRunFactory(user=user, event=no_site_event)
+        AddOnRunFactory(user=user, event=None)
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_runs/", {"site": site})
+        assert response.status_code == status.HTTP_200_OK
+        uuids = [r["uuid"] for r in response.json()["results"]]
+        assert uuids == [str(matching_run.uuid)]
+
+    def test_filter_site_absent_is_noop(self, client):
+        """Omitting the site filter returns all viewable runs"""
+        user = UserFactory()
+        with_site = AddOnEventFactory(
+            user=user, parameters={"site": "https://www.example.com"}
+        )
+        without_site = AddOnEventFactory(user=user, parameters={})
+        AddOnRunFactory(user=user, event=with_site)
+        AddOnRunFactory(user=user, event=without_site)
+        AddOnRunFactory(user=user, event=None)
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_runs/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.json()["results"]) == 3
+
+
+@pytest.mark.django_db()
+class TestAddOnEventAPI:
+    def test_filter_site(self, client):
+        """Filter events by parameters.site"""
+        user = UserFactory()
+        site = "https://www.example.com"
+        matching = AddOnEventFactory(
+            user=user, parameters={"site": site, "selector": "*"}
+        )
+        AddOnEventFactory(
+            user=user, parameters={"site": "https://www.other.com", "selector": "*"}
+        )
+        AddOnEventFactory(user=user, parameters={"selector": "*"})
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_events/", {"site": site})
+        assert response.status_code == status.HTTP_200_OK
+        ids = [r["id"] for r in response.json()["results"]]
+        assert ids == [matching.pk]
+
+    def test_filter_site_absent_is_noop(self, client):
+        """Omitting the site filter returns all viewable events"""
+        user = UserFactory()
+        AddOnEventFactory(user=user, parameters={"site": "https://www.example.com"})
+        AddOnEventFactory(user=user, parameters={})
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_events/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.json()["results"]) == 2
+
+    def test_filter_site_no_match(self, client):
+        """A site filter that matches nothing returns an empty list"""
+        user = UserFactory()
+        AddOnEventFactory(user=user, parameters={"site": "https://www.example.com"})
+        AddOnEventFactory(user=user, parameters={})
+        client.force_authenticate(user=user)
+        response = client.get(
+            "/api/addon_events/", {"site": "https://nope.example.com"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["results"] == []
