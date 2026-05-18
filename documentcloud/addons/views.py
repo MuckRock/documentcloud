@@ -745,6 +745,12 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             lookup_expr="exact",
             help_text="Filter runs by the `site` value in the event's parameters.",
         )
+        message = django_filters.CharFilter(
+            field_name="message",
+            lookup_expr="exact",
+            label="Message",
+            help_text="Filter runs by their progress message.",
+        )
 
         class Meta:
             model = AddOnRun
