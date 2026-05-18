@@ -155,6 +155,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             "credits_spent",
             "created_at",
             "updated_at",
+            "data",
         ]
         extra_kwargs = {
             "uuid": {"read_only": True},
