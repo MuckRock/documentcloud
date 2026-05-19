@@ -350,3 +350,26 @@ class TestAddOnEventAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["results"] == []
+
+    def test_filter_message(self, client):
+        """Filter runs by message"""
+        user = UserFactory()
+        matching_run = AddOnRunFactory(user=user, message="data changed")
+        AddOnRunFactory(user=user, message="no changes detected")
+        AddOnRunFactory(user=user, message="")
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_runs/", {"message": "data changed"})
+        assert response.status_code == status.HTTP_200_OK
+        uuids = [r["uuid"] for r in response.json()["results"]]
+        assert uuids == [str(matching_run.uuid)]
+
+    def test_filter_message_absent_is_noop(self, client):
+        """Omitting the message filter returns all viewable runs"""
+        user = UserFactory()
+        AddOnRunFactory(user=user, message="data changed")
+        AddOnRunFactory(user=user, message="no changes detected")
+        AddOnRunFactory(user=user, message="")
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_runs/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.json()["results"]) == 3

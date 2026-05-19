@@ -743,7 +743,14 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         site = django_filters.CharFilter(
             field_name="event__parameters__site",
             lookup_expr="exact",
+            label="Site",
             help_text="Filter runs by the `site` value in the event's parameters.",
+        )
+        message = django_filters.CharFilter(
+            field_name="message",
+            lookup_expr="exact",
+            label="Message",
+            help_text="Filter runs by their progress message.",
         )
 
         class Meta:
@@ -978,6 +985,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
         site = django_filters.CharFilter(
             field_name="parameters__site",
             lookup_expr="exact",
+            label="Site",
             help_text="Filter events by the `site` value in their parameters.",
         )
 
