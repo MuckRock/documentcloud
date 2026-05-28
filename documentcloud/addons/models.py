@@ -379,14 +379,6 @@ class AddOnRun(models.Model):
         null=True,
     )
 
-    data = models.JSONField(
-        _("data"),
-        default=dict,
-        help_text=_("Field to store arbitrary per-run data"),
-        blank=True,
-        null=True,
-    )
-
     def __str__(self):
         return f"Run: {self.addon_id} - {self.created_at}"
 
