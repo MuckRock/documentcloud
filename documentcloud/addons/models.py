@@ -371,6 +371,13 @@ class AddOnRun(models.Model):
         _("updated at"),
         help_text=_("Timestamp of when the add-on run was last updated"),
     )
+    data = models.JSONField(
+        _("data"),
+        default=dict,
+        help_text=_("Field to store arbitrary per-run data"),
+        blank=True,
+        null=True,
+    )
 
     data = models.JSONField(
         _("data"),
