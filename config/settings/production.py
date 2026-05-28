@@ -148,12 +148,6 @@ COMPRESS_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 # https://django-compressor.readthedocs.io/en/latest/settings/#django.conf.settings.COMPRESS_URL
 COMPRESS_URL = STATIC_URL
 
-# Collectfast Remove later
-# ------------------------------------------------------------------------------
-# https://github.com/antonagestam/collectfast#installation
-# INSTALLED_APPS = ["collectfast"] + INSTALLED_APPS  # noqa F405
-# COLLECTFAST_STRATEGY = "collectfast.strategies.boto3.Boto3Strategy"
-
 # LOGGING
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#logging
