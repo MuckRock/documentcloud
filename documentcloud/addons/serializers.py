@@ -91,6 +91,7 @@ class AddOnSerializer(FlexFieldsModelSerializer):
             "parameters",
             "created_at",
             "updated_at",
+            "data",
             "active_w",
             "active",
             "default",
@@ -155,6 +156,7 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
             "credits_spent",
             "created_at",
             "updated_at",
+            "data",
         ]
         extra_kwargs = {
             "uuid": {"read_only": True},
@@ -244,6 +246,7 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
             "scratch",
             "created_at",
             "updated_at",
+            "data",
         ]
         extra_kwargs = {
             "addon": {"queryset": AddOn.objects.none()},
