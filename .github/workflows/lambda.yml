@@ -16,7 +16,10 @@ jobs:
         run: |
           sudo apt-get install -y git-lfs
           git lfs install
-          git lfs pull
+          git lfs fetch --all
+          git lfs checkout
+          ls -lh documentcloud/documents/processing/document_conversion/libreoffice/lo.tar.gz
+          ls -lh config/aws/lambda/libreoffice/lo.tar.gz
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
