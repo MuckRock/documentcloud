@@ -674,7 +674,7 @@ class GitHubAccount(models.Model):
         _("uid"), unique=True, help_text=_("The ID for the GitHub account")
     )
     token = models.CharField(
-        _("token"), max_length=255, help_text=_("The GitHub token")
+        _("token"), max_length=1024, help_text=_("The GitHub token")
     )
 
     def __str__(self):
