@@ -742,7 +742,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         dismissed = django_filters.BooleanFilter(help_text="Was this run dismissed?")
         site = django_filters.CharFilter(
             field_name="event__parameters__site",
-            lookup_expr="exact",
+            lookup_expr="iexact",
             label="Site",
             help_text="Filter runs by the `site` value in the event's parameters.",
         )
