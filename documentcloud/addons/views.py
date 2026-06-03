@@ -984,7 +984,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
         )
         site = django_filters.CharFilter(
             field_name="parameters__site",
-            lookup_expr="exact",
+            lookup_expr="iexact",
             label="Site",
             help_text="Filter events by the `site` value in their parameters.",
         )
