@@ -9,3 +9,4 @@ redis==3.4.1
 requests==2.33.0
 sentry-sdk==2.57.0
 pymupdf==1.25.3
+setuptools<81
