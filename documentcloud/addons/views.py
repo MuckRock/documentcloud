@@ -30,6 +30,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 from collections import defaultdict
 from datetime import timedelta
 from functools import lru_cache
@@ -63,6 +64,21 @@ from documentcloud.common.environment import storage
 from documentcloud.core.filters import ModelChoiceFilter, QueryArrayWidget
 
 logger = logging.getLogger(__name__)
+
+
+def domain_site_regex(value):
+    """Build a regex matching `site` URLs whose host equals the given domain.
+
+    Accepts either a bare host (`www.nifc.gov`) or a full URL
+    (`https://www.nifc.gov/path`) and matches stored site values regardless of
+    scheme, port, path or query string. Returns None if no host can be parsed.
+    """
+    value = value.strip()
+    # furl only parses the host when an authority is present, so ensure one
+    host = furl(value if "//" in value else "//" + value).host
+    if not host:
+        return None
+    return r"^(https?://)?" + re.escape(host) + r"(:\d+)?($|[/?#])"
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -746,12 +762,27 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             label="Site",
             help_text="Filter runs by the `site` value in the event's parameters.",
         )
+        domain = django_filters.CharFilter(
+            method="domain_filter",
+            label="Domain",
+            help_text=(
+                "Filter runs by the host of the event's `site` parameter, e.g. "
+                "`www.nifc.gov` or `https://www.nifc.gov`."
+            ),
+        )
         message = django_filters.CharFilter(
             field_name="message",
             lookup_expr="exact",
             label="Message",
             help_text="Filter runs by their progress message.",
         )
+
+        def domain_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            pattern = domain_site_regex(value)
+            if pattern is None:
+                return queryset.none()
+            return queryset.filter(event__parameters__site__iregex=pattern)
 
         class Meta:
             model = AddOnRun
@@ -988,6 +1019,21 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             label="Site",
             help_text="Filter events by the `site` value in their parameters.",
         )
+        domain = django_filters.CharFilter(
+            method="domain_filter",
+            label="Domain",
+            help_text=(
+                "Filter events by the host of their `site` parameter, e.g. "
+                "`www.nifc.gov` or `https://www.nifc.gov`."
+            ),
+        )
+
+        def domain_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            pattern = domain_site_regex(value)
+            if pattern is None:
+                return queryset.none()
+            return queryset.filter(parameters__site__iregex=pattern)
 
         class Meta:
             model = AddOnEvent
