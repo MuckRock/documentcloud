@@ -309,6 +309,44 @@ class TestAddOnRunAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.json()["results"]) == 3
 
+    def test_filter_domain(self, client):
+        """Filter runs by the host of the event's parameters.site"""
+        user = UserFactory()
+        matching_event = AddOnEventFactory(
+            user=user,
+            parameters={
+                "site": "https://www.nifc.gov/fire-information/statistics/wildfires",
+                "selector": "*",
+            },
+        )
+        other_event = AddOnEventFactory(
+            user=user, parameters={"site": "https://www.other.com/path"}
+        )
+        no_site_event = AddOnEventFactory(user=user, parameters={"selector": "*"})
+        matching_run = AddOnRunFactory(user=user, event=matching_event)
+        AddOnRunFactory(user=user, event=other_event)
+        AddOnRunFactory(user=user, event=no_site_event)
+        AddOnRunFactory(user=user, event=None)
+        client.force_authenticate(user=user)
+        # bare host and full origin both match, regardless of path
+        for domain in ("www.nifc.gov", "https://www.nifc.gov"):
+            response = client.get("/api/addon_runs/", {"domain": domain})
+            assert response.status_code == status.HTTP_200_OK
+            uuids = [r["uuid"] for r in response.json()["results"]]
+            assert uuids == [str(matching_run.uuid)], domain
+
+    def test_filter_domain_no_partial_host_match(self, client):
+        """The domain filter matches whole hosts, not substrings"""
+        user = UserFactory()
+        event = AddOnEventFactory(
+            user=user, parameters={"site": "https://www.nifc.gov.evil.com/path"}
+        )
+        AddOnRunFactory(user=user, event=event)
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_runs/", {"domain": "www.nifc.gov"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["results"] == []
+
 
 @pytest.mark.django_db()
 class TestAddOnEventAPI:
@@ -350,6 +388,25 @@ class TestAddOnEventAPI:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["results"] == []
+
+    def test_filter_domain(self, client):
+        """Filter events by the host of their parameters.site"""
+        user = UserFactory()
+        matching = AddOnEventFactory(
+            user=user,
+            parameters={
+                "site": "https://www.nifc.gov/fire-information/statistics/wildfires",
+                "selector": "*",
+            },
+        )
+        AddOnEventFactory(user=user, parameters={"site": "https://www.other.com/path"})
+        AddOnEventFactory(user=user, parameters={"selector": "*"})
+        client.force_authenticate(user=user)
+        for domain in ("www.nifc.gov", "https://www.nifc.gov"):
+            response = client.get("/api/addon_events/", {"domain": domain})
+            assert response.status_code == status.HTTP_200_OK
+            ids = [r["id"] for r in response.json()["results"]]
+            assert ids == [matching.pk], domain
 
     def test_filter_message(self, client):
         """Filter runs by message"""
