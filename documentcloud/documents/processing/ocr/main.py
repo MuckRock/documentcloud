@@ -172,9 +172,7 @@ def ocr_page(
         # Resize only if image is too big (OCR computation is slow with large images)
         if img.width > DESIRED_WIDTH:
             resize = DESIRED_WIDTH / img.width
-            img = img.resize(
-                (DESIRED_WIDTH, round(img.height * resize)), Image.LANCZOS
-            )
+            img = img.resize((DESIRED_WIDTH, round(img.height * resize)), Image.LANCZOS)
     img.save(tmp_files["img"], "png")
 
     logger.info("[OCR PAGE] image resized doc_id %s", doc_id)
