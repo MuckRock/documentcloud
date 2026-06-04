@@ -173,7 +173,7 @@ def ocr_page(
         if img.width > DESIRED_WIDTH:
             resize = DESIRED_WIDTH / img.width
             img = img.resize(
-                (DESIRED_WIDTH, round(img.height * resize)), Image.ANTIALIAS
+                (DESIRED_WIDTH, round(img.height * resize)), Image.LANCZOS
             )
     img.save(tmp_files["img"], "png")
 
