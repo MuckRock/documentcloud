@@ -264,13 +264,13 @@ class OcrGrafter:
             mediabox = [float(base_page.MediaBox[v]) for v in range(4)]
             wp, hp = mediabox[2] - mediabox[0], mediabox[3] - mediabox[1]
 
-            translate = pikepdf.PdfMatrix().translated(-wt / 2, -ht / 2)
-            untranslate = pikepdf.PdfMatrix().translated(wp / 2, hp / 2)
-            corner = pikepdf.PdfMatrix().translated(mediabox[0], mediabox[1])
+            translate = pikepdf.Matrix().translated(-wt / 2, -ht / 2)
+            untranslate = pikepdf.Matrix().translated(wp / 2, hp / 2)
+            corner = pikepdf.Matrix().translated(mediabox[0], mediabox[1])
             # -rotation because the input is a clockwise angle and this formula
             # uses CCW
             text_rotation = -text_rotation % 360
-            rotate = pikepdf.PdfMatrix().rotated(text_rotation)
+            rotate = pikepdf.Matrix().rotated(text_rotation)
 
             # Because of rounding of DPI, we might get a text layer that is not
             # identically sized to the target page. Scale to adjust. Normally this
@@ -281,7 +281,7 @@ class OcrGrafter:
             scale_y = hp / ht
 
             # log.debug('%r', scale_x, scale_y)
-            scale = pikepdf.PdfMatrix().scaled(scale_x, scale_y)
+            scale = pikepdf.Matrix().scaled(scale_x, scale_y)
 
             # Translate the text so it is centered at (0, 0), rotate it there, adjust
             # for a size different between initial and text PDF, then untranslate, and
