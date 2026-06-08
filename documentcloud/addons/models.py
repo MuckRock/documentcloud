@@ -34,24 +34,18 @@ from documentcloud.documents.choices import Access
 logger = logging.getLogger(__name__)
 
 
-# pylint:disable=too-many-positional-arguments
-
-
-class SiteHost(Func):
+class SiteOrigin(Func):
     # pylint: disable=abstract-method
-    """Extract the lowercased host from the `site` URL of a JSON parameters field.
+    """Extract the lowercased origin (scheme + host) from a JSON `site` URL.
 
-    Captures the authority (host) of the stored URL, stopping at a port, path,
-    query or fragment, with or without a leading scheme. Used both to build the
-    expression index on `AddOnEvent` and to filter by it, so the index and the
-    query share one definition and cannot drift apart. All component functions
-    are IMMUTABLE, so this is safe to index.
+    Captures the scheme and authority of the stored URL, stopping at the path,
+    query or fragment, so `https://www.nifc.gov/foo` yields `https://www.nifc.gov`.
+    Used both to build the expression index on `AddOnEvent` and to filter by it,
+    so the index and the query share one definition and cannot drift apart. All
+    component functions are IMMUTABLE, so this is safe to index.
     """
 
-    template = (
-        "LOWER(SUBSTRING(%(expressions)s ->> 'site' "
-        "FROM '^(?:https?://)?([^/:?#]+)'))"
-    )
+    template = "LOWER(SUBSTRING(%(expressions)s ->> 'site' FROM '^(https?://[^/?#]+)'))"
     output_field = models.TextField()
 
 
@@ -611,8 +605,8 @@ class AddOnEvent(models.Model):
                 condition=Q(parameters__has_key="site"),
             ),
             models.Index(
-                SiteHost("parameters"),
-                name="addonevent_site_host_idx",
+                SiteOrigin("parameters"),
+                name="addonevent_site_origin_idx",
                 condition=Q(parameters__has_key="site"),
             ),
         ]

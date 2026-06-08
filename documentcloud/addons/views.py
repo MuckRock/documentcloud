@@ -51,7 +51,7 @@ from documentcloud.addons.models import (
     AddOnRun,
     GitHubAccount,
     GitHubInstallation,
-    SiteHost,
+    SiteOrigin,
     VisualAddOn,
 )
 from documentcloud.addons.serializers import (
@@ -66,17 +66,18 @@ from documentcloud.core.filters import ModelChoiceFilter, QueryArrayWidget
 logger = logging.getLogger(__name__)
 
 
-def domain_to_host(value):
-    """Normalize a domain filter value to a bare, lowercased host.
+def domain_to_origin(value):
+    """Normalize a domain filter value to a lowercased origin (scheme + host).
 
-    Accepts either a bare host (`www.nifc.gov`) or a full URL
-    (`https://www.nifc.gov/path`) and returns just the host, lowercased to match
-    the `SiteHost` expression index. Returns None if no host can be parsed.
+    Expects an origin such as `https://www.nifc.gov`; a value without a scheme
+    will not match. A full URL is accepted and its path is discarded. Returns
+    None if no scheme + host can be parsed, lowercased to match the `SiteOrigin`
+    expression index.
     """
-    value = value.strip()
-    # furl only parses the host when an authority is present, so ensure one
-    host = furl(value if "//" in value else "//" + value).host
-    return host.lower() if host else None
+    parsed = furl(value.strip())
+    if not parsed.scheme or not parsed.host:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}".lower()
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -764,8 +765,8 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             method="domain_filter",
             label="Domain",
             help_text=(
-                "Filter runs by the host of the event's `site` parameter, e.g. "
-                "`www.nifc.gov` or `https://www.nifc.gov`."
+                "Filter runs by the origin of the event's `site` parameter, e.g. "
+                "`https://www.nifc.gov`."
             ),
         )
         message = django_filters.CharFilter(
@@ -777,15 +778,15 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
 
         def domain_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
-            host = domain_to_host(value)
-            if host is None:
+            origin = domain_to_origin(value)
+            if origin is None:
                 return queryset.none()
-            # filter on has_key + the SiteHost expression so the partial
-            # `addonevent_site_host_idx` index on AddOnEvent is usable
+            # filter on has_key + the SiteOrigin expression so the partial
+            # `addonevent_site_origin_idx` index on AddOnEvent is usable
             return (
                 queryset.filter(event__parameters__has_key="site")
-                .annotate(_site_host=SiteHost("event__parameters"))
-                .filter(_site_host=host)
+                .annotate(_site_origin=SiteOrigin("event__parameters"))
+                .filter(_site_origin=origin)
             )
 
         class Meta:
@@ -1027,22 +1028,22 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             method="domain_filter",
             label="Domain",
             help_text=(
-                "Filter events by the host of their `site` parameter, e.g. "
-                "`www.nifc.gov` or `https://www.nifc.gov`."
+                "Filter events by the origin of their `site` parameter, e.g. "
+                "`https://www.nifc.gov`."
             ),
         )
 
         def domain_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
-            host = domain_to_host(value)
-            if host is None:
+            origin = domain_to_origin(value)
+            if origin is None:
                 return queryset.none()
-            # filter on has_key + the SiteHost expression so the partial
-            # `addonevent_site_host_idx` index is usable
+            # filter on has_key + the SiteOrigin expression so the partial
+            # `addonevent_site_origin_idx` index is usable
             return (
                 queryset.filter(parameters__has_key="site")
-                .annotate(_site_host=SiteHost("parameters"))
-                .filter(_site_host=host)
+                .annotate(_site_origin=SiteOrigin("parameters"))
+                .filter(_site_origin=origin)
             )
 
         class Meta:
