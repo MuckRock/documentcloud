@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.db import models, transaction
-from django.db.models import F, Q
+from django.db.models import F, Func, Q
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -35,6 +35,26 @@ logger = logging.getLogger(__name__)
 
 
 # pylint:disable=too-many-positional-arguments
+
+
+class SiteHost(Func):
+    # pylint: disable=abstract-method
+    """Extract the lowercased host from the `site` URL of a JSON parameters field.
+
+    Captures the authority (host) of the stored URL, stopping at a port, path,
+    query or fragment, with or without a leading scheme. Used both to build the
+    expression index on `AddOnEvent` and to filter by it, so the index and the
+    query share one definition and cannot drift apart. All component functions
+    are IMMUTABLE, so this is safe to index.
+    """
+
+    template = (
+        "LOWER(SUBSTRING(%(expressions)s ->> 'site' "
+        "FROM '^(?:https?://)?([^/:?#]+)'))"
+    )
+    output_field = models.TextField()
+
+
 class AddOn(models.Model):
     objects = AddOnQuerySet.as_manager()
 
@@ -588,6 +608,11 @@ class AddOnEvent(models.Model):
             models.Index(
                 F("parameters__site"),
                 name="addonevent_param_site_idx",
+                condition=Q(parameters__has_key="site"),
+            ),
+            models.Index(
+                SiteHost("parameters"),
+                name="addonevent_site_host_idx",
                 condition=Q(parameters__has_key="site"),
             ),
         ]

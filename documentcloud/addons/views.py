@@ -30,7 +30,6 @@ import hashlib
 import hmac
 import json
 import logging
-import re
 from collections import defaultdict
 from datetime import timedelta
 from functools import lru_cache
@@ -52,6 +51,7 @@ from documentcloud.addons.models import (
     AddOnRun,
     GitHubAccount,
     GitHubInstallation,
+    SiteHost,
     VisualAddOn,
 )
 from documentcloud.addons.serializers import (
@@ -66,19 +66,17 @@ from documentcloud.core.filters import ModelChoiceFilter, QueryArrayWidget
 logger = logging.getLogger(__name__)
 
 
-def domain_site_regex(value):
-    """Build a regex matching `site` URLs whose host equals the given domain.
+def domain_to_host(value):
+    """Normalize a domain filter value to a bare, lowercased host.
 
     Accepts either a bare host (`www.nifc.gov`) or a full URL
-    (`https://www.nifc.gov/path`) and matches stored site values regardless of
-    scheme, port, path or query string. Returns None if no host can be parsed.
+    (`https://www.nifc.gov/path`) and returns just the host, lowercased to match
+    the `SiteHost` expression index. Returns None if no host can be parsed.
     """
     value = value.strip()
     # furl only parses the host when an authority is present, so ensure one
     host = furl(value if "//" in value else "//" + value).host
-    if not host:
-        return None
-    return r"^(https?://)?" + re.escape(host) + r"(:\d+)?($|[/?#])"
+    return host.lower() if host else None
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -779,10 +777,16 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
 
         def domain_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
-            pattern = domain_site_regex(value)
-            if pattern is None:
+            host = domain_to_host(value)
+            if host is None:
                 return queryset.none()
-            return queryset.filter(event__parameters__site__iregex=pattern)
+            # filter on has_key + the SiteHost expression so the partial
+            # `addonevent_site_host_idx` index on AddOnEvent is usable
+            return (
+                queryset.filter(event__parameters__has_key="site")
+                .annotate(_site_host=SiteHost("event__parameters"))
+                .filter(_site_host=host)
+            )
 
         class Meta:
             model = AddOnRun
@@ -1030,10 +1034,16 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
 
         def domain_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
-            pattern = domain_site_regex(value)
-            if pattern is None:
+            host = domain_to_host(value)
+            if host is None:
                 return queryset.none()
-            return queryset.filter(parameters__site__iregex=pattern)
+            # filter on has_key + the SiteHost expression so the partial
+            # `addonevent_site_host_idx` index is usable
+            return (
+                queryset.filter(parameters__has_key="site")
+                .annotate(_site_host=SiteHost("parameters"))
+                .filter(_site_host=host)
+            )
 
         class Meta:
             model = AddOnEvent
