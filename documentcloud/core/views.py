@@ -1,6 +1,7 @@
 # Django
 from django.conf import settings
 from django.contrib.auth import logout
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http.response import (
     Http404,
@@ -22,6 +23,7 @@ import json
 import logging
 import os
 import time
+from email.utils import parseaddr
 from urllib.parse import urlencode
 
 # DocumentCloud
@@ -91,11 +93,12 @@ def mailgun(request):
         return HttpResponseForbidden()
 
     email = request.POST["To"]
-    mailkey = email.split("@", 1)[0]
+    _, addr = parseaddr(email)
+    mailkey = addr.split("@", 1)[0]
     logger.info("[MAILKEY] received mailkey %s", mailkey)
     try:
         user = User.objects.get(mailkey=mailkey)
-    except User.DoesNotExist:
+    except (User.DoesNotExist, ValidationError):
         logger.warning("[MAILKEY] mailkey %s user not found", mailkey)
         return HttpResponse("OK")
 
