@@ -2,7 +2,9 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.db import models, transaction
-from django.db.models import F, Func, Q
+from django.db.models import Func, Q
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Upper
 from django.utils.translation import gettext_lazy as _
 
 # Standard Library
@@ -600,7 +602,9 @@ class AddOnEvent(models.Model):
     class Meta:
         indexes = [
             models.Index(
-                F("parameters__site"),
+                # matches the `UPPER(parameters ->> 'site')` the `site` filter's
+                # iexact lookup emits, so a case-insensitive match can use it
+                Upper(KeyTextTransform("site", "parameters")),
                 name="addonevent_param_site_idx",
                 condition=Q(parameters__has_key="site"),
             ),

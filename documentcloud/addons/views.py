@@ -756,8 +756,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         )
         dismissed = django_filters.BooleanFilter(help_text="Was this run dismissed?")
         site = django_filters.CharFilter(
-            field_name="event__parameters__site",
-            lookup_expr="iexact",
+            method="site_filter",
             label="Site",
             help_text="Filter runs by the `site` value in the event's parameters.",
         )
@@ -775,6 +774,15 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             label="Message",
             help_text="Filter runs by their progress message.",
         )
+
+        def site_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            # the has_key clause lets the partial `addonevent_param_site_idx`
+            # index on AddOnEvent serve the case-insensitive match
+            return queryset.filter(
+                event__parameters__has_key="site",
+                event__parameters__site__iexact=value,
+            )
 
         def domain_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
@@ -1019,8 +1027,7 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             help_text="Filter events by a specific add-on ID.",
         )
         site = django_filters.CharFilter(
-            field_name="parameters__site",
-            lookup_expr="iexact",
+            method="site_filter",
             label="Site",
             help_text="Filter events by the `site` value in their parameters.",
         )
@@ -1032,6 +1039,15 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                 "`https://www.nifc.gov`."
             ),
         )
+
+        def site_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            # the has_key clause lets the partial `addonevent_param_site_idx`
+            # index serve the case-insensitive match
+            return queryset.filter(
+                parameters__has_key="site",
+                parameters__site__iexact=value,
+            )
 
         def domain_filter(self, queryset, name, value):
             # pylint: disable=unused-argument
