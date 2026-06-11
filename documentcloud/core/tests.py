@@ -4,6 +4,7 @@ from django.contrib.sites.models import Site
 from django.db import transaction
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.exceptions import AuthenticationFailed
 
 # Standard Library
 import hashlib
@@ -14,8 +15,11 @@ from unittest import mock
 
 # Third Party
 import pytest
+import requests
+from rest_framework_simplejwt.settings import api_settings
 
 # DocumentCloud
+from documentcloud.core.authentication import SquareletJWTAuthentication
 from documentcloud.users.tests.factories import UserFactory
 
 
@@ -93,3 +97,91 @@ class TestMailgunView(TestCase):
             f"{user.mailkey}@uploads.documentcloud.org", sign=False
         )
         assert response.status_code == 403
+
+
+@pytest.mark.django_db()
+class TestSquareletJWTAuthentication:
+    """Tests for lazy user provisioning during JWT authentication"""
+
+    def token(self, user_uuid):
+        """Build a minimal validated token carrying the user's uuid claim"""
+        return {api_settings.USER_ID_CLAIM: str(user_uuid)}
+
+    @mock.patch("documentcloud.core.authentication.squarelet_update_or_create")
+    @mock.patch("documentcloud.core.authentication.squarelet_get")
+    def test_existing_user(self, mock_get, mock_update):
+        """A user that already exists locally is returned without a callback"""
+        user = UserFactory()
+        auth = SquareletJWTAuthentication()
+
+        result = auth.get_user(self.token(user.uuid))
+
+        assert result == user
+        mock_get.assert_not_called()
+        mock_update.assert_not_called()
+
+    @mock.patch(
+        "documentcloud.core.authentication.squarelet_settings.DISABLE_CREATE", False
+    )
+    @mock.patch("documentcloud.core.authentication.squarelet_update_or_create")
+    @mock.patch("documentcloud.core.authentication.squarelet_get")
+    def test_lazy_provision_missing_user(self, mock_get, mock_update):
+        """A missing user is fetched from Squarelet, created, and returned"""
+        missing_uuid = uuid.uuid4()
+        data = {"preferred_username": "newuser", "organizations": []}
+        mock_get.return_value.json.return_value = data
+        # Simulate squarelet_update_or_create creating the local mirror row
+        mock_update.side_effect = lambda _uuid, _data: UserFactory(uuid=missing_uuid)
+        auth = SquareletJWTAuthentication()
+
+        result = auth.get_user(self.token(missing_uuid))
+
+        assert result.uuid == missing_uuid
+        mock_get.assert_called_once_with(f"/api/users/{missing_uuid}/")
+        # The uuid comes off the JWT claim as a string, matching how the
+        # webhook's pull_data task calls squarelet_update_or_create
+        mock_update.assert_called_once_with(str(missing_uuid), data)
+
+    @mock.patch("documentcloud.core.authentication.squarelet_update_or_create")
+    @mock.patch("documentcloud.core.authentication.squarelet_get")
+    def test_invalid_token_not_provisioned(self, mock_get, mock_update):
+        """A token without a user claim must 401 without contacting Squarelet"""
+        auth = SquareletJWTAuthentication()
+
+        with pytest.raises(AuthenticationFailed):
+            auth.get_user({})
+
+        mock_get.assert_not_called()
+        mock_update.assert_not_called()
+
+    @mock.patch(
+        "documentcloud.core.authentication.squarelet_settings.DISABLE_CREATE", False
+    )
+    @mock.patch("documentcloud.core.authentication.squarelet_update_or_create")
+    @mock.patch("documentcloud.core.authentication.squarelet_get")
+    def test_squarelet_fetch_fails(self, mock_get, mock_update):
+        """If the Squarelet fetch fails, the request still 401s"""
+        missing_uuid = uuid.uuid4()
+        mock_get.side_effect = requests.exceptions.RequestException
+        auth = SquareletJWTAuthentication()
+
+        with pytest.raises(AuthenticationFailed):
+            auth.get_user(self.token(missing_uuid))
+
+        mock_update.assert_not_called()
+
+    @mock.patch(
+        "documentcloud.core.authentication.squarelet_settings.DISABLE_CREATE", True
+    )
+    @mock.patch("documentcloud.core.authentication.squarelet_update_or_create")
+    @mock.patch("documentcloud.core.authentication.squarelet_get")
+    def test_disable_create_skips_provisioning(self, mock_get, mock_update):
+        """When SQUARELET_DISABLE_CREATE is set, missing users still 401"""
+        missing_uuid = uuid.uuid4()
+        auth = SquareletJWTAuthentication()
+
+        with pytest.raises(AuthenticationFailed):
+            auth.get_user(self.token(missing_uuid))
+
+        mock_get.assert_not_called()
+        mock_update.assert_not_called()

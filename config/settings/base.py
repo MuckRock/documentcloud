@@ -419,7 +419,7 @@ REST_FRAMEWORK = {
     "HTML_SELECT_CUTOFF": 20,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "documentcloud.core.authentication.SquareletJWTAuthentication",
         "documentcloud.core.authentication.ProcessingTokenAuthentication",
     ),
     "DEFAULT_VERSIONING_CLASS": "documentcloud.core.versioning.QueryParameterVersioning",
