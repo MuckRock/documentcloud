@@ -34,6 +34,7 @@ from documentcloud.documents.choices import Access
 logger = logging.getLogger(__name__)
 
 
+# pylint:disable=too-many-positional-arguments
 class AddOn(models.Model):
     objects = AddOnQuerySet.as_manager()
 
@@ -190,6 +191,7 @@ class AddOn(models.Model):
             f"{self.api_url}/dispatches",
             headers=self.api_headers,
             json={"event_type": self.name, "client_payload": payload},
+            timeout=10,
         )
         resp.raise_for_status()
 
@@ -198,6 +200,7 @@ class AddOn(models.Model):
         resp = requests.get(
             f"{self.api_url}/contents/config.yaml",
             headers={**self.api_headers, "Accept": "application/vnd.github.v3.raw"},
+            timeout=10,
         )
         if resp.status_code == 404:
             self.error = True
@@ -388,7 +391,7 @@ class AddOnRun(models.Model):
         url = f"{self.addon.api_url}/actions/runs?created=%3E{date_filter}"
         while url is not None:
             logger.info("[FIND RUN ID] get %s", url)
-            resp = requests.get(url, headers=self.addon.api_headers)
+            resp = requests.get(url, headers=self.addon.api_headers, timeout=10)
             resp.raise_for_status()
             url = resp.links.get("next", {}).get("url")
             resp_json = resp.json()
@@ -411,7 +414,9 @@ class AddOnRun(models.Model):
                     else:
                         continue
 
-                resp = requests.get(jobs_url, headers=self.addon.api_headers)
+                resp = requests.get(
+                    jobs_url, headers=self.addon.api_headers, timeout=10
+                )
                 resp.raise_for_status()
 
                 jobs = resp.json()["jobs"]
@@ -443,6 +448,7 @@ class AddOnRun(models.Model):
         resp = requests.get(
             f"{self.addon.api_url}/actions/runs/{self.run_id}",
             headers=self.addon.api_headers,
+            timeout=10,
         )
         if resp.status_code != 200:
             logger.info(
@@ -457,7 +463,7 @@ class AddOnRun(models.Model):
                 # if we failed, check the job status to check for 'cancelled'
                 # which means it timed out
                 resp = requests.get(
-                    resp.json()["jobs_url"], headers=self.addon.api_headers
+                    resp.json()["jobs_url"], headers=self.addon.api_headers, timeout=10
                 )
                 if resp.status_code == 200 and len(resp.json()["jobs"]) > 0:
                     status = resp.json()["jobs"][0]["conclusion"]
@@ -518,6 +524,7 @@ class AddOnRun(models.Model):
         resp = requests.post(
             f"{self.addon.api_url}/actions/runs/{self.run_id}/cancel",
             headers=self.addon.api_headers,
+            timeout=10,
         )
         if resp.status_code == 202:
             return "succeed"
@@ -735,6 +742,7 @@ class GitHubInstallation(models.Model):
                         "https://api.github.com/app/installations/"
                         f"{self.iid}/access_tokens",
                         headers=headers,
+                        timeout=10,
                     )
                     resp = resp.json()
                     token = resp["token"]

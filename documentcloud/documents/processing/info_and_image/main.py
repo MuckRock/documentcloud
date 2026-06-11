@@ -31,12 +31,11 @@ logging.getLogger("pdfminer").setLevel(logging.WARNING)
 # remove this when done with import code
 # pylint: disable=too-many-lines
 
-# pylint: disable=import-error
+# pylint: disable=import-error, too-many-positional-arguments
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
     # DocumentCloud
-    from documentcloud.documents.processing.info_and_image import graft
     from documentcloud.common import access_choices, path, redis_fields
     from documentcloud.common.environment import (
         encode_pubsub_data,
@@ -45,11 +44,12 @@ if env.str("ENVIRONMENT").startswith("local"):
         storage,
     )
     from documentcloud.common.serverless import utils
-    from documentcloud.common.serverless.utils import REDIS_TTL
     from documentcloud.common.serverless.error_handling import (
         pubsub_function,
         pubsub_function_import,
     )
+    from documentcloud.common.serverless.utils import REDIS_TTL
+    from documentcloud.documents.processing.info_and_image import graft
     from documentcloud.documents.processing.info_and_image.graft_adapter import (
         GraftContext,
     )
@@ -58,9 +58,9 @@ if env.str("ENVIRONMENT").startswith("local"):
         Workspace,
     )
 else:
+    # fmt: off
     # Third Party
     import graft
-
     # only initialize sentry on serverless
     import sentry_sdk
     from common import access_choices, path, redis_fields
@@ -71,8 +71,8 @@ else:
         storage,
     )
     from common.serverless import utils
-    from common.serverless.utils import REDIS_TTL
     from common.serverless.error_handling import pubsub_function, pubsub_function_import
+    from common.serverless.utils import REDIS_TTL
     from graft_adapter import GraftContext
     from pdfium import StorageHandler, Workspace
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
@@ -328,7 +328,6 @@ def redact_document_and_overwrite(doc_id, slug, access, redactions):
 
 def get_redis_pagespec(doc_id):
     """Get the dimensions of all pages in a convenient format using Redis"""
-    # pylint: disable=too-many-nested-blocks
     dimensions_field = redis_fields.dimensions(doc_id)
 
     pipeline = REDIS.pipeline()
@@ -769,7 +768,7 @@ def extract_single_page(doc_id, slug, access, page, page_number, large_image_pat
                 image_width,
                 max(round(img_buffer.height * (image_width / img_buffer.width)), 1),
             ),
-            Image.ANTIALIAS,
+            Image.LANCZOS,
         )
 
         mem_file = io.BytesIO()

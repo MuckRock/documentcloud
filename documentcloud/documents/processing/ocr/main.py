@@ -18,7 +18,7 @@ env = environ.Env()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# pylint: disable=import-error
+# pylint: disable=import-error, too-many-positional-arguments
 
 # Imports based on execution context
 if env.str("ENVIRONMENT").startswith("local"):
@@ -30,9 +30,9 @@ if env.str("ENVIRONMENT").startswith("local"):
         publisher,
         storage,
     )
-    from documentcloud.common.utils import graft_page
     from documentcloud.common.serverless import utils
     from documentcloud.common.serverless.error_handling import pubsub_function
+    from documentcloud.common.utils import graft_page
     from documentcloud.documents.processing.ocr.tess import Tesseract
 else:
     # Third Party
@@ -45,12 +45,11 @@ else:
         publisher,
         storage,
     )
-    from common.utils import graft_page
     from common.serverless import utils
     from common.serverless.error_handling import pubsub_function
+    from common.utils import graft_page
     from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
     from sentry_sdk.integrations.redis import RedisIntegration
-
     from tess import Tesseract
 
     sentry_sdk.init(
@@ -173,9 +172,7 @@ def ocr_page(
         # Resize only if image is too big (OCR computation is slow with large images)
         if img.width > DESIRED_WIDTH:
             resize = DESIRED_WIDTH / img.width
-            img = img.resize(
-                (DESIRED_WIDTH, round(img.height * resize)), Image.ANTIALIAS
-            )
+            img = img.resize((DESIRED_WIDTH, round(img.height * resize)), Image.LANCZOS)
     img.save(tmp_files["img"], "png")
 
     logger.info("[OCR PAGE] image resized doc_id %s", doc_id)

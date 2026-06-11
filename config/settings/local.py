@@ -53,7 +53,7 @@ DEBUG_TOOLBAR_CONFIG = {
         "debug_toolbar.panels.profiling.ProfilingPanel",
     ],
     "SHOW_TEMPLATE_CONTEXT": True,
-    "SHOW_TOOLBAR_CALLBACK": lambda _: True,
+    "SHOW_TOOLBAR_CALLBACK": lambda _: False,
 }
 
 # Celery

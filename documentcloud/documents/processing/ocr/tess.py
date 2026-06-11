@@ -17,6 +17,7 @@ LIB_PATH = os.path.join(script_dir, "tesseract/libtesseract.so.5")
 DATA_PATH = TMP_DIRECTORY
 
 
+# pylint:disable = too-many-positional-arguments
 class TesseractError(Exception):
     pass
 

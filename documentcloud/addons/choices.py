@@ -1,14 +1,20 @@
 # Django
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-# Third Party
-from djchoices import ChoiceItem, DjangoChoices
 
+class Event(models.IntegerChoices):
+    def __new__(cls, value, label=None, api=False):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        if label is not None:
+            obj._label_ = label
+        obj.api = api
+        return obj
 
-class Event(DjangoChoices):
-    # `api` specifies if this attribute should be accessible via the API
-    disabled = ChoiceItem(0, _("Disabled"), api=True)
-    hourly = ChoiceItem(1, _("Hourly"), api=True)
-    daily = ChoiceItem(2, _("Daily"), api=True)
-    weekly = ChoiceItem(3, _("Weekly"), api=True)
-    upload = ChoiceItem(4, _("Upload"), api=True)
+    # pylint:disable = invalid-name
+    disabled = 0, _("Disabled"), True
+    hourly = 1, _("Hourly"), True
+    daily = 2, _("Daily"), True
+    weekly = 3, _("Weekly"), True
+    upload = 4, _("Upload"), True

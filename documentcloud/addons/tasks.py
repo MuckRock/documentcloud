@@ -62,6 +62,7 @@ def set_run_status(uuid):
         set_run_status.apply_async(args=[uuid], countdown=5)
 
 
+# pylint:disable=too-many-positional-arguments
 @shared_task
 def dispatch(addon_id, uuid, user_id, documents, query, parameters, event_id=None):
     # pylint: disable=too-many-arguments

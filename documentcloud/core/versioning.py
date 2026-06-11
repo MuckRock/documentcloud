@@ -4,7 +4,7 @@ from rest_framework.utils.urls import remove_query_param, replace_query_param
 
 
 class QueryParameterVersioning(versioning.QueryParameterVersioning):
-    # pylint: disable=redefined-builtin
+    # pylint: disable=redefined-builtin, too-many-positional-arguments
     def reverse(
         self, viewname, args=None, kwargs=None, request=None, format=None, **extra
     ):

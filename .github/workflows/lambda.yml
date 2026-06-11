@@ -1,18 +1,30 @@
 name: Post-Deploy Lambda
-
 on:
   deployment_status:
-
 jobs:
   deploy-lambdas:
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
     steps:
       - uses: actions/checkout@v3
-
+        with:
+          lfs: true
+      - name: Install Git LFS and pull files
+        run: |
+          sudo apt-get install -y git-lfs
+          git lfs install
+          git lfs fetch --all
+          git lfs checkout
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
       - name: Show deployment info
         run: |
           echo "Deployment environment: ${{ github.event.deployment.environment }}"
-
       - name: Run Lambda production deploy
         if: >
           github.event.deployment.environment == 'documentcloud-prod' &&
@@ -20,7 +32,6 @@ jobs:
         run: |
           echo "Deploying production lambda updates"
           bash config/aws/lambda/codeship_deploy_lambdas.sh prod-lambda
-
       - name: Run Lambda staging deploy
         if: >
           github.event.deployment.environment == 'documentcloud-staging' &&

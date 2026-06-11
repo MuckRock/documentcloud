@@ -35,9 +35,7 @@ class ReportGenerator:
         self.anchor_id: int = 0
 
         # Write the header and style sheet. Declare utf8 encoding.
-        self.html_file.write(
-            inspect.cleandoc(
-                """<!DOCTYPE html>
+        self.html_file.write(inspect.cleandoc("""<!DOCTYPE html>
             <html lang="en">
             <head>
             <meta charset="utf-8"/>
@@ -50,9 +48,7 @@ class ReportGenerator:
                 }
             </style>
             </head>
-        """
-            )
-        )
+        """))
 
     def add_heading(self, text):
         """Add a primary header to the HTML document with a table of contents entry.

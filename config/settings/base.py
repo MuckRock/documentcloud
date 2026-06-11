@@ -93,7 +93,6 @@ LOCAL_APPS = [
     "documentcloud.addons.apps.AddOnsConfig",
     "documentcloud.projects.apps.ProjectsConfig",
     "documentcloud.statistics.apps.StatisticsConfig",
-    "documentcloud.sidekick.apps.SidekickConfig",
     "documentcloud.users.apps.UsersConfig",
     "documentcloud.entities.apps.EntitiesConfig",
 ]
@@ -464,7 +463,7 @@ DOCCLOUD_EMBED_URL = env(
 BASE_URL = DOCCLOUD_URL
 
 PUBLIC_ASSET_URL = env(
-    "PUBLIC_ASSET_URL", default="http://minio.documentcloud.org:9000/documents/"
+    "PUBLIC_ASSET_URL", default="https://minio.documentcloud.org/documents/"
 )
 PRIVATE_ASSET_URL = env("PRIVATE_ASSET_URL", default=f"{DOCCLOUD_API_URL}/files/")
 
@@ -497,7 +496,6 @@ DOC_PROCESSING_URL = env("DOC_PROCESSING_URL", default="")
 PROGRESS_URL = env("PROGRESS_URL", default="")
 IMPORT_URL = env("IMPORT_URL", default="")
 PROGRESS_TIMEOUT = env.int("PROGRESS_TIMEOUT", default=1)
-SIDEKICK_PROCESSING_URL = env("SIDEKICK_PROCESSING_URL", default="")
 
 # Auth
 LOGIN_URL = "/accounts/login/squarelet"

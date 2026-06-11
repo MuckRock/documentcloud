@@ -2,7 +2,6 @@
 
 gunicorn
 psycopg2 --no-binary psycopg2
-Collectfast
 sentry-sdk
 scout-apm
 
@@ -12,4 +11,5 @@ django-storages[boto3]
 django-anymail[mailgun]
 django-celery-email
 
+# Documentation
 drf-spectacular

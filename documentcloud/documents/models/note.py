@@ -165,7 +165,7 @@ class Note(models.Model):
             "type": "note",
             "user": self.user_id,
             "organization": self.organization_id,
-            "access": Access.attributes[self.access],
+            "access": Access(self.access).name,
             "page_count": self.page_number,
             "title": self.title,
             "description": self.content,

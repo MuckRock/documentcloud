@@ -129,13 +129,6 @@ def finish_import_task(data):
     return finish_import_process.delay(data)
 
 
-def sidekick_preprocess_task(data):
-    # DocumentCloud
-    from documentcloud.sidekick.tasks import sidekick_preprocess
-
-    return sidekick_preprocess.delay(data)
-
-
 def retry_errors_task(data):
     # DocumentCloud
     from documentcloud.documents.tasks import retry_errors_local
@@ -190,13 +183,6 @@ publisher.register_internal_callback(
 publisher.register_internal_callback(
     ("documentcloud", env.str("FINISH_IMPORT_TOPIC", default="finish-import")),
     finish_import_task,
-)
-publisher.register_internal_callback(
-    (
-        "documentcloud",
-        env.str("SIDEKICK_PREPROCESS_TOPIC", default="sidekick-preprocess-topic"),
-    ),
-    sidekick_preprocess_task,
 )
 publisher.register_internal_callback(
     ("documentcloud", env.str("RETRY_ERROR_TOPIC", default="retry-error-topic")),

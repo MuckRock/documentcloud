@@ -29,7 +29,7 @@ tests = [
 class TestPostProcess:
     """Test the page modification post processing"""
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @pytest.mark.parametrize("factory,attr", models)
     @pytest.mark.parametrize(
         "page_spec,initial_page,final_page,count,page_count", tests

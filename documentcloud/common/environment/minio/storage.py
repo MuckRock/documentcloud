@@ -13,8 +13,8 @@ class MinIOStorage(AwsStorage):
         if resource_kwargs is None:
             resource_kwargs = {
                 "endpoint_url": env.str("MINIO_URL"),
-                "aws_access_key_id": env.str("MINIO_ACCESS_KEY"),
-                "aws_secret_access_key": env.str("MINIO_SECRET_KEY"),
+                "aws_access_key_id": env.str("MINIO_ROOT_USER"),
+                "aws_secret_access_key": env.str("MINIO_ROOT_PASSWORD"),
                 "config": Config(signature_version="s3v4"),
                 "region_name": "us-east-1",
             }

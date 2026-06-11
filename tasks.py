@@ -31,7 +31,7 @@ def test(
     slow_switch = "" if slow else '-m "not slow"'
     warnings = "-e PYTHONWARNINGS=always" if warnings else ""
     filters = f"-k {keywords}" if keywords else ""
-
+    c.run(f"{COMPOSE_PREFIX} up -d documentcloud_test_solr")
     c.run(
         COMPOSE_RUN_OPT_USER.format(
             opt=f"-e DJANGO_SETTINGS_MODULE=config.settings.test {warnings}",
@@ -120,9 +120,9 @@ def format(c):
             cmd="black documentcloud --exclude migrations && "
             "black config/urls.py && "
             "black config/settings && "
-            "isort -rc documentcloud && "
-            "isort -rc config/urls.py && "
-            "isort -rc config/settings"
+            "isort documentcloud && "
+            "isort config/urls.py && "
+            "isort config/settings"
         )
     )
 
@@ -233,6 +233,10 @@ def download_tesseract_data(c):
     """Download Tesseract data files. Needed to be able to do OCR locally."""
     c.run("cd config/aws/lambda; ./build.sh")
 
+@task
+def initialize_minio(c):
+    """Initialize Minio bucket and policies for local development"""
+    c.run(DJANGO_RUN.format(cmd="python manage.py initialize_minio"))
 
 @task
 def deploy_lambdas(c, staging=False):

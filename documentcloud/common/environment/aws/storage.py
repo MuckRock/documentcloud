@@ -58,23 +58,29 @@ class AwsStorage:
         return bucket.Object(key).content_length
 
     def open(self, file_name, mode="rb", content_type=None, access=None):
-
+        # This logic changed with smart_open 5.0
+        # https://github.com/piskvorky/smart_open/blob/develop/CHANGELOG.md#500-30-mar-2021
+        # See migration guide here:
+        # https://github.com/piskvorky/smart_open/blob/develop/MIGRATING_FROM_OLDER_VERSIONS.rst
         transport_params = {
-            "resource_kwargs": self.resource_kwargs,
-            "multipart_upload_kwargs": {},
+            "client": self.s3_client,
         }
-
-        if content_type is None:
-            # attempt to guess content type if not specified
-            content_type = mimetypes.guess_type(file_name)[0]
-
-        if content_type is not None:
-            # set content type if we have one
-            transport_params["multipart_upload_kwargs"]["ContentType"] = content_type
-
-        if access is not None:
-            transport_params["multipart_upload_kwargs"]["ACL"] = ACLS[access]
-
+        if "w" in mode:  # Setting these kwargs only make sense in a write context
+            writeable_kwargs = {}
+            if content_type is None:
+                # attempt to guess content type if not specified
+                content_type = mimetypes.guess_type(file_name)[0]
+            if content_type is not None:
+                # set content type if we have one
+                writeable_kwargs["ContentType"] = content_type
+            if access is not None:
+                writeable_kwargs["ACL"] = ACLS[access]
+            if writeable_kwargs:
+                # Guard against no writeable kwargs provided
+                transport_params["client_kwargs"] = {
+                    "S3.Client.put_object": writeable_kwargs,
+                    "S3.Client.create_multipart_upload": writeable_kwargs,
+                }
         return smart_open.open(
             f"s3://{file_name}", mode, transport_params=transport_params
         )
@@ -196,7 +202,7 @@ class AwsStorage:
 
     def fetch_url(self, url, file_name, access, auth=None):
         with self.open(file_name, "wb", access=access) as out_file, requests.get(
-            url, stream=True, auth=auth
+            url, stream=True, auth=auth, timeout=(10, 60)
         ) as response:
             response.raise_for_status()
             for chunk in response.iter_content(chunk_size=10 * 1024 * 1024):

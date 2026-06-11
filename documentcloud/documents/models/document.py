@@ -666,8 +666,8 @@ class Document(models.Model):
             "type": "document",
             "user": self.user_id,
             "organization": self.organization_id,
-            "access": Access.attributes[self.access],
-            "status": Status.attributes[self.status],
+            "access": Access(self.access).name,
+            "status": Status(self.status).name,
             "title": self.title,
             "slug": self.slug,
             "source": self.source,
@@ -744,6 +744,7 @@ class Document(models.Model):
                     "X-Auth-Email": cloudflare_email,
                     "X-Auth-Key": cloudflare_key,
                 },
+                timeout=10,
             )
 
     def index_on_commit(self, **kwargs):
