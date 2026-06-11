@@ -51,6 +51,7 @@ from documentcloud.addons.models import (
     AddOnRun,
     GitHubAccount,
     GitHubInstallation,
+    SiteOrigin,
     VisualAddOn,
 )
 from documentcloud.addons.serializers import (
@@ -63,6 +64,20 @@ from documentcloud.common.environment import storage
 from documentcloud.core.filters import ModelChoiceFilter, QueryArrayWidget
 
 logger = logging.getLogger(__name__)
+
+
+def domain_to_origin(value):
+    """Normalize a domain filter value to a lowercased origin (scheme + host).
+
+    Expects an origin such as `https://www.nifc.gov`; a value without a scheme
+    will not match. A full URL is accepted and its path is discarded. Returns
+    None if no scheme + host can be parsed, lowercased to match the `SiteOrigin`
+    expression index.
+    """
+    parsed = furl(value.strip())
+    if not parsed.scheme or not parsed.host:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}".lower()
 
 
 class AddOnViewSet(viewsets.ModelViewSet):
@@ -741,10 +756,17 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         )
         dismissed = django_filters.BooleanFilter(help_text="Was this run dismissed?")
         site = django_filters.CharFilter(
-            field_name="event__parameters__site",
-            lookup_expr="iexact",
+            method="site_filter",
             label="Site",
             help_text="Filter runs by the `site` value in the event's parameters.",
+        )
+        domain = django_filters.CharFilter(
+            method="domain_filter",
+            label="Domain",
+            help_text=(
+                "Filter runs by the origin of the event's `site` parameter, e.g. "
+                "`https://www.nifc.gov`."
+            ),
         )
         message = django_filters.CharFilter(
             field_name="message",
@@ -752,6 +774,28 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
             label="Message",
             help_text="Filter runs by their progress message.",
         )
+
+        def site_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            # the has_key clause lets the partial `addonevent_param_site_idx`
+            # index on AddOnEvent serve the case-insensitive match
+            return queryset.filter(
+                event__parameters__has_key="site",
+                event__parameters__site__iexact=value,
+            )
+
+        def domain_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            origin = domain_to_origin(value)
+            if origin is None:
+                return queryset.none()
+            # filter on has_key + the SiteOrigin expression so the partial
+            # `addonevent_site_origin_idx` index on AddOnEvent is usable
+            return (
+                queryset.filter(event__parameters__has_key="site")
+                .annotate(_site_origin=SiteOrigin("event__parameters"))
+                .filter(_site_origin=origin)
+            )
 
         class Meta:
             model = AddOnRun
@@ -983,11 +1027,40 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
             help_text="Filter events by a specific add-on ID.",
         )
         site = django_filters.CharFilter(
-            field_name="parameters__site",
-            lookup_expr="iexact",
+            method="site_filter",
             label="Site",
             help_text="Filter events by the `site` value in their parameters.",
         )
+        domain = django_filters.CharFilter(
+            method="domain_filter",
+            label="Domain",
+            help_text=(
+                "Filter events by the origin of their `site` parameter, e.g. "
+                "`https://www.nifc.gov`."
+            ),
+        )
+
+        def site_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            # the has_key clause lets the partial `addonevent_param_site_idx`
+            # index serve the case-insensitive match
+            return queryset.filter(
+                parameters__has_key="site",
+                parameters__site__iexact=value,
+            )
+
+        def domain_filter(self, queryset, name, value):
+            # pylint: disable=unused-argument
+            origin = domain_to_origin(value)
+            if origin is None:
+                return queryset.none()
+            # filter on has_key + the SiteOrigin expression so the partial
+            # `addonevent_site_origin_idx` index is usable
+            return (
+                queryset.filter(parameters__has_key="site")
+                .annotate(_site_origin=SiteOrigin("parameters"))
+                .filter(_site_origin=origin)
+            )
 
         class Meta:
             model = AddOnEvent
