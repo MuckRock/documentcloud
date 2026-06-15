@@ -7,6 +7,7 @@ volumes:
 
 services:
   documentcloud_django: &django
+    platform: linux/amd64
     build:
       context: .
       dockerfile: ./compose/local/django/Dockerfile
