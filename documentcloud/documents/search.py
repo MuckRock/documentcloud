@@ -143,6 +143,7 @@ def search(user, query_params):
         # *:* returns all documents, do not enable note queries
         text_query = _add_note_query(text_query, user)
         kwargs["uf"] = "* _query_ -projects_edit_access"
+        kwargs["hl.q"] = original_text_query
         query_notes = True
     else:
         query_notes = False
