@@ -1,6 +1,25 @@
+# The vendored Tesseract (documents/processing/ocr/tesseract) links image libs
+# by their Ubuntu sonames (libpng16.so.16, libjpeg.so.8, libtiff.so.5), which
+# the Debian base lacks -- so OCR/redaction fail to load liblept.so.5. Stage
+# the matching Ubuntu libs to copy into the image below.
+FROM ubuntu:20.04 AS ocrlibs
+RUN apt-get -qq -y update && \
+  apt-get -qq -y install --no-install-recommends \
+  libjpeg-turbo8 libtiff5 libpng16-16 libjbig0 libwebp6
+
 FROM python:3.12-slim
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 USER root
+
+# Put the vendored Tesseract's image libs on a standard library path.
+COPY --from=ocrlibs \
+  /usr/lib/x86_64-linux-gnu/libjpeg.so.8* \
+  /usr/lib/x86_64-linux-gnu/libtiff.so.5* \
+  /usr/lib/x86_64-linux-gnu/libpng16.so.16* \
+  /usr/lib/x86_64-linux-gnu/libjbig.so.0* \
+  /usr/lib/x86_64-linux-gnu/libwebp.so.6* \
+  /usr/local/lib/
+RUN ldconfig
 
 RUN apt-get -qq -y update && \
   apt-get -qq -y install \
@@ -44,6 +63,6 @@ RUN sed -i 's/\r//' /start-flower && chmod +x /start-flower
 
 WORKDIR /app
 
-ENV LD_LIBRARY_PATH /app/documentcloud/documents/processing/ocr/tesseract
+ENV LD_LIBRARY_PATH=/app/documentcloud/documents/processing/ocr/tesseract
 
 ENTRYPOINT ["/entrypoint"]
