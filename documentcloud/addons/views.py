@@ -429,8 +429,12 @@ class AddOnViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def update_config(self, request):
         name = request.data.get("repository")
-        if name:
+        # If the name doesn't match an existing repo to an Add-On,
+        # don't needlessly enqueue a celery task only for it to no-op
+        if name and AddOn.objects.filter(repository=name, removed=False).exists():
             update_config.delay(name)
+        else:
+            logger.warning("[ADDON] update_config no match for repository=%s", name)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     class Filter(django_filters.FilterSet):
