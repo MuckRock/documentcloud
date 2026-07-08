@@ -117,12 +117,12 @@ def format(c):
     """Format your code"""
     c.run(
         DJANGO_RUN_USER.format(
-            cmd="black documentcloud --exclude migrations && "
+            cmd="sh -c 'black documentcloud --exclude migrations && "
             "black config/urls.py && "
             "black config/settings && "
-            "isort -rc documentcloud && "
+            "isort documentcloud && "
             "isort config/urls.py && "
-            "isort -rc config/settings"
+            "isort config/settings'"
         )
     )
 
