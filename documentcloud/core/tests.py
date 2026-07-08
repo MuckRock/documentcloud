@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.contrib.flatpages.models import FlatPage
 from django.contrib.sites.models import Site
 from django.db import transaction
@@ -58,7 +59,7 @@ class TestMailgunView(TestCase):
         token = "testtoken"
         timestamp = int(time.time())
         signature = hmac.new(
-            key="".encode("utf8"),
+            key=settings.MAILGUN_API_KEY.encode("utf8"),
             msg=f"{timestamp}{token}".encode("utf8"),
             digestmod=hashlib.sha256,
         ).hexdigest()

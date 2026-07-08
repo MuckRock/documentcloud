@@ -1,12 +1,31 @@
+# Standard Library
+from datetime import date
+
 # Third Party
 import pytest
 
 # DocumentCloud
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.models import Organization
-from documentcloud.organizations.tests.factories import OrganizationFactory
+from documentcloud.organizations.tests.factories import (
+    EntitlementFactory,
+    OrganizationEntitlementFactory,
+    OrganizationFactory,
+    ProfessionalEntitlementFactory,
+)
 from documentcloud.users.models import User
 from documentcloud.users.tests.factories import UserFactory
+
+
+def ent_json(entitlement, date_update):
+    """Helper function for serializing entitlement data"""
+    return {
+        "name": entitlement.name,
+        "slug": entitlement.slug,
+        "description": entitlement.description,
+        "resources": entitlement.resources,
+        "date_update": date_update,
+    }
 
 
 class TestOrganization:
@@ -64,6 +83,150 @@ class TestOrganization:
             )
             == 2
         )
+
+
+class TestSquareletUpdateDataMultiEntitlement:
+    """Test cases for update_data with multiple entitlements"""
+
+    def _org_data(self, organization, entitlements, max_users=5):
+        return {
+            "name": organization.name,
+            "slug": organization.slug,
+            "individual": False,
+            "private": False,
+            "entitlements": entitlements,
+            "max_users": max_users,
+            "card": "",
+        }
+
+    @pytest.mark.django_db()
+    def test_two_paid_entitlements_sums_ai_credits(self):
+        """Two paid entitlements: ai_credits_per_month = sum of both"""
+        ent1 = ProfessionalEntitlementFactory()  # base_ai_credits=2000, min=1
+        ent2 = OrganizationEntitlementFactory()  # base_ai_credits=5000, min=5
+        organization = OrganizationFactory()
+        date_update = date(2024, 3, 1)
+
+        organization.update_data(
+            self._org_data(
+                organization,
+                [ent_json(ent1, date_update), ent_json(ent2, date_update)],
+                max_users=5,
+            )
+        )
+        organization.refresh_from_db()
+        # Professional: 2000 + max(0, 5-1)*0 = 2000
+        # Organization: 5000 + max(0, 5-5)*500 = 5000
+        assert organization.ai_credits_per_month == 7000
+        assert organization.monthly_ai_credits == 7000
+
+    @pytest.mark.django_db()
+    def test_paid_and_grant_entitlement_sums_ai_credits(self):
+        """Paid entitlement + grant entitlement: both contribute to total"""
+        paid = OrganizationEntitlementFactory()
+        grant = EntitlementFactory(
+            name="Grant",
+            resources={
+                "minimum_users": 1,
+                "base_ai_credits": 500,
+                "ai_credits_per_user": 0,
+                "feature_level": 0,
+            },
+        )
+        organization = OrganizationFactory()
+        date_update = date(2024, 3, 1)
+
+        organization.update_data(
+            self._org_data(
+                organization,
+                [ent_json(paid, date_update), ent_json(grant, date_update)],
+                max_users=5,
+            )
+        )
+        organization.refresh_from_db()
+        # Organization: 5000, Grant: 500
+        assert organization.ai_credits_per_month == 5500
+        assert organization.monthly_ai_credits == 5500
+
+    @pytest.mark.django_db()
+    def test_primary_entitlement_is_highest_feature_level(self):
+        """org.entitlement FK points to entitlement with highest feature_level"""
+        low = ProfessionalEntitlementFactory()  # feature_level=1
+        high = OrganizationEntitlementFactory()  # feature_level=2
+        organization = OrganizationFactory()
+        date_update = date(2024, 3, 1)
+
+        organization.update_data(
+            self._org_data(
+                organization,
+                [ent_json(low, date_update), ent_json(high, date_update)],
+            )
+        )
+        organization.refresh_from_db()
+        assert organization.entitlement.slug == high.slug
+
+    @pytest.mark.django_db()
+    def test_equal_feature_level_tie_breaks_to_first(self):
+        """Equal feature_level: first entitlement in list wins the FK"""
+        ent1 = EntitlementFactory(
+            name="GrantA",
+            resources={"base_ai_credits": 100, "feature_level": 1},
+        )
+        ent2 = EntitlementFactory(
+            name="GrantB",
+            resources={"base_ai_credits": 200, "feature_level": 1},
+        )
+        organization = OrganizationFactory()
+        date_update = date(2024, 3, 1)
+
+        organization.update_data(
+            self._org_data(
+                organization,
+                [ent_json(ent1, date_update), ent_json(ent2, date_update)],
+            )
+        )
+        organization.refresh_from_db()
+        assert organization.entitlement.slug == ent1.slug
+        assert organization.ai_credits_per_month == 300
+
+    @pytest.mark.django_db()
+    def test_users_below_minimum_does_not_reduce_base(self):
+        """users < minimum_users: base AI credits are not reduced"""
+        ent = OrganizationEntitlementFactory()  # min=5, base=5000, per_user=500
+        organization = OrganizationFactory()
+
+        organization.update_data(
+            self._org_data(organization, [ent_json(ent, date(2024, 3, 1))], max_users=2)
+        )
+        organization.refresh_from_db()
+        # max(0, 2-5) = 0, so just base=5000
+        assert organization.ai_credits_per_month == 5000
+
+    @pytest.mark.django_db()
+    def test_multi_entitlement_monthly_restore(self):
+        """Monthly restore resets monthly_ai_credits to sum of all entitlements"""
+        ent1 = ProfessionalEntitlementFactory()
+        ent2 = OrganizationEntitlementFactory()
+        organization = OrganizationFactory(
+            entitlement=ent2,
+            date_update=date(2024, 2, 1),
+            ai_credits_per_month=7000,
+            monthly_ai_credits=1000,
+        )
+
+        organization.update_data(
+            self._org_data(
+                organization,
+                [
+                    ent_json(ent1, date(2024, 3, 1)),
+                    ent_json(ent2, date(2024, 3, 1)),
+                ],
+                max_users=5,
+            )
+        )
+        organization.refresh_from_db()
+        assert organization.ai_credits_per_month == 7000
+        assert organization.monthly_ai_credits == 7000
 
 
 class TestOrganizationCollective:

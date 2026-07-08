@@ -91,8 +91,12 @@ class Organization(AbstractOrganization):
         return self.users.filter(pk=user.pk, memberships__admin=True).exists()
 
     def _update_resources(self, data, date_update):
-        # calc reqs/month in case it has changed
-        self.ai_credits_per_month = self.calc_ai_credits_per_month(data["max_users"])
+        # sum AI credits across all entitlements
+        users = data["max_users"]
+        self.ai_credits_per_month = sum(
+            self._calc_ent_ai_credits(ent_data, users)
+            for ent_data in data["entitlements"]
+        )
 
         # if date update has changed, then this is a monthly restore of the
         # subscription, and we should restore monthly AI credits.  If not, AI credits
@@ -109,8 +113,13 @@ class Organization(AbstractOrganization):
             self.monthly_ai_credits = self.ai_credits_per_month
             self.date_update = date_update
 
-    def _choose_entitlement(self, entitlements):
-        return max(entitlements, key=lambda e: e["resources"].get("base_ai_credits", 0))
+    @staticmethod
+    def _calc_ent_ai_credits(ent_data, users):
+        r = ent_data["resources"]
+        base = r.get("base_ai_credits", 0)
+        per_user = r.get("ai_credits_per_user", 0)
+        minimum = r.get("minimum_users", 1)
+        return base + max(0, users - minimum) * per_user
 
     @transaction.atomic
     def merge(self, uuid):
@@ -144,15 +153,6 @@ class Organization(AbstractOrganization):
         self.members.clear()
 
         self.merged = other
-
-    def calc_ai_credits_per_month(self, users):
-        """Calculate how many AI credits an organization gets per month on this plan
-        for a given number of users"""
-        return (
-            self.entitlement.base_ai_credits
-            + (users - self.entitlement.minimum_users)
-            * self.entitlement.ai_credits_per_user
-        )
 
     @transaction.atomic
     def use_ai_credits(self, amount, user_id, note):

@@ -120,9 +120,9 @@ def format(c):
             cmd="black documentcloud --exclude migrations && "
             "black config/urls.py && "
             "black config/settings && "
-            "isort documentcloud && "
+            "isort -rc documentcloud && "
             "isort config/urls.py && "
-            "isort config/settings"
+            "isort -rc config/settings"
         )
     )
 
@@ -233,10 +233,12 @@ def download_tesseract_data(c):
     """Download Tesseract data files. Needed to be able to do OCR locally."""
     c.run("cd config/aws/lambda; ./build.sh")
 
+
 @task
 def initialize_minio(c):
     """Initialize Minio bucket and policies for local development"""
     c.run(DJANGO_RUN.format(cmd="python manage.py initialize_minio"))
+
 
 @task
 def deploy_lambdas(c, staging=False):

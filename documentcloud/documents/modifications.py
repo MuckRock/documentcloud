@@ -1,4 +1,3 @@
-# Standard Library
 # Django
 from django.db import transaction
 
