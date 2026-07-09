@@ -786,7 +786,7 @@ sqlparse==0.5.4
     #   -r requirements/base.txt
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.15
+squarelet-auth==0.1.16
     # via -r requirements/base.txt
 stack-data==0.3.0
     # via
