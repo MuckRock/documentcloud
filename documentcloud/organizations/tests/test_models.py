@@ -206,9 +206,7 @@ class TestSquareletUpdateDataMultiEntitlement:
         organization = OrganizationFactory()
 
         organization.update_data(
-            self._org_data(
-                organization, [ent_json(ent, date(2024, 3, 1), quantity=2)]
-            )
+            self._org_data(organization, [ent_json(ent, date(2024, 3, 1), quantity=2)])
         )
         organization.refresh_from_db()
         # max(0, 2-5) = 0, so just base=5000
@@ -221,9 +219,7 @@ class TestSquareletUpdateDataMultiEntitlement:
         organization = OrganizationFactory()
 
         organization.update_data(
-            self._org_data(
-                organization, [ent_json(ent, date(2024, 3, 1), quantity=8)]
-            )
+            self._org_data(organization, [ent_json(ent, date(2024, 3, 1), quantity=8)])
         )
         organization.refresh_from_db()
         # 5000 + max(0, 8-5)*500 = 5000 + 1500 = 6500

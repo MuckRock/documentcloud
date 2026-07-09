@@ -93,8 +93,7 @@ class Organization(AbstractOrganization):
     def _update_resources(self, data, date_update):
         # sum AI credits across all entitlements
         self.ai_credits_per_month = sum(
-            self._calc_ent_ai_credits(ent_data)
-            for ent_data in data["entitlements"]
+            self._calc_ent_ai_credits(ent_data) for ent_data in data["entitlements"]
         )
 
         # if date update has changed, then this is a monthly restore of the
