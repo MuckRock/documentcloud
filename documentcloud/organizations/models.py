@@ -92,9 +92,8 @@ class Organization(AbstractOrganization):
 
     def _update_resources(self, data, date_update):
         # sum AI credits across all entitlements
-        users = data["max_users"]
         self.ai_credits_per_month = sum(
-            self._calc_ent_ai_credits(ent_data, users)
+            self._calc_ent_ai_credits(ent_data)
             for ent_data in data["entitlements"]
         )
 
@@ -114,12 +113,18 @@ class Organization(AbstractOrganization):
             self.date_update = date_update
 
     @staticmethod
-    def _calc_ent_ai_credits(ent_data, users):
+    def _calc_ent_ai_credits(ent_data):
+        """Compute the AI credit quota for one entitlement entry.
+
+        Uses ent_data["quantity"] (the per-subscription billing quantity sent
+        by Squarelet) rather than the stale org-level max_users field.
+        """
         r = ent_data["resources"]
         base = r.get("base_ai_credits", 0)
         per_user = r.get("ai_credits_per_user", 0)
         minimum = r.get("minimum_users", 1)
-        return base + max(0, users - minimum) * per_user
+        quantity = ent_data.get("quantity", 1)
+        return base + max(0, quantity - minimum) * per_user
 
     @transaction.atomic
     def merge(self, uuid):

@@ -17,7 +17,7 @@ from documentcloud.users.models import User
 from documentcloud.users.tests.factories import UserFactory
 
 
-def ent_json(entitlement, date_update):
+def ent_json(entitlement, date_update, quantity=1):
     """Helper function for serializing entitlement data"""
     return {
         "name": entitlement.name,
@@ -25,6 +25,7 @@ def ent_json(entitlement, date_update):
         "description": entitlement.description,
         "resources": entitlement.resources,
         "date_update": date_update,
+        "quantity": quantity,
     }
 
 
@@ -88,14 +89,13 @@ class TestOrganization:
 class TestSquareletUpdateDataMultiEntitlement:
     """Test cases for update_data with multiple entitlements"""
 
-    def _org_data(self, organization, entitlements, max_users=5):
+    def _org_data(self, organization, entitlements):
         return {
             "name": organization.name,
             "slug": organization.slug,
             "individual": False,
             "private": False,
             "entitlements": entitlements,
-            "max_users": max_users,
             "card": "",
         }
 
@@ -110,12 +110,14 @@ class TestSquareletUpdateDataMultiEntitlement:
         organization.update_data(
             self._org_data(
                 organization,
-                [ent_json(ent1, date_update), ent_json(ent2, date_update)],
-                max_users=5,
+                [
+                    ent_json(ent1, date_update, quantity=1),
+                    ent_json(ent2, date_update, quantity=5),
+                ],
             )
         )
         organization.refresh_from_db()
-        # Professional: 2000 + max(0, 5-1)*0 = 2000
+        # Professional: 2000 + max(0, 1-1)*0 = 2000
         # Organization: 5000 + max(0, 5-5)*500 = 5000
         assert organization.ai_credits_per_month == 7000
         assert organization.monthly_ai_credits == 7000
@@ -139,12 +141,14 @@ class TestSquareletUpdateDataMultiEntitlement:
         organization.update_data(
             self._org_data(
                 organization,
-                [ent_json(paid, date_update), ent_json(grant, date_update)],
-                max_users=5,
+                [
+                    ent_json(paid, date_update, quantity=5),
+                    ent_json(grant, date_update, quantity=1),
+                ],
             )
         )
         organization.refresh_from_db()
-        # Organization: 5000, Grant: 500
+        # Organization: 5000 + max(0, 5-5)*500 = 5000, Grant: 500
         assert organization.ai_credits_per_month == 5500
         assert organization.monthly_ai_credits == 5500
 
@@ -159,7 +163,10 @@ class TestSquareletUpdateDataMultiEntitlement:
         organization.update_data(
             self._org_data(
                 organization,
-                [ent_json(low, date_update), ent_json(high, date_update)],
+                [
+                    ent_json(low, date_update, quantity=1),
+                    ent_json(high, date_update, quantity=5),
+                ],
             )
         )
         organization.refresh_from_db()
@@ -182,7 +189,10 @@ class TestSquareletUpdateDataMultiEntitlement:
         organization.update_data(
             self._org_data(
                 organization,
-                [ent_json(ent1, date_update), ent_json(ent2, date_update)],
+                [
+                    ent_json(ent1, date_update, quantity=1),
+                    ent_json(ent2, date_update, quantity=1),
+                ],
             )
         )
         organization.refresh_from_db()
@@ -190,17 +200,34 @@ class TestSquareletUpdateDataMultiEntitlement:
         assert organization.ai_credits_per_month == 300
 
     @pytest.mark.django_db()
-    def test_users_below_minimum_does_not_reduce_base(self):
-        """users < minimum_users: base AI credits are not reduced"""
+    def test_quantity_below_minimum_does_not_reduce_base(self):
+        """quantity < minimum_users: base AI credits are not reduced"""
         ent = OrganizationEntitlementFactory()  # min=5, base=5000, per_user=500
         organization = OrganizationFactory()
 
         organization.update_data(
-            self._org_data(organization, [ent_json(ent, date(2024, 3, 1))], max_users=2)
+            self._org_data(
+                organization, [ent_json(ent, date(2024, 3, 1), quantity=2)]
+            )
         )
         organization.refresh_from_db()
         # max(0, 2-5) = 0, so just base=5000
         assert organization.ai_credits_per_month == 5000
+
+    @pytest.mark.django_db()
+    def test_quantity_above_minimum_adds_per_user_credits(self):
+        """quantity > minimum_users: extra quantity adds per-user AI credits"""
+        ent = OrganizationEntitlementFactory()  # min=5, base=5000, per_user=500
+        organization = OrganizationFactory()
+
+        organization.update_data(
+            self._org_data(
+                organization, [ent_json(ent, date(2024, 3, 1), quantity=8)]
+            )
+        )
+        organization.refresh_from_db()
+        # 5000 + max(0, 8-5)*500 = 5000 + 1500 = 6500
+        assert organization.ai_credits_per_month == 6500
 
     @pytest.mark.django_db()
     def test_multi_entitlement_monthly_restore(self):
@@ -218,10 +245,9 @@ class TestSquareletUpdateDataMultiEntitlement:
             self._org_data(
                 organization,
                 [
-                    ent_json(ent1, date(2024, 3, 1)),
-                    ent_json(ent2, date(2024, 3, 1)),
+                    ent_json(ent1, date(2024, 3, 1), quantity=1),
+                    ent_json(ent2, date(2024, 3, 1), quantity=5),
                 ],
-                max_users=5,
             )
         )
         organization.refresh_from_db()
