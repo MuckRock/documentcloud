@@ -1,0 +1,33 @@
+{
+  "callbacks": [
+    {
+      "json": {
+        "page_count": 1
+      },
+      "method": "patch",
+      "url": "documents/-9107/"
+    },
+    {
+      "json": {
+        "file_hash": "f1bdb2dfd659ac357ff4c08cd1b19db0376df2dc",
+        "page_spec": "612.00x792.00:0"
+      },
+      "method": "patch",
+      "url": "documents/-9107/"
+    },
+    {
+      "json": {
+        "status": "success"
+      },
+      "method": "patch",
+      "url": "documents/-9107/"
+    }
+  ],
+  "database": {
+    "file_hash": "f1bdb2dfd659ac357ff4c08cd1b19db0376df2dc",
+    "page_count": 1,
+    "page_spec": "612.00x792.00:0",
+    "status": "success"
+  },
+  "errors": []
+}

@@ -1,0 +1,1 @@
+{"updated": 1783974770034, "pages": [{"page": 0, "contents": "Redaction test document, page one is untouched.\nOnly page two receives a redaction.\u0000", "ocr": null, "lang": "eng", "updated": 1783974768941}, {"page": 1, "contents": "Page two before redaction.\n\f", "ocr": "tess4", "lang": "eng", "updated": 1783974770034}]}

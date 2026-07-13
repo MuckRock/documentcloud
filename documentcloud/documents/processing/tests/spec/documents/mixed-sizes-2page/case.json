@@ -1,0 +1,7 @@
+{
+    "doc_id": -9106,
+    "slug": "mixed-sizes-2page",
+    "why": "Pages with different dimensions: page_spec encoding and per-size aspect ratios.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": false
+}

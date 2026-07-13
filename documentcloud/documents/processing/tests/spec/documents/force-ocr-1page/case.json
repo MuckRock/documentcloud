@@ -1,0 +1,7 @@
+{
+    "doc_id": -9105,
+    "slug": "force-ocr-1page",
+    "why": "force_ocr overrides embedded text detection: the page has a text layer but must be OCR'd anyway (ocr: tess4_force).",
+    "settings": {"ocr_engine": "tess4", "force_ocr": true, "ocr_code": "eng"},
+    "needs_ocr": true
+}

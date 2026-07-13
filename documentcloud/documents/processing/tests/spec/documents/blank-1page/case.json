@@ -1,0 +1,7 @@
+{
+    "doc_id": -9107,
+    "slug": "blank-1page",
+    "why": "Edge case: a blank page has no text layer so it is OCR'd, producing empty text and an empty positions array.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": true
+}

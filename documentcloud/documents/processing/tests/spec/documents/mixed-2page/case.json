@@ -1,0 +1,7 @@
+{
+    "doc_id": -9104,
+    "slug": "mixed-2page",
+    "why": "Per-page routing: page 1 has embedded text (ocr: null), page 2 is scanned (ocr: tess4).",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": true
+}

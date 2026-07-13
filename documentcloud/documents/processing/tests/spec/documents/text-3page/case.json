@@ -1,0 +1,7 @@
+{
+    "doc_id": -9102,
+    "slug": "text-3page",
+    "why": "Multi-page embedded text. Every page gets all artifacts; text concatenation order is correct.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": false
+}

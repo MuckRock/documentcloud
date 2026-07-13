@@ -1,0 +1,7 @@
+{
+    "doc_id": -9103,
+    "slug": "scan-2page",
+    "why": "Image-only (scanned) document. Every page goes through Tesseract OCR: text, grafted PDF layer, and positions come from OCR.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": true
+}

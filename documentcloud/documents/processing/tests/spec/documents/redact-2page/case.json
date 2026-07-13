@@ -1,0 +1,10 @@
+{
+    "doc_id": -9108,
+    "slug": "redact-2page",
+    "why": "Redaction path: after standard processing, page 2 is redacted and reprocessed. The redacted page loses its text layer and is OCR'd; page_spec is not resent.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": true,
+    "redactions": [
+        {"page_number": 1, "x1": 0.1, "x2": 0.9, "y1": 0.12, "y2": 0.18}
+    ]
+}

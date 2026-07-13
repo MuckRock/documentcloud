@@ -1,0 +1,4 @@
+FORCE OCR TEST DOCUMENT
+This page has an embedded text layer, but the case settings
+use force_ocr, so the pipeline must OCR it anyway.
+

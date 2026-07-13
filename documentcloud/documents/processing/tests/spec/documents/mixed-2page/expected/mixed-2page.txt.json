@@ -1,0 +1,1 @@
+{"updated": 1783974766168, "pages": [{"page": 0, "contents": "Mixed document, page one has an embedded text layer.\nOnly the second page goes through OCR.\u0000", "ocr": null, "lang": "eng", "updated": 1783974766168}, {"page": 1, "contents": "MIXED PAGE TWO\nTHIS PAGE IS SCANNED\n\f", "ocr": "tess4", "lang": "eng", "updated": 1783974766168}]}
