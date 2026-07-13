@@ -58,11 +58,11 @@ You must first have these set up and ready to go:
 13. Create an initial Minio bucket to simulate AWS S3 locally:
     - Run `inv initialize-minio`
 14. Download and setup Tesseract language data locally so that OCR works. 
-    From within documentcloud/documents/processing/ocr/tesseract/tessdata/ run the following to download the trained data for the English language:
+    - From within documentcloud/documents/processing/ocr/tesseract/tessdata/ run the following to download the trained data for the English language:
     ```curl -L -o eng.traineddata https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata```
-    You'll also need to install the orientation and script detection data:
+    - You'll also need to install the orientation and script detection data:
     ```curl -L -o osd.traineddata https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata```
-    Lastly, you need to use the invoke command `inv manage upload_languages` to take the trained data from that directory and 
+    - Lastly, you need to use the invoke command `inv manage upload_languages` to take the trained data from that directory and 
     place it in the correct location in the Minio bucket to test OCR in a local development environment. You may add additional languages as needed by modifying the 
     curl command for the language data above. 
 15. Upload a document:
