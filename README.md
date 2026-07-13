@@ -57,13 +57,23 @@ You must first have these set up and ready to go:
 12. Go to [Django admin for DocumentCloud](https://api.dev.documentcloud.org/admin) and add the required static [flat page](https://api.dev.documentcloud.org/admin/flatpages/flatpage/) called `/tipofday/`. It can be blank. Do not prefix the URL with `/pages/`. Specifying the `Site` as `example.com` is alright.
 13. Create an initial Minio bucket to simulate AWS S3 locally:
     - Run `inv initialize-minio`
-14. Upload a document:
+14. Download and setup Tesseract language data locally so that OCR works. 
+    - From within documentcloud/documents/processing/ocr/tesseract/tessdata/ run the following to download the trained data for the English language:
+    ```curl -L -o eng.traineddata https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata```
+    - You'll also need to install the orientation and script detection data:
+    ```curl -L -o osd.traineddata https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata```
+    - Lastly, you need to use the invoke command `inv manage upload_languages` to take the trained data from that directory and 
+    place it in the correct location in the Minio bucket to test OCR in a local development environment. You may add additional languages as needed by modifying the 
+    curl command for the language data above. 
+15. Upload a document:
     - **Check your memory allocation on Docker is at least 7gb.** A sign that you do not have enough memory allocated is if containers are randomly failing or if your system is swapping heavily, especially when uploading documents.
     - The "upload" button should not be grayed out (if it is, check your user organization Verified Journalist status above)
     - If you get an error on your console about signatures, fix minio as above.
     - If you get an error on your console about tipofday not found, add the static page as above.
-15. Develop DocumentCloud and its frontend!
-16. You can run the tests with `inv test`.
+16. Develop DocumentCloud and its frontend!
+17. Tests can be run using `inv test`. If a test doesn't exist for new functionality, please create tests for the new functionality to ensure test coverage. 
+Before submitting a pull request, ensure all code passes quality and formatting checks by running `inv format` and `inv pylint` and resolving any issues. 
+
 
 - If you want to run a subset of the tests, you can specify the directory containing the test you want with the `path` switch like so: `inv test --path documentcloud/documents`.
   - You can specify a single file in `--path` if you only want to run the tests in that file.
