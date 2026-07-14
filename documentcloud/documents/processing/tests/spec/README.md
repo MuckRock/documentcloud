@@ -82,8 +82,10 @@ pytest documentcloud/documents/processing/tests/spec/test_spec.py
 ```
 
 This runs in CI alongside the other tests (it needs the Redis service the
-existing pipeline tests already use). Cases that need OCR are skipped unless
-the OCR runtime is available (see below); the embedded-text cases always run.
+existing pipeline tests already use). The CI workflow pulls the Tesseract
+LFS libraries so the OCR cases run there too; in a local checkout without
+them, OCR cases are skipped and the embedded-text cases still run. The
+pinned eng.traineddata is downloaded automatically on first use.
 
 To check outside of pytest:
 

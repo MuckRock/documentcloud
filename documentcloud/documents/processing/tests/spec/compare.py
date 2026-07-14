@@ -38,7 +38,7 @@ POSITION_TOLERANCE = 1e-4
 PRESENCE_ONLY_SUFFIXES = (".index", ".pagesize")
 
 
-def compare_case(expected_dir, actual_dir, slug, ignore_metadata_fields=()):
+def compare_case(expected_dir, actual_dir, ignore_metadata_fields=()):
     """Compare two document directories.  Returns a list of human-readable
     problems; an empty list means the directories match.
 
@@ -63,7 +63,6 @@ def compare_case(expected_dir, actual_dir, slug, ignore_metadata_fields=()):
                 expected_dir / name,
                 actual_dir / name,
                 name,
-                slug,
                 ignore_metadata_fields,
             )
         )
@@ -79,7 +78,8 @@ def _relative_files(directory):
     }
 
 
-def _compare_file(expected, actual, name, slug, ignore_metadata_fields=()):
+def _compare_file(expected, actual, name, ignore_metadata_fields=()):
+    # pylint: disable=too-many-return-statements
     if name == "metadata.json":
         return _compare_metadata(expected, actual, name, ignore_metadata_fields)
     if name.endswith(PRESENCE_ONLY_SUFFIXES):

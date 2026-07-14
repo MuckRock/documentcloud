@@ -53,6 +53,7 @@ def snapshot(runner, case, metadata, destination):
 
 
 def main(argv):
+    # pylint: disable=too-many-locals
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("cases", nargs="*", help="case names (default: all)")
     parser.add_argument(
@@ -99,7 +100,6 @@ def main(argv):
                     problems = compare.compare_case(
                         case["dir"] / "expected",
                         scratch,
-                        case["slug"],
                         ignore_metadata_fields=(
                             ("file_hash",) if case.get("redactions") else ()
                         ),

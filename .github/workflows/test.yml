@@ -97,6 +97,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Pull Tesseract LFS libraries
+        # Only the OCR libraries, so the processing spec tests can run OCR
+        # cases; a full LFS checkout would also fetch the large LibreOffice
+        # bundle, which the tests do not need
+        run: git lfs pull --include "documentcloud/documents/processing/ocr/tesseract/*"
       - name: Install Python
         uses: actions/setup-python@v5
         with:

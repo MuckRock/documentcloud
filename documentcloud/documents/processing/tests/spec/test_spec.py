@@ -24,6 +24,10 @@ import pytest
 # DocumentCloud
 from documentcloud.documents.processing.tests.spec import compare, harness
 
+# Pytest fixtures are injected by parameter name
+# pylint: disable=redefined-outer-name
+
+
 CASES = [case for case in harness.all_cases() if (case["dir"] / "expected").exists()]
 
 
@@ -33,7 +37,9 @@ def _case_id(case):
 
 @pytest.fixture(scope="module")
 def ocr_ready():
-    return harness.ocr_ready(download=False)
+    # Downloads the hash-pinned eng.traineddata on first use (a few MB);
+    # once cached under spec/.cache/ no network is needed
+    return harness.ocr_ready(download=True)
 
 
 @pytest.mark.slow
@@ -62,7 +68,6 @@ def test_pipeline_output_contract(case, ocr_ready):
         problems = compare.compare_case(
             case["dir"] / "expected",
             actual_dir,
-            case["slug"],
             ignore_metadata_fields=(("file_hash",) if case.get("redactions") else ()),
         )
         assert not problems, "\n".join(

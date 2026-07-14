@@ -179,6 +179,8 @@ class PipelineRunner:
     """Context manager that wires the pipeline up against a MEDIA_ROOT
     directory and runs test cases through it."""
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self, media_root, use_ocr=True):
         ensure_environment()
         self.media_root = Path(media_root)
@@ -242,7 +244,7 @@ class PipelineRunner:
         self._error_handling.USE_TIMEOUT = self._original_use_timeout
         self._settings_override.disable()
 
-    def _record_callback(self, redis, method, url, json_):
+    def _record_callback(self, _redis, method, url, json_):
         self.callbacks.append({"method": method, "url": url, "json": json_})
         return FakeResponse()
 
