@@ -61,6 +61,12 @@ def main(argv):
         action="store_true",
         help="compare a fresh run against expected/ instead of overwriting",
     )
+    parser.add_argument(
+        "--equivalent",
+        action="store_true",
+        help="with --check: use the looser equivalence rules meant for "
+        "validating a modified or replacement pipeline (see README)",
+    )
     args = parser.parse_args(argv)
 
     harness.ensure_environment()
@@ -103,6 +109,7 @@ def main(argv):
                         ignore_metadata_fields=(
                             ("file_hash",) if case.get("redactions") else ()
                         ),
+                        strictness="equivalent" if args.equivalent else "exact",
                     )
                     for problem in problems:
                         failures.append(f"{case['name']}: {problem}")

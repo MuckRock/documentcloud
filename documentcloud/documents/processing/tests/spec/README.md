@@ -122,10 +122,44 @@ production `eng.traineddata` (from the `ocr-languages` storage folder) in
 `.cache/` instead and regenerate — but note the committed goldens must then
 be produced with that same file.
 
-## Comparison rules
+## Validating a modified or replacement pipeline
+
+The corpus and comparison logic are deliberately independent of the current
+implementation: `documents/` is a set of input → expected-output pairs, and
+`compare.compare_case(expected_dir, actual_dir)` only looks at two
+directories. `harness.py` is the *current* pipeline's runner; to validate a
+replacement, write a runner for it that stages each case's input, produces a
+document directory in the same layout, and records the final database
+metadata (plus any error reports) in `metadata.json` — then compare with
+`strictness="equivalent"`.
+
+Two strictness modes:
+
+- **`exact`** (default, used by `test_spec.py` and CI) answers "is the
+  current pipeline unchanged?" — byte-exact text and images, full API
+  callback sequence. This intentionally pins implementation details,
+  including quirks like pdfium's trailing NUL and Tesseract's trailing form
+  feed, so any change is visible.
+- **`equivalent`** (`generate.py --check --equivalent`, or
+  `strictness="equivalent"`) answers "does a different implementation
+  produce equivalent final output?" — trailing control characters are
+  normalized away, OCR text is held to a similarity threshold instead of
+  equality, images to a mean pixel delta instead of identical bytes, the
+  `ocr` field to OCR'd-or-not instead of an engine name, and the callback
+  sequence is not compared (though error reports must still be sent). The
+  thresholds at the top of `compare.py` are a first cut — tune them against
+  real replacement candidates.
+
+Open question for the team: which of the pinned quirks are actually
+depended on downstream (search indexing, the frontend, add-ons)? The
+equivalence rules currently treat the trailing NUL/form-feed as accidents a
+replacement is free to fix; if a consumer turns out to rely on one, move it
+into the contract and tighten the rule.
+
+## Comparison rules (exact mode)
 
 Some pipeline output is intentionally or unavoidably non-reproducible, so
-`compare.py` normalizes:
+`compare.py` normalizes even in exact mode:
 
 | Output | Rule |
 | --- | --- |
@@ -169,6 +203,11 @@ reimplementation would need to match (or knowingly change):
   messages would not be caught
 - **Error paths beyond an unparseable input** (`corrupt-1page`) — e.g.
   OCR failures, storage failures, and the retry queue
+- **Real-world documents** — the corpus is synthetic (built with PyMuPDF),
+  so rotated pages, non-Latin/RTL text, ligatures, skewed scans, forms,
+  broken xref tables, JPEG2000 images, and unusual encodings are not
+  represented. Adding a handful of small, redistributable real documents is
+  the highest-value corpus improvement for replacement confidence
 
 Platform note: the GIF goldens are byte-compared and therefore pinned to the
 Linux builds of pdfium/Pillow used in CI. Run the suite on Linux (or in the
