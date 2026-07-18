@@ -65,12 +65,14 @@ crunching all run for real.
 | --- | --- | --- |
 | `text-1page` | 1 | Baseline: embedded text, no OCR, full output file set |
 | `text-3page` | 3 | All pages get all artifacts; concatenation order |
+| `text-4page` | 4 | More pages than `TEXT_POSITION_BATCH` (3): multi-batch flush path |
 | `scan-2page` | 2 | Image-only pages: OCR text, grafting, OCR positions |
 | `mixed-2page` | 2 | Per-page routing: page 1 `ocr: null`, page 2 `ocr: "tess4"` |
 | `force-ocr-1page` | 1 | `force_ocr` overrides embedded text (`ocr: "tess4_force"`) |
 | `mixed-sizes-2page` | 2 | Differing page dimensions; page_spec encoding |
 | `blank-1page` | 1 | Blank page is OCR'd; produces `"\f"` text and `[]` positions |
 | `redact-2page` | 2 | Redaction path: only the dirty page is reprocessed; page_spec is not resent |
+| `corrupt-1page` | — | Error path: an unparseable PDF produces an error POST to the API and no output files |
 
 Inputs are built deterministically by `make_corpus.py` and committed, so the
 goldens always correspond to known input bytes.
@@ -133,7 +135,7 @@ Some pipeline output is intentionally or unavoidably non-reproducible, so
 | `*.gif` | exact bytes; on mismatch, pixels are diffed and reported |
 | `*.pdf` | semantic: page count, page dimensions, per-page text layer. Bytes are not compared — the OCR grafter writes uuid-named XObjects and pikepdf regenerates the document ID |
 | `*.index` | presence only (gzip bytes embed a timestamp; not part of the contract) |
-| `metadata.json` | `page_count` and `status` exact; `page_spec` compared decoded (segment order follows Redis set iteration and is not deterministic); `file_hash` exact, except for redaction cases where the final PDF is rewritten non-reproducibly |
+| `metadata.json` | the merged database fields **and** the full API callback sequence (order, methods, URLs, payloads). `page_count` and `status` exact; `page_spec` compared decoded (segment order follows Redis set iteration and is not deterministic); `file_hash` exact, except for redaction cases where the final PDF is rewritten non-reproducibly — there the callbacks still assert that a well-formed SHA-1 was sent, just not its value. Storage bucket prefixes in error messages are stripped (the bucket name varies by environment) |
 
 Behaviors of the current pipeline that the goldens capture and that any
 reimplementation would need to match (or knowingly change):
@@ -159,6 +161,17 @@ reimplementation would need to match (or knowingly change):
   `storage.async_download`, which the local storage backend does not implement
 - **Bulk import**, **set_page_text**, revision control copies
 - **Non-English OCR** — needs additional pinned traineddata files
-- **Large documents** (image batching across multiple messages) — would bloat
-  the repository; `IMAGE_BATCH` behavior is still exercised, just with small
-  page counts
+- **Large documents** — every case fits in a single `IMAGE_BATCH` (55 pages);
+  multi-batch image extraction is not exercised (text-position batching is,
+  via `text-4page`, and OCR batching via `scan-2page` since `OCR_BATCH` is 1)
+- **Access levels** — all cases run with `access: private`; local storage
+  ignores ACLs, so a regression in how `access` propagates between pipeline
+  messages would not be caught
+- **Error paths beyond an unparseable input** (`corrupt-1page`) — e.g.
+  OCR failures, storage failures, and the retry queue
+
+Platform note: the GIF goldens are byte-compared and therefore pinned to the
+Linux builds of pdfium/Pillow used in CI. Run the suite on Linux (or in the
+dev container); a macOS run will report pixel deltas, and the bundled
+Tesseract libraries only load on Linux x86-64 (OCR cases skip elsewhere —
+or fail if `DC_SPEC_REQUIRE_OCR` is set, as it is in CI).

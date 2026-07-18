@@ -1,0 +1,8 @@
+{
+    "doc_id": -9110,
+    "slug": "corrupt-1page",
+    "why": "Error path: an unparseable PDF must produce an error POST to the API and no output files.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": false,
+    "expects_error": true
+}

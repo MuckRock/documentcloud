@@ -23,14 +23,18 @@ Comparison rules, per file type:
                                     not part of the output contract; the
                                     index is a gzip whose bytes embed a
                                     timestamp)
-- ``metadata.json``                 the database-facing fields must match
-                                    exactly: page_count, page_spec,
-                                    file_hash, status
+- ``metadata.json``                 the merged database fields and the full
+                                    API callback sequence (order, methods,
+                                    URLs, payloads), with page_spec decoded,
+                                    file_hash loosened to presence+shape for
+                                    redaction cases, and bucket prefixes
+                                    stripped from error messages
 """
 
 # Standard Library
 import io
 import json
+import re
 from pathlib import Path
 
 POSITION_TOLERANCE = 1e-4
@@ -104,9 +108,27 @@ def _compare_bytes(expected, actual, name):
 
 
 def _compare_metadata(expected, actual, name, ignore_fields=()):
+    expected_metadata = json.loads(expected.read_text())
+    actual_metadata = json.loads(actual.read_text())
+    problems = _compare_database(
+        expected_metadata["database"],
+        actual_metadata["database"],
+        name,
+        ignore_fields,
+    )
+    problems.extend(
+        _compare_callbacks(
+            expected_metadata.get("callbacks", []),
+            actual_metadata.get("callbacks", []),
+            name,
+            loose_file_hash="file_hash" in ignore_fields,
+        )
+    )
+    return problems
+
+
+def _compare_database(expected_database, actual_database, name, ignore_fields=()):
     problems = []
-    expected_database = json.loads(expected.read_text())["database"]
-    actual_database = json.loads(actual.read_text())["database"]
     for field in sorted(set(expected_database) | set(actual_database)):
         if field in ignore_fields:
             continue
@@ -127,6 +149,66 @@ def _compare_metadata(expected, actual, name, ignore_fields=()):
                 f"expected {expected_value!r}, got {actual_value!r}"
             )
     return problems
+
+
+SHA1_HEX = re.compile(r"^[0-9a-f]{40}$")
+# Error messages may embed storage paths whose bucket prefix varies by
+# environment; compare from the documents/ segment on
+BUCKET_PREFIX = re.compile(r"[^\s']*documents/")
+
+
+def _normalize_callback(callback, loose_file_hash):
+    """Normalize one captured API callback for comparison.
+
+    - page_spec values are decoded (segment order is not deterministic)
+    - file_hash values are replaced by a placeholder when loose_file_hash is
+      set (redaction rewrites the PDF non-reproducibly), so the sequence
+      still asserts that a well-formed hash was sent, just not its value
+    - storage bucket prefixes in error messages are stripped
+    """
+    json_ = dict(callback.get("json", {}))
+    if "page_spec" in json_:
+        json_["page_spec"] = _decode_page_spec(json_["page_spec"])
+    if (
+        loose_file_hash
+        and isinstance(json_.get("file_hash"), str)
+        and SHA1_HEX.match(json_["file_hash"])
+    ):
+        json_["file_hash"] = "<sha1>"
+    if isinstance(json_.get("message"), str):
+        json_["message"] = BUCKET_PREFIX.sub("documents/", json_["message"])
+    return {
+        "method": callback.get("method"),
+        "url": callback.get("url"),
+        "json": json_,
+    }
+
+
+def _compare_callbacks(expected_callbacks, actual_callbacks, name, loose_file_hash):
+    expected_normalized = [
+        _normalize_callback(callback, loose_file_hash)
+        for callback in expected_callbacks
+    ]
+    actual_normalized = [
+        _normalize_callback(callback, loose_file_hash) for callback in actual_callbacks
+    ]
+    if expected_normalized == actual_normalized:
+        return []
+    problems = []
+    if len(expected_normalized) != len(actual_normalized):
+        problems.append(
+            f"{name}: callback count differs: expected "
+            f"{len(expected_normalized)}, got {len(actual_normalized)}"
+        )
+    for index, (expected_callback, actual_callback) in enumerate(
+        zip(expected_normalized, actual_normalized)
+    ):
+        if expected_callback != actual_callback:
+            problems.append(
+                f"{name}: callback {index} differs: "
+                f"expected {expected_callback!r}, got {actual_callback!r}"
+            )
+    return problems or [f"{name}: callback sequences differ"]
 
 
 def _decode_page_spec(page_spec):
@@ -262,8 +344,13 @@ def _pdf_summary(pdf_path):
 
 
 def _compare_pdfs(expected, actual, name):
-    expected_summary = _pdf_summary(expected)
-    actual_summary = _pdf_summary(actual)
+    try:
+        expected_summary = _pdf_summary(expected)
+        actual_summary = _pdf_summary(actual)
+    except Exception:  # pylint: disable=broad-except
+        # Unparseable PDF (e.g. the corrupt-input error case): fall back to
+        # comparing the raw bytes
+        return _compare_bytes(expected, actual, name)
     problems = []
     if len(expected_summary) != len(actual_summary):
         return [

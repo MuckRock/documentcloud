@@ -1,0 +1,7 @@
+{
+    "doc_id": -9109,
+    "slug": "text-4page",
+    "why": "Four pages exceed TEXT_POSITION_BATCH (3), exercising the multi-batch flush path for text position extraction.",
+    "settings": {"ocr_engine": "tess4", "force_ocr": false, "ocr_code": "eng"},
+    "needs_ocr": false
+}

@@ -88,10 +88,10 @@ def main(argv):
             for case in cases:
                 print(f"processing {case['name']} ...", flush=True)
                 metadata = runner.run_case(case)
-                if metadata["errors"]:
+                if bool(metadata["errors"]) != case["expects_error"]:
                     failures.append(
-                        f"{case['name']}: pipeline reported errors: "
-                        f"{metadata['errors']}"
+                        f"{case['name']}: expected errors={case['expects_error']}, "
+                        f"pipeline reported: {metadata['errors']}"
                     )
                     continue
                 if args.check:

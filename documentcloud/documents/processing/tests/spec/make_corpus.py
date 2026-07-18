@@ -80,6 +80,19 @@ def build_text_3page(pdf):
         )
 
 
+def build_text_4page(pdf):
+    # Four pages fill more than one TEXT_POSITION_BATCH (3), exercising the
+    # multi-batch flush path in extract_image
+    for number, word in enumerate(["one", "two", "three", "four"], start=1):
+        add_text_page(
+            pdf,
+            [
+                f"Page {word} of the four page text document.",
+                f"Text position extraction happens in batches; marker {number}.",
+            ],
+        )
+
+
 def build_scan_2page(pdf):
     add_scanned_page(pdf, ["SCANNED PAGE ONE", "NO TEXT LAYER HERE"])
     add_scanned_page(pdf, ["SCANNED PAGE TWO", "EVERY PAGE IS OCRD"])
@@ -142,6 +155,7 @@ def build_redact_2page(pdf):
 BUILDERS = {
     "text-1page": build_text_1page,
     "text-3page": build_text_3page,
+    "text-4page": build_text_4page,
     "scan-2page": build_scan_2page,
     "mixed-2page": build_mixed_2page,
     "force-ocr-1page": build_force_ocr_1page,
@@ -151,17 +165,30 @@ BUILDERS = {
 }
 
 
+def build_corrupt_1page():
+    """A file with a PDF header but truncated, unparseable structure — the
+    pipeline must report an error through the API callback."""
+    return b"%PDF-1.6\n1 0 obj\n<< /Type /Catalog" + b"\x00garbage" * 8
+
+
+RAW_BUILDERS = {
+    "corrupt-1page": build_corrupt_1page,
+}
+
+
 def main(argv):
-    names = argv or sorted(BUILDERS)
+    names = argv or sorted(BUILDERS) + sorted(RAW_BUILDERS)
     for name in names:
-        builder = BUILDERS[name]
         input_dir = DOCUMENTS_DIR / name / "input"
         input_dir.mkdir(parents=True, exist_ok=True)
-        pdf = pymupdf.open()
-        builder(pdf)
         output = input_dir / f"{name}.pdf"
-        pdf.save(str(output), garbage=4, deflate=True, deflate_images=True)
-        pdf.close()
+        if name in RAW_BUILDERS:
+            output.write_bytes(RAW_BUILDERS[name]())
+        else:
+            pdf = pymupdf.open()
+            BUILDERS[name](pdf)
+            pdf.save(str(output), garbage=4, deflate=True, deflate_images=True)
+            pdf.close()
         print(f"wrote {output}")
 
 

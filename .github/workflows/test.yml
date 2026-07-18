@@ -102,6 +102,11 @@ jobs:
         # cases; a full LFS checkout would also fetch the large LibreOffice
         # bundle, which the tests do not need
         run: git lfs pull --include "documentcloud/documents/processing/ocr/tesseract/*"
+      - name: Cache OCR language data
+        uses: actions/cache@v4
+        with:
+          path: documentcloud/documents/processing/tests/spec/.cache
+          key: processing-spec-tessdata-7d4322bd
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -117,3 +122,6 @@ jobs:
           PG_USER: test
           PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
           DATABASE_URL: postgres://test:postgres@127.0.0.1:5432/test
+          # OCR is expected to work in CI: fail the processing spec's OCR
+          # cases instead of skipping them if the runtime is unavailable
+          DC_SPEC_REQUIRE_OCR: "1"

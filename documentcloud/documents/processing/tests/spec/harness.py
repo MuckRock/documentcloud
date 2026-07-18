@@ -94,6 +94,8 @@ def load_case(case_dir):
     case_dir = Path(case_dir)
     with open(case_dir / "case.json", encoding="utf-8") as case_file:
         case = json.load(case_file)
+    case.setdefault("needs_ocr", False)
+    case.setdefault("expects_error", False)
     case["dir"] = case_dir
     case["name"] = case_dir.name
     case["input"] = case_dir / "input" / f"{case['slug']}.pdf"
@@ -118,12 +120,20 @@ def _is_lfs_pointer(file_path):
 
 
 def ocr_libraries_available():
-    """Whether the bundled Tesseract shared libraries are real files (they
-    are stored in Git LFS and may be un-pulled pointers)."""
-    return all(
-        not _is_lfs_pointer(TESSERACT_DIR / lib)
+    """Whether the bundled Tesseract shared libraries are usable: real files
+    (they are stored in Git LFS and may be un-pulled pointers) that actually
+    load on this platform (they are Linux x86-64 builds)."""
+    if any(
+        _is_lfs_pointer(TESSERACT_DIR / lib)
         for lib in TESSERACT_LIBS + ["libtesseract.so.5"]
-    )
+    ):
+        return False
+    try:
+        preload_tesseract_libraries()
+        ctypes.CDLL(str(TESSERACT_DIR / "libtesseract.so.5"), mode=ctypes.RTLD_GLOBAL)
+    except OSError:
+        return False
+    return True
 
 
 def preload_tesseract_libraries():
@@ -212,6 +222,13 @@ class PipelineRunner:
         self._original_request = utils.request
         utils.request = self._record_callback
 
+        # The local-environment sentry stub re-raises exceptions "for
+        # debugging"; neutralize it so the error path behaves as in
+        # production (error is sent via the API callback and the function
+        # returns) and error cases can be snapshotted
+        self._original_capture_exception = utils.capture_exception
+        utils.capture_exception = lambda exc: None
+
         # Never use pebble subprocesses: the queue and the callback recorder
         # live in this process
         self._original_use_timeout = error_handling.USE_TIMEOUT
@@ -241,6 +258,7 @@ class PipelineRunner:
     def __exit__(self, exc_type, exc_value, traceback):
         self.publisher.tasks = self._original_tasks
         self.utils.request = self._original_request
+        self.utils.capture_exception = self._original_capture_exception
         self._error_handling.USE_TIMEOUT = self._original_use_timeout
         self._settings_override.disable()
 

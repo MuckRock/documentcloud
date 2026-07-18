@@ -1,0 +1,21 @@
+{
+  "callbacks": [
+    {
+      "json": {
+        "message": "ERROR 3: unable to load 'spec-bucket/documents/-9110/corrupt-1page.pdf'"
+      },
+      "method": "post",
+      "url": "documents/-9110/errors/"
+    }
+  ],
+  "database": {},
+  "errors": [
+    {
+      "json": {
+        "message": "ERROR 3: unable to load 'spec-bucket/documents/-9110/corrupt-1page.pdf'"
+      },
+      "method": "post",
+      "url": "documents/-9110/errors/"
+    }
+  ]
+}
