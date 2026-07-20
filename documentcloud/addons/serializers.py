@@ -245,6 +245,7 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
             "scratch",
             "created_at",
             "updated_at",
+            "dismissed",
         ]
         extra_kwargs = {
             "addon": {"queryset": AddOn.objects.none()},

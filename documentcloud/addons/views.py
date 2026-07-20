@@ -1043,6 +1043,10 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                 "`https://www.nifc.gov`."
             ),
         )
+        dismissed = django_filters.BooleanFilter(
+            field_name="dismissed",
+            help_text="Filter events by whether they have been dismissed.",
+        )
 
         def site_filter(self, queryset, name, value):
             # pylint: disable=unused-argument

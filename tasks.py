@@ -14,6 +14,16 @@ DJANGO_RUN_USER = COMPOSE_RUN_OPT_USER.format(
 )
 WEB_OPEN = "xdg-open {} > /dev/null 2>&1"
 
+@task
+def up(c):
+    """Start the docker images"""
+    c.run("docker compose up -d")
+
+
+@task
+def down(c):
+    """Shut down the docker images"""
+    c.run(f"docker compose down")
 
 @task
 def test(
@@ -117,12 +127,12 @@ def format(c):
     """Format your code"""
     c.run(
         DJANGO_RUN_USER.format(
-            cmd="black documentcloud --exclude migrations && "
+            cmd="sh -c 'black documentcloud --exclude migrations && "
             "black config/urls.py && "
             "black config/settings && "
             "isort documentcloud && "
             "isort config/urls.py && "
-            "isort config/settings"
+            "isort config/settings'"
         )
     )
 
@@ -233,10 +243,12 @@ def download_tesseract_data(c):
     """Download Tesseract data files. Needed to be able to do OCR locally."""
     c.run("cd config/aws/lambda; ./build.sh")
 
+
 @task
 def initialize_minio(c):
     """Initialize Minio bucket and policies for local development"""
     c.run(DJANGO_RUN.format(cmd="python manage.py initialize_minio"))
+
 
 @task
 def deploy_lambdas(c, staging=False):
