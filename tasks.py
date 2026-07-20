@@ -14,6 +14,16 @@ DJANGO_RUN_USER = COMPOSE_RUN_OPT_USER.format(
 )
 WEB_OPEN = "xdg-open {} > /dev/null 2>&1"
 
+@task
+def up(c):
+    """Start the docker images"""
+    c.run("docker compose up -d")
+
+
+@task
+def down(c):
+    """Shut down the docker images"""
+    c.run(f"docker compose down")
 
 @task
 def test(
