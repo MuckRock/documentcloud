@@ -1,7 +1,6 @@
 # Django
 from django.conf import settings
 from django.utils.cache import patch_cache_control
-from django.views.decorators.vary import vary_on_cookie
 
 # Standard Library
 from functools import wraps
@@ -30,7 +29,6 @@ def anonymous_cache_control(viewfunc):
     """Cache this view only if the user is anonymous"""
 
     @wraps(viewfunc)
-    @vary_on_cookie
     def inner(request, *args, **kwargs):
         response = viewfunc(request, *args, **kwargs)
         has_auth_token = hasattr(request, "auth") and request.auth is not None

@@ -5,12 +5,51 @@ from django.http.response import JsonResponse
 
 # Standard Library
 import logging
+import re
 import time
 
 # Third Party
 from ipware import get_client_ip
 
 logger = logging.getLogger(__name__)
+
+# matches Django's own comma-splitting for Cache-Control/Vary header values
+# (django.utils.cache.cc_delim_re), defined locally to avoid depending on an
+# undocumented Django internal
+_VARY_DELIM_RE = re.compile(r"\s*,\s*")
+
+
+class StripCookieVaryMiddleware:
+    """Drop `Cookie` from `Vary` on responses explicitly marked `public`.
+
+    DRF's `SessionAuthentication` touches `request.session` on every
+    request (even anonymous ones) to check for a session-based user, which
+    makes Django's `SessionMiddleware` unconditionally add `Vary: Cookie`
+    to the response - that can't be prevented from the view layer, since
+    the session is already marked accessed before any view code runs. A
+    response we've explicitly marked `public` was meant to be shared across
+    users by the CDN, so `Vary: Cookie` on it is always unwanted; must run
+    after `SessionMiddleware` in the response phase, so it needs to be
+    listed before it in `MIDDLEWARE`.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        vary = response.get("Vary")
+        if vary and "public" in response.get("Cache-Control", ""):
+            values = [
+                value
+                for value in _VARY_DELIM_RE.split(vary)
+                if value.lower() != "cookie"
+            ]
+            if values:
+                response["Vary"] = ", ".join(values)
+            else:
+                del response["Vary"]
+        return response
 
 
 class LogHTTPMiddleware:

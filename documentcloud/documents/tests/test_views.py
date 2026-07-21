@@ -2,10 +2,12 @@
 from django.conf import settings
 from django.db import connection, reset_queries
 from django.test.utils import override_settings
+from django.utils.http import http_date
 from rest_framework import status
 
 # Standard Library
 import json
+from datetime import timedelta
 
 # Third Party
 import pytest
@@ -341,6 +343,9 @@ class TestDocumentAPI:
         assert f"max-age={settings.CACHE_CONTROL_MAX_AGE}" in response["Cache-Control"]
         assert "private" not in response["Cache-Control"]
         assert "no-cache" not in response["Cache-Control"]
+        # anonymous reads don't vary on cookie - the cookie value doesn't
+        # change the response, so it shouldn't fragment the CDN cache
+        assert "Cookie" not in response["Vary"]
 
     def test_retrieve_auth(self, client, document):
         """Test retrieving a document"""
@@ -352,6 +357,36 @@ class TestDocumentAPI:
         assert "no-cache" in response["Cache-Control"]
         assert "public" not in response["Cache-Control"]
         assert "max-age" not in response["Cache-Control"]
+        # the authenticated branch still varies per user
+        assert "Cookie" in response["Vary"]
+
+    def test_retrieve_last_modified(self, client, document):
+        """Retrieving a document should send a real Last-Modified header
+        derived from the document's updated_at, not the response time"""
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Last-Modified"] == http_date(document.updated_at.timestamp())
+
+    def test_retrieve_not_modified(self, client, document):
+        """A conditional GET with a current If-Modified-Since should return
+        304 with no body"""
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+        assert not response.content
+
+    def test_retrieve_modified_since_stale(self, client, document):
+        """A conditional GET with an If-Modified-Since older than the
+        document's last edit should return 200 with the full body"""
+        stale = document.updated_at - timedelta(days=1)
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            HTTP_IF_MODIFIED_SINCE=http_date(stale.timestamp()),
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.content
 
     def test_retrieve_no_file(self, client):
         """Test retrieving a document with a presigned url"""

@@ -3,7 +3,9 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Q, prefetch_related_objects
 from django.db.models.query import Prefetch
+from django.utils.cache import get_conditional_response
 from django.utils.decorators import method_decorator
+from django.utils.http import http_date
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -630,7 +632,19 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ],
     )
     def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        response = Response(serializer.data)
+        # truncate to whole seconds - If-Modified-Since only has 1s
+        # resolution, so comparing against the raw microsecond timestamp
+        # would never match
+        last_modified = int(instance.updated_at.timestamp())
+        response["Last-Modified"] = http_date(last_modified)
+        return get_conditional_response(
+            request,
+            last_modified=last_modified,
+            response=response,
+        )
 
     @extend_schema(
         request=DocumentSerializer,
