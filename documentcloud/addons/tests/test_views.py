@@ -438,3 +438,83 @@ class TestAddOnEventAPI:
         response = client.get("/api/addon_runs/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.json()["results"]) == 3
+
+    def test_default_not_dismissed(self):
+        """A newly created event is not dismissed"""
+        event = AddOnEventFactory()
+        assert event.dismissed is False
+
+    def test_dismissed_in_serializer(self, client):
+        """The dismissed field is exposed on the event"""
+        event = AddOnEventFactory()
+        client.force_authenticate(user=event.user)
+        response = client.get(f"/api/addon_events/{event.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["dismissed"] is False
+
+    def test_dismiss(self, client):
+        """The owner can dismiss their event"""
+        event = AddOnEventFactory(dismissed=False)
+        client.force_authenticate(user=event.user)
+        response = client.patch(
+            f"/api/addon_events/{event.pk}/", {"dismissed": True}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["dismissed"] is True
+        event.refresh_from_db()
+        assert event.dismissed is True
+
+    def test_undismiss(self, client):
+        """The owner can un-dismiss their event"""
+        event = AddOnEventFactory(dismissed=True)
+        client.force_authenticate(user=event.user)
+        response = client.patch(
+            f"/api/addon_events/{event.pk}/", {"dismissed": False}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        event.refresh_from_db()
+        assert event.dismissed is False
+
+    def test_dismiss_non_owner(self, client):
+        """A non-owner can't see the event, so the patch 404s and nothing changes"""
+        event = AddOnEventFactory(dismissed=False)
+        other = UserFactory()
+        client.force_authenticate(user=other)
+        response = client.patch(
+            f"/api/addon_events/{event.pk}/", {"dismissed": True}, format="json"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        event.refresh_from_db()
+        assert event.dismissed is False
+
+    def test_filter_dismissed_false(self, client):
+        """?dismissed=false returns only non-dismissed events"""
+        user = UserFactory()
+        visible = AddOnEventFactory(user=user, dismissed=False)
+        AddOnEventFactory(user=user, dismissed=True)
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_events/", {"dismissed": "false"})
+        assert response.status_code == status.HTTP_200_OK
+        ids = [r["id"] for r in response.json()["results"]]
+        assert ids == [visible.pk]
+
+    def test_filter_dismissed_true(self, client):
+        """?dismissed=true returns only dismissed events"""
+        user = UserFactory()
+        AddOnEventFactory(user=user, dismissed=False)
+        dismissed = AddOnEventFactory(user=user, dismissed=True)
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_events/", {"dismissed": "true"})
+        assert response.status_code == status.HTTP_200_OK
+        ids = [r["id"] for r in response.json()["results"]]
+        assert ids == [dismissed.pk]
+
+    def test_filter_dismissed_absent_is_noop(self, client):
+        """Omitting the dismissed filter returns all viewable events"""
+        user = UserFactory()
+        AddOnEventFactory(user=user, dismissed=False)
+        AddOnEventFactory(user=user, dismissed=True)
+        client.force_authenticate(user=user)
+        response = client.get("/api/addon_events/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.json()["results"]) == 2

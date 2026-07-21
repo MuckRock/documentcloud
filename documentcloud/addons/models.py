@@ -601,6 +601,15 @@ class AddOnEvent(models.Model):
         help_text=_("Timestamp of when the add-on event was last updated"),
     )
 
+    dismissed = models.BooleanField(
+        _("dismissed"),
+        default=False,
+        help_text=_(
+            "If this event has been dismissed from view and should no longer be "
+            "shown to the user"
+        ),
+    )
+
     class Meta:
         indexes = [
             models.Index(
