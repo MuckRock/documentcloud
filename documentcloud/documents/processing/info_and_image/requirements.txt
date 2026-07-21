@@ -1,6 +1,6 @@
 -r cloud-requirements.txt
 
-Pillow==12.1.1
+Pillow==12.3.0
 aioboto3==15.5.0
 django-environ==0.13.0
 furl==2.1.0
