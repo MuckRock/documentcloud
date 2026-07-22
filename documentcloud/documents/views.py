@@ -120,10 +120,6 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     permission_classes = (
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
     )
-    # expandable relations that expose no modification timestamp; when any of
-    # these is expanded we cannot tell if the serialized content is stale, so
-    # `retrieve` skips conditional (Last-Modified/304) handling entirely
-    UNTIMESTAMPED_EXPANDS = frozenset({"sections", "user", "organization"})
 
     @extend_schema(
         request={
@@ -638,8 +634,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        # last_modified is None when an expanded relation exposes no timestamp;
-        # in that case we can't safely revalidate, so skip conditional handling
+        # last_modified is None when we can't safely determine freshness (a
+        # nested or ~all expansion); in that case skip conditional handling
         last_modified = self._retrieve_last_modified(request, instance)
         if last_modified is not None:
             # short-circuit a 304 before serializing - conditional GET exists
@@ -660,19 +656,29 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         """Latest modification time across the document and any expanded
         relations, as a whole-number unix timestamp.
 
-        Returns None when an expanded relation exposes no timestamp - none of
-        the expandable relations bump `document.updated_at` when they change,
-        so the document's own timestamp is not a safe proxy for them. Truncated
-        to whole seconds because `If-Modified-Since` has only 1s resolution;
+        Every top-level expandable relation carries a modification timestamp,
+        so an explicit expand set can be tracked precisely. Returns None for a
+        nested (e.g. `notes.user`) or `~all` expansion, which serialize related
+        objects' own fields whose changes this method can't cheaply follow -
+        better to skip conditional handling than risk a stale 304. Truncated to
+        whole seconds because `If-Modified-Since` has only 1s resolution;
         comparing against a raw microsecond timestamp would never match.
         """
-        top_expands, _ = split_levels(request.query_params.get("expand", ""))
-        if "~all" in top_expands or self.UNTIMESTAMPED_EXPANDS.intersection(
-            top_expands
-        ):
+        top_expands, nested_expands = split_levels(
+            request.query_params.get("expand", "")
+        )
+        if "~all" in top_expands or nested_expands:
             return None
 
         timestamps = [instance.updated_at]
+        if "user" in top_expands:
+            timestamps.append(instance.user.updated_at)
+        if "organization" in top_expands:
+            timestamps.append(instance.organization.updated_at)
+        if "sections" in top_expands:
+            timestamps.append(
+                instance.sections.aggregate(latest=Max("updated_at"))["latest"]
+            )
         if "notes" in top_expands:
             timestamps.append(
                 Note.objects.get_viewable(request.user, instance).aggregate(

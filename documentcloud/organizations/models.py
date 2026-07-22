@@ -16,7 +16,7 @@ from squarelet_auth.organizations.models import AbstractOrganization
 
 # DocumentCloud
 from documentcloud.core.choices import Language
-from documentcloud.core.fields import AutoCreatedField
+from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.querysets import OrganizationQuerySet
 
@@ -66,6 +66,14 @@ class Organization(AbstractOrganization):
         default="eng",
         blank=True,
         help_text=_("The default document language for user's in this organization"),
+    )
+    created_at = AutoCreatedField(
+        _("created at"),
+        help_text=_("Timestamp of when the organization was created"),
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"),
+        help_text=_("Timestamp of when the organization was last updated"),
     )
 
     def __str__(self):

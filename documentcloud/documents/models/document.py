@@ -852,6 +852,12 @@ class Section(models.Model):
         _("page number"), help_text=_("Which page this section appears on")
     )
     title = models.TextField(_("title"), help_text=_("A title for the section"))
+    created_at = AutoCreatedField(
+        _("created at"), help_text=_("Timestamp of when the section was created")
+    )
+    updated_at = AutoLastModifiedField(
+        _("updated at"), help_text=_("Timestamp of when the section was last updated")
+    )
 
     class Meta:
         ordering = ("document", "page_number")

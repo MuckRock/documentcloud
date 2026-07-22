@@ -409,23 +409,45 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_304_NOT_MODIFIED
 
-    def test_retrieve_expand_untimestamped_no_conditional(self, client, document):
-        """Expanding a relation with no modification timestamp (sections)
-        disables conditional caching, so a stale 304 can't be served"""
+    def test_retrieve_expand_sections_last_modified(self, client, document):
+        """When sections are expanded, Last-Modified reflects the newest
+        section - editing a section does not bump the document's updated_at"""
+        section = SectionFactory.create(document=document)
+        assert section.updated_at > document.updated_at
         response = client.get(f"/api/documents/{document.pk}/", {"expand": "sections"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Last-Modified"] == http_date(section.updated_at.timestamp())
+
+    def test_retrieve_expand_organization_last_modified(self, client, document):
+        """Expanding the organization (now timestamped) enables conditional
+        caching rather than disabling it"""
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "organization"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        latest = max(document.updated_at, document.organization.updated_at)
+        assert response["Last-Modified"] == http_date(latest.timestamp())
+
+    def test_retrieve_expand_nested_no_conditional(self, client, document):
+        """A nested expansion (notes.user) serializes related fields we can't
+        cheaply track, so conditional caching is disabled to avoid a stale 304"""
+        NoteFactory.create(document=document, access=Access.public)
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "notes.user"}
+        )
         assert response.status_code == status.HTTP_200_OK
         assert "Last-Modified" not in response
         # even a matching If-Modified-Since must still return the full body
         response = client.get(
             f"/api/documents/{document.pk}/",
-            {"expand": "sections"},
+            {"expand": "notes.user"},
             HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.content
 
     def test_retrieve_expand_all_no_conditional(self, client, document):
-        """Expanding ~all pulls in untimestamped relations, so conditional
+        """Expanding ~all serializes deeply nested content, so conditional
         caching is disabled"""
         response = client.get(f"/api/documents/{document.pk}/", {"expand": "~all"})
         assert response.status_code == status.HTTP_200_OK
@@ -1596,6 +1618,9 @@ class TestSectionAPI:
         response_json = response.json()
         serializer = SectionSerializer(section)
         assert response_json == serializer.data
+        # timestamps are exposed in the API output
+        assert "created_at" in response_json
+        assert "updated_at" in response_json
 
     def test_retrieve_bad_document(self, client):
         """Test retrieving a section on a document you do not have access to"""

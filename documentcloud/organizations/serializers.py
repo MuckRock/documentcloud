@@ -69,6 +69,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "credit_reset_date",
             "monthly_credit_allowance",
             "plan",
+            "created_at",
+            "updated_at",
         ]
         extra_kwargs = {
             "avatar_url": {"read_only": True},
