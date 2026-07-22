@@ -388,6 +388,49 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.content
 
+    def test_retrieve_expand_notes_last_modified(self, client, document):
+        """When notes are expanded, Last-Modified reflects the newest note -
+        editing a note does not bump the document's own updated_at"""
+        note = NoteFactory.create(document=document, access=Access.public)
+        assert note.updated_at > document.updated_at
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Last-Modified"] == http_date(note.updated_at.timestamp())
+
+    def test_retrieve_expand_notes_not_modified(self, client, document):
+        """A conditional GET with expanded notes returns 304 when nothing has
+        changed since the newest of the document and its notes"""
+        note = NoteFactory.create(document=document, access=Access.public)
+        latest = max(document.updated_at, note.updated_at)
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            {"expand": "notes"},
+            HTTP_IF_MODIFIED_SINCE=http_date(latest.timestamp()),
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+
+    def test_retrieve_expand_untimestamped_no_conditional(self, client, document):
+        """Expanding a relation with no modification timestamp (sections)
+        disables conditional caching, so a stale 304 can't be served"""
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "sections"})
+        assert response.status_code == status.HTTP_200_OK
+        assert "Last-Modified" not in response
+        # even a matching If-Modified-Since must still return the full body
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            {"expand": "sections"},
+            HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.content
+
+    def test_retrieve_expand_all_no_conditional(self, client, document):
+        """Expanding ~all pulls in untimestamped relations, so conditional
+        caching is disabled"""
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "~all"})
+        assert response.status_code == status.HTTP_200_OK
+        assert "Last-Modified" not in response
+
     def test_retrieve_no_file(self, client):
         """Test retrieving a document with a presigned url"""
         document = DocumentFactory(status=Status.nofile)

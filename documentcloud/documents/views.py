@@ -1,7 +1,7 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db.models import Max, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
 from django.utils.cache import get_conditional_response
 from django.utils.decorators import method_decorator
@@ -120,6 +120,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     permission_classes = (
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
     )
+    # expandable relations that expose no modification timestamp; when any of
+    # these is expanded we cannot tell if the serialized content is stale, so
+    # `retrieve` skips conditional (Last-Modified/304) handling entirely
+    UNTIMESTAMPED_EXPANDS = frozenset({"sections", "user", "organization"})
 
     @extend_schema(
         request={
@@ -635,16 +639,55 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         response = Response(serializer.data)
-        # truncate to whole seconds - If-Modified-Since only has 1s
-        # resolution, so comparing against the raw microsecond timestamp
-        # would never match
-        last_modified = int(instance.updated_at.timestamp())
+
+        last_modified = self._retrieve_last_modified(request, instance)
+        if last_modified is None:
+            # an expanded relation exposes no timestamp - serve the full
+            # response rather than risk a stale 304
+            return response
+
         response["Last-Modified"] = http_date(last_modified)
         return get_conditional_response(
             request,
             last_modified=last_modified,
             response=response,
         )
+
+    def _retrieve_last_modified(self, request, instance):
+        """Latest modification time across the document and any expanded
+        relations, as a whole-number unix timestamp.
+
+        Returns None when an expanded relation exposes no timestamp - none of
+        the expandable relations bump `document.updated_at` when they change,
+        so the document's own timestamp is not a safe proxy for them. Truncated
+        to whole seconds because `If-Modified-Since` has only 1s resolution;
+        comparing against a raw microsecond timestamp would never match.
+        """
+        top_expands, _ = split_levels(request.query_params.get("expand", ""))
+        if "~all" in top_expands or self.UNTIMESTAMPED_EXPANDS.intersection(
+            top_expands
+        ):
+            return None
+
+        timestamps = [instance.updated_at]
+        if "notes" in top_expands:
+            timestamps.append(
+                Note.objects.get_viewable(request.user, instance).aggregate(
+                    latest=Max("updated_at")
+                )["latest"]
+            )
+        if "projects" in top_expands:
+            timestamps.append(
+                instance.projects.get_viewable(request.user).aggregate(
+                    latest=Max("updated_at")
+                )["latest"]
+            )
+        if "revisions" in top_expands:
+            timestamps.append(
+                instance.revisions.aggregate(latest=Max("created_at"))["latest"]
+            )
+
+        return int(max(ts for ts in timestamps if ts is not None).timestamp())
 
     @extend_schema(
         request=DocumentSerializer,
