@@ -453,6 +453,18 @@ class TestDocumentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert "Last-Modified" not in response
 
+    def test_conditional_expands_cover_expandable_fields(self):
+        """CONDITIONAL_EXPANDS must stay in sync with the serializer's
+        expandable_fields - a newly-added expandable relation should force a
+        deliberate choice here rather than silently emitting a stale 304"""
+        # DocumentCloud
+        from documentcloud.documents.views import DocumentViewSet
+
+        assert (
+            set(DocumentSerializer.Meta.expandable_fields)
+            == DocumentViewSet.CONDITIONAL_EXPANDS
+        )
+
     def test_retrieve_no_file(self, client):
         """Test retrieving a document with a presigned url"""
         document = DocumentFactory(status=Status.nofile)
