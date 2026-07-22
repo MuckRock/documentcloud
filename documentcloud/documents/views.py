@@ -637,21 +637,24 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        response = Response(serializer.data)
 
+        # last_modified is None when an expanded relation exposes no timestamp;
+        # in that case we can't safely revalidate, so skip conditional handling
         last_modified = self._retrieve_last_modified(request, instance)
-        if last_modified is None:
-            # an expanded relation exposes no timestamp - serve the full
-            # response rather than risk a stale 304
-            return response
+        if last_modified is not None:
+            # short-circuit a 304 before serializing - conditional GET exists
+            # to avoid exactly that (often expensive) work on unchanged content
+            not_modified = get_conditional_response(
+                request, last_modified=last_modified
+            )
+            if not_modified is not None:
+                not_modified["Last-Modified"] = http_date(last_modified)
+                return not_modified
 
-        response["Last-Modified"] = http_date(last_modified)
-        return get_conditional_response(
-            request,
-            last_modified=last_modified,
-            response=response,
-        )
+        response = Response(self.get_serializer(instance).data)
+        if last_modified is not None:
+            response["Last-Modified"] = http_date(last_modified)
+        return response
 
     def _retrieve_last_modified(self, request, instance):
         """Latest modification time across the document and any expanded
@@ -682,7 +685,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                     latest=Max("updated_at")
                 )["latest"]
             )
-        if "revisions" in top_expands:
+        # revisions are only serialized for users with edit access (see the
+        # serializer's `_expandable_fields`), so only let them affect freshness
+        # for those users - otherwise Last-Modified would reflect content the
+        # requester can't see
+        if "revisions" in top_expands and request.user.has_perm(
+            "documents.change_document", instance
+        ):
             timestamps.append(
                 instance.revisions.aggregate(latest=Max("created_at"))["latest"]
             )
