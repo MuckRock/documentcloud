@@ -1,9 +1,11 @@
 # Django
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, prefetch_related_objects
+from django.db.models import Max, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
+from django.utils.cache import get_conditional_response
 from django.utils.decorators import method_decorator
+from django.utils.http import http_date
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, mixins, parsers, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -102,6 +104,15 @@ logger = logging.getLogger(__name__)
 # pylint: disable=too-many-lines, line-too-long, too-many-public-methods
 
 
+def _max_updated_at(instances):
+    """Latest `updated_at` across an iterable of objects, or None if empty.
+
+    Reads from an already-prefetched relation cache, so it avoids a redundant
+    aggregate query for relations `preload()`/`get_object()` have loaded.
+    """
+    return max((obj.updated_at for obj in instances), default=None)
+
+
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="retrieve")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
@@ -117,6 +128,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     queryset = Document.objects.none()
     permission_classes = (
         DjangoObjectPermissionsOrAnonReadOnly | DocumentTokenPermissions,
+    )
+    # expandable relations `_retrieve_last_modified` can derive a freshness
+    # timestamp for; must stay in sync with the serializer's `expandable_fields`
+    # (enforced by test_conditional_expands_cover_expandable_fields). A request
+    # expanding anything outside this set falls back to no conditional handling
+    CONDITIONAL_EXPANDS = frozenset(
+        {"user", "organization", "sections", "notes", "projects", "revisions"}
     )
 
     @extend_schema(
@@ -630,7 +648,76 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         ],
     )
     def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+        instance = self.get_object()
+
+        # last_modified is None when we can't safely determine freshness (a
+        # nested or ~all expansion); in that case skip conditional handling
+        last_modified = self._retrieve_last_modified(request, instance)
+        if last_modified is not None:
+            # short-circuit a 304 before serializing - conditional GET exists
+            # to avoid exactly that (often expensive) work on unchanged content
+            not_modified = get_conditional_response(
+                request, last_modified=last_modified
+            )
+            if not_modified is not None:
+                not_modified["Last-Modified"] = http_date(last_modified)
+                return not_modified
+
+        response = Response(self.get_serializer(instance).data)
+        if last_modified is not None:
+            response["Last-Modified"] = http_date(last_modified)
+        return response
+
+    def _retrieve_last_modified(self, request, instance):
+        """Latest modification time across the document and any expanded
+        relations, as a whole-number unix timestamp.
+
+        Every top-level expandable relation carries a modification timestamp,
+        so an explicit expand set can be tracked precisely. Returns None - skip
+        conditional handling rather than risk a stale 304 - for a nested (e.g.
+        `notes.user`) or `~all` expansion, whose related objects' own fields we
+        can't cheaply follow, or for any relation outside CONDITIONAL_EXPANDS
+        (so adding a new expandable relation fails safe until it's handled
+        here). Truncated to whole seconds because `If-Modified-Since` has only
+        1s resolution; comparing against a raw microsecond timestamp would
+        never match.
+        """
+        top_expands, nested_expands = split_levels(
+            request.query_params.get("expand", "")
+        )
+        if (
+            "~all" in top_expands
+            or nested_expands
+            or not set(top_expands) <= self.CONDITIONAL_EXPANDS
+        ):
+            return None
+
+        # sections/notes/projects are already prefetched by get_queryset()'s
+        # preload() and get_object(), so read timestamps from the prefetch
+        # cache rather than issuing a redundant (and re-filtered) aggregate
+        timestamps = [instance.updated_at]
+        if "user" in top_expands:
+            timestamps.append(instance.user.updated_at)
+        if "organization" in top_expands:
+            timestamps.append(instance.organization.updated_at)
+        if "sections" in top_expands:
+            timestamps.append(_max_updated_at(instance.sections.all()))
+        if "notes" in top_expands:
+            timestamps.append(_max_updated_at(instance.notes.all()))
+        if "projects" in top_expands:
+            timestamps.append(_max_updated_at(instance.projects.all()))
+        # revisions aren't prefetched (so an indexed MAX beats loading every
+        # row) and are only serialized for users with edit access (matching the
+        # serializer's `_expandable_fields`) - otherwise Last-Modified would
+        # reflect content the requester can't see
+        if "revisions" in top_expands and request.user.has_perm(
+            "documents.change_document", instance
+        ):
+            timestamps.append(
+                instance.revisions.aggregate(latest=Max("created_at"))["latest"]
+            )
+
+        return int(max(ts for ts in timestamps if ts is not None).timestamp())
 
     @extend_schema(
         request=DocumentSerializer,

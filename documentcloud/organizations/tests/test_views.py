@@ -63,6 +63,9 @@ class TestOrganizationAPI:
         response_json = json.loads(response.content)
         serializer = OrganizationSerializer(organization)
         assert response_json == serializer.data
+        # timestamps are exposed in the API output
+        assert "created_at" in response_json
+        assert "updated_at" in response_json
 
     def test_retrieve_bad(self, client, user):
         """Cannot view a private organization"""

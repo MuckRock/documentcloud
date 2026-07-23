@@ -2,10 +2,12 @@
 from django.conf import settings
 from django.db import connection, reset_queries
 from django.test.utils import override_settings
+from django.utils.http import http_date
 from rest_framework import status
 
 # Standard Library
 import json
+from datetime import timedelta
 
 # Third Party
 import pytest
@@ -341,6 +343,9 @@ class TestDocumentAPI:
         assert f"max-age={settings.CACHE_CONTROL_MAX_AGE}" in response["Cache-Control"]
         assert "private" not in response["Cache-Control"]
         assert "no-cache" not in response["Cache-Control"]
+        # anonymous reads don't vary on cookie - the cookie value doesn't
+        # change the response, so it shouldn't fragment the CDN cache
+        assert "Cookie" not in response["Vary"]
 
     def test_retrieve_auth(self, client, document):
         """Test retrieving a document"""
@@ -352,6 +357,113 @@ class TestDocumentAPI:
         assert "no-cache" in response["Cache-Control"]
         assert "public" not in response["Cache-Control"]
         assert "max-age" not in response["Cache-Control"]
+        # the authenticated branch still varies per user
+        assert "Cookie" in response["Vary"]
+
+    def test_retrieve_last_modified(self, client, document):
+        """Retrieving a document should send a real Last-Modified header
+        derived from the document's updated_at, not the response time"""
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Last-Modified"] == http_date(document.updated_at.timestamp())
+
+    def test_retrieve_not_modified(self, client, document):
+        """A conditional GET with a current If-Modified-Since should return
+        304 with no body"""
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+        assert not response.content
+
+    def test_retrieve_modified_since_stale(self, client, document):
+        """A conditional GET with an If-Modified-Since older than the
+        document's last edit should return 200 with the full body"""
+        stale = document.updated_at - timedelta(days=1)
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            HTTP_IF_MODIFIED_SINCE=http_date(stale.timestamp()),
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.content
+
+    def test_retrieve_expand_notes_last_modified(self, client, document):
+        """When notes are expanded, Last-Modified reflects the newest note -
+        editing a note does not bump the document's own updated_at"""
+        note = NoteFactory.create(document=document, access=Access.public)
+        assert note.updated_at > document.updated_at
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Last-Modified"] == http_date(note.updated_at.timestamp())
+
+    def test_retrieve_expand_notes_not_modified(self, client, document):
+        """A conditional GET with expanded notes returns 304 when nothing has
+        changed since the newest of the document and its notes"""
+        note = NoteFactory.create(document=document, access=Access.public)
+        latest = max(document.updated_at, note.updated_at)
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            {"expand": "notes"},
+            HTTP_IF_MODIFIED_SINCE=http_date(latest.timestamp()),
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+
+    def test_retrieve_expand_sections_last_modified(self, client, document):
+        """When sections are expanded, Last-Modified reflects the newest
+        section - editing a section does not bump the document's updated_at"""
+        section = SectionFactory.create(document=document)
+        assert section.updated_at > document.updated_at
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "sections"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Last-Modified"] == http_date(section.updated_at.timestamp())
+
+    def test_retrieve_expand_organization_last_modified(self, client, document):
+        """Expanding the organization (now timestamped) enables conditional
+        caching rather than disabling it"""
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "organization"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        latest = max(document.updated_at, document.organization.updated_at)
+        assert response["Last-Modified"] == http_date(latest.timestamp())
+
+    def test_retrieve_expand_nested_no_conditional(self, client, document):
+        """A nested expansion (notes.user) serializes related fields we can't
+        cheaply track, so conditional caching is disabled to avoid a stale 304"""
+        NoteFactory.create(document=document, access=Access.public)
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "notes.user"}
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert "Last-Modified" not in response
+        # even a matching If-Modified-Since must still return the full body
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            {"expand": "notes.user"},
+            HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.content
+
+    def test_retrieve_expand_all_no_conditional(self, client, document):
+        """Expanding ~all serializes deeply nested content, so conditional
+        caching is disabled"""
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "~all"})
+        assert response.status_code == status.HTTP_200_OK
+        assert "Last-Modified" not in response
+
+    def test_conditional_expands_cover_expandable_fields(self):
+        """CONDITIONAL_EXPANDS must stay in sync with the serializer's
+        expandable_fields - a newly-added expandable relation should force a
+        deliberate choice here rather than silently emitting a stale 304"""
+        # DocumentCloud
+        from documentcloud.documents.views import DocumentViewSet
+
+        assert (
+            set(DocumentSerializer.Meta.expandable_fields)
+            == DocumentViewSet.CONDITIONAL_EXPANDS
+        )
 
     def test_retrieve_no_file(self, client):
         """Test retrieving a document with a presigned url"""
@@ -1518,6 +1630,9 @@ class TestSectionAPI:
         response_json = response.json()
         serializer = SectionSerializer(section)
         assert response_json == serializer.data
+        # timestamps are exposed in the API output
+        assert "created_at" in response_json
+        assert "updated_at" in response_json
 
     def test_retrieve_bad_document(self, client):
         """Test retrieving a section on a document you do not have access to"""

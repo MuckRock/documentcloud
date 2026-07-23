@@ -583,7 +583,7 @@ class NoteSerializer(PageNumberValidationMixin, FlexFieldsModelSerializer):
 class SectionSerializer(PageNumberValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Section
-        fields = ["id", "page_number", "title"]
+        fields = ["id", "page_number", "title", "created_at", "updated_at"]
         extra_kwargs = {"title": {"max_length": 200}}
 
     def validate_page_number(self, value):
