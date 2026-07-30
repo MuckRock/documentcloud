@@ -20,13 +20,19 @@ that later project rather than something to resolve now.
 ## Decisions settled 2026-07-30
 
 1. **Purging is batched.** The `invalidate_cache` task takes a list of pks
-   and chunks the Cloudflare payload, rather than one task per document.
-2. **The zone is on a Business plan, not Enterprise** — so `Cache-Tag`
-   purge is unavailable. Section (6) is struck; URL purge is the only
-   mechanism. This has a real consequence for (4), see "Only cache what we
-   can purge" there.
-3. **(5) adds the API URL to the purge set** even though (4) hasn't
-   shipped.
+   and chunks the payload, rather than one task per document.
+2. **The zone is on Business, and `Cache-Tag` purge _is_ available**
+   (corrected 2026-07-30). It was briefly assumed Enterprise-only and
+   struck; in fact Cloudflare moved all purge methods to every plan on
+   2025-04-01. Section (6) is reinstated as the recommended mechanism:
+   Cloudflare purge is by `doc-{id}` tag, which reaches every `?expand=…`
+   and per-`Origin` variant at once — the key spaces URL purge couldn't.
+   This relaxes (4)'s "Only cache what we can purge" constraint; the one
+   thing tags don't fix is the edge synthetic-`Last-Modified` in (3), which
+   is a separate concern.
+3. **(5) adds the API URL to the purge set** (via its `doc-{id}` tag) even
+   though (4) hasn't shipped. URL purge is retained for CloudFront and the
+   S3 asset, which aren't Cloudflare-tagged.
 4. **The page-modification fix is folded into the (5) PR** rather than
    split out.
 5. **`invalidate_cache()` always purges the frontend URLs**, dropping the
@@ -409,40 +415,49 @@ gap to close, not a rubber stamp.
 
 #### Only cache what we can purge
 
-This is the main design constraint, and it follows from the zone being on
-a **Business plan** — no `Cache-Tag`, so URL purge is all we have (6).
+Still the governing constraint — a long `s-maxage` is only safe on
+something (5) can actually purge — but `Cache-Tag` on Business (6) changes
+what "purgeable" covers, and that reshapes this section from the earlier
+URL-purge-only revision.
 
-A long `s-maxage` is only safe on a URL that (5) can actually purge. Two
-classes of request produce cache entries that URL purge can't reach:
+With `Cache-Tag: doc-{id}` on the retrieve response, a single tag purge
+clears the bare URL, **every `?expand=…` variant, and every per-`Origin`
+variant at once** — so the two key spaces this section previously wrote off
+as unpurgeable (unbounded expand strings, `Vary: Origin` fragmentation) are
+now reachable. The tier table can therefore apply to expand variants too,
+not just the bare canonical URL, without stranding uninvalidatable content.
 
-- **`?expand=…` variants.** Each distinct expand string is its own entry,
-  and the set is unbounded — clients choose it. (5) can't enumerate them.
-- **Per-`Origin` variants.** `Vary: Origin` splits every URL again, also
-  unbounded (see the risk bullet).
+That removes the _purge-reachability_ reason for forcing query-string
+requests to a short flat TTL. **But one reason remains, and it's
+independent:** the synthetic-`Last-Modified` edge problem in (3). Nested and
+`~all` expansions send no origin `Last-Modified`, and the edge fabricates
+one; a long `s-maxage` there means the edge answers revalidation with a
+bogus `304` for the full TTL. So:
 
-So the tier table should apply **only to the bare canonical URL** —
-`/api/documents/{pk}/` with no query string. Anything with an `expand`
-(or any other query parameter) gets a short, flat TTL: still cacheable
-enough to absorb a burst, short enough that unpurgeable staleness is
-bounded by minutes rather than the tier's days-to-a-year.
+- **Bare URL and handled `expand` sets** (those in `CONDITIONAL_EXPANDS`,
+  which carry a real `Last-Modified`): full tier table. Purgeable by
+  `doc-{id}`, and no synthetic-validator problem.
+- **`last_modified is None` requests** (nested like `notes.user`, or
+  `~all`): short flat TTL regardless — not for purge reasons anymore, but
+  because (3)'s fail-safe is defeated at the edge for exactly these. This
+  is the option-1 fix from (3); a real `ETag` (option 2) would remove even
+  this special case, since the origin would always carry a validator.
 
-This also subsumes the `last_modified is None` case from (3) — nested and
-`~all` expansions are query-string requests by definition, so the same
-short-TTL rule covers them, and no separate tier is needed. Neat outcome:
-one rule fixes both the edge fail-safe problem and the purge-reachability
-problem.
+Net: `Cache-Tag` collapses the old two-problems-one-rule framing. The
+purge-reachability problem is gone; the edge-validator problem is what's
+left, and it's narrower (only `last_modified is None`, not every query
+string).
 
-✅ **Query strings are in the cache key** — verified 2026-07-30, so the
-rule above is implementable and there's no collision bug today.
+✅ **Query strings are in the cache key** — verified 2026-07-30, so
+per-variant caching works and there's no collision bug today.
 `?expand=user` MISSed then HIT while the bare URL was already HIT, and the
 bodies differ correctly (bare `user` is an `int`, expanded is an object).
 
-⬜ **Still open: does purge-by-URL clear all `Vary` variants, or one?**
-Can't be tested without purge credentials. If it clears only one variant,
-then even the bare canonical URL isn't reliably purgeable for CORS
-traffic, and fixing `Vary: Origin` stops being an optimization and becomes
-a **prerequisite for (4)**. This is the one unknown that could still
-reshape this section.
+✅ **`Vary` fragmentation no longer blocks (4).** The earlier open question
+— whether purge-by-URL clears all `Vary` variants or just one — is moot for
+the API URL under tag purge: `Cache-Tag` purge invalidates every variant of
+a tagged response irrespective of `Vary`. Fixing `Vary: Origin` reverts to
+a pure optimization (fewer redundant edge entries), not a prerequisite.
 
 ### 5. Extend the existing `invalidate_cache()` to plain edits
 
@@ -511,11 +526,12 @@ precisely the response (4) is about to make cacheable for up to a year.
 Part 5 has to add it, or part 4 ships with no way to invalidate the thing
 it caches. **Decided: (5) adds it.**
 
-The `?expand=…` variants are a separate matter and, on a Business plan
-with no `Cache-Tag`, they are simply not purgeable — the key space is
-unbounded and can't be enumerated. Rather than pretend otherwise, (4)
-should only grant long TTLs to the exact canonical URL. See "Only cache
-what we can purge" in (4).
+The `?expand=…` variants are handled by `Cache-Tag`, not URL purge:
+tagging the retrieve response `doc-{id}` (6) means one tag purge clears the
+bare URL and every expand/`Origin` variant together, so the unbounded key
+space never has to be enumerated. **Decided: (5) purges by tag as the
+primary mechanism**, keeping URL purge for CloudFront and the S3 asset
+(which aren't Cloudflare-tagged). See "Only cache what we can purge" in (4).
 
 **b. Public → private purges the wrong set.** `invalidate_cache()`
 branches on `if self.access == Access.public` (`document.py:731`) to
@@ -545,28 +561,29 @@ purge that URL too — the same way `perform_update` already snapshots
 
 **Decided: batched.** `perform_update` handles **bulk** updates
 (`views.py:1060-1073`), so per-document tasks would fan a 500-document
-PATCH out into 500 purge calls. Cloudflare's purge-by-URL endpoint caps a
-single request at 30 URLs, and each document contributes 3–4, so the cap
-binds after ~7 documents regardless.
+PATCH out into 500 purge calls. Batching is still the right shape, but
+`Cache-Tag` (6) makes the arithmetic much friendlier:
 
-Shape: teach the `invalidate_cache` task to accept a list of pks, collect
-every URL for the batch, and chunk the Cloudflare payload to the cap. One
-task per request rather than per document. That also fixes the task's
-current `document.save()` (see below), since clearing `cache_dirty` for a
-batch wants a queryset `.update()` anyway.
+- **Cloudflare purge is by tag** — one `doc-{id}` tag per document, and
+  Business allows **100 operations per request** (bucket size 50, 10
+  req/sec). So a 500-doc PATCH chunks into batches of 100 tags: 5 requests,
+  not the ~70 that 3–4 URLs/doc against a 30-URL cap would have needed.
+  This is the payoff from (6): one tag replaces the 3–4 URLs (× expand ×
+  `Origin` variants) a document would otherwise contribute.
+- **CloudFront and the S3 asset URL** still purge by path (they aren't
+  Cloudflare-tagged), so the task collects those per batch as before.
+
+Shape: teach the `invalidate_cache` task to accept a list of pks; build the
+`doc-{id}` tag list for the Cloudflare tag purge and the CloudFront/S3 path
+list, and chunk each to its cap. One task per request rather than per
+document. That also fixes the task's current `document.save()` (see below),
+since clearing `cache_dirty` for a batch wants a queryset `.update()`
+anyway.
 
 Access flips no longer need a separate immediate path — a batch enqueued
 `on_commit` is already prompt, and the earlier argument for splitting them
 out was really about (5b)'s inverted access check, which is now fixed
 directly.
-
-The URL count per document is worse than 3–4 once (4) lands, because
-`?expand=…` variants are distinct cache entries and the 2026-07-30 probe
-confirms `Vary: Origin` with a **reflected** `Access-Control-Allow-Origin`
-multiplies each of those again (see the risk bullet). Enumerating that
-key space is hopeless, which makes `Cache-Tag` (6) less "optional polish"
-than the original plan assumed — for the API URL specifically it may be
-the only workable purge mechanism.
 
 #### Also: the purge task bumps `updated_at`
 
@@ -583,24 +600,58 @@ still makes sense as a standalone PR before everything else — but it is no
 longer the "small" one the original plan assumed. Final scope: three new
 call sites (`perform_update`, `_update_access`, `destroy`) plus the
 page-modification one-liner, two fixes inside `invalidate_cache()` (a and
-b — c is unreachable), the batching path, and the `updated_at` fix. The
-page-modification bullet and defects (a) and (b) are worth fixing
-regardless of whether (4) ever ships.
+b — c is unreachable), switching the Cloudflare purge from URL-based to
+`doc-{id}` tag-based (6) while keeping URL purge for CloudFront and the S3
+asset, the batching path, and the `updated_at` fix. The page-modification
+bullet and defects (a) and (b) are worth fixing regardless of whether (4)
+ever ships. Emitting the `Cache-Tag` header itself lands with (4)/(6);
+(5)'s purge-by-tag assumes it's present, so if (5) ships first it should
+add the header in the retrieve view at the same time.
 
-### 6. ~~Add `Cache-Tag` headers~~ — UNAVAILABLE (Business plan)
+### 6. Add `Cache-Tag` headers — AVAILABLE on Business (was thought Enterprise-only)
 
-**Struck 2026-07-30: the zone is on a Business plan.** `Cache-Tag` purge
-is Enterprise-only, so this is off the table, and URL purge in (5) is the
-only mechanism available.
+**Corrected 2026-07-30.** An earlier revision struck this as
+Enterprise-only. That was stale: as of
+[2025-04-01](https://developers.cloudflare.com/changelog/post/2025-04-01-purge-for-all/)
+Cloudflare moved **all** purge methods — Purge by Tag included, and setting
+`Cache-Tag` on origin responses — to **all plans**. Confirmed against the
+current docs; the zone is on Business, which supports it. This flips
+`Cache-Tag` from "off the table" back to the recommended purge mechanism,
+and it is no longer "optional polish" — it's what makes the long TTLs in
+(4) safe for anything with a query string.
 
-That isn't merely "fine," as the original note assumed — it constrains (4).
-Tag purge was the answer to two problems that now have no clean solution:
-`?expand=` variants and per-`Origin` fragmentation both create cache
-entries that URL purge can't practically enumerate. The response is to
-narrow what gets long TTLs rather than to accept unpurgeable ones — see
-"Only cache what we can purge" in (4).
+**Business-plan purge limits** (per account, shared across same-plan zones;
+[source](https://developers.cloudflare.com/cache/how-to/purge-cache/#availability-and-limits)):
 
-Worth re-opening only if the zone is ever upgraded.
+| | Business |
+| --- | --- |
+| Requests | 10 / second |
+| Bucket size | 50 |
+| Max operations per request | 100 |
+
+**Tag rules** (all plans): printable ASCII only (`0x21`–`0x7E`, no spaces /
+Unicode / control chars), ≤1024 chars per tag, ≤1000 tags per response,
+case-insensitive matching, invalid tags silently dropped at store time.
+
+**Plan:** set `Cache-Tag: doc-{id}` on the retrieve response wherever (4)
+sets `Cache-Control` (and on `NoteViewSet`, tagged `doc-{document_id}` so a
+document purge clears its notes too). Then (5) purges by tag instead of by
+URL: one `doc-{id}` purge invalidates the bare URL, **every `?expand=…`
+variant, and every per-`Origin` variant at once** — precisely the key
+spaces URL purge can't enumerate. Optionally add `project-{n}` / `org-{n}`
+tags later for bulk project/org invalidation, but `doc-{id}` alone unblocks
+(4) and (5).
+
+Why this matters beyond convenience: it dissolves the central design
+constraint this plan had been building around. See the rewritten "Only
+cache what we can purge" in (4) and defect (5a).
+
+One nuance it does **not** solve: the synthetic-`Last-Modified` edge
+problem in (3) is about the _origin omitting a validator_, not about
+purge reachability. `Cache-Tag` makes nested/`~all` responses purgeable but
+does nothing about the edge fabricating a `Last-Modified` for them — that
+still needs the (3) fix (short TTL for the `last_modified is None` case, a
+real `ETag`, or a Transform Rule). Keep the two concerns separate.
 
 ### 7. Long-TTL on S3 assets
 
@@ -700,20 +751,28 @@ Numbers in parentheses refer to the sections above.
    Config-only, no code dependency, independent of everything above.
 5. **Age-based TTL tiers (4)** in the retrieve view. Ships on its own —
    no frontend coordination required (see Scope). After (3) so it's safe.
-   Also needs: the bare-URL-only rule ("Only cache what we can purge"),
-   which subsumes the `last_modified is None` case, and a decision on
-   `NoteViewSet`'s already-public `list`/`retrieve`.
-6. ~~**Cache-Tag headers**~~ — struck, Business plan (6).
+   Also needs: `Cache-Tag: doc-{id}` on the response (6), the tiering rule
+   from "Only cache what we can purge" (full table for the bare URL and
+   handled expands, short flat TTL for the `last_modified is None` case on
+   edge-validator grounds), and a decision on `NoteViewSet`'s
+   already-public `list`/`retrieve`.
+6. **Cache-Tag headers (6)** — reinstated: available on Business as of
+   2025-04-01, not Enterprise-only as an earlier revision assumed. Emit
+   `doc-{id}` in the retrieve view (folds into 4/5, above) so purges reach
+   every `?expand=…` and per-`Origin` variant with one tag.
 
 Then, as a **separate project**: make the frontend agree with whatever the
 API settles on — matching tier boundaries for the HTML it serves, and
 matching invalidation on edit. Sequenced after the above deliberately, so
 the frontend has one stable contract to target instead of a moving one.
 
-The zone-tier prerequisite is now answered (Business, no tags). The
-remaining one is the per-`Origin` hit rate, which bears on (4) rather than
-(5) — it determines whether long TTLs pay off at all, and possibly whether
-`Vary: Origin` must be fixed first.
+The zone-tier prerequisite is now answered: **Business, and `Cache-Tag`
+purge _is_ available** (corrected 2026-07-30 — it went to all plans on
+2025-04-01). The remaining open item is the per-`Origin` hit rate, which
+bears on (4) rather than (5) — it determines whether long TTLs pay off at
+all. It's no longer a purge-correctness prerequisite, though: tag purge
+clears all `Vary` variants at once (see 4), so fixing `Vary: Origin` is now
+an efficiency optimization, not a blocker.
 
 The original "no schema migrations" estimate was wrong: step 2 required
 two (`Section` and `Organization` timestamps). Authenticated traffic is
@@ -772,12 +831,14 @@ still unaffected throughout.
   Refined 2026-07-30: this is **fragmentation, not bypass.** Four
   sequential requests with the _same_ `Origin` went MISS → HIT → HIT → HIT,
   so CORS responses are cacheable; each origin just pays its own cold
-  start. Less alarming than it first looked, but it still dilutes (4) — a
-  30-day `s-maxage` is worth little at a low hit rate — and with
-  `Cache-Tag` off the table (6) it multiplies the URLs that (5)'s purge
-  cannot reach. Measure the real per-`Origin` hit rate before investing in
-  the tier table. Two ways to fix it; the choice is a product decision, not
-  just a caching one:
+  start. Less alarming than it first looked. It still dilutes (4) — a 30-day
+  `s-maxage` is worth little at a low hit rate — so measure the real
+  per-`Origin` hit rate before investing in the tier table. It is **no
+  longer a purge problem**, though: with `Cache-Tag` available on Business
+  (6, corrected), a single `doc-{id}` purge clears every `Origin` variant
+  at once, so the fragmentation no longer multiplies unreachable URLs. Two
+  ways to fix the dilution; the choice is a product decision, not just a
+  caching one:
 
   - **Normalize the cache key at Cloudflare** to ignore `Origin` for this
     route. No API behavior change, so nothing breaks for existing clients.
