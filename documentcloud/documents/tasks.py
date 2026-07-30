@@ -420,7 +420,9 @@ def invalidate_cache(*document_pks):
     purges one document, `invalidate_cache.delay(*pks)` purges a batch in one
     set of requests rather than one task per document.
     """
-    documents = list(Document.objects.filter(pk__in=document_pks))
+    # only pk/slug are needed to build the purge URLs and tags - skip the
+    # heavy columns (page_spec, data, description, ...)
+    documents = list(Document.objects.filter(pk__in=document_pks).only("pk", "slug"))
     invalidate_cache_batch(documents)
     # clear the flag with a queryset update so we don't bump `updated_at` (an
     # AutoLastModifiedField) - a cache purge is not a content change

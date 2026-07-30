@@ -640,6 +640,35 @@ ever ships. Emitting the `Cache-Tag` header itself lands with (4)/(6);
 (5)'s purge-by-tag assumes it's present, so if (5) ships first it should
 add the header in the retrieve view at the same time.
 
+#### Follow-ups deferred out of the (5) implementation
+
+Surfaced by the post-implementation cleanup pass; both are real but
+deliberately out of scope for this branch, so they're recorded here rather
+than bolted on:
+
+- **Two staleness conventions.** Plain edits now purge directly (batched via
+  `_invalidate_edited_cache`), while redaction and page modifications set
+  `cache_dirty` and drain on processing-completion (`_update_cache`), and
+  `destroy()` enqueues from the model. The split is intentional and sound —
+  a naive `post_save`/signal unification would be _worse_, since it can't
+  batch a bulk edit into one purge and can't see the
+  `old_processing → done` transition, both of which the view layer
+  legitimately has. The remaining smell is purely that "this document is
+  stale" is expressed in two conventions. Deeper direction if it ever earns
+  the churn: make `cache_dirty` the single source of truth — set it wherever
+  staleness is introduced (plain edits included) and drain dirty docs with
+  one batched on-commit mechanism, collapsing `_update_cache` +
+  `_invalidate_edited_cache` into one.
+- **`Cache-Tag` is document-only.** `DocumentViewSet.retrieve` emits
+  `doc-{id}` and (5) purges it, but `NoteViewSet` is also publicly cached
+  (see the note in (4)) and is neither tagged nor purged when a note is
+  edited — a real latent gap, not just missing polish. Deeper direction: a
+  small `CacheTaggedMixin` with a `get_cache_tag(obj)` hook that stamps
+  `response["Cache-Tag"]` in `finalize_response`, so both the 200/304
+  branches and other cacheable viewsets (notes) adopt tagging uniformly;
+  pair it with a note-edit purge path. Tracks alongside the `NoteViewSet`
+  decision already flagged in (4).
+
 ### 6. Add `Cache-Tag` headers — AVAILABLE on Business (was thought Enterprise-only)
 
 **Corrected 2026-07-30.** An earlier revision struck this as

@@ -20,18 +20,21 @@ class TestDocumentCacheInvalidation:
         settings.CLOUDFRONT_DISTRIBUTION_ID = ""
         settings.PUBLIC_ASSET_URL = "https://assets.example.com/documents/"
 
+    @pytest.fixture
+    def mock_post(self, mocker):
+        return mocker.patch("documentcloud.documents.cache.requests.post")
+
     def test_cache_tag(self):
         """The Cache-Tag is `doc-{pk}`."""
         document = DocumentFactory()
         assert document.cache_tag == f"doc-{document.pk}"
 
-    def test_batch_purges_tag_and_urls(self, mocker):
+    def test_batch_purges_tag_and_urls(self, mock_post):
         """One Cloudflare request purges the `doc-{id}` tag, another the URLs.
 
         `files` and `tags` are mutually exclusive in a single zone purge
         request, so they must be sent separately.
         """
-        mock_post = mocker.patch("documentcloud.documents.cache.requests.post")
         document = DocumentFactory()
 
         invalidate_cache_batch([document])
@@ -48,11 +51,10 @@ class TestDocumentCacheInvalidation:
         # never both keys in one request
         assert all(("tags" in p) != ("files" in p) for p in payloads)
 
-    def test_batch_always_purges_frontend_urls_even_when_private(self, mocker):
+    def test_batch_always_purges_frontend_urls_even_when_private(self, mock_post):
         """On a public -> private flip `access` is already private by purge
         time, so the frontend URLs must be purged unconditionally (5b) - the
         public copy may still be cached at the edge."""
-        mock_post = mocker.patch("documentcloud.documents.cache.requests.post")
         document = DocumentFactory(access=Access.private)
 
         invalidate_cache_batch([document])
@@ -67,10 +69,9 @@ class TestDocumentCacheInvalidation:
             in files_payload["files"]
         )
 
-    def test_batch_chunks_to_the_purge_limit(self, mocker, settings):
+    def test_batch_chunks_to_the_purge_limit(self, mock_post, settings):
         """Each purge request is chunked to the configured cap."""
         settings.CLOUDFLARE_PURGE_LIMIT = 2
-        mock_post = mocker.patch("documentcloud.documents.cache.requests.post")
         documents = DocumentFactory.create_batch(3)
 
         invalidate_cache_batch(documents)
@@ -79,26 +80,23 @@ class TestDocumentCacheInvalidation:
         # 3 docs x (1 host + 1 asset) = 6 files -> chunks of 2 -> 3 requests
         assert mock_post.call_count == 5
 
-    def test_batch_no_op_without_zone(self, mocker, settings):
+    def test_batch_no_op_without_zone(self, mock_post, settings):
         """No Cloudflare zone configured means no purge request."""
         settings.CLOUDFLARE_API_ZONE = ""
-        mock_post = mocker.patch("documentcloud.documents.cache.requests.post")
         document = DocumentFactory()
 
         invalidate_cache_batch([document])
 
         mock_post.assert_not_called()
 
-    def test_batch_empty_is_noop(self, mocker):
+    def test_batch_empty_is_noop(self, mock_post):
         """An empty batch issues no requests."""
-        mock_post = mocker.patch("documentcloud.documents.cache.requests.post")
         invalidate_cache_batch([])
         mock_post.assert_not_called()
 
-    def test_batch_purges_cloudfront_paths(self, mocker, settings):
+    def test_batch_purges_cloudfront_paths(self, mock_post, mocker, settings):
         """CloudFront is invalidated by path for every document in the batch."""
         settings.CLOUDFRONT_DISTRIBUTION_ID = "DIST123"
-        mocker.patch("documentcloud.documents.cache.requests.post")
         mock_boto = mocker.patch("documentcloud.documents.cache.boto3")
         documents = DocumentFactory.create_batch(2)
 

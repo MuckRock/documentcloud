@@ -1173,7 +1173,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         """Invalidate the cache when finished processing a detructive operation"""
         logger.info("[DOC UPDATE] update cache %s", document.pk)
         if old_processing and not document.processing and document.cache_dirty:
-            transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
+            transaction.on_commit(lambda pk=document.pk: invalidate_cache.delay(pk))
 
     def _invalidate_edited_cache(self, instances, old_processings):
         """Purge the CDN cache for plainly-edited documents in one batch.
