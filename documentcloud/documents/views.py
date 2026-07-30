@@ -661,11 +661,16 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             )
             if not_modified is not None:
                 not_modified["Last-Modified"] = http_date(last_modified)
+                # tag the 304 too, so a conditional hit stays purgeable
+                not_modified["Cache-Tag"] = instance.cache_tag
                 return not_modified
 
         response = Response(self.get_serializer(instance).data)
         if last_modified is not None:
             response["Last-Modified"] = http_date(last_modified)
+        # a single `doc-{id}` tag purge clears the bare URL and every
+        # `?expand=`/`Origin` variant at once - see the caching plan (5)/(6)
+        response["Cache-Tag"] = instance.cache_tag
         return response
 
     def _retrieve_last_modified(self, request, instance):
@@ -1113,6 +1118,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             self._set_page_text(instance, validated_data.get("pages"))
             self._create_revision(instance, old_processing, old_revision_control)
 
+        self._invalidate_edited_cache(instances, old_processings)
+
     def _update_access(self, document, old_access, validated_data):
         """Update the access of a document after it has been updated"""
         logger.info("[DOC UPDATE] update access %s", document.pk)
@@ -1167,6 +1174,23 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         logger.info("[DOC UPDATE] update cache %s", document.pk)
         if old_processing and not document.processing and document.cache_dirty:
             transaction.on_commit(lambda: invalidate_cache.delay(document.pk))
+
+    def _invalidate_edited_cache(self, instances, old_processings):
+        """Purge the CDN cache for plainly-edited documents in one batch.
+
+        A plain edit (title, access, metadata, ...) leaves the cached copy
+        stale, so purge it - including public -> private flips, which most
+        need it for privacy. The processing-completion case is handled by
+        `_update_cache`, so it's excluded here to avoid a redundant double
+        purge.
+        """
+        purge_pks = [
+            instance.pk
+            for instance, old_processing in zip(instances, old_processings)
+            if not old_processing
+        ]
+        if purge_pks:
+            transaction.on_commit(lambda: invalidate_cache.delay(*purge_pks))
 
     def _run_addons(self, document, old_processing):
         """Run upload add-ons once the document is succesfully processed"""
@@ -1868,6 +1892,10 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
                 )
 
             document.status = Status.pending
+            # page modifications rewrite the PDF and page images at the same
+            # URLs, so invalidate the cache once processing finishes (via
+            # `_update_cache`), the same way redaction does
+            document.cache_dirty = True
             document.save()
             document.index_on_commit(field_updates={"status": "set"})
 

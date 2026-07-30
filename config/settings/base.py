@@ -627,6 +627,8 @@ CLOUDFLARE_API_EMAIL = env("CLOUDFLARE_API_EMAIL", default="")
 CLOUDFLARE_API_KEY = env("CLOUDFLARE_API_KEY", default="")
 CLOUDFLARE_API_ZONE = env("CLOUDFLARE_API_ZONE", default="")
 CLOUDFLARE_HOSTS = env.list("CLOUDFLARE_HOSTS", default=[])
+# max operations per purge request (Business plan caps this at 100)
+CLOUDFLARE_PURGE_LIMIT = env.int("CLOUDFLARE_PURGE_LIMIT", default=100)
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 

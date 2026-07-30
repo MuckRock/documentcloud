@@ -459,7 +459,39 @@ the API URL under tag purge: `Cache-Tag` purge invalidates every variant of
 a tagged response irrespective of `Vary`. Fixing `Vary: Origin` reverts to
 a pure optimization (fewer redundant edge entries), not a prerequisite.
 
-### 5. Extend the existing `invalidate_cache()` to plain edits
+### 5. ✅ IMPLEMENTED — Extend the existing `invalidate_cache()` to plain edits
+
+**Built on `400-invalidate-cache` (test-first).** What shipped, vs. the design
+below:
+
+- **Purge is now by `Cache-Tag` for the API** (6): `DocumentViewSet.retrieve`
+  sets `Cache-Tag: doc-{id}` on both the `200` and `304` branches
+  (`views.py`, via a new `Document.cache_tag` property). CloudFront and the S3
+  asset still purge by URL/path.
+- **`invalidate_cache_batch(documents)` is a module-level function** in
+  `models/document.py` (not a method — keeps `Document` under pylint's
+  public-method cap and pairs with the `_invalidate_cloudfront` /
+  `_invalidate_cloudflare` helpers). It builds the CloudFront paths, Cloudflare
+  file URLs, and `doc-{id}` tags for the whole batch. `files` and `tags` go in
+  **separate** Cloudflare requests (the zone purge API is a `oneOf`), each
+  chunked to `CLOUDFLARE_PURGE_LIMIT = 100` (Business cap).
+- **The old single-document `Document.invalidate_cache()` method was removed** —
+  it had no callers once the task moved to the batch path.
+- **The task is variadic** (`invalidate_cache(*document_pks)`) so the input is
+  always iterable: `.delay(pk)` for one, `.delay(*pks)` for a batch. It clears
+  `cache_dirty` with a queryset `.update()` (see the `updated_at` fix below).
+- **Call sites wired:** `perform_update` (via a new `_invalidate_edited_cache`
+  helper that batches every non-processing-transition instance — covers plain
+  edits *and* `_update_access` public↔private flips), `Document.destroy()`, and
+  a one-line `cache_dirty = True` in `ModificationViewSet.create` (page mods
+  ride the existing processing-completion purge, like redaction).
+- **Coverage:** `test_tasks.py` (variadic + `updated_at` not bumped),
+  `test_models.py::TestDocumentCacheInvalidation` (tag/URL split, always-purge
+  frontend, chunking, CloudFront, no-zone/empty no-ops), and `test_views.py`
+  (`Cache-Tag` on 200/304, edit/access/bulk/destroy purge enqueue, page-mod
+  flag). Full documents suite (442) green; pylint 10/10, no new disables.
+
+The original design notes follow, unchanged.
 
 **Touch point:** `documentcloud/documents/models/document.py:704-748`
 (`Document.invalidate_cache`), `documentcloud/documents/tasks.py:414-420`
@@ -623,11 +655,11 @@ and it is no longer "optional polish" — it's what makes the long TTLs in
 **Business-plan purge limits** (per account, shared across same-plan zones;
 [source](https://developers.cloudflare.com/cache/how-to/purge-cache/#availability-and-limits)):
 
-| | Business |
-| --- | --- |
-| Requests | 10 / second |
-| Bucket size | 50 |
-| Max operations per request | 100 |
+|                            | Business    |
+| -------------------------- | ----------- |
+| Requests                   | 10 / second |
+| Bucket size                | 50          |
+| Max operations per request | 100         |
 
 **Tag rules** (all plans): printable ASCII only (`0x21`–`0x7E`, no spaces /
 Unicode / control chars), ≤1024 chars per tag, ≤1000 tags per response,
@@ -739,12 +771,15 @@ Numbers in parentheses refer to the sections above.
 2. ✅ **Real `Last-Modified` + 304 on `If-Modified-Since` (3).** Shipped,
    including the expand-aware `_retrieve_last_modified` and the
    `Section`/`Organization` timestamp migrations it required.
-3. ⬅️ **Extend `invalidate_cache()` to `perform_update`, `_update_access`,
-   deletion, slug change (5).** _Current work_ — branch
-   `400-invalidate-cache`. Must ship _before_ (4). Now larger than
-   originally scoped: three defects in `invalidate_cache()` itself
-   (missing API URL, inverted access check, unreconstructable old slug)
-   have to be fixed alongside the new call sites.
+3. ✅ **Extend `invalidate_cache()` to `perform_update`, `_update_access`,
+   deletion, page modifications (5).** Implemented on branch
+   `400-invalidate-cache`; must ship _before_ (4). Ended up larger than the
+   original scope: two live defects in `invalidate_cache()` (missing API URL,
+   inverted access check) fixed alongside the new call sites, the purge
+   switched to `doc-{id}` `Cache-Tag` for the API, the task made variadic +
+   batched, and the `updated_at`-bump-on-purge bug fixed. The third defect
+   (slug change) was ruled unreachable — no slug mutation path exists. Also
+   emits the `Cache-Tag` header (part of 6), since (5) shipped first.
 4. **S3 `Cache-Control: immutable` (7).** Moved up from 5th: the
    2026-07-30 probe found the assets send no `Cache-Control` at all, and
    at 8.67 MB for a single PDF this is the biggest byte win in the plan.
@@ -756,10 +791,13 @@ Numbers in parentheses refer to the sections above.
    handled expands, short flat TTL for the `last_modified is None` case on
    edge-validator grounds), and a decision on `NoteViewSet`'s
    already-public `list`/`retrieve`.
-6. **Cache-Tag headers (6)** — reinstated: available on Business as of
-   2025-04-01, not Enterprise-only as an earlier revision assumed. Emit
-   `doc-{id}` in the retrieve view (folds into 4/5, above) so purges reach
-   every `?expand=…` and per-`Origin` variant with one tag.
+6. ✅ **Cache-Tag headers (6)** — reinstated (available on Business as of
+   2025-04-01, not Enterprise-only as an earlier revision assumed) and
+   **shipped as part of (5)**: `DocumentViewSet.retrieve` emits `doc-{id}` and
+   the purge path targets that tag, so one purge reaches every `?expand=…` and
+   per-`Origin` variant. Remaining optional polish: tag `NoteViewSet` responses
+   `doc-{document_id}` and add `project-{n}`/`org-{n}` tags for bulk
+   invalidation — deferrable, not required by (4)/(5).
 
 Then, as a **separate project**: make the frontend agree with whatever the
 API settles on — matching tier boundaries for the HTML it serves, and
@@ -839,7 +877,6 @@ still unaffected throughout.
   at once, so the fragmentation no longer multiplies unreachable URLs. Two
   ways to fix the dilution; the choice is a product decision, not just a
   caching one:
-
   - **Normalize the cache key at Cloudflare** to ignore `Origin` for this
     route. No API behavior change, so nothing breaks for existing clients.
     Preferred.
