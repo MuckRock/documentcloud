@@ -94,7 +94,8 @@ class TestDocumentCacheInvalidation:
         invalidate_cache_batch([])
         mock_post.assert_not_called()
 
-    def test_batch_purges_cloudfront_paths(self, mock_post, mocker, settings):
+    @pytest.mark.usefixtures("mock_post")
+    def test_batch_purges_cloudfront_paths(self, mocker, settings):
         """CloudFront is invalidated by path for every document in the batch."""
         settings.CLOUDFRONT_DISTRIBUTION_ID = "DIST123"
         mock_boto = mocker.patch("documentcloud.documents.cache.boto3")
