@@ -43,6 +43,7 @@ from documentcloud.documents.views import (
 from documentcloud.drf_bulk.routers import BulkDefaultRouter, BulkRouterMixin
 from documentcloud.entities.views import EntityOccurrenceViewSet, EntityViewSet
 from documentcloud.flatpages.views import FlatPageViewSet
+from documentcloud.organizations.stats_api.views import OrganizationStatsViewSet
 from documentcloud.organizations.views import OrganizationViewSet
 from documentcloud.projects.views import (
     CollaborationViewSet,
@@ -50,6 +51,7 @@ from documentcloud.projects.views import (
     ProjectViewSet,
 )
 from documentcloud.statistics.views import StatisticsViewSet
+from documentcloud.users.stats_api.views import UserStatsViewSet
 from documentcloud.users.views import MessageView, UserViewSet
 
 
@@ -93,6 +95,10 @@ projects_router.register("documents", ProjectMembershipViewSet)
 projects_router.register("users", CollaborationViewSet)
 
 router.register("documents/search/saved", SavedSearchViewSet, basename="saved_search")
+
+stats_router = BulkDefaultRouter()
+stats_router.register("users", UserStatsViewSet, basename="user-stats")
+stats_router.register("organizations", OrganizationStatsViewSet, basename="org-stats")
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/api/"), name="index"),
@@ -138,6 +144,7 @@ urlpatterns = [
     path(
         "addons/dashboard/scraper/", scraper_dashboard, name="addon-scraper-dashboard"
     ),
+    path("stats_api/", include(stats_router.urls)),
 ]
 
 if "debug_toolbar" in settings.INSTALLED_APPS:

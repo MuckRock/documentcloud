@@ -19,6 +19,9 @@ from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.querysets import OrganizationQuerySet
+from documentcloud.organizations.stats_api.models import (  # pylint: disable=unused-import
+    OrganizationStats,
+)
 
 logger = logging.getLogger(__name__)
 
