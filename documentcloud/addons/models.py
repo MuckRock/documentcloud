@@ -126,12 +126,23 @@ class AddOn(models.Model):
     def __str__(self):
         return self.name if self.name else "- Nameless Add-On -"
 
+    @property
+    def token_permissions(self):
+        """Extra permissions to embed in this add-on's JWT"""
+        if settings.KLAXON_ADDON_ID and self.pk == settings.KLAXON_ADDON_ID:
+            return ["klaxon"]
+        return []
+
     def get_tokens(self, user):
         """Get a JWT refresh token an access token from squarelet for the
         add-on to be able to authenticate itself to the DocumentCloud API
         """
+        params = {}
+        if self.token_permissions:
+            params["permissions"] = " ".join(self.token_permissions)
+
         try:
-            resp = squarelet_get(f"/api/refresh_tokens/{user.uuid}/")
+            resp = squarelet_get(f"/api/refresh_tokens/{user.uuid}/", params=params)
             resp.raise_for_status()
         except requests.exceptions.RequestException as exc:
             logger.warning(

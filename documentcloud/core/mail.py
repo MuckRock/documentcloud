@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 
 # Standard Library
 import logging
+from email.utils import parseaddr
 
 # Third Party
 from html2text import html2text
@@ -21,7 +22,8 @@ class Email(EmailMultiAlternatives):
         user = kwargs.pop("user", None)
         extra_context = kwargs.pop("extra_context", {})
         template = kwargs.pop("template", self.template)
-        super().__init__(**kwargs)
+        from_email = kwargs.pop("from_email", None) or settings.DEFAULT_FROM_EMAIL
+        super().__init__(from_email=from_email, **kwargs)
         # set up who we are sending the email to
         if user:
             self.to.append(user.email)
@@ -35,10 +37,15 @@ class Email(EmailMultiAlternatives):
         # always BCC diagnostics
         self.bcc.append("diagnostics@muckrock.com")
 
+        # brand the email to match whoever it is being sent as, so an Add-On
+        # sending under its own address does not look like it came from us
+        from_name, contact_email = parseaddr(from_email)
         context = {
             "base_url": settings.DOCCLOUD_URL,
             "subject": self.subject,
             "user": user,
+            "from_name": from_name or contact_email,
+            "contact_email": contact_email,
         }
         context.update(extra_context)
         html = render_to_string(template, context)
