@@ -258,6 +258,8 @@ class TestMessageAPI:
         self.send(client)
         mail = mailoutbox[0]
         assert mail.from_email == "Klaxon <klaxon@example.com>"
+        # and Mailgun is told to route it over that address's domain
+        assert mail.envelope_sender == "Klaxon <klaxon@example.com>"
         # the body is branded to match the sender, not to us
         assert "Klaxon" in mail.body
         assert "klaxon@example.com" in mail.body
