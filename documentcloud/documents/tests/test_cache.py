@@ -1,8 +1,12 @@
+# Standard Library
+import logging
+
 # Third Party
 import pytest
+from requests.exceptions import HTTPError
 
 # DocumentCloud
-from documentcloud.documents.cache import invalidate_cache_batch
+from documentcloud.documents.cache import CloudflarePurgeError, invalidate_cache_batch
 from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import DocumentFactory
 
@@ -107,3 +111,41 @@ class TestDocumentCacheInvalidation:
         create_invalidation.assert_called_once()
         paths = create_invalidation.call_args.kwargs["InvalidationBatch"]["Paths"]
         assert paths["Quantity"] == 2
+
+    def test_batch_logs_and_raises_when_cloudflare_rejects(self, mock_post, caplog):
+        """A 200 with `success: false` is a failure: it's logged and raised so
+        the task retries."""
+        response = mock_post.return_value
+        response.ok = True
+        response.json.return_value = {"success": False, "errors": ["bad zone"]}
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(CloudflarePurgeError):
+                invalidate_cache_batch([DocumentFactory()])
+
+        assert "Cloudflare cache purge failed" in caplog.text
+
+    def test_batch_raises_on_http_error(self, mock_post):
+        """A bad HTTP status raises (via raise_for_status) so the task retries."""
+        response = mock_post.return_value
+        response.ok = False
+        response.status_code = 500
+        response.raise_for_status.side_effect = HTTPError("500 Server Error")
+
+        with pytest.raises(HTTPError):
+            invalidate_cache_batch([DocumentFactory()])
+
+    def test_batch_logs_rate_limit_as_warning(self, mock_post, caplog):
+        """A 429 is expected under burst load - logged as a warning, not an
+        error, but still raised so the task retries with backoff."""
+        response = mock_post.return_value
+        response.ok = False
+        response.status_code = 429
+        response.raise_for_status.side_effect = HTTPError("429 Too Many Requests")
+
+        with caplog.at_level(logging.WARNING):
+            with pytest.raises(HTTPError):
+                invalidate_cache_batch([DocumentFactory()])
+
+        assert any(record.levelno == logging.WARNING for record in caplog.records)
+        assert not any(record.levelno >= logging.ERROR for record in caplog.records)

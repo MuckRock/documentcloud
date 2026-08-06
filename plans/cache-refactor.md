@@ -482,7 +482,7 @@ below:
   `cache_dirty` with a queryset `.update()` (see the `updated_at` fix below).
 - **Call sites wired:** `perform_update` (via a new `_invalidate_edited_cache`
   helper that batches every non-processing-transition instance — covers plain
-  edits *and* `_update_access` public↔private flips), `Document.destroy()`, and
+  edits _and_ `_update_access` public↔private flips), `Document.destroy()`, and
   a one-line `cache_dirty = True` in `ModificationViewSet.create` (page mods
   ride the existing processing-completion purge, like redaction).
 - **Coverage:** `test_tasks.py` (variadic + `updated_at` not bumped),
@@ -668,6 +668,51 @@ than bolted on:
   branches and other cacheable viewsets (notes) adopt tagging uniformly;
   pair it with a note-edit purge path. Tracks alongside the `NoteViewSet`
   decision already flagged in (4).
+
+#### Rate limiting under burst load
+
+Cloudflare's purge API is rate-limited **per account** (shared across every
+zone on the plan). On Business: **10 requests/second**, a burst bucket of
+**50**, and **100 operations per request** (source: the availability table in
+(6)). DocumentCloud regularly sees bursts of edits from users running bulk-edit
+scripts, so this is a live concern, not theoretical.
+
+What the (5) implementation already does about it:
+
+- **Minimizes request volume.** A bulk PATCH is one `invalidate_cache` task
+  that chunks to ≤100 tags/URLs per request, so a 500-doc bulk edit is ~5 file
+  - ~5 tag requests — inside the 50-token burst bucket.
+- **Absorbs 429s.** A `429` is a non-`ok` response, so it's logged (at
+  `warning`, since it's expected/transient — real failures stay at `error`)
+  and raised as `HTTPError`; the task's `autoretry_for=(RequestException,)` +
+  `retry_backoff=30` retries it. Purging is idempotent and `cache_dirty` is
+  only cleared on success, so nothing is lost.
+- **Avoids a retry stampede.** Celery's `retry_backoff` defaults to
+  `retry_jitter=True`, so a batch of simultaneously-throttled tasks retries at
+  randomized delays rather than re-bursting in lockstep.
+
+What it does **not** do: proactively pace to stay under the limit. A script
+firing thousands of _individual_ PATCHes still queues thousands of tasks that
+the default `celery` worker (concurrency 8) drains as fast as it can, so the
+account limit is hit and worked around reactively (429 → retry) rather than
+avoided. Correct, but noisy and slower to converge.
+
+Escalation path if the 429 warnings become frequent in production
+(preferred → lighter):
+
+1. **Dedicated low-concurrency queue.** Route `invalidate_cache` to its own
+   queue (the codebase already does this for `solr_*` via
+   `CELERY_TASK_ROUTES`, consumed by the `solr_worker` dyno) and give it a
+   worker with low concurrency. This bounds the global request rate at the
+   source, drains FIFO, and needs no guesswork — but it is a **deploy step**
+   (a new or repurposed worker dyno consuming the queue). Do not route to a
+   queue with no consumer, or purges silently never run.
+2. **Task `rate_limit`.** A one-line `@shared_task(rate_limit="…")` is
+   tempting but is enforced **per worker instance**, not globally, so with
+   multiple worker dynos it can't actually cap the account-wide rate; it only
+   dampens per-worker bursts. Weaker than (1), and it can delay
+   privacy-critical `public → private` purges behind a backlog of routine
+   ones — so prefer (1).
 
 ### 6. Add `Cache-Tag` headers — AVAILABLE on Business (was thought Enterprise-only)
 

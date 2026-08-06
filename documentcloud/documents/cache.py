@@ -14,6 +14,15 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+class CloudflarePurgeError(requests.RequestException):
+    """A Cloudflare purge request was rejected.
+
+    Subclasses `RequestException` so the `invalidate_cache` task's
+    `autoretry_for=(RequestException,)` retries it, alongside the transport
+    errors `raise_for_status()` already raises.
+    """
+
+
 def _chunk(items, size):
     """Yield successive `size`-length chunks of `items`."""
     for i in range(0, len(items), size):
@@ -52,7 +61,27 @@ def _invalidate_cloudflare(files=None, tags=None):
     }
     for key, values in (("files", files), ("tags", tags)):
         for chunk in _chunk(values or [], settings.CLOUDFLARE_PURGE_LIMIT):
-            requests.post(url, json={key: chunk}, headers=headers, timeout=10)
+            response = requests.post(
+                url, json={key: chunk}, headers=headers, timeout=10
+            )
+            # Cloudflare signals logical failures with `success: false` in a
+            # 200 body, so a clean status is not enough
+            if response.ok and response.json().get("success"):
+                continue
+            # a 429 is expected under burst load and handled by retry/backoff,
+            # so log it as a warning and keep real failures at error level
+            level = logging.WARNING if response.status_code == 429 else logging.ERROR
+            logger.log(
+                level,
+                "Cloudflare cache purge failed [%s]: status=%s body=%s",
+                key,
+                response.status_code,
+                response.text,
+            )
+            # raise so the Celery task retries (purging is idempotent):
+            # HTTPError for a bad status, CloudflarePurgeError for success=false
+            response.raise_for_status()
+            raise CloudflarePurgeError(response.text, response=response)
 
 
 def invalidate_cache_batch(documents):
