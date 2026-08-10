@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from django.db import connection, reset_queries
 from django.test.utils import override_settings
 from rest_framework import status
@@ -6,6 +7,7 @@ from rest_framework import status
 # Standard Library
 import json
 import uuid
+from email.utils import parseaddr
 from unittest.mock import MagicMock
 
 # Third Party
@@ -190,3 +192,91 @@ class TestUserAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = json.loads(response.content)
         assert "email" not in response_json
+
+
+# Add-Ons which are allowed their own sender, keyed by the permission their
+# token carries.  Overridden in tests so they do not depend on the deployed
+# addresses.
+ADDON_MAIL_FROM = {"klaxon": "Klaxon <klaxon@example.com>"}
+
+
+@pytest.mark.django_db()
+class TestMessageAPI:
+    """Add-Ons email their own user through this endpoint
+
+    The API cannot tell which add-on is calling - it only ever sees the user's
+    token - so an add-on which may send under its own name is identified by a
+    permission embedded in that token when it is issued.
+    """
+
+    def send(self, client, **kwargs):
+        return client.post(
+            "/api/messages/",
+            {"subject": "Site changed", "content": "Something happened"},
+            **kwargs,
+        )
+
+    def test_send(self, client, user, mailoutbox):
+        """You may email yourself"""
+        client.force_authenticate(user=user)
+        response = self.send(client)
+        assert response.status_code == status.HTTP_200_OK
+        assert len(mailoutbox) == 1
+        mail = mailoutbox[0]
+        assert mail.subject == "Site changed"
+        assert mail.to == [user.email]
+        assert "Something happened" in mail.body
+
+    def test_send_anonymous(self, client, mailoutbox):
+        """You must be logged in to send a message"""
+        response = self.send(client)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not mailoutbox
+
+    def test_send_invalid(self, client, user, mailoutbox):
+        """Both subject and content are required"""
+        client.force_authenticate(user=user)
+        response = client.post("/api/messages/", {"subject": "Site changed"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not mailoutbox
+
+    def test_send_default_sender(self, client, user, mailoutbox):
+        """Without a mail permission, the message comes from us"""
+        client.force_authenticate(user=user)
+        self.send(client)
+        mail = mailoutbox[0]
+        assert mail.from_email == settings.DEFAULT_FROM_EMAIL
+        # the body is branded to match the sender
+        from_name, contact_email = parseaddr(settings.DEFAULT_FROM_EMAIL)
+        assert from_name in mail.body
+        assert contact_email in mail.body
+
+    @override_settings(ADDON_MAIL_FROM=ADDON_MAIL_FROM)
+    def test_send_addon_sender(self, client, user, mailoutbox):
+        """A token with a mail permission sends under that add-on's name"""
+        client.force_authenticate(user=user, token={"permissions": ["klaxon"]})
+        self.send(client)
+        mail = mailoutbox[0]
+        assert mail.from_email == "Klaxon <klaxon@example.com>"
+        # and Mailgun is told to route it over that address's domain
+        assert mail.envelope_sender == "Klaxon <klaxon@example.com>"
+        # the body is branded to match the sender, not to us
+        assert "Klaxon" in mail.body
+        assert "klaxon@example.com" in mail.body
+        assert parseaddr(settings.DEFAULT_FROM_EMAIL)[1] not in mail.body
+        # the recipient is still the token's own user
+        assert mail.to == [user.email]
+
+    @override_settings(ADDON_MAIL_FROM=ADDON_MAIL_FROM)
+    def test_send_unrelated_permission(self, client, user, mailoutbox):
+        """A permission with no sender configured uses the default"""
+        client.force_authenticate(user=user, token={"permissions": ["processing"]})
+        self.send(client)
+        assert mailoutbox[0].from_email == settings.DEFAULT_FROM_EMAIL
+
+    @override_settings(ADDON_MAIL_FROM=ADDON_MAIL_FROM)
+    def test_send_no_permissions_claim(self, client, user, mailoutbox):
+        """A token without a permissions claim at all uses the default"""
+        client.force_authenticate(user=user, token={})
+        self.send(client)
+        assert mailoutbox[0].from_email == settings.DEFAULT_FROM_EMAIL

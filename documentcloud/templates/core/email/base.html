@@ -218,7 +218,7 @@
                         </a>
                         -->
                         <div class="header--text">
-                          <h1>DocumentCloud</h1>
+                          <h1>{{ from_name }}</h1>
                           <p>{{ subject }}</p>
                         </div>
                       </div>
@@ -234,8 +234,8 @@
                           <a href="mailto:{{ user.email }}">{{ user.email }}</a>.
                         </p>
                       {% endif %}
-                      {% blocktrans %}
-                        <p>Add <a href="mailto:info@documentcloud.org">info@documentcloud.org</a> to your address book to prevent our emails from being marked as spam.</p>
+                      {% blocktrans with email=contact_email %}
+                        <p>Add <a href="mailto:{{ email }}">{{ email }}</a> to your address book to prevent our emails from being marked as spam.</p>
                       {% endblocktrans %}
                       <p>MuckRock, 263 Huntington Ave, Boston MA 02115</p>
                     </div>
