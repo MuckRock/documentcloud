@@ -135,6 +135,9 @@ ADMIN_URL = env("DJANGO_ADMIN_URL")
 INSTALLED_APPS += ["anymail", "djcelery_email"]  # noqa F405
 CELERY_EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
 EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
+# Preserve Anymail attributes when it gets to Celery
+CELERY_EMAIL_MESSAGE_EXTRA_ATTRIBUTES = ["esp_extra", "envelope_sender"]
+
 # https://anymail.readthedocs.io/en/stable/installation/#anymail-settings-reference
 ANYMAIL = {
     "MAILGUN_API_KEY": env("MAILGUN_API_KEY"),
