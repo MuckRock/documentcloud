@@ -15,7 +15,7 @@ from datetime import timedelta
 from django_filters import rest_framework as django_filters
 
 # DocumentCloud
-from documentcloud.core.pagination import CursorCountPagination
+from documentcloud.core.pagination import CursorPagination
 from documentcloud.documents.choices import Status
 from documentcloud.organizations.stats_api.models import OrganizationStats
 from documentcloud.organizations.stats_api.serializers import (
@@ -31,7 +31,7 @@ class OrganizationStatsViewSet(
     serializer_class = OrganizationStatsSerializer
     permission_classes = [IsAdminUser]
     filter_backends = [django_filters.DjangoFilterBackend]
-    pagination_class = CursorCountPagination
+    pagination_class = CursorPagination
     lookup_field = "organization__uuid"
     lookup_url_kwarg = "uuid"
 
@@ -58,10 +58,17 @@ class OrganizationStatsViewSet(
     filterset_class = Filter
 
     def get_queryset(self):
+        return OrganizationStats.objects.select_related("organization").filter(
+            organization__individual=False
+        )
+
+    def paginate_queryset(self, queryset):
+        page = super().paginate_queryset(queryset)
         cutoff = timezone.now() - timedelta(days=settings.UPLOAD_WINDOW_DAYS)
-        return (
-            OrganizationStats.objects.select_related("organization")
-            .filter(organization__individual=False)
+        annotated = (
+            OrganizationStats.objects.filter(pk__in=[o.pk for o in page])
+            .select_related("organization", "organization__parent")
+            .prefetch_related("organization__groups")
             .annotate(
                 total_documents=Count(
                     "organization__documents",
@@ -75,7 +82,9 @@ class OrganizationStatsViewSet(
                     distinct=True,
                 ),
             )
+            .order_by("pk")
         )
+        return list(annotated)
 
     @action(detail=False, methods=["get"])
     def aged_out(self, request):
@@ -100,4 +109,4 @@ class OrganizationStatsViewSet(
         )
 
         page = self.paginate_queryset(qs)
-        return Response(self.get_serializer(page, many=True).data)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)

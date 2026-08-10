@@ -14,6 +14,7 @@ class OrganizationStatsSerializer(serializers.ModelSerializer):
         help_text="Documents uploaded by the org within the configured window "
         "(UPLOAD_WINDOW_DAYS, defaults to 90)."
     )
+    ai_credits = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizationStats
@@ -23,6 +24,8 @@ class OrganizationStatsSerializer(serializers.ModelSerializer):
             "last_upload_at",
             "days_since_last_upload",
             "recent_upload_count",
+            "ai_credits",
+            "last_ai_credit_at",
         ]
         read_only_fields = fields
 
@@ -33,3 +36,11 @@ class OrganizationStatsSerializer(serializers.ModelSerializer):
 
     def get_recent_upload_count(self, obj):
         return getattr(obj, "recent_upload_count", None)
+
+    def get_ai_credits(self, obj):
+        org = obj.organization
+        return {
+            "ai_credits_per_month": org.get_total_monthly_ai_credits_allowance(),
+            "monthly_ai_credits": org.get_total_monthly_ai_credits(),
+            "number_ai_credits": org.get_total_number_ai_credits(),
+        }

@@ -41,6 +41,7 @@ from documentcloud.core.permissions import (
 )
 from documentcloud.core.utils import (  # pylint:disable=unused-import
     ProcessingTokenAuthenticationScheme,
+    record_uploads,
 )
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
@@ -877,12 +878,17 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
             force_ocrs = [serializer.validated_data.pop("force_ocr", False)]
             ocr_engines = [serializer.validated_data.pop("ocr_engine", "tess4")]
 
-        documents = serializer.save(
-            user=self.request.user, organization=self.request.user.organization
-        )
+        organization = self.request.user.organization
+        documents = serializer.save(user=self.request.user, organization=organization)
 
         if not bulk:
             documents = [documents]
+
+        # Update the stat records for last uploads
+        record_uploads(
+            user_ids=[self.request.user.pk],
+            organization_ids=[organization.pk],
+        )
 
         for document, file_url, force_ocr, ocr_engine in zip(
             documents, file_urls, force_ocrs, ocr_engines

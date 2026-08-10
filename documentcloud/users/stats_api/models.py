@@ -10,6 +10,7 @@ class UserStats(models.Model):
         primary_key=True,
     )
     last_upload_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_ai_credit_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         app_label = "users"

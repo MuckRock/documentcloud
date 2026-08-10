@@ -17,6 +17,7 @@ class UserStatsSerializer(serializers.ModelSerializer):
         help_text="Number of documents uploaded within the configured recent window "
         "(UPLOAD_WINDOW_DAYS, currently defaults to 90)."
     )
+    individual_ai_credits = serializers.SerializerMethodField()
 
     class Meta:
         model = UserStats
@@ -27,6 +28,8 @@ class UserStatsSerializer(serializers.ModelSerializer):
             "days_since_last_upload",
             "last_login_at",
             "recent_upload_count",
+            "individual_ai_credits",
+            "last_ai_credit_at",
         ]
         read_only_fields = fields
 
@@ -37,3 +40,14 @@ class UserStatsSerializer(serializers.ModelSerializer):
 
     def get_recent_upload_count(self, obj):
         return getattr(obj, "recent_upload_count", None)
+
+    def get_individual_ai_credits(self, obj):
+        orgs = getattr(obj.user, "individual_orgs", [])
+        if not orgs:
+            return None
+        org = orgs[0]
+        return {
+            "ai_credits_per_month": org.ai_credits_per_month,
+            "monthly_ai_credits": org.monthly_ai_credits,
+            "number_ai_credits": org.number_ai_credits,
+        }

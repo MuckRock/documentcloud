@@ -30,6 +30,7 @@ from urllib.parse import urlencode
 from documentcloud.common.environment import storage
 from documentcloud.common.extensions import EXTENSIONS
 from documentcloud.core.choices import Language
+from documentcloud.core.utils import record_uploads
 from documentcloud.documents.choices import Access
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import fetch_file_url
@@ -104,6 +105,7 @@ def mailgun(request):
 
     attachments = json.loads(request.POST.get("attachments", "[]"))
 
+    created_any = False
     for attachment in attachments:
         with transaction.atomic():
             title, original_extension = os.path.splitext(attachment["name"])
@@ -118,6 +120,7 @@ def mailgun(request):
                 title=title,
                 original_extension=original_extension,
             )
+            created_any = True
             document.index_on_commit()
             transaction.on_commit(
                 lambda a=attachment, d=document: fetch_file_url.delay(
@@ -128,6 +131,15 @@ def mailgun(request):
                     auth=("api", settings.MAILGUN_API_KEY),
                 )
             )
+
+    # All attachments in a message share one uploader (the mailkey user / their
+    # org). Bump the upload watermark once, explicitly, rather than via a signal.
+    # Only when at least one valid attachment was actually created.
+    if created_any:
+        record_uploads(
+            user_ids=[user.pk],
+            organization_ids=[user.organization.pk],
+        )
     return HttpResponse("OK")
 
 
