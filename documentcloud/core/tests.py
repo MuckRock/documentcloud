@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.contrib.flatpages.models import FlatPage
 from django.contrib.sites.models import Site
+from django.core import mail as django_mail
 from django.db import transaction
 from django.test import TestCase
 from django.urls import reverse
@@ -12,6 +13,7 @@ import hashlib
 import hmac
 import time
 import uuid
+from email.utils import parseaddr
 from unittest import mock
 
 # Third Party
@@ -21,6 +23,7 @@ from rest_framework_simplejwt.settings import api_settings
 
 # DocumentCloud
 from documentcloud.core.authentication import SquareletJWTAuthentication
+from documentcloud.core.mail import send_mail
 from documentcloud.users.tests.factories import UserFactory
 
 
@@ -186,3 +189,54 @@ class TestSquareletJWTAuthentication:
 
         mock_get.assert_not_called()
         mock_update.assert_not_called()
+
+
+@pytest.mark.django_db()
+class TestEmailSenderDomain:
+    """Which domain Mailgun sends over
+
+    Anymail only intuits the sending domain from the From address when
+    MAILGUN_SENDER_DOMAIN is unset, and production sets it.  So mail sent under
+    an Add-On's own address has to override it per-message, via the envelope
+    sender, or it goes out over our domain and fails DMARC alignment.
+    """
+
+    def domain(self, mail):
+        """The domain Anymail would route this message over"""
+        return parseaddr(mail.envelope_sender)[1].rpartition("@")[2]
+
+    def test_default_sender_keeps_configured_domain(self, user):
+        """Our own mail sets no envelope sender, so the global setting stands"""
+        send_mail(subject="Hello", user=user, template="core/email/base.html")
+        mail = django_mail.outbox[0]
+        assert not hasattr(mail, "envelope_sender")
+
+    def test_addon_sender_overrides_domain(self, user):
+        """An Add-On's mail is routed over its own domain"""
+        send_mail(
+            subject="Site changed",
+            user=user,
+            template="core/email/base.html",
+            from_email="Klaxon <no-reply@klaxoncloud.org>",
+        )
+        mail = django_mail.outbox[0]
+        assert mail.from_email == "Klaxon <no-reply@klaxoncloud.org>"
+        assert self.domain(mail) == "klaxoncloud.org"
+
+    def test_addon_sender_domain_is_routable(self, user):
+        """Mailgun 200s with a junk body if the domain contains a slash, and
+        Anymail guards against it - the address must not smuggle one through
+        """
+        send_mail(
+            subject="Site changed",
+            user=user,
+            template="core/email/base.html",
+            from_email=settings.ADDON_MAIL_FROM["klaxon"],
+        )
+        domain = self.domain(django_mail.outbox[0])
+        assert domain
+        assert "/" not in domain
+        assert (
+            domain
+            == parseaddr(settings.ADDON_MAIL_FROM["klaxon"])[1].rpartition("@")[2]
+        )
