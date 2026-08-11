@@ -351,6 +351,23 @@ class TestAddOnRunAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["results"] == []
 
+    def test_list_expand_query_count(self, client, django_assert_num_queries):
+        """
+        Expanding addon+event must not scale queries with the number of runs.
+        Query count stays flat (the run's addon/github_account/event are
+        select_related'd and get_active reads a cached PK set).
+        """
+        user = UserFactory(is_staff=True)
+        client.force_authenticate(user=user)
+        url = "/api/addon_runs/?expand=addon,event&per_page=100"
+
+        for expected_count in range(1, 11):
+            AddOnRunFactory(user=user, addon=AddOnFactory())
+            with django_assert_num_queries(7):
+                response = client.get(url)
+            assert response.status_code == status.HTTP_200_OK
+            assert len(response.json()["results"]) == expected_count
+
 
 @pytest.mark.django_db()
 class TestAddOnEventAPI:
