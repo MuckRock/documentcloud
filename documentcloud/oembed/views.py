@@ -112,7 +112,16 @@ class OEmbedView(APIView):
             except (ValueError, KeyError):
                 return None
 
-        furl_url = furl(request.GET["url"])
+        try:
+            furl_url = furl(request.GET["url"])
+        except ValueError:
+            # furl raises ValueError on port errors,
+            # malformed IPs, and invalid hosts,
+            # so we must handle this
+            return Response(
+                {"error": "Invalid or missing url parameter"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         # remove _escaped_fragment_ if it exists
         furl_url.query.params.pop("_escaped_fragment_", None)
         # always add embed=1
