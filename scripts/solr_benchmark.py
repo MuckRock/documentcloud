@@ -34,12 +34,18 @@ same core_start_time; across a restart, compare rates and current_* instead.
 
 By default a run emits its JSON snapshot to STDOUT and writes no files, because
 the primary way this runs is on a Heroku dyno, whose filesystem is wiped on
-cycle. Capture it locally and build the CSV scorecards from the captures:
+cycle. Use --quiet there: `heroku run` merges the dyno's stderr into stdout, so
+without it the diagnostics and human summary land in your capture alongside the
+JSON. Then read the summary back locally from the capture itself:
 
     heroku run --no-tty --app <app> \
       "python scripts/solr_benchmark.py --hosts h1:7377,h2:7377,h3:7377 \
-         --label baseline" > benchmarks/baseline.json
+         --label baseline --quiet" > benchmarks/baseline.json
+    ./solr_benchmark.py --summarize benchmarks/baseline.json   # human view
     ./solr_benchmark.py --ingest benchmarks/*.json --outdir benchmarks
+
+--ingest and --summarize both tolerate a capture with noise around the JSON, so
+an existing capture taken without --quiet still works untouched.
 
 Pass --label to tag the run ("baseline", "after-heap-14g") so a baseline and
 every later run accumulate in one scorecard. Where the filesystem persists,
@@ -68,7 +74,8 @@ ec2-18-215-134-28.compute-1.amazonaws.com:7377 \
 
 Exit codes: 0 = all good; 1 = reachable but unhealthy (a replica is not active,
 or cluster state could not be read); 2 = a node could not be scraped; 3 =
---ingest parsed nothing. Usable as a health check.
+--ingest parsed nothing; 4 = misconfiguration (e.g. SOLR_VERIFY is not a usable
+certificate). Usable as a health check.
 
 Only depends on the Python 3 standard library.
 """
@@ -83,6 +90,7 @@ import datetime
 import json
 import math
 import os
+import re
 import ssl
 import sys
 import tempfile
@@ -100,6 +108,12 @@ EXIT_OK = 0
 EXIT_UNHEALTHY = 1
 EXIT_FETCH_ERROR = 2
 EXIT_NOTHING_INGESTED = 3
+EXIT_CONFIG = 4
+
+
+class ConfigError(Exception):
+    """A misconfiguration the operator must fix (e.g. an unusable CA cert)."""
+
 
 # HTTP statuses where retrying is pointless (auth/URL problems, not transient).
 NO_RETRY_STATUS = frozenset({400, 401, 403, 404, 405})
@@ -165,10 +179,23 @@ EXPECTED_CORE_KEYS = ("count", "p95_ms", "index_size_bytes", "num_docs")
 EXPECTED_JVM_KEYS = ("heap_used_bytes", "gc_total_count", "os_free_phys_bytes")
 
 
-def eprint(*args, **kwargs):
-    """print() to stderr — for diagnostics that must not pollute stdout."""
-    kwargs["file"] = sys.stderr
-    print(*args, **kwargs)
+def make_reporter(quiet):
+    """Build the diagnostics sink, passed explicitly to whatever needs it.
+
+    Writes to stderr so it never pollutes a JSON capture on stdout. When quiet
+    it drops everything, because `heroku run` merges the dyno's stderr into
+    stdout — there, stream discipline alone cannot keep a capture pristine.
+    Nothing essential is lost when quiet: node and cluster failures are
+    recorded in the snapshot itself, and the human summary is reproducible from
+    any capture with --summarize."""
+
+    def report(*args, **kwargs):
+        if quiet:
+            return
+        kwargs["file"] = sys.stderr
+        print(*args, **kwargs)
+
+    return report
 
 
 # --------------------------------------------------------------------------- #
@@ -204,7 +231,7 @@ def make_ssl_context(insecure, ca_file):
     return ctx
 
 
-def http_get_json(url, auth_header, ctx, timeout, retries=0, backoff=1.0):
+def http_get_json(url, auth_header, ctx, timeout, retries=0, backoff=1.0, report=None):
     """GET + parse JSON, retrying transient failures.
 
     A single timeout against a struggling cluster would otherwise drop that
@@ -222,7 +249,8 @@ def http_get_json(url, auth_header, ctx, timeout, retries=0, backoff=1.0):
             if fatal or attempt >= retries:
                 raise
             attempt += 1
-            eprint(f"  retry {attempt}/{retries} after {type(e).__name__}: {e}")
+            if report:
+                report(f"  retry {attempt}/{retries} after {type(e).__name__}: {e}")
             time.sleep(backoff * attempt)
 
 
@@ -258,7 +286,7 @@ def fmt(value, spec=""):
 # --------------------------------------------------------------------------- #
 # Collection
 # --------------------------------------------------------------------------- #
-def fetch_metrics(host, auth_header, ctx, handler, timeout, retries=0):
+def fetch_metrics(host, auth_header, ctx, handler, timeout, retries=0, report=None):
     """Pull the core + jvm + node metrics we care about from one Solr node."""
     prefixes = ",".join(
         [
@@ -278,7 +306,7 @@ def fetch_metrics(host, auth_header, ctx, handler, timeout, retries=0):
         f"{base_url(host)}/solr/admin/metrics"
         f"?group=core,jvm,node&prefix={urllib.parse.quote(prefixes)}&wt=json"
     )
-    return http_get_json(url, auth_header, ctx, timeout, retries)
+    return http_get_json(url, auth_header, ctx, timeout, retries, report=report)
 
 
 def parse_gc(data):
@@ -406,10 +434,10 @@ def parse_node_metrics(raw, handler):
     return cores, jvm
 
 
-def fetch_cluster_health(host, auth_header, ctx, timeout, retries=0):
+def fetch_cluster_health(host, auth_header, ctx, timeout, retries=0, report=None):
     """Count replica states per collection via CLUSTERSTATUS."""
     url = f"{base_url(host)}/solr/admin/collections" f"?action=CLUSTERSTATUS&wt=json"
-    raw = http_get_json(url, auth_header, ctx, timeout, retries)
+    raw = http_get_json(url, auth_header, ctx, timeout, retries, report=report)
     out = {"collections": {}, "aliases": raw.get("cluster", {}).get("aliases", {})}
     collections = raw.get("cluster", {}).get("collections", {})
     for cname, cdata in collections.items():
@@ -636,7 +664,42 @@ def snapshot_exit_code(snapshot):
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-def run_ingest(ap, args):
+def load_snapshot(path, report=None):
+    """Read a snapshot, tolerating non-JSON noise around it.
+
+    `heroku run` merges the dyno's stderr into stdout, so a captured file
+    routinely carries diagnostics and the human summary ahead of the JSON (and
+    possibly Heroku's own trailing chatter after it). Rather than make anyone
+    hand-edit the capture, find the JSON object: try the whole file first, then
+    each line that begins a brace at column 0, decoding only as far as that
+    object extends."""
+    with open(path) as f:
+        text = f.read()
+    try:
+        return json.loads(text)
+    except ValueError:
+        pass
+
+    starts = [0] if text.startswith("{") else []
+    at = text.find("\n{")
+    while at != -1:
+        starts.append(at + 1)
+        at = text.find("\n{", at + 1)
+
+    for start in starts:
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(text[start:])
+        except ValueError:
+            continue
+        if isinstance(obj, dict):
+            if report:
+                line = text.count("\n", 0, start) + 1
+                report(f"  note: skipped {line - 1} non-JSON line(s) in {path}")
+            return obj
+    raise ValueError("no parsable JSON object found (is the capture truncated?)")
+
+
+def run_ingest(ap, args, report):
     """Local mode: build CSVs from previously captured JSON snapshots."""
     if not args.ingest:
         ap.error("--ingest needs one or more snapshot JSON files")
@@ -644,10 +707,9 @@ def run_ingest(ap, args):
     ok, failed = 0, []
     for path in args.ingest:
         try:
-            with open(path) as f:
-                snap = json.load(f)
+            snap = load_snapshot(path, report)
         except (OSError, ValueError) as e:
-            eprint(f"skipping {path}: {e}")
+            report(f"skipping {path}: {e}")
             failed.append(path)
             continue
         qi, hi, ci = snapshot_to_rows(snap)
@@ -656,24 +718,24 @@ def run_ingest(ap, args):
         c_rows += ci
         ok += 1
     if not ok:
-        eprint(
+        report(
             f"ERROR: ingested nothing — all {len(args.ingest)} file(s) failed to "
             f"parse. (A truncated `heroku run` capture is the usual cause.)"
         )
         return EXIT_NOTHING_INGESTED
     write_scorecards(args.outdir, q_rows, h_rows, c_rows)
-    eprint(
+    report(
         f"Ingested {ok}/{len(args.ingest)} snapshot(s) → "
         f"{len(q_rows)} query / {len(h_rows)} host / {len(c_rows)} cluster row(s) "
         f"in {args.outdir}/"
     )
     if failed:
-        eprint(f"Failed to parse: {', '.join(failed)}")
+        report(f"Failed to parse: {', '.join(failed)}")
         return EXIT_FETCH_ERROR
     if not (q_rows or h_rows or c_rows):
         # Parsed fine but every node in every snapshot had errored at capture
         # time — writing nothing while reporting success would hide that.
-        eprint(
+        report(
             "ERROR: snapshots parsed but contained no usable rows (every node "
             "errored at capture time). Check auth/reachability and re-capture."
         )
@@ -686,7 +748,66 @@ def _unlink_quietly(path):
         os.unlink(path)
 
 
-def resolve_tls(args):
+def run_summarize(ap, args, report):
+    """Local mode: re-print the human summary from captured snapshot(s).
+
+    The summary is only a view of the JSON, so it never needs to survive the
+    capture pipeline — take a clean --quiet capture and render it here."""
+    if not args.summarize:
+        ap.error("--summarize needs one or more snapshot JSON files")
+    worst = EXIT_OK
+    for path in args.summarize:
+        try:
+            snap = load_snapshot(path, report)
+        except (OSError, ValueError) as e:
+            report(f"skipping {path}: {e}")
+            worst = max(worst, EXIT_FETCH_ERROR)
+            continue
+        print_summary(snap)
+        worst = max(worst, snapshot_exit_code(snap))
+    return worst
+
+
+def normalize_pem(raw):
+    """Turn a certificate held in an env var into real PEM text.
+
+    Mirrors how the app reads the same variable — config/settings/base.py:545
+    uses django-environ's `multiline=True`, which rewrites literal backslash-n
+    escapes into newlines. A PEM stuffed into a Heroku config var carries
+    exactly those escapes, so reading os.environ raw yields one long line that
+    OpenSSL rejects with NO_CERTIFICATE_OR_CRL_FOUND. Keep this in step with
+    base.py."""
+    text = raw.strip()
+    if len(text) > 1 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()  # tolerate a quoted config var
+    return re.sub(r"(\\r)?\\n", "\n", text)
+
+
+def write_ca_bundle(pem, source):
+    """Stage PEM text in a temp file for use as a CA bundle.
+
+    Cleaned up at exit so repeated runs (e.g. a cron) don't litter /tmp."""
+    if "BEGIN CERTIFICATE" not in pem:
+        raise ConfigError(
+            f"{source} is set but contains no PEM certificate. Expected a "
+            f"'-----BEGIN CERTIFICATE-----' block. Re-set it from the Solr "
+            f"cert, e.g.\n"
+            f"  openssl s_client -connect <node>:7377 </dev/null 2>/dev/null "
+            f"| openssl x509 -outform PEM > solr-cert.pem\n"
+            f'  heroku config:set {source}="$(cat solr-cert.pem)" --app <app>\n'
+            f"(or pass --insecure to skip verification entirely)."
+        )
+    try:
+        tf = tempfile.NamedTemporaryFile(delete=False, suffix=".pem")
+        tf.write(pem.encode("ascii"))
+        tf.close()
+    except (OSError, UnicodeEncodeError) as e:
+        raise ConfigError(f"could not stage the {source} certificate: {e}") from e
+    atexit.register(_unlink_quietly, tf.name)
+    return tf.name
+
+
+def resolve_tls(args, report):
     """--insecure / SOLR_CA win; otherwise mirror the app's SOLR_VERIFY."""
     ca_file = os.environ.get("SOLR_CA")
     insecure = args.insecure
@@ -695,20 +816,19 @@ def resolve_tls(args):
         if solr_verify.strip() == "False":
             insecure = True
         elif solr_verify.strip():
-            # Cert *contents* in the env var: stage them in a temp file and use
-            # it as the CA bundle. Clean up on exit so repeated runs (e.g. a
-            # cron) don't litter /tmp with .pem files.
-            tf = tempfile.NamedTemporaryFile(delete=False, suffix=".pem")
-            tf.write(solr_verify.encode("ascii"))
-            tf.close()
-            ca_file = tf.name
-            atexit.register(_unlink_quietly, ca_file)
+            ca_file = write_ca_bundle(normalize_pem(solr_verify), "SOLR_VERIFY")
     if insecure and not ca_file:
-        eprint(
+        report(
             "note: --insecure sends Basic credentials over an unverified TLS "
             "connection. Prefer SOLR_VERIFY/SOLR_CA where available."
         )
-    return make_ssl_context(insecure, ca_file)
+    try:
+        return make_ssl_context(insecure, ca_file)
+    except ssl.SSLError as e:
+        raise ConfigError(
+            f"could not load the CA bundle from {ca_file}: {e}. "
+            f"Check that SOLR_CA/SOLR_VERIFY holds a valid PEM certificate."
+        ) from e
 
 
 def main():
@@ -786,17 +906,37 @@ def main():
         "instead (only useful where the filesystem persists).",
     )
     ap.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Silence everything except the JSON snapshot — no notes, no "
+        "warnings, no human summary. Use this under `heroku run`, which merges "
+        "the dyno's stderr into stdout and would otherwise mix diagnostics into "
+        "your capture. Read the summary afterwards with --summarize.",
+    )
+    ap.add_argument(
         "--ingest",
         nargs="*",
         metavar="SNAPSHOT.json",
         help="Local mode: read one or more captured JSON snapshots and append "
         "them to the CSV scorecards in --outdir, then exit. No cluster access "
-        "needed. Pairs with the default stdout captures.",
+        "needed. Tolerates captures with diagnostics mixed in.",
+    )
+    ap.add_argument(
+        "--summarize",
+        nargs="*",
+        metavar="SNAPSHOT.json",
+        help="Local mode: print the human-readable summary for captured "
+        "snapshot(s) and exit. No cluster access needed — this is how you read "
+        "a --quiet capture.",
     )
     args = ap.parse_args()
+    report = make_reporter(args.quiet)
 
+    if args.summarize is not None:
+        return run_summarize(ap, args, report)
     if args.ingest is not None:
-        return run_ingest(ap, args)
+        return run_ingest(ap, args, report)
 
     # A handler without its leading slash would silently match no metrics.
     handler = args.handler if args.handler.startswith("/") else f"/{args.handler}"
@@ -809,7 +949,7 @@ def main():
         host_url = os.environ.get("SOLR_HOST_URL")
         if host_url:
             hosts = [host_url]
-            eprint(
+            report(
                 "note: no --hosts/SOLR_HOSTS; using SOLR_HOST_URL "
                 "(load balancer — one node per call). Pass --hosts with the "
                 "individual node hostnames for per-node metrics."
@@ -819,12 +959,18 @@ def main():
 
     auth_header = get_auth_header()
     if not auth_header:
-        eprint(
+        report(
             "WARNING: no auth found (set SOLR_USERNAME + SOLR_PASSWORD, "
             "or SOLR_AUTH=user:pass)"
         )
 
-    ctx = resolve_tls(args)
+    try:
+        ctx = resolve_tls(args, report)
+    except ConfigError as e:
+        # Always visible, even under --quiet: the run cannot proceed and the
+        # operator has to change something outside this script.
+        print(f"ERROR: {e}", file=sys.stderr)
+        return EXIT_CONFIG
 
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     snapshot = {
@@ -838,7 +984,7 @@ def main():
         node = {"host": host}
         try:
             raw = fetch_metrics(
-                host, auth_header, ctx, handler, args.timeout, args.retries
+                host, auth_header, ctx, handler, args.timeout, args.retries, report
             )
             cores, jvm = parse_node_metrics(raw, handler)
             node["cores"] = cores
@@ -861,7 +1007,7 @@ def main():
     for host in hosts:
         try:
             snapshot["cluster_health"] = fetch_cluster_health(
-                host, auth_header, ctx, args.timeout, args.retries
+                host, auth_header, ctx, args.timeout, args.retries, report
             )
             break
         except (urllib.error.URLError, OSError, ValueError) as e:
@@ -872,8 +1018,11 @@ def main():
         # Ephemeral host (e.g. Heroku dyno): emit ONLY the JSON snapshot to
         # stdout so it can be captured locally; send the human summary and all
         # diagnostics to stderr so the redirect stays clean. Write no files.
-        with contextlib.redirect_stdout(sys.stderr):
-            print_summary(snapshot)
+        # Under `heroku run` the two streams are merged anyway, so pass --quiet
+        # there and read the summary later with --summarize.
+        if not args.quiet:
+            with contextlib.redirect_stdout(sys.stderr):
+                print_summary(snapshot)
         json.dump(snapshot, sys.stdout, indent=2)
         sys.stdout.write("\n")
     else:
