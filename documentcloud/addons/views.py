@@ -729,7 +729,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         """Only fetch add-on runs viewable to this user"""
         queryset = AddOnRun.objects.get_viewable(self.request.user)
         if is_expanded(self.request, "addon"):
-            queryset = queryset.select_related("addon")
+            queryset = queryset.select_related("addon", "addon__github_account")
         if is_expanded(self.request, "event"):
             queryset = queryset.select_related("event")
         return queryset

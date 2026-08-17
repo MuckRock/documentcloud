@@ -68,16 +68,19 @@ class AddOnSerializer(FlexFieldsModelSerializer):
 
     @extend_schema_field(serializers.BooleanField())
     def get_active(self, obj):
-
         if hasattr(obj, "active"):
             # pre calculate active for efficiency
             return obj.active
-
         request = self.context.get("request")
         if not request:
             return False
-
-        return request.user.active_addons.filter(pk=obj.pk).exists()
+        if not hasattr(self, "_active_pks"):
+            # build the pinned-addon PK set once per serializer (one query for the page)
+            # instead of an EXISTS per addon.
+            self._active_pks = set(
+                request.user.active_addons.values_list("pk", flat=True)
+            )
+        return obj.pk in self._active_pks
 
     class Meta:
         model = AddOn
