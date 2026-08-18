@@ -15,7 +15,7 @@ from documentcloud.documents.tests.factories import DocumentFactory
 def test_set_page_text_does_not_clobber_data():
     doc = DocumentFactory(status=Status.pending, slug="test-doc")
 
-    def fake_set_page_text(self):
+    def fake_set_page_text(self, *args, **kwargs):
         # simulate the Add-On writing a key/value pair into data via a
         # separate DB row update while this task holds a stale instance
         Document.objects.filter(pk=self.pk).update(data={"_tag": "applied"})
