@@ -282,7 +282,7 @@ def set_page_text(document_pk, page_text_infos):
     logger.info("[SET PAGE TEXT] %d - setting status to readable", document_pk)
     with transaction.atomic():
         document.status = Status.readable
-        document.save()
+        document.save(update_fields=["status", "solr_dirty"])
         document.index_on_commit(field_updates={"status": "set"})
     kwargs = {"field_updates": {}}
     try:
@@ -298,7 +298,7 @@ def set_page_text(document_pk, page_text_infos):
         with transaction.atomic():
             logger.info("[SET PAGE TEXT] %d - setting status to success", document_pk)
             document.status = Status.success
-            document.save()
+            document.save(update_fields=["status", "solr_dirty"])
             kwargs["field_updates"]["status"] = "set"
             document.index_on_commit(**kwargs)
 
