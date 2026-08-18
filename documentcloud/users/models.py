@@ -11,9 +11,6 @@ from squarelet_auth.users.models import User as SAUser
 # DocumentCloud
 from documentcloud.core.choices import Language
 from documentcloud.users.managers import UserManager
-from documentcloud.users.stats_api.models import (  # pylint: disable=unused-import
-    UserStats,
-)
 
 
 class User(SAUser):

@@ -104,10 +104,19 @@ class UserStatsViewSet(
 
     def paginate_queryset(self, queryset):
         page = super().paginate_queryset(queryset)
-        cutoff = timezone.now() - timedelta(days=settings.UPLOAD_WINDOW_DAYS)
-        annotated = (
+        annotated = self._annotate_and_prefetch(
             UserStats.objects.filter(pk__in=[u.pk for u in page])
-            .select_related("user")
+        ).order_by("pk")
+        return list(annotated)
+
+    def get_object(self):
+        obj = super().get_object()
+        return self._annotate_and_prefetch(UserStats.objects.filter(pk=obj.pk)).get()
+
+    def _annotate_and_prefetch(self, queryset):
+        cutoff = timezone.now() - timedelta(days=settings.UPLOAD_WINDOW_DAYS)
+        return (
+            queryset.select_related("user")
             .prefetch_related(
                 Prefetch(
                     "user__organizations",
@@ -128,9 +137,7 @@ class UserStatsViewSet(
                     distinct=True,
                 ),
             )
-            .order_by("pk")
         )
-        return list(annotated)
 
     @action(detail=False, methods=["get"])
     def aged_out(self, request):

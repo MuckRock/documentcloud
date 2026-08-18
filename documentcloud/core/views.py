@@ -137,8 +137,8 @@ def mailgun(request):
     # Only when at least one valid attachment was actually created.
     if created_any:
         record_uploads(
-            user_ids=[user.pk],
-            organization_ids=[user.organization.pk],
+            user_id=user.pk,
+            organization_id=user.organization.pk,
         )
     return HttpResponse("OK")
 

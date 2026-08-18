@@ -95,6 +95,8 @@ LOCAL_APPS = [
     "documentcloud.statistics.apps.StatisticsConfig",
     "documentcloud.users.apps.UsersConfig",
     "documentcloud.entities.apps.EntitiesConfig",
+    "documentcloud.organizations.stats_api",
+    "documentcloud.users.stats_api",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

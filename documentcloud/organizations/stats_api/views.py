@@ -62,12 +62,10 @@ class OrganizationStatsViewSet(
             organization__individual=False
         )
 
-    def paginate_queryset(self, queryset):
-        page = super().paginate_queryset(queryset)
+    def _annotate_and_prefetch(self, queryset):
         cutoff = timezone.now() - timedelta(days=settings.UPLOAD_WINDOW_DAYS)
-        annotated = (
-            OrganizationStats.objects.filter(pk__in=[o.pk for o in page])
-            .select_related("organization", "organization__parent")
+        return (
+            queryset.select_related("organization", "organization__parent")
             .prefetch_related("organization__groups")
             .annotate(
                 total_documents=Count(
@@ -82,9 +80,20 @@ class OrganizationStatsViewSet(
                     distinct=True,
                 ),
             )
-            .order_by("pk")
         )
+
+    def paginate_queryset(self, queryset):
+        page = super().paginate_queryset(queryset)
+        annotated = self._annotate_and_prefetch(
+            OrganizationStats.objects.filter(pk__in=[o.pk for o in page])
+        ).order_by("pk")
         return list(annotated)
+
+    def get_object(self):
+        obj = super().get_object()
+        return self._annotate_and_prefetch(
+            OrganizationStats.objects.filter(pk=obj.pk)
+        ).get()
 
     @action(detail=False, methods=["get"])
     def aged_out(self, request):

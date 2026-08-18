@@ -886,8 +886,8 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
 
         # Update the stat records for last uploads
         record_uploads(
-            user_ids=[self.request.user.pk],
-            organization_ids=[organization.pk],
+            user_id=self.request.user.pk,
+            organization_id=organization.pk,
         )
 
         for document, file_url, force_ocr, ocr_engine in zip(

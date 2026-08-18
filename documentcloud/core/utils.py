@@ -62,7 +62,7 @@ def format_date(date):
     return date.replace(tzinfo=None).isoformat() + "Z"
 
 
-def record_uploads(user_ids=None, organization_ids=None, when=None):
+def record_uploads(user_id=None, organization_id=None, when=None):
     """
     Bump the upload watermark for the given uploaders.
     Called explicitly at document-creation sites (perform_create and the mailgun
@@ -70,10 +70,10 @@ def record_uploads(user_ids=None, organization_ids=None, when=None):
     rows only.
     """
     when = when or timezone.now()
-    if user_ids:
-        UserStats.objects.filter(user_id__in=user_ids).update(last_upload_at=when)
-    if organization_ids:
-        OrganizationStats.objects.filter(organization_id__in=organization_ids).update(
+    if user_id:
+        UserStats.objects.filter(user_id=user_id).update(last_upload_at=when)
+    if organization_id:
+        OrganizationStats.objects.filter(organization_id=organization_id).update(
             last_upload_at=when
         )
 
