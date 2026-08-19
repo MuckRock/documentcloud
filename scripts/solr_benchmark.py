@@ -67,10 +67,8 @@ For manual runs you can instead export SOLR_AUTH='user:password' (and SOLR_HOSTS
 Usage (manual run from a laptop/bastion that can reach the nodes):
     export SOLR_AUTH='solr:...'
     ./solr_benchmark.py \
-        --hosts ec2-18-206-129-164.compute-1.amazonaws.com:7377,\
-ec2-54-205-197-205.compute-1.amazonaws.com:7377,\
-ec2-18-215-134-28.compute-1.amazonaws.com:7377 \
-        --label baseline --insecure > baseline.json
+        --hosts <host1>:7377,<host2>:7377,<host3>:7377 \
+        --label baseline > baseline.json
 
 Exit codes: 0 = all good; 1 = reachable but unhealthy (a replica is not active,
 or cluster state could not be read); 2 = a node could not be scraped; 3 =
