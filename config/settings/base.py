@@ -649,6 +649,14 @@ ADDON_DASH_LIMIT = env.int("ADDON_DASH_LIMIT", default=20)
 ADDON_DASH_FAIL_LIMIT = env.int("ADDON_DASH_FAIL_LIMIT", default=5)
 ADDON_DASH_DAYS = env.list("ADDON_DASH_DAYS", default=[30, 7])
 
+# Klaxon
+KLAXON_ADDON_ID = env.int("KLAXON_ADDON_ID", default=0)
+# permission granted to an add-on's token -> the From address it may use
+ADDON_MAIL_FROM = {
+    "klaxon": env("KLAXON_FROM_EMAIL", default="Klaxon <no-reply@klaxoncloud.org>"),
+}
+
+
 # django-parler
 # ------------------------------------------------------------------------------
 INSTALLED_APPS += ["parler"]

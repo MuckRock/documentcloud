@@ -1,4 +1,5 @@
 # Django
+from django.conf import settings
 from rest_framework import mixins, permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -198,10 +199,21 @@ class MessageView(APIView):
         # pylint: disable=redefined-builtin, unused-argument
         serializer = MessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        _permission, from_email = self._sender(request)
         send_mail(
             subject=serializer.validated_data["subject"],
             user=request.user,
             template="core/email/base.html",
+            from_email=from_email,
             extra_context={"content": serializer.validated_data["content"]},
         )
         return Response(serializer.data)
+
+    def _sender(self, request):
+        """Add-ons whose token carries a mail permission send from their own address"""
+        auth = getattr(request, "auth", None)
+        permissions_ = auth.get("permissions", []) if auth is not None else []
+        for permission in permissions_:
+            if permission in settings.ADDON_MAIL_FROM:
+                return permission, settings.ADDON_MAIL_FROM[permission]
+        return None, None
