@@ -95,6 +95,8 @@ LOCAL_APPS = [
     "documentcloud.statistics.apps.StatisticsConfig",
     "documentcloud.users.apps.UsersConfig",
     "documentcloud.entities.apps.EntitiesConfig",
+    "documentcloud.organizations.stats_api",
+    "documentcloud.users.stats_api",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -702,3 +704,6 @@ ANON_RL_MESSAGE = env(
 # ------------------------------------------------------------------------------
 MAX_PAGES = env.int("MAX_PAGES", default=50)
 GRAFT_DEBUG = env.bool("GRAFT_DEBUG", default=False)
+
+# STATS API
+UPLOAD_WINDOW_DAYS = env.int("UPLOAD_WINDOW_DAYS", default=90)
