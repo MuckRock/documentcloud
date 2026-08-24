@@ -17,6 +17,7 @@ from squarelet_auth.organizations.models import AbstractOrganization
 # DocumentCloud
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
+from documentcloud.core.utils import record_ai_credit_use
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.querysets import OrganizationQuerySet
 
@@ -249,15 +250,29 @@ class Organization(AbstractOrganization):
             note=note,
         )
 
+        record_ai_credit_use(
+            user_id=user_id,
+            organization_id=organization.pk,
+        )
+
         return ai_credit_count
+
+    # We iterate self.groups.all() and filter in Python on the following three methods
+    # rather than using self.groups.filter(share_resources=True)
+    # so this uses the prefetch cache.
+    # .filter() on a prefetched relation re-queries. .all() reads the cached
+    # groups. This keeps the org stats endpoint's credit lookups prefetch-friendly
+    # (no per-org N+1). Behavior is identical either way.
+    # https://docs.djangoproject.com/en/6.1/ref/models/querysets/#prefetch-related
 
     def get_total_number_ai_credits(self):
         """Get total number AI credits including parent and groups"""
         number_ai_credits = self.number_ai_credits
         if self.parent and self.parent.share_resources:
             number_ai_credits += self.parent.number_ai_credits
-        for group in self.groups.filter(share_resources=True):
-            number_ai_credits += group.number_ai_credits
+        for group in self.groups.all():
+            if group.share_resources:
+                number_ai_credits += group.number_ai_credits
         return number_ai_credits
 
     def get_total_monthly_ai_credits(self):
@@ -265,8 +280,9 @@ class Organization(AbstractOrganization):
         monthly_ai_credits = self.monthly_ai_credits
         if self.parent and self.parent.share_resources:
             monthly_ai_credits += self.parent.monthly_ai_credits
-        for group in self.groups.filter(share_resources=True):
-            monthly_ai_credits += group.monthly_ai_credits
+        for group in self.groups.all():
+            if group.share_resources:
+                monthly_ai_credits += group.monthly_ai_credits
         return monthly_ai_credits
 
     def get_total_monthly_ai_credits_allowance(self):
@@ -275,15 +291,11 @@ class Organization(AbstractOrganization):
         This is the amount that monthly_credits will reset to each month.
         """
         total = self.ai_credits_per_month
-
-        # Include parent if it shares resources
         if self.parent and self.parent.share_resources:
             total += self.parent.ai_credits_per_month
-
-        # Include groups that share resources
-        for group in self.groups.filter(share_resources=True):
-            total += group.ai_credits_per_month
-
+        for group in self.groups.all():
+            if group.share_resources:
+                total += group.ai_credits_per_month
         return total
 
 

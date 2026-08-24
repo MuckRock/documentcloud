@@ -90,3 +90,14 @@ def entity():
 @pytest.fixture
 def entity_occurrence():
     return EntityOccurrenceFactory()
+
+
+@pytest.fixture
+def user_with_collective_org():
+    member = UserFactory()
+    org = OrganizationFactory(individual=False, members=[member])
+    # UserFactory gives the user an individual org as their active org; make the
+    # collective org active so user.organization (used by perform_create) returns it
+    member.memberships.filter(organization=org).update(active=True)
+    member.memberships.exclude(organization=org).update(active=False)
+    return member, org
