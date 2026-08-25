@@ -10,13 +10,10 @@ import json
 import logging
 import sys
 import time
-import uuid
 from io import BytesIO
 
 # Third Party
-import boto3
 import pymupdf
-import requests
 from listcrunch import crunch, uncrunch
 from pikepdf import Page as PikePage, Pdf, Rectangle
 
@@ -283,13 +280,19 @@ class Document(models.Model):
     @transaction.atomic
     def destroy(self):
         # DocumentCloud
-        from documentcloud.documents.tasks import delete_document_files, solr_delete
+        from documentcloud.documents.tasks import (
+            delete_document_files,
+            invalidate_cache,
+            solr_delete,
+        )
 
         self.status = Status.deleted
         self.save()
         DeletedDocument.objects.create(pk=self.pk)
         transaction.on_commit(lambda: delete_document_files.delay(self.path))
         transaction.on_commit(lambda: solr_delete.delay(self.pk))
+        # the CDN may still be serving the (now deleted) public copy
+        transaction.on_commit(lambda: invalidate_cache.delay(self.pk))
 
     @property
     def path(self):
@@ -710,51 +713,15 @@ class Document(models.Model):
 
         return solr_document
 
-    def invalidate_cache(self):
+    @property
+    def cache_tag(self):
+        """The Cloudflare Cache-Tag marking this document's cached API responses.
+
+        Purging this one tag clears the bare `/api/documents/{pk}/` URL and
+        every `?expand=…` / per-`Origin` variant at once - the key spaces a
+        URL purge can't enumerate.
         """
-        Invalidate public CDN cache for this document's underlying file,
-        plus frontend URLs in Cloudflare
-        """
-        logger.info("Invalidating cache for %s", self.pk)
-        doc_path = self.doc_path[self.doc_path.index("/") :]
-
-        # cloudfront
-        distribution_id = settings.CLOUDFRONT_DISTRIBUTION_ID
-        if distribution_id:
-            # we want the doc path without the s3 bucket name
-            cloudfront = boto3.client("cloudfront")
-            cloudfront.create_invalidation(
-                DistributionId=distribution_id,
-                InvalidationBatch={
-                    "Paths": {"Quantity": 1, "Items": [doc_path]},
-                    "CallerReference": str(uuid.uuid4()),
-                },
-            )
-
-        # cloudflare
-        cloudflare_email = settings.CLOUDFLARE_API_EMAIL
-        cloudflare_key = settings.CLOUDFLARE_API_KEY
-        cloudflare_zone = settings.CLOUDFLARE_API_ZONE
-        asset_url = settings.PUBLIC_ASSET_URL + doc_path[1:]
-
-        if self.access == Access.public:
-            public_urls = [
-                host + self.get_absolute_url() for host in settings.CLOUDFLARE_HOSTS
-            ] + [asset_url]
-        else:
-            public_urls = [asset_url]
-
-        if cloudflare_zone:
-            requests.post(
-                "https://api.cloudflare.com/client/v4/zones/"
-                f"{cloudflare_zone}/purge_cache",
-                json={"files": public_urls},
-                headers={
-                    "X-Auth-Email": cloudflare_email,
-                    "X-Auth-Key": cloudflare_key,
-                },
-                timeout=10,
-            )
+        return f"doc-{self.pk}"
 
     def index_on_commit(self, **kwargs):
         """Index the document in Solr on tranasction commit"""

@@ -20,6 +20,7 @@ from requests.exceptions import HTTPError, RequestException
 from documentcloud.common.environment import httpsub, storage
 from documentcloud.core.choices import Language
 from documentcloud.documents import entity_extraction, modifications, solr
+from documentcloud.documents.cache import invalidate_cache_batch
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError
 from documentcloud.documents.search import SOLR, SOLR_NOTES
@@ -411,13 +412,24 @@ def publish_scheduled_documents():
         document.index_on_commit(field_updates={"status": "set"})
 
 
-@shared_task
-def invalidate_cache(document_pk):
-    """Invalidate the CloudFront and CloudFlare caches"""
-    document = Document.objects.get(pk=document_pk)
-    document.invalidate_cache()
-    document.cache_dirty = False
-    document.save()
+@shared_task(autoretry_for=(RequestException,), retry_backoff=30)
+def invalidate_cache(*document_pks):
+    """Invalidate the CloudFront and CloudFlare caches for the given documents.
+
+    Variadic so the input is always iterable: `invalidate_cache.delay(pk)`
+    purges one document, `invalidate_cache.delay(*pks)` purges a batch in one
+    set of requests rather than one task per document.
+
+    Retries on Cloudflare request failures - purging is idempotent, and
+    `cache_dirty` is only cleared once the purge succeeds.
+    """
+    # only pk/slug are needed to build the purge URLs and tags - skip the
+    # heavy columns (page_spec, data, description, ...)
+    documents = list(Document.objects.filter(pk__in=document_pks).only("pk", "slug"))
+    invalidate_cache_batch(documents)
+    # clear the flag with a queryset update so we don't bump `updated_at` (an
+    # AutoLastModifiedField) - a cache purge is not a content change
+    Document.objects.filter(pk__in=document_pks).update(cache_dirty=False)
 
 
 # page modifications

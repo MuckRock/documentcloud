@@ -360,6 +360,23 @@ class TestDocumentAPI:
         # the authenticated branch still varies per user
         assert "Cookie" in response["Vary"]
 
+    def test_retrieve_cache_tag(self, client, document):
+        """The retrieve response is tagged `doc-{id}` so one tag purge clears
+        the bare URL and every `?expand=`/`Origin` variant at once."""
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Cache-Tag"] == f"doc-{document.pk}"
+
+    def test_retrieve_not_modified_cache_tag(self, client, document):
+        """The `304` branch carries the Cache-Tag too, so a conditional hit is
+        still purgeable."""
+        last_modified = http_date(int(document.updated_at.timestamp()))
+        response = client.get(
+            f"/api/documents/{document.pk}/", HTTP_IF_MODIFIED_SINCE=last_modified
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+        assert response["Cache-Tag"] == f"doc-{document.pk}"
+
     def test_retrieve_last_modified(self, client, document):
         """Retrieving a document should send a real Last-Modified header
         derived from the document's updated_at, not the response time"""
@@ -955,6 +972,77 @@ class TestDocumentAPI:
         doc_ids = ",".join(str(d.pk) for d in documents)
         response = client.delete(f"/api/documents/?id__in={doc_ids}")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_update_invalidates_cache(self, client, document, mocker):
+        """A plain edit purges the document's CDN caches."""
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.views.invalidate_cache.delay"
+        )
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"title": "New Title"}
+        )
+        run_commit_hooks()
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_update_access_private_invalidates_cache(self, client, mocker):
+        """A public -> private flip must purge - otherwise the public copy
+        keeps being served from the CDN (the privacy case)."""
+        document = DocumentFactory(access=Access.public)
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.views.invalidate_cache.delay"
+        )
+        client.force_authenticate(user=document.user)
+        response = client.patch(f"/api/documents/{document.pk}/", {"access": "private"})
+        run_commit_hooks()
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_bulk_update_invalidates_cache_in_one_batch(self, client, user, mocker):
+        """A bulk edit purges every touched document in a single task."""
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.views.invalidate_cache.delay"
+        )
+        documents = DocumentFactory.create_batch(3, user=user, access=Access.public)
+        client.force_authenticate(user=user)
+        response = client.patch(
+            "/api/documents/",
+            [{"id": d.pk, "source": "Daily Planet"} for d in documents],
+            format="json",
+        )
+        run_commit_hooks()
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once()
+        # variadic: pks are spread as positional args
+        assert set(mock_invalidate.call_args[0]) == {d.pk for d in documents}
+
+    def test_destroy_invalidates_cache(self, client, document, mocker):
+        """Deleting a document purges its CDN caches."""
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.tasks.invalidate_cache.delay"
+        )
+        client.force_authenticate(user=document.user)
+        response = client.delete(f"/api/documents/{document.pk}/")
+        run_commit_hooks()
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_modification_marks_cache_dirty(self, client, mocker):
+        """Page modifications rewrite the PDF/images at the same URLs, so the
+        cache must be invalidated once processing finishes - flagged the same
+        way redaction does."""
+        document = DocumentFactory(page_count=2)
+        mocker.patch("documentcloud.documents.views.modify.delay")
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/modifications/",
+            [{"page": "0"}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        document.refresh_from_db()
+        assert document.cache_dirty is True
 
     def test_process(self, client, document, mocker):
         """Test processing a document"""
