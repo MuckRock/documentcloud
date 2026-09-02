@@ -76,6 +76,7 @@ def _invalidate_cloudflare(files=None, tags=None):
                 "Cloudflare cache purge failed [%s]: status=%s body=%s",
                 key,
                 response.status_code,
+                response.headers.get("CF-Ray"),
                 response.text,
             )
             # raise so the Celery task retries (purging is idempotent):
