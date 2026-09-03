@@ -14,7 +14,7 @@ env = environ.Env()
 
 
 class Command(BaseCommand):
-    help = "Initialize Minio bucket and policies for local development"
+    help = "Initialize Minio buckets and policies for local development"
 
     def handle(self, *args, **options):
         if env.str("ENVIRONMENT") != "local-minio":
@@ -29,15 +29,21 @@ class Command(BaseCommand):
             region_name="us-east-1",
         )
 
+        for bucket in ["documents", "ocr-languages"]:
+            self._ensure_bucket(client, bucket)
+
+        self.stdout.write("Minio initialized successfully")
+
+    def _ensure_bucket(self, client, bucket):
         # Create bucket if it doesn't exist
         try:
-            client.head_bucket(Bucket="documents")
-            self.stdout.write("Bucket already exists")
+            client.head_bucket(Bucket=bucket)
+            self.stdout.write(f"Bucket {bucket} already exists")
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "404":  # Bucket doesn't exist, create it
-                client.create_bucket(Bucket="documents")
-                self.stdout.write("Created documents bucket")
+                client.create_bucket(Bucket=bucket)
+                self.stdout.write(f"Created {bucket} bucket")
             else:
                 raise
 
@@ -49,9 +55,8 @@ class Command(BaseCommand):
                     "Effect": "Allow",
                     "Principal": "*",
                     "Action": "s3:GetObject",
-                    "Resource": "arn:aws:s3:::documents/*",
+                    "Resource": f"arn:aws:s3:::{bucket}/*",
                 }
             ],
         }
-        client.put_bucket_policy(Bucket="documents", Policy=json.dumps(policy))
-        self.stdout.write("Minio initialized successfully")
+        client.put_bucket_policy(Bucket=bucket, Policy=json.dumps(policy))
