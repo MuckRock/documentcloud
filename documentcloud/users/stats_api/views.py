@@ -1,6 +1,6 @@
 # Django
 from django.conf import settings
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import mixins, viewsets
@@ -16,7 +16,7 @@ from django_filters import rest_framework as django_filters
 
 # DocumentCloud
 from documentcloud.core.pagination import CursorPagination
-from documentcloud.documents.choices import Status
+from documentcloud.documents.models import Document
 from documentcloud.organizations.models import Organization
 from documentcloud.users.stats_api.models import UserStats
 from documentcloud.users.stats_api.serializers import UserStatsSerializer
@@ -40,9 +40,7 @@ class UserStatsViewSet(
         active_within_days = django_filters.NumberFilter(
             method="filter_active_within_days",
             label="Active in last N days (upload or login)",
-            help_text=(
-                "Return users who uploaded " "or logged in within the last N days."
-            ),
+            help_text="Return users who uploaded or logged in within the last N days.",
         )
         uploaded_within_days = django_filters.NumberFilter(
             method="filter_uploaded_within_days",
@@ -100,66 +98,41 @@ class UserStatsViewSet(
     filterset_class = Filter
 
     def get_queryset(self):
-        return UserStats.objects.select_related("user")
-
-    def paginate_queryset(self, queryset):
-        page = super().paginate_queryset(queryset)
-        annotated = self._annotate_and_prefetch(
-            UserStats.objects.filter(pk__in=[u.pk for u in page])
-        ).order_by("pk")
-        return list(annotated)
-
-    def get_object(self):
-        obj = super().get_object()
-        return self._annotate_and_prefetch(UserStats.objects.filter(pk=obj.pk)).get()
-
-    def _annotate_and_prefetch(self, queryset):
-        cutoff = timezone.now() - timedelta(days=settings.UPLOAD_WINDOW_DAYS)
-        return (
-            queryset.select_related("user")
-            .prefetch_related(
-                Prefetch(
-                    "user__organizations",
-                    queryset=Organization.objects.filter(individual=True),
-                    to_attr="individual_orgs",
-                )
-            )
-            .annotate(
-                total_documents=Count(
-                    "user__documents",
-                    filter=~Q(user__documents__status=Status.deleted),
-                    distinct=True,
-                ),
-                recent_upload_count=Count(
-                    "user__documents",
-                    filter=Q(user__documents__created_at__gte=cutoff)
-                    & ~Q(user__documents__status=Status.deleted),
-                    distinct=True,
-                ),
+        return UserStats.objects.select_related("user").prefetch_related(
+            Prefetch(
+                "user__organizations",
+                queryset=Organization.objects.filter(individual=True),
+                to_attr="individual_orgs",
             )
         )
 
     @action(detail=False, methods=["get"])
     def aged_out(self, request):
-        """Users with a document that crossed the window boundary since `since`,
-        so their upload count has dropped and needs re-syncing."""
+        """Users with a document that crossed the recent-upload window boundary
+        since `since`, so their recent_upload_count has dropped without any event.
+        Lets the caller (Squarelet) know which users to re-sync.
+        """
         since = request.query_params.get("since")
         if not since:
             return Response({"error": "since query param is required"}, status=400)
         since_dt = parse_datetime(since)
         if since_dt is None:
             return Response({"error": "since must be an ISO 8601 datetime"}, status=400)
+        if timezone.is_naive(since_dt):
+            since_dt = timezone.make_aware(since_dt, timezone.utc)
 
         win = timedelta(days=settings.UPLOAD_WINDOW_DAYS)
         now = timezone.now()
-        qs = (
-            self.get_queryset()
-            .filter(
-                user__documents__created_at__gte=since_dt - win,
-                user__documents__created_at__lt=now - win,
-            )
-            .distinct()
+
+        # Documents that left the recent window since `since`. Exists() short-circuits
+        # per user instead of joining + distinct over a heavy user's whole document
+        # set (which can time out).
+        aged_doc = Document.objects.filter(
+            user_id=OuterRef("user_id"),
+            created_at__gte=since_dt - win,
+            created_at__lt=now - win,
         )
+        qs = self.get_queryset().filter(Exists(aged_doc))
 
         page = self.paginate_queryset(qs)
         return self.get_paginated_response(self.get_serializer(page, many=True).data)

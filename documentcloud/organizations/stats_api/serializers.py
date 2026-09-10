@@ -10,9 +10,10 @@ class OrganizationStatsSerializer(serializers.ModelSerializer):
     uuid = serializers.UUIDField(source="organization.uuid", read_only=True)
     total_documents = serializers.IntegerField(read_only=True)
     days_since_last_upload = serializers.SerializerMethodField()
-    recent_upload_count = serializers.SerializerMethodField(
-        help_text="Documents uploaded by the org within the configured window "
-        "(UPLOAD_WINDOW_DAYS, defaults to 90)."
+    recent_upload_count = serializers.IntegerField(
+        read_only=True,
+        help_text="Number of documents uploaded within the configured recent window "
+        "(UPLOAD_WINDOW_DAYS, currently defaults to 90).",
     )
     ai_credits = serializers.SerializerMethodField()
 
@@ -33,9 +34,6 @@ class OrganizationStatsSerializer(serializers.ModelSerializer):
         if obj.last_upload_at is None:
             return None
         return (timezone.now() - obj.last_upload_at).days
-
-    def get_recent_upload_count(self, obj):
-        return getattr(obj, "recent_upload_count", None)
 
     def get_ai_credits(self, obj):
         org = obj.organization

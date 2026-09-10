@@ -398,6 +398,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "documentcloud.users.tasks.permission_digest",
         "schedule": crontab(day_of_week="mon", hour=7, minute=0),
     },
+    "recompute_user_and_org_stats": {
+        "task": "documentcloud.core.tasks.recompute_user_and_org_stats",
+        "schedule": crontab(hour=2, minute=0),
+        "options": {"time_limit": 1800, "soft_time_limit": 1740},
+    },
 }
 
 PERMISSIONS_DIGEST_EMAILS = env.list("PERMISSIONS_DIGEST_EMAILS", default=[])
