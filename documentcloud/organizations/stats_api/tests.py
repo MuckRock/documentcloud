@@ -1,5 +1,6 @@
 # Django
 from django.conf import settings
+from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework import status
@@ -107,7 +108,7 @@ class TestOrganizationStatsAPI:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_list_excludes_individual_orgs(self, client):
-        """Users pull individual orgs in on the users endpoint"""
+        """Individual orgs are excluded from the org stats endpoint."""
         client.force_authenticate(user=self._admin())
         collective = OrganizationFactory.create_batch(3, individual=False)
         individual = OrganizationFactory(individual=True)
@@ -120,11 +121,12 @@ class TestOrganizationStatsAPI:
         assert str(individual.uuid) not in uuids
 
     def test_retrieve_populates_enriched_fields(self, client):
-        """Regression test. org detail view populates the annotated counts, which
-        were previously only set in paginate_queryset (list view)."""
+        """Detail view serves the stored document counts, populated by the
+        recompute command."""
         client.force_authenticate(user=self._admin())
         org = OrganizationFactory(individual=False)
         DocumentFactory.create_batch(2, organization=org)
+        call_command("recompute_user_and_org_stats")
 
         response = client.get(f"/stats_api/organizations/{org.uuid}/")
         assert response.status_code == status.HTTP_200_OK
@@ -157,11 +159,8 @@ class TestOrganizationStatsAPI:
         user, org = user_with_collective_org
         client.force_authenticate(user=user)
 
-        print("fixture org:", org.pk)
-        print("user.organization:", user.organization.pk)  # same as org.pk?
-
         response = client.post("/api/documents/", {"title": "t"})
-        print("status:", response.status_code, response.content[:200])  # created?
+        assert response.status_code == status.HTTP_201_CREATED
 
         stats = OrganizationStats.objects.get(organization=org)
         assert stats.last_upload_at is not None
@@ -170,7 +169,6 @@ class TestOrganizationStatsAPI:
         self, client, user_with_collective_org
     ):
         """use_ai_credits' record_ai_credit_use call should bump the org watermark."""
-
         user, org = user_with_collective_org
         # give the org credits to spend
         org.monthly_ai_credits = 5
