@@ -1,4 +1,5 @@
 # Django
+from django.core.management import call_command
 from django.utils import timezone
 from rest_framework import status
 
@@ -40,9 +41,8 @@ class TestUserStatsAPI:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_retrieve_populates_enriched_fields(self, client):
-        """Regression: detail view must populate individual_ai_credits and the
-        annotated counts, not just the list view (they were only set in
-        paginate_queryset before)."""
+        """Detail view serves the stored document counts (populated by the
+        recompute command) and the live-computed individual_ai_credits."""
         admin = self._admin()
         client.force_authenticate(user=admin)
 
@@ -52,8 +52,9 @@ class TestUserStatsAPI:
         org.monthly_ai_credits = 5
         org.ai_credits_per_month = 10
         org.save()
-        # give them documents so the counts are non-zero
+        # give them documents, then recompute so the stored counts reflect them
         DocumentFactory.create_batch(2, user=target, organization=org)
+        call_command("recompute_user_and_org_stats")
 
         response = client.get(f"/stats_api/users/{target.uuid}/")
         assert response.status_code == status.HTTP_200_OK
