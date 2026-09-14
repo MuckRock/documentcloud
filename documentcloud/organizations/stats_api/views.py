@@ -1,6 +1,6 @@
 # Django
 from django.conf import settings
-from django.db.models import Count, Q
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import mixins, viewsets
@@ -16,7 +16,7 @@ from django_filters import rest_framework as django_filters
 
 # DocumentCloud
 from documentcloud.core.pagination import CursorPagination
-from documentcloud.documents.choices import Status
+from documentcloud.documents.models import Document
 from documentcloud.organizations.stats_api.models import OrganizationStats
 from documentcloud.organizations.stats_api.serializers import (
     OrganizationStatsSerializer,
@@ -58,64 +58,40 @@ class OrganizationStatsViewSet(
     filterset_class = Filter
 
     def get_queryset(self):
-        return OrganizationStats.objects.select_related("organization").filter(
-            organization__individual=False
-        )
-
-    def _annotate_and_prefetch(self, queryset):
-        cutoff = timezone.now() - timedelta(days=settings.UPLOAD_WINDOW_DAYS)
         return (
-            queryset.select_related("organization", "organization__parent")
-            .prefetch_related("organization__groups")
-            .annotate(
-                total_documents=Count(
-                    "organization__documents",
-                    filter=~Q(organization__documents__status=Status.deleted),
-                    distinct=True,
-                ),
-                recent_upload_count=Count(
-                    "organization__documents",
-                    filter=Q(organization__documents__created_at__gte=cutoff)
-                    & ~Q(organization__documents__status=Status.deleted),
-                    distinct=True,
-                ),
+            OrganizationStats.objects.select_related(
+                "organization", "organization__parent"
             )
+            .prefetch_related("organization__groups")
+            .filter(organization__individual=False)
         )
-
-    def paginate_queryset(self, queryset):
-        page = super().paginate_queryset(queryset)
-        annotated = self._annotate_and_prefetch(
-            OrganizationStats.objects.filter(pk__in=[o.pk for o in page])
-        ).order_by("pk")
-        return list(annotated)
-
-    def get_object(self):
-        obj = super().get_object()
-        return self._annotate_and_prefetch(
-            OrganizationStats.objects.filter(pk=obj.pk)
-        ).get()
 
     @action(detail=False, methods=["get"])
     def aged_out(self, request):
-        """Orgs with a document that crossed the window boundary since `since`,
-        so their upload count has dropped and needs re-syncing."""
+        """Orgs with a document that crossed the recent-upload window boundary
+        since `since`, so their recent_upload_count has dropped without any event.
+        Lets the caller (Squarelet) know which orgs to re-sync.
+        """
         since = request.query_params.get("since")
         if not since:
             return Response({"error": "since query param is required"}, status=400)
         since_dt = parse_datetime(since)
         if since_dt is None:
             return Response({"error": "since must be an ISO 8601 datetime"}, status=400)
+        if timezone.is_naive(since_dt):
+            since_dt = timezone.make_aware(since_dt, timezone.utc)
 
         win = timedelta(days=settings.UPLOAD_WINDOW_DAYS)
         now = timezone.now()
-        qs = (
-            self.get_queryset()
-            .filter(
-                organization__documents__created_at__gte=since_dt - win,
-                organization__documents__created_at__lt=now - win,
-            )
-            .distinct()
+
+        # Exists() short-circuits per org instead of joining + distinct over a
+        # heavy org's whole document set which can time out.
+        aged_doc = Document.objects.filter(
+            organization_id=OuterRef("organization_id"),
+            created_at__gte=since_dt - win,
+            created_at__lt=now - win,
         )
+        qs = self.get_queryset().filter(Exists(aged_doc))
 
         page = self.paginate_queryset(qs)
         return self.get_paginated_response(self.get_serializer(page, many=True).data)

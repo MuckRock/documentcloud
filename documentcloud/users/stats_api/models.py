@@ -11,6 +11,8 @@ class UserStats(models.Model):
     )
     last_upload_at = models.DateTimeField(null=True, blank=True, db_index=True)
     last_ai_credit_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    total_documents = models.IntegerField(default=0)
+    recent_upload_count = models.IntegerField(default=0)
 
     class Meta:
         app_label = "users"
