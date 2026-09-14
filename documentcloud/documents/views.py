@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Max, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
-from django.utils.cache import get_conditional_response
+from django.utils.cache import get_conditional_response, patch_cache_control
 from django.utils.decorators import method_decorator
 from django.utils.http import http_date
 from django.utils.translation import gettext_lazy as _
@@ -43,11 +43,13 @@ from documentcloud.core.utils import (  # pylint:disable=unused-import
     ProcessingTokenAuthenticationScheme,
     record_uploads,
 )
+from documentcloud.documents.cache import cache_control_tier
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
     anonymous_cache_control,
     conditional_cache_control,
+    is_anonymous,
 )
 from documentcloud.documents.models import (
     Document,
@@ -114,8 +116,12 @@ def _max_updated_at(instances):
     return max((obj.updated_at for obj in instances), default=None)
 
 
+# `retrieve` deliberately has no `anonymous_cache_control` - it sets its own
+# age-tiered `Cache-Control` in the view body (`_patch_cache_control`), where
+# the document instance is in hand. The dispatch-level decorator below only
+# applies when the response has no `Cache-Control` yet, so it stays a no-op for
+# `retrieve` while still keeping every other action uncached.
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-@method_decorator(anonymous_cache_control, name="retrieve")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     permit_list_expands = [
@@ -664,6 +670,9 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 not_modified["Last-Modified"] = http_date(last_modified)
                 # tag the 304 too, so a conditional hit stays purgeable
                 not_modified["Cache-Tag"] = instance.cache_tag
+                # a 304 carries Cache-Control as well, so a revalidating cache
+                # learns the new freshness lifetime instead of re-asking
+                self._patch_cache_control(request, not_modified, last_modified)
                 return not_modified
 
         response = Response(self.get_serializer(instance).data)
@@ -672,7 +681,25 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         # a single `doc-{id}` tag purge clears the bare URL and every
         # `?expand=`/`Origin` variant at once - see the caching plan (5)/(6)
         response["Cache-Tag"] = instance.cache_tag
+        self._patch_cache_control(request, response, last_modified)
         return response
+
+    def _patch_cache_control(self, request, response, last_modified):
+        """Set the age-tiered `Cache-Control` for a retrieve response.
+
+        Done here rather than with `anonymous_cache_control` because
+        `patch_cache_control` reduces an existing `max-age` to the minimum of
+        the old and new values: the decorator's flat `CACHE_CONTROL_MAX_AGE`
+        would silently clamp every tier down to itself, leaving the tiering a
+        no-op in production. Authenticated requests keep the decorator's
+        `private, no-cache` behavior.
+        """
+        if is_anonymous(request):
+            patch_cache_control(
+                response, public=True, **cache_control_tier(last_modified)
+            )
+        else:
+            patch_cache_control(response, private=True, no_cache=True)
 
     def _retrieve_last_modified(self, request, instance):
         """Latest modification time across the document and any expanded
@@ -1452,6 +1479,13 @@ class DocumentErrorViewSet(
         self.document.index_on_commit(field_updates={"status": "set"})
 
 
+# Notes stay on the flat `CACHE_CONTROL_MAX_AGE` rather than joining the
+# document endpoint's age tiers. Longer TTLs are only safe for responses we can
+# purge, and these carry no `Cache-Tag` and have no invalidation path when a
+# note is edited - so tiering them would extend a staleness window we currently
+# have no way to close. Bringing them in needs tagging plus a note-edit purge
+# (the `CacheTaggedMixin` follow-up in plans/cache-refactor.md), not just a
+# bigger number here. Same applies to `ProjectMembershipViewSet.list`.
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="retrieve")
 @method_decorator(anonymous_cache_control, name="list")

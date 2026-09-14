@@ -5,6 +5,7 @@ from django.conf import settings
 
 # Standard Library
 import logging
+import time
 import uuid
 
 # Third Party
@@ -116,3 +117,61 @@ def invalidate_cache_batch(documents):
 
     _invalidate_cloudfront(cloudfront_paths)
     _invalidate_cloudflare(files=cloudflare_files, tags=cloudflare_tags)
+
+
+# Age-based cache TTL tiers for the document retrieve response. Content that
+# hasn't changed in years is very unlikely to change in the next minute, so it
+# earns a far longer TTL than something edited this morning. Keyed off the
+# response's own `Last-Modified` (the max of the document and any expanded
+# relation), not `document.updated_at`, so expanding a relation that just
+# changed correctly demotes that variant to a short tier.
+#
+# Long shared-cache TTLs are only safe because `invalidate_cache_batch` above
+# purges the `doc-{id}` tag on every edit - see the caching plan, "Only cache
+# what we can purge".
+_DAY = 24 * 60 * 60
+_YEAR = 365 * _DAY
+
+# (content is younger than, Cache-Control directives), first match wins
+CACHE_TIERS = (
+    (_DAY, {"max_age": 60, "s_maxage": 300}),
+    (7 * _DAY, {"max_age": 300, "s_maxage": 3600}),
+    (
+        90 * _DAY,
+        {"max_age": 3600, "s_maxage": _DAY, "stale_while_revalidate": 3600},
+    ),
+    (
+        5 * _YEAR,
+        {"max_age": _DAY, "s_maxage": 30 * _DAY, "stale_while_revalidate": _DAY},
+    ),
+)
+
+# anything older than the last tier boundary
+OLDEST_TIER = {"max_age": _DAY, "s_maxage": 365 * _DAY, "stale_while_revalidate": _DAY}
+
+# Used when the view can't determine a freshness timestamp at all (a nested or
+# `~all` expansion - see `_retrieve_last_modified`). Django's fail-safe of
+# omitting `Last-Modified` is not enough on its own: Cloudflare fabricates one
+# pinned to the response time when the origin sends none, and then answers
+# revalidation from its cached copy, so a long `s-maxage` here would mean bogus
+# `304`s for the whole TTL. A flat minute bounds that window. `max-age` is set
+# explicitly alongside it so browsers don't fall back to heuristic freshness.
+UNVALIDATED_TIER = {"max_age": 60, "s_maxage": 60}
+
+
+def cache_control_tier(last_modified, now=None):
+    """`patch_cache_control` kwargs for content last modified at `last_modified`.
+
+    `last_modified` is a whole-second unix timestamp, or None when the view
+    couldn't determine one.
+    """
+    if last_modified is None:
+        return dict(UNVALIDATED_TIER)
+
+    if now is None:
+        now = time.time()
+    age = now - last_modified
+    for younger_than, directives in CACHE_TIERS:
+        if age < younger_than:
+            return dict(directives)
+    return dict(OLDEST_TIER)

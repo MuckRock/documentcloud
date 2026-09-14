@@ -25,19 +25,29 @@ def conditional_cache_control(**kwargs):
     return _cache_controller
 
 
+def is_anonymous(request):
+    """Whether a request carries no authentication, and so may be publicly cached
+
+    Shared with the document retrieve view, which sets its own age-tiered
+    `Cache-Control` rather than wearing `anonymous_cache_control` and so has to
+    make the same call about which requests are publicly cacheable.
+    """
+    has_auth_token = hasattr(request, "auth") and request.auth is not None
+    return not has_auth_token and not request.user.is_authenticated
+
+
 def anonymous_cache_control(viewfunc):
     """Cache this view only if the user is anonymous"""
 
     @wraps(viewfunc)
     def inner(request, *args, **kwargs):
         response = viewfunc(request, *args, **kwargs)
-        has_auth_token = hasattr(request, "auth") and request.auth is not None
-        if has_auth_token or request.user.is_authenticated:
-            patch_cache_control(response, private=True, no_cache=True)
-        else:
+        if is_anonymous(request):
             patch_cache_control(
                 response, public=True, max_age=settings.CACHE_CONTROL_MAX_AGE
             )
+        else:
+            patch_cache_control(response, private=True, no_cache=True)
         return response
 
     return inner

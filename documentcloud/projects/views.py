@@ -430,6 +430,10 @@ class OrderingFilter(filters.OrderingFilter):
         return queryset
 
 
+# Deliberately left on the flat `CACHE_CONTROL_MAX_AGE`, not the document
+# endpoint's age tiers - this response is untagged and has no purge path, so a
+# longer TTL would extend a staleness window we can't close. See the note on
+# `NoteViewSet` in documentcloud/documents/views.py.
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="list")
 class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):

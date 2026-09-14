@@ -6,9 +6,16 @@ import pytest
 from requests.exceptions import HTTPError
 
 # DocumentCloud
-from documentcloud.documents.cache import CloudflarePurgeError, invalidate_cache_batch
+from documentcloud.documents.cache import (
+    CloudflarePurgeError,
+    cache_control_tier,
+    invalidate_cache_batch,
+)
 from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import DocumentFactory
+
+DAY = 24 * 60 * 60
+YEAR = 365 * DAY
 
 
 @pytest.mark.django_db()
@@ -149,3 +156,77 @@ class TestDocumentCacheInvalidation:
 
         assert any(record.levelno == logging.WARNING for record in caplog.records)
         assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+
+
+class TestCacheControlTier:
+    """`cache_control_tier` maps content age to Cache-Control directives."""
+
+    NOW = 1_700_000_000
+
+    @pytest.mark.parametrize(
+        "age,expected",
+        [
+            # boundaries are exclusive at the top, so a tier owns its own edge
+            (0, {"max_age": 60, "s_maxage": 300}),
+            (DAY - 1, {"max_age": 60, "s_maxage": 300}),
+            (DAY, {"max_age": 300, "s_maxage": 3600}),
+            (7 * DAY - 1, {"max_age": 300, "s_maxage": 3600}),
+            (
+                7 * DAY,
+                {"max_age": 3600, "s_maxage": 86400, "stale_while_revalidate": 3600},
+            ),
+            (
+                90 * DAY,
+                {
+                    "max_age": 86400,
+                    "s_maxage": 2592000,
+                    "stale_while_revalidate": 86400,
+                },
+            ),
+            (
+                5 * YEAR - 1,
+                {
+                    "max_age": 86400,
+                    "s_maxage": 2592000,
+                    "stale_while_revalidate": 86400,
+                },
+            ),
+            (
+                5 * YEAR,
+                {
+                    "max_age": 86400,
+                    "s_maxage": 31536000,
+                    "stale_while_revalidate": 86400,
+                },
+            ),
+            (
+                50 * YEAR,
+                {
+                    "max_age": 86400,
+                    "s_maxage": 31536000,
+                    "stale_while_revalidate": 86400,
+                },
+            ),
+        ],
+    )
+    def test_tier_by_age(self, age, expected):
+        assert cache_control_tier(self.NOW - age, now=self.NOW) == expected
+
+    def test_no_last_modified_is_flat_and_short(self):
+        """Without a validator the edge fabricates one and serves bogus 304s
+        for the whole TTL, so these get a flat minute however old the document"""
+        assert cache_control_tier(None) == {"max_age": 60, "s_maxage": 60}
+
+    def test_tier_is_a_copy(self):
+        """Callers pass the result to `patch_cache_control` as kwargs and may
+        mutate it, so the module-level tier tables must not be handed out"""
+        tier = cache_control_tier(self.NOW, now=self.NOW)
+        tier["max_age"] = 1
+        assert cache_control_tier(self.NOW, now=self.NOW)["max_age"] == 60
+
+    def test_future_last_modified_gets_shortest_tier(self):
+        """Clock skew shouldn't promote a document to a long TTL"""
+        assert cache_control_tier(self.NOW + DAY, now=self.NOW) == {
+            "max_age": 60,
+            "s_maxage": 300,
+        }

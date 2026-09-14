@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.db import connection, reset_queries
 from django.test.utils import override_settings
+from django.utils import timezone
 from django.utils.http import http_date
 from rest_framework import status
 
@@ -39,6 +40,23 @@ from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
 
 # pylint: disable=too-many-lines, too-many-public-methods
+
+
+def parse_cache_control(response):
+    """Cache-Control as a dict, so `max-age` can't accidentally match `s-maxage`"""
+    directives = {}
+    for field in response["Cache-Control"].split(","):
+        key, _, value = field.strip().partition("=")
+        directives[key.lower()] = value or True
+    return directives
+
+
+def set_updated_at(document, when):
+    """Backdate a document past `AutoLastModifiedField`, which `save()` would
+    otherwise reset to now"""
+    Document.objects.filter(pk=document.pk).update(updated_at=when)
+    document.refresh_from_db()
+    return document
 
 
 @pytest.mark.django_db()
@@ -338,11 +356,14 @@ class TestDocumentAPI:
         assert response_json == serializer.data
         assert response_json["access"] == "public"
         assert "presigned_url" not in response_json
-        # public document retrieves should be cached
-        assert "public" in response["Cache-Control"]
-        assert f"max-age={settings.CACHE_CONTROL_MAX_AGE}" in response["Cache-Control"]
-        assert "private" not in response["Cache-Control"]
-        assert "no-cache" not in response["Cache-Control"]
+        # public document retrieves should be cached, at the freshly-edited
+        # tier - the factory document was just created
+        cache_control = parse_cache_control(response)
+        assert "public" in cache_control
+        assert cache_control["max-age"] == "60"
+        assert cache_control["s-maxage"] == "300"
+        assert "private" not in cache_control
+        assert "no-cache" not in cache_control
         # anonymous reads don't vary on cookie - the cookie value doesn't
         # change the response, so it shouldn't fragment the CDN cache
         assert "Cookie" not in response["Vary"]
@@ -352,11 +373,14 @@ class TestDocumentAPI:
         client.force_authenticate(user=document.user)
         response = client.get(f"/api/documents/{document.pk}/")
         assert response.status_code == status.HTTP_200_OK
-        # authenticated document retrieves should not be cached
-        assert "private" in response["Cache-Control"]
-        assert "no-cache" in response["Cache-Control"]
-        assert "public" not in response["Cache-Control"]
-        assert "max-age" not in response["Cache-Control"]
+        # authenticated document retrieves should not be cached - the tiering
+        # applies only to the anonymous branch
+        cache_control = parse_cache_control(response)
+        assert "private" in cache_control
+        assert "no-cache" in cache_control
+        assert "public" not in cache_control
+        assert "max-age" not in cache_control
+        assert "s-maxage" not in cache_control
         # the authenticated branch still varies per user
         assert "Cookie" in response["Vary"]
 
@@ -376,6 +400,123 @@ class TestDocumentAPI:
         )
         assert response.status_code == status.HTTP_304_NOT_MODIFIED
         assert response["Cache-Tag"] == f"doc-{document.pk}"
+
+    @pytest.mark.parametrize(
+        "age,expected",
+        [
+            (timedelta(hours=2), {"max-age": "60", "s-maxage": "300"}),
+            (timedelta(days=3), {"max-age": "300", "s-maxage": "3600"}),
+            (
+                timedelta(days=30),
+                {
+                    "max-age": "3600",
+                    "s-maxage": "86400",
+                    "stale-while-revalidate": "3600",
+                },
+            ),
+            (
+                timedelta(days=365),
+                {
+                    "max-age": "86400",
+                    "s-maxage": "2592000",
+                    "stale-while-revalidate": "86400",
+                },
+            ),
+            (
+                timedelta(days=365 * 10),
+                {
+                    "max-age": "86400",
+                    "s-maxage": "31536000",
+                    "stale-while-revalidate": "86400",
+                },
+            ),
+        ],
+    )
+    def test_retrieve_cache_tier(self, client, document, age, expected):
+        """TTLs scale with how long ago the document was last edited - content
+        untouched for years is far less likely to change in the next minute"""
+        set_updated_at(document, timezone.now() - age)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        cache_control = parse_cache_control(response)
+        assert "public" in cache_control
+        assert {
+            key: value
+            for key, value in cache_control.items()
+            if key in {"max-age", "s-maxage", "stale-while-revalidate"}
+        } == expected
+
+    @override_settings(CACHE_CONTROL_MAX_AGE=600)
+    def test_retrieve_cache_tier_not_clamped(self, client, document):
+        """The tier must not be reduced to the flat `CACHE_CONTROL_MAX_AGE`.
+
+        `patch_cache_control` lowers an existing `max-age` to the minimum of
+        the old and new values, so leaving `anonymous_cache_control` on
+        `retrieve` would silently cap every tier at this setting - the exact
+        failure that would make the whole tier table a no-op in production.
+        """
+        set_updated_at(document, timezone.now() - timedelta(days=365 * 10))
+        response = client.get(f"/api/documents/{document.pk}/")
+        cache_control = parse_cache_control(response)
+        assert cache_control["max-age"] == "86400"
+        assert cache_control["s-maxage"] == "31536000"
+
+    def test_retrieve_not_modified_cache_tier(self, client, document):
+        """The 304 carries the same tiered Cache-Control as the 200, so a
+        revalidating cache learns the new freshness lifetime"""
+        set_updated_at(document, timezone.now() - timedelta(days=365 * 10))
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+        cache_control = parse_cache_control(response)
+        assert cache_control["max-age"] == "86400"
+        assert cache_control["s-maxage"] == "31536000"
+
+    @pytest.mark.parametrize("expand", ["~all", "notes.user"])
+    def test_retrieve_no_last_modified_flat_tier(self, client, document, expand):
+        """Requests we can't derive a freshness timestamp for get a flat short
+        TTL regardless of the document's age.
+
+        Omitting `Last-Modified` isn't protection on its own: the edge
+        fabricates one pinned to the response time when the origin sends none,
+        then answers revalidation from its own cached copy. A long `s-maxage`
+        here would mean bogus 304s for the full TTL, so cap it at a minute.
+        """
+        set_updated_at(document, timezone.now() - timedelta(days=365 * 10))
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": expand})
+        assert response.status_code == status.HTTP_200_OK
+        assert "Last-Modified" not in response
+        cache_control = parse_cache_control(response)
+        assert "public" in cache_control
+        assert cache_control["max-age"] == "60"
+        assert cache_control["s-maxage"] == "60"
+        assert "stale-while-revalidate" not in cache_control
+
+    def test_retrieve_expand_demotes_tier(self, client, document):
+        """The tier keys off the response's own Last-Modified, not the
+        document's - expanding a relation that just changed must not be served
+        with the long TTL the bare document earns"""
+        set_updated_at(document, timezone.now() - timedelta(days=365 * 10))
+        NoteFactory.create(document=document, access=Access.public)
+
+        bare = parse_cache_control(client.get(f"/api/documents/{document.pk}/"))
+        assert bare["s-maxage"] == "31536000"
+
+        expanded = parse_cache_control(
+            client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})
+        )
+        assert expanded["max-age"] == "60"
+        assert expanded["s-maxage"] == "300"
+
+    def test_retrieve_tiered_response_drops_vary_cookie(self, client, document):
+        """StripCookieVaryMiddleware keys off `public` in Cache-Control, which
+        the tiered header still sets - so the (2) fix survives the tiering"""
+        set_updated_at(document, timezone.now() - timedelta(days=365 * 10))
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert "public" in parse_cache_control(response)
+        assert "Cookie" not in response["Vary"]
 
     def test_retrieve_last_modified(self, client, document):
         """Retrieving a document should send a real Last-Modified header

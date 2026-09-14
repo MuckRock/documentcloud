@@ -360,7 +360,49 @@ Covered by `test_retrieve_expand_notes_last_modified`,
 `test_retrieve_expand_all_no_conditional`, and
 `test_conditional_expands_cover_expandable_fields`.
 
-### 4. Age-based TTL tiers (the headline change)
+### 4. ✅ IMPLEMENTED — Age-based TTL tiers (the headline change)
+
+**Built on `399-cache-tiers`.** What shipped, vs. the design below:
+
+- **The tier table is keyed off the response's own `Last-Modified`**, not
+  `document.updated_at` as originally written. `retrieve` already computes the
+  expand-aware max (3), so `?expand=notes` on a 10-year-old document with a
+  note edited this morning correctly gets the 60s tier rather than the
+  one-year one. Verified live on dev: the bare document returned
+  `max-age=86400, s-maxage=2592000` while `?expand=user` returned
+  `max-age=300, s-maxage=3600`, the user record having changed 6 days earlier.
+- **`cache_control_tier(last_modified, now=None)` lives in
+  `documents/cache.py`** alongside the purge helpers, returning
+  `patch_cache_control` kwargs. Tables are module constants (`CACHE_TIERS`,
+  `OLDEST_TIER`, `UNVALIDATED_TIER`), not settings — the test suite pins them.
+- **`anonymous_cache_control` had to come off `retrieve`.** This was the
+  trap: `patch_cache_control` reduces an existing `max-age` to the *minimum*
+  of the old and new values, so leaving the decorator on would have clamped
+  every tier to `CACHE_CONTROL_MAX_AGE` (600 in production) and shipped the
+  tier table as a silent no-op. The view now owns both branches via
+  `_patch_cache_control`; the anonymous/authenticated predicate was extracted
+  to `decorators.is_anonymous` so the decorator and the view can't drift.
+  `test_retrieve_cache_tier_not_clamped` pins this.
+- **`last_modified is None` gets a flat `public, max-age=60, s-maxage=60`** —
+  option 1 from (3)'s fail-safe subsection. `max-age` is set explicitly
+  alongside `s-maxage` so browsers don't fall back to heuristic freshness on a
+  response that carries no validator at all.
+- **`Cache-Control` is set on the `304` branch too**, so a revalidating cache
+  learns the new lifetime instead of re-asking at the old one.
+- **`NoteViewSet` and `ProjectMembershipViewSet.list` stay flat** at
+  `CACHE_CONTROL_MAX_AGE`, with a comment at each decorator saying why:
+  neither is tagged and neither has a purge path, so a longer TTL would extend
+  a staleness window there's currently no way to close. Bringing them in needs
+  the `CacheTaggedMixin` follow-up plus a note-edit purge, not a bigger number.
+  (`ProjectMembershipViewSet` is a third public-cached surface the earlier
+  revisions of this plan missed.)
+- **Coverage:** `test_cache.py::TestCacheControlTier` (every boundary, the
+  `None` case, tier-dict isolation, future-timestamp clock skew) and
+  `test_views.py` (tier by age, not-clamped, 304 carries the tier, `~all` and
+  `notes.user` flat, expand demotion, `Vary: Cookie` still stripped). Documents
+  suite 469 green, projects 61 green; pylint 10/10, no new disables.
+
+The original design notes follow, unchanged.
 
 **Touch point:** `documentcloud/documents/decorators.py:28-43`,
 `config/settings/base.py:583` (`CACHE_CONTROL_MAX_AGE`, default 300).
@@ -858,13 +900,13 @@ Numbers in parentheses refer to the sections above.
    2026-07-30 probe found the assets send no `Cache-Control` at all, and
    at 8.67 MB for a single PDF this is the biggest byte win in the plan.
    Config-only, no code dependency, independent of everything above.
-5. **Age-based TTL tiers (4)** in the retrieve view. Ships on its own —
-   no frontend coordination required (see Scope). After (3) so it's safe.
-   Also needs: `Cache-Tag: doc-{id}` on the response (6), the tiering rule
-   from "Only cache what we can purge" (full table for the bare URL and
-   handled expands, short flat TTL for the `last_modified is None` case on
-   edge-validator grounds), and a decision on `NoteViewSet`'s
-   already-public `list`/`retrieve`.
+5. ✅ **Age-based TTL tiers (4)** in the retrieve view. Implemented on
+   branch `399-cache-tiers`. Tiers key off the response's expand-aware
+   `Last-Modified` rather than `document.updated_at`; the
+   `last_modified is None` case takes a flat 60s on edge-validator grounds;
+   `NoteViewSet` (and `ProjectMembershipViewSet.list`) were decided to stay
+   flat until they can be tagged and purged. **Still needs the Cloudflare
+   dashboard check below before it does anything at the edge.**
 6. ✅ **Cache-Tag headers (6)** — reinstated (available on Business as of
    2025-04-01, not Enterprise-only as an earlier revision assumed) and
    **shipped as part of (5)**: `DocumentViewSet.retrieve` emits `doc-{id}` and
@@ -893,12 +935,14 @@ still unaffected throughout.
 ## Risks / things to verify
 
 - **Authenticated bypass intact.** ✅ `anonymous_cache_control`
-  (`decorators.py:34-36`) returns `private, no-cache` (not `no-store`, as
-  originally written here) when `request.auth is not None` or
-  `request.user.is_authenticated`. Covered by `test_retrieve_auth`. The
-  decorator-collision theory this bullet referenced was ruled out — see
-  (1). Re-verify when (4) starts setting `Cache-Control` in the view
-  body, since that's the branch the decorator would no longer own.
+  returns `private, no-cache` (not `no-store`, as originally written here)
+  when `request.auth is not None` or `request.user.is_authenticated`. Covered
+  by `test_retrieve_auth`. The decorator-collision theory this bullet
+  referenced was ruled out — see (1). **Re-verified for (4):** `retrieve` now
+  sets `Cache-Control` in the view body and no longer wears the decorator, so
+  the predicate was extracted to `decorators.is_anonymous` and both paths call
+  it; the authenticated branch still emits `private, no-cache` with no
+  `max-age`/`s-maxage`, asserted by `test_retrieve_auth`.
 - **Privacy flips fire quickly.** `_update_access` from `public` →
   `private` must purge or visitors keep seeing the public copy via CDN.
   This is _the_ reason to ship (5) before extending TTLs in (4). Note
@@ -921,7 +965,11 @@ still unaffected throughout.
   cached (`cf-cache-status: HIT`) — see (1). Still unverified is whether
   the rule sets its own edge TTL, which would override the per-tier
   `s-maxage` from (4) and make the whole tier table a no-op at the edge.
-  Confirm in the dashboard before shipping (4). The synthetic
+  **Still the one open prerequisite now that (4) is implemented** — there is
+  no Cloudflare IaC in this repo, so it has to be checked in the dashboard by
+  hand. The origin is confirmed correct (curled on dev: bare document
+  `public, max-age=86400, s-maxage=2592000, stale-while-revalidate=86400`),
+  so anything short of that at the edge is the rule, not the app. The synthetic
   `Last-Modified` question is now answered: the edge no longer overrides a
   real one, but it still fabricates one when the origin sends none — see
   the fail-safe subsection of (3).
