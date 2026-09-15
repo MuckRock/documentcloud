@@ -245,10 +245,13 @@ class AddOn(models.Model):
                 self.parameters["description"] = self._render_markdown(
                     self.parameters["description"]
                 )
-
             if "instructions" in self.parameters:
                 self.parameters["instructions"] = self._render_markdown(
                     self.parameters["instructions"]
+                )
+            if "disclosures" in self.parameters:
+                self.parameters["disclosures"] = self._render_markdown(
+                    self.parameters["disclosures"]
                 )
         except yaml.YAMLError:
             self.error = True
