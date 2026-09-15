@@ -173,6 +173,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
                                 " this add-on.</p>"
                             ),
                             "instructions": "",
+                            "disclosures": "",
                         },
                         "created_at": "2022-04-20T13:44:49.028548Z",
                         "updated_at": "2025-02-13T18:20:04.256135Z",
@@ -250,6 +251,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
                                 " results</p>"
                             ),
                             "instructions": "",
+                            "disclosures": "",
                         },
                         "created_at": "2022-04-20T13:44:49.038381Z",
                         "updated_at": "2024-12-07T03:39:12.837192Z",
@@ -288,6 +290,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
                             " in a zip file</p>"
                         ),
                         "instructions": "",
+                        "disclosures": "",
                     },
                     "created_at": "2022-04-20T13:44:49.055986Z",
                     "updated_at": "2024-12-03T16:09:50.426796Z",
@@ -332,6 +335,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
                             " in a zip file</p>"
                         ),
                         "instructions": "",
+                        "disclosures": "",
                     },
                     "created_at": "2022-04-20T13:44:49.055986Z",
                     "updated_at": "2025-02-16T12:34:56Z",
@@ -380,6 +384,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
                             " in a zip file</p>"
                         ),
                         "instructions": "",
+                        "disclosures": "",
                     },
                     "created_at": "2022-04-20T13:44:49.055986Z",
                     "updated_at": "2025-02-16T12:34:56Z",
