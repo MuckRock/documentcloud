@@ -5,10 +5,9 @@ from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.postgres.aggregates.general import StringAgg
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import FilteredRelation, Q
 from django.db.models.aggregates import Count
 from django.db.models.expressions import Case, Exists, F, OuterRef, Value, When
-from django.db.models.functions.text import Concat
 from django.http.response import (
     Http404,
     HttpResponse,
@@ -1165,50 +1164,34 @@ def dashboard(request):
     days = settings.ADDON_DASH_DAYS
     for day in days:
         start = timezone.now() - timedelta(days=day)
-        start_filter = Q(runs__created_at__gte=start)
         context["addons"].append(
             {
                 "days": day,
                 "start": start,
                 "addons": AddOn.objects.annotate(
-                    run_count=Count("runs", filter=start_filter)
+                    recent=FilteredRelation(
+                        "runs", condition=Q(runs__created_at__gte=start)
+                    ),
                 )
                 .annotate(
-                    success_count=Count(
-                        "runs", filter=Q(runs__status="success") & start_filter
-                    ),
-                    fail_count=Count(
-                        "runs", filter=Q(runs__status="failure") & start_filter
-                    ),
+                    run_count=Count("recent"),
+                    success_count=Count("recent", filter=Q(recent__status="success")),
+                    fail_count=Count("recent", filter=Q(recent__status="failure")),
                     cancelled_count=Count(
-                        "runs",
-                        filter=Q(runs__status="cancelled") & start_filter,
+                        "recent", filter=Q(recent__status="cancelled")
                     ),
                     fail_rate=Case(
                         When(run_count=0, then=0),
                         default=((F("fail_count") + F("cancelled_count")) * Value(100))
                         / F("run_count"),
                     ),
-                    up_count=Count("runs", filter=Q(runs__rating=1) & start_filter),
-                    down_count=Count("runs", filter=Q(runs__rating=-1) & start_filter),
-                    up_comments=StringAgg(
-                        Concat("runs__comment", Value(" -"), "runs__user__username"),
-                        "\n",
-                        distinct=True,
-                        filter=Q(runs__rating=1) & start_filter,
-                    ),
-                    down_comments=StringAgg(
-                        Concat("runs__comment", Value(" -"), "runs__user__username"),
-                        "\n",
-                        distinct=True,
-                        filter=Q(runs__rating=-1) & start_filter,
-                    ),
-                    user_count=Count("runs__user", distinct=True, filter=start_filter),
+                    up_count=Count("recent", filter=Q(recent__rating=1)),
+                    down_count=Count("recent", filter=Q(recent__rating=-1)),
+                    user_count=Count("recent__user", distinct=True),
                     user_string=StringAgg(
-                        "runs__user__name",
+                        "recent__user__name",
                         "\n",
                         distinct=True,
-                        filter=start_filter,
                     ),
                 )
                 .order_by("-run_count")[: settings.ADDON_DASH_LIMIT],
