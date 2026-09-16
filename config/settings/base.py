@@ -442,6 +442,10 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     # OTHER SETTINGS
     "PREPROCESSING_HOOKS": ["documentcloud.core.utils.custom_preprocessing_hook"],
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "documentcloud.core.utils.hide_processing_token",
+    ],
 }
 
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)

@@ -14,6 +14,48 @@ from documentcloud.organizations.stats_api.models import OrganizationStats
 from documentcloud.users.stats_api.models import UserStats
 
 
+class SquareletJWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    """Simply lets DRF advertise that you can use a JWT from Accounts to auth"""
+
+    target_class = "documentcloud.core.authentication.SquareletJWTAuthentication"
+    name = "jwtAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": (
+                "JWT bearer token issued by MuckRock Accounts. "
+                "Obtain a token from https://accounts.muckrock.com/api/token/ "
+                "and refresh it at https://accounts.muckrock.com/api/refresh/. "
+                "Access tokens are valid for 5 minutes and "
+                "refresh tokens are valid for 24 hours"
+                "Send it as `Authorization: Bearer <token>`."
+            ),
+        }
+
+
+def hide_processing_token(
+    result, generator, request, public
+):  # pylint:disable=unused-argument
+    """Since processing token is defined, we need to have it here
+    but pop it from security schemes as we are the only ones to use this token style
+    """
+    result.get("components", {}).get("securitySchemes", {}).pop(
+        "ProcessingTokenAuthentication", None
+    )
+    for path_item in result.get("paths", {}).values():
+        for operation in path_item.values():
+            if isinstance(operation, dict) and "security" in operation:
+                operation["security"] = [
+                    scheme
+                    for scheme in operation["security"]
+                    if "ProcessingTokenAuthentication" not in scheme
+                ]
+    return result
+
+
 class ProcessingTokenAuthenticationScheme(OpenApiAuthenticationExtension):
     target_class = "documentcloud.core.authentication.ProcessingTokenAuthentication"
     name = "ProcessingTokenAuthentication"
