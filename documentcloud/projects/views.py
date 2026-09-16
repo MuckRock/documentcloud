@@ -49,6 +49,7 @@ def _solr_set(document):
     document.index_on_commit(field_updates=field_updates)
 
 
+@extend_schema(tags=["projects"])
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectSerializer
     queryset = Project.objects.none()

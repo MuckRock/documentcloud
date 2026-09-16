@@ -114,6 +114,7 @@ def _max_updated_at(instances):
     return max((obj.updated_at for obj in instances), default=None)
 
 
+@extend_schema(tags=["documents"])
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 @method_decorator(anonymous_cache_control, name="retrieve")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
@@ -1407,6 +1408,7 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     filterset_class = Filter
 
 
+@extend_schema(tags=["document_sections"])
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class DocumentErrorViewSet(
     mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
@@ -1927,6 +1929,7 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response("OK", status=status.HTTP_200_OK)
 
 
+@extend_schema(tags=["saved_searches"])
 class SavedSearchViewSet(viewsets.ModelViewSet):
     serializer_class = SavedSearchSerializer
     permission_classes = (IsAuthenticated,)

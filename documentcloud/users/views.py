@@ -23,6 +23,7 @@ from documentcloud.users.models import User
 from documentcloud.users.serializers import MessageSerializer, UserSerializer
 
 
+@extend_schema(tags=["users"])
 class UserViewSet(
     # Cannot create or destroy users
     FlexFieldsMixin,
@@ -188,6 +189,7 @@ class UserViewSet(
     filterset_class = Filter
 
 
+@extend_schema(tags=["messages"])
 class MessageView(APIView):
     """A view to allow you to email yourself via API"""
 

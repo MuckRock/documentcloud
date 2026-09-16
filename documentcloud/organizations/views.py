@@ -20,6 +20,7 @@ from documentcloud.organizations.serializers import (
 )
 
 
+@extend_schema(tags=["organizations"])
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrganizationSerializer
     permission_classes = [DjangoObjectPermissions]
