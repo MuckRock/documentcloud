@@ -15,7 +15,8 @@ from documentcloud.users.stats_api.models import UserStats
 
 
 class SquareletJWTAuthenticationScheme(OpenApiAuthenticationExtension):
-    """ Simply lets DRF advertise that you can use a JWT from Accounts to auth """
+    """Simply lets DRF advertise that you can use a JWT from Accounts to auth"""
+
     target_class = "documentcloud.core.authentication.SquareletJWTAuthentication"
     name = "jwtAuth"
 
