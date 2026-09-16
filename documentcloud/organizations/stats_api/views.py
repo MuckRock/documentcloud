@@ -13,6 +13,7 @@ from datetime import timedelta
 
 # Third Party
 from django_filters import rest_framework as django_filters
+from drf_spectacular.utils import extend_schema
 
 # DocumentCloud
 from documentcloud.core.pagination import CursorPagination
@@ -23,6 +24,7 @@ from documentcloud.organizations.stats_api.serializers import (
 )
 
 
+@extend_schema(exclude=True)
 class OrganizationStatsViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,

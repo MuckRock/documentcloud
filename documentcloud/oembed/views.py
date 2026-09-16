@@ -21,6 +21,7 @@ from furl import furl
 from documentcloud.oembed.registry import registry
 
 
+@extend_schema(tags=["oembed"])
 class OEmbedView(APIView):
     """The oembed endpoint responds with the appropriate code
     allowing you to embed the resource (document, page, project, etc) on your website.
