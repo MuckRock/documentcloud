@@ -79,6 +79,7 @@ def domain_to_origin(value):
     return f"{parsed.scheme}://{parsed.netloc}".lower()
 
 
+@extend_schema(tags=["addons"])
 class AddOnViewSet(viewsets.ModelViewSet):
     serializer_class = AddOnSerializer
     queryset = AddOn.objects.none()
@@ -508,6 +509,7 @@ class AddOnViewSet(viewsets.ModelViewSet):
     filterset_class = Filter
 
 
+@extend_schema(tags=["addon_runs"])
 class AddOnRunViewSet(FlexFieldsModelViewSet):
     serializer_class = AddOnRunSerializer
     queryset = AddOnRun.objects.none()
@@ -816,6 +818,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
     filterset_class = Filter
 
 
+@extend_schema(tags=["addon_events"])
 class AddOnEventViewSet(FlexFieldsModelViewSet):
     serializer_class = AddOnEventSerializer
     queryset = AddOnEvent.objects.none()

@@ -26,6 +26,7 @@ from documentcloud.entities.serializers import (
 )
 
 
+@extend_schema(tags=["entity"])
 class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     serializer_class = EntitySerializer
     queryset = Entity.objects.none()
@@ -207,6 +208,7 @@ class EntityViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     filterset_class = Filter
 
 
+@extend_schema(tags=["entity_occurrences"])
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
 class EntityOccurrenceViewSet(BulkCreateModelMixin, viewsets.ModelViewSet):
     serializer_class = EntityOccurrenceSerializer
