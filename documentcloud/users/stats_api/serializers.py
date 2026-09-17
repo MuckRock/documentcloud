@@ -8,6 +8,8 @@ from documentcloud.users.stats_api.models import UserStats
 
 class UserStatsSerializer(serializers.ModelSerializer):
     uuid = serializers.UUIDField(source="user.uuid", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
     days_since_last_upload = serializers.SerializerMethodField(
         help_text="Number of days since the last time the user uploaded a document"
     )
@@ -24,6 +26,8 @@ class UserStatsSerializer(serializers.ModelSerializer):
         model = UserStats
         fields = [
             "uuid",
+            "username",
+            "user_id",
             "total_documents",
             "last_upload_at",
             "days_since_last_upload",
