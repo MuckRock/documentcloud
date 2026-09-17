@@ -360,7 +360,42 @@ Covered by `test_retrieve_expand_notes_last_modified`,
 `test_retrieve_expand_all_no_conditional`, and
 `test_conditional_expands_cover_expandable_fields`.
 
-### 4. Age-based TTL tiers (the headline change)
+### 4. ✅ IMPLEMENTED — Age-based TTL tiers (the headline change)
+
+**Implemented 2026-09-17, test-first.** What shipped, and the four decisions
+taken along the way:
+
+1. **The tier keys off `_retrieve_last_modified`, not `instance.updated_at`.**
+   The original note here said `updated_at`, but section 3 already computes the
+   max across expanded relations. Keying off `updated_at` alone would give
+   `?expand=notes` on a six-year-old document with a note edited a minute ago a
+   **year-long edge TTL on a response containing that fresh note**. The tier
+   now follows the same timestamp the `Last-Modified` header carries.
+2. **`anonymous_cache_control` came off `retrieve` entirely.** It could not
+   simply be stacked: Django's `patch_cache_control` takes the *minimum* of an
+   existing and an incoming `max-age` (`django/utils/cache.py`), so leaving the
+   decorator on would have clamped every tier to
+   `min(tier, CACHE_CONTROL_MAX_AGE)` and made the whole table a silent no-op
+   above the base. `retrieve` now owns all three branches in
+   `_set_retrieve_cache_control`. The decorator still serves `NoteViewSet`, and
+   the dispatch-level `conditional_cache_control(no_cache=True)` still covers
+   every other action.
+3. **`NoteViewSet` left flat** at `CACHE_CONTROL_MAX_AGE`, as its own PR. No
+   TTL is extended there, so nothing gets less safe; bringing notes into
+   tiering needs their own `Last-Modified` and `Cache-Tag` work first.
+4. **The `last_modified is None` fallback is `CACHE_CONTROL_MAX_AGE`** — the
+   status quo for those requests, so `~all` and nested expands are no worse
+   off than before, and the bogus-`304` window stays the 5 minutes it already
+   was.
+
+The table itself is `CACHE_TIERS` in `documents/cache.py`, a module-level
+tuple rather than settings: five tiers of three values do not map onto env
+vars, and the table is a design decision worth reviewing in a diff.
+
+19 new tests — 8 on the pure `tiered_cache_control` function, 11 through the
+view, covering every tier, both boundary directions, the authenticated branch,
+the `304` branch, handled vs. unhandled expands, and `Cache-Tag` survival.
+Suite green at 715 passed, pylint 10.00/10.
 
 **Touch point:** `documentcloud/documents/decorators.py:28-43`,
 `config/settings/base.py:583` (`CACHE_CONTROL_MAX_AGE`, default 300).
@@ -1334,7 +1369,8 @@ Numbers in parentheses refer to the sections above.
    instead is a code change plus a backfill, not config. Still independent
    of everything above, with one caveat: (5)'s purge reaches only the PDF,
    so the non-PDF keys get a short edge TTL until the purge set is extended.
-5. **Age-based TTL tiers (4)** in the retrieve view. Ships on its own —
+5. ✅ **Age-based TTL tiers (4)** in the retrieve view. Implemented
+   2026-09-17. Ships on its own —
    no frontend coordination required (see Scope). After (3) so it's safe.
    Also needs: `Cache-Tag: doc-{id}` on the response (6), the tiering rule
    from "Only cache what we can purge" (full table for the bare URL and

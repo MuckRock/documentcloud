@@ -1,12 +1,22 @@
+# Django
+from django.utils import timezone
+
 # Standard Library
 import logging
+from datetime import timedelta
 
 # Third Party
 import pytest
 from requests.exceptions import HTTPError
 
 # DocumentCloud
-from documentcloud.documents.cache import CloudflarePurgeError, invalidate_cache_batch
+from documentcloud.documents.cache import (
+    CACHE_TIERS,
+    OLDEST_CACHE_TIER,
+    CloudflarePurgeError,
+    invalidate_cache_batch,
+    tiered_cache_control,
+)
 from documentcloud.documents.choices import Access
 from documentcloud.documents.tests.factories import DocumentFactory
 
@@ -149,3 +159,121 @@ class TestDocumentCacheInvalidation:
 
         assert any(record.levelno == logging.WARNING for record in caplog.records)
         assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+
+
+class TestTieredCacheControl:
+    """`tiered_cache_control` maps a document's age onto `CACHE_TIERS`.
+
+    These assert against the table rather than against fixed seconds. The
+    numbers are policy and expected to be retuned; what has to hold whatever
+    they become is that a document lands in the band its age belongs to, that
+    a boundary falls to the longer tier, and that TTLs never shrink as a
+    document ages. Retuning the table should leave every test here passing.
+    """
+
+    # every tier as (max_age, s_maxage, stale_while_revalidate), oldest last
+    ALL_TIERS = [tier[1:] for tier in CACHE_TIERS] + [OLDEST_CACHE_TIER]
+    BOUNDS = [tier[0] for tier in CACHE_TIERS]
+
+    @staticmethod
+    def _directives(value):
+        """Cache-Control as a dict, so assertions don't depend on ordering."""
+        directives = {}
+        for part in value.split(","):
+            key, _, val = part.strip().partition("=")
+            directives[key.lower()] = val or True
+        return directives
+
+    @staticmethod
+    def _expected(tier):
+        """The directives a given tier should produce."""
+        max_age, s_maxage, stale_while_revalidate = tier
+        expected = {
+            "public": True,
+            "max-age": str(max_age),
+            "s-maxage": str(s_maxage),
+        }
+        if stale_while_revalidate is not None:
+            expected["stale-while-revalidate"] = str(stale_while_revalidate)
+        return expected
+
+    @classmethod
+    def _lower_edge(cls, index):
+        """Smallest age that belongs to tier `index`."""
+        return timedelta(0) if index == 0 else cls.BOUNDS[index - 1]
+
+    @pytest.fixture
+    def now(self):
+        return timezone.now()
+
+    def test_table_is_ordered_by_ascending_bound(self):
+        """The lookup walks `CACHE_TIERS` in order and stops at the first
+        bound the age falls under, so an out-of-order or duplicated bound
+        would silently mis-tier every document past the misplaced row."""
+        assert self.BOUNDS == sorted(self.BOUNDS)
+        assert len(set(self.BOUNDS)) == len(self.BOUNDS)
+
+    def test_ttls_never_shrink_as_documents_age(self):
+        """The premise of the whole table: the longer since the last edit, the
+        longer a cached copy stays correct. A retune may move any number, but
+        it must not leave an older document with a shorter TTL than a younger
+        one - that would be strictly worse than no tiering at all."""
+        assert [tier[0] for tier in self.ALL_TIERS] == sorted(
+            tier[0] for tier in self.ALL_TIERS
+        )
+        assert [tier[1] for tier in self.ALL_TIERS] == sorted(
+            tier[1] for tier in self.ALL_TIERS
+        )
+
+    def test_browsers_are_never_trusted_longer_than_the_cdn(self):
+        """`max-age` must not exceed `s-maxage` at any tier. A purge clears the
+        edge but cannot reach a browser that already holds the response, so a
+        browser TTL longer than the edge TTL would leave readers on a stale
+        copy that no invalidation can recall."""
+        for max_age, s_maxage, _ in self.ALL_TIERS:
+            assert max_age <= s_maxage
+
+    @pytest.mark.parametrize("index", range(len(ALL_TIERS)))
+    def test_age_within_a_band_gets_that_band_tier(self, index, now):
+        """Both edges of every configured band resolve to that band's tier."""
+        lower = self._lower_edge(index)
+        if index < len(self.BOUNDS):
+            upper_inclusive = self.BOUNDS[index] - timedelta(seconds=1)
+        else:
+            # the oldest tier is open-ended
+            upper_inclusive = lower + timedelta(days=10 * 365)
+        for age in (lower, upper_inclusive):
+            value = tiered_cache_control(now - age, now=now)
+            assert self._directives(value) == self._expected(self.ALL_TIERS[index])
+
+    @pytest.mark.parametrize("index", range(len(BOUNDS)))
+    def test_boundary_belongs_to_the_longer_tier(self, index, now):
+        """Each tier covers `age < bound`, so landing exactly on a boundary
+        moves into the next, longer tier. Pinned because an off-by-one here
+        silently mis-tiers a whole band of documents, in the unsafe direction
+        if it ever flips to `<=`."""
+        bound = self.BOUNDS[index]
+        just_under = tiered_cache_control(now - bound + timedelta(seconds=1), now=now)
+        exactly = tiered_cache_control(now - bound, now=now)
+        assert self._directives(just_under) == self._expected(self.ALL_TIERS[index])
+        assert self._directives(exactly) == self._expected(self.ALL_TIERS[index + 1])
+
+    def test_stale_while_revalidate_only_where_the_tier_defines_it(self, now):
+        """`None` in the table omits the directive rather than emitting an
+        empty or zero value."""
+        for index, tier in enumerate(self.ALL_TIERS):
+            value = tiered_cache_control(now - self._lower_edge(index), now=now)
+            present = "stale-while-revalidate" in self._directives(value)
+            assert present is (tier[2] is not None)
+
+    def test_future_timestamp_gets_the_shortest_tier(self, now):
+        """Clock skew between the app and the database can put `updated_at`
+        slightly ahead of now. Treat that as freshly edited rather than
+        letting a negative age fall through to the longest tier."""
+        value = tiered_cache_control(now + timedelta(minutes=5), now=now)
+        assert self._directives(value) == self._expected(self.ALL_TIERS[0])
+
+    def test_defaults_to_current_time(self, now):
+        """`now` is injectable for tests but optional in production code."""
+        value = tiered_cache_control(now)
+        assert self._directives(value) == self._expected(self.ALL_TIERS[0])

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Max, Q, prefetch_related_objects
 from django.db.models.query import Prefetch
-from django.utils.cache import get_conditional_response
+from django.utils.cache import get_conditional_response, patch_cache_control
 from django.utils.decorators import method_decorator
 from django.utils.http import http_date
 from django.utils.translation import gettext_lazy as _
@@ -16,6 +16,7 @@ from rest_framework.response import Response
 # Standard Library
 import logging
 import sys
+from datetime import datetime, timezone as datetime_timezone
 from functools import lru_cache
 
 # Third Party
@@ -43,6 +44,7 @@ from documentcloud.core.utils import (  # pylint:disable=unused-import
     ProcessingTokenAuthenticationScheme,
     record_uploads,
 )
+from documentcloud.documents.cache import tiered_cache_control
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
@@ -116,7 +118,6 @@ def _max_updated_at(instances):
 
 @extend_schema(tags=["documents"])
 @method_decorator(conditional_cache_control(no_cache=True), name="dispatch")
-@method_decorator(anonymous_cache_control, name="retrieve")
 class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
     parser_classes = (parsers.MultiPartParser, parsers.JSONParser)
     permit_list_expands = [
@@ -665,15 +666,55 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 not_modified["Last-Modified"] = http_date(last_modified)
                 # tag the 304 too, so a conditional hit stays purgeable
                 not_modified["Cache-Tag"] = instance.cache_tag
+                # the 304 gets the same tier as the 200 would; without it the
+                # edge would revalidate far more often than the tier intends
+                self._set_retrieve_cache_control(request, not_modified, last_modified)
                 return not_modified
 
         response = Response(self.get_serializer(instance).data)
         if last_modified is not None:
             response["Last-Modified"] = http_date(last_modified)
         # a single `doc-{id}` tag purge clears the bare URL and every
-        # `?expand=`/`Origin` variant at once - see the caching plan (5)/(6)
+        # `?expand=`/`Origin` variant at once - see `invalidate_cache_batch`
         response["Cache-Tag"] = instance.cache_tag
+        self._set_retrieve_cache_control(request, response, last_modified)
         return response
+
+    def _set_retrieve_cache_control(self, request, response, last_modified):
+        """Set `Cache-Control` on a retrieve response, tiered by age.
+
+        This is what `anonymous_cache_control` does for every other cached
+        action, reimplemented here because the tier needs the instance the
+        decorator never sees. The decorator is deliberately *not* stacked on
+        `retrieve`: `patch_cache_control` takes the minimum of an existing and
+        an incoming `max-age`, so it would silently clamp every tier down to
+        `CACHE_CONTROL_MAX_AGE` and make the whole table a no-op.
+
+        Three branches:
+
+        - authenticated: per-user content, never publicly cacheable.
+        - no validator (`~all` or a nested expand): the origin sends no
+          `Last-Modified`, and the CDN fabricates one when we omit it, so a
+          long TTL there would have the edge answering with a bogus `304` for
+          the whole duration. Those requests stay flat and short instead.
+          `_retrieve_last_modified` explains when it declines to produce a
+          validator.
+        - otherwise: the age tier, keyed off the same timestamp as
+          `Last-Modified` rather than `instance.updated_at`, so an expanded
+          relation edited recently pulls an otherwise-ancient document back
+          into a short tier.
+        """
+        has_auth_token = hasattr(request, "auth") and request.auth is not None
+        if has_auth_token or request.user.is_authenticated:
+            patch_cache_control(response, private=True, no_cache=True)
+        elif last_modified is None:
+            patch_cache_control(
+                response, public=True, max_age=settings.CACHE_CONTROL_MAX_AGE
+            )
+        else:
+            response["Cache-Control"] = tiered_cache_control(
+                datetime.fromtimestamp(last_modified, tz=datetime_timezone.utc)
+            )
 
     def _retrieve_last_modified(self, request, instance):
         """Latest modification time across the document and any expanded
