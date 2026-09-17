@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.db import connection, reset_queries
 from django.test.utils import override_settings
+from django.utils import timezone
 from django.utils.http import http_date
 from rest_framework import status
 
@@ -15,6 +16,7 @@ import pytest
 # DocumentCloud
 from documentcloud.common import path
 from documentcloud.core.tests import run_commit_hooks
+from documentcloud.documents.cache import CACHE_TIERS, tiered_cache_control
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document, DocumentError, Note, Section
 from documentcloud.documents.serializers import (
@@ -35,6 +37,7 @@ from documentcloud.organizations.serializers import OrganizationSerializer
 from documentcloud.organizations.tests.factories import ProfessionalOrganizationFactory
 from documentcloud.projects.models import ProjectMembership
 from documentcloud.projects.tests.factories import ProjectFactory
+from documentcloud.users.models import User
 from documentcloud.users.serializers import UserSerializer
 from documentcloud.users.tests.factories import UserFactory
 
@@ -338,9 +341,10 @@ class TestDocumentAPI:
         assert response_json == serializer.data
         assert response_json["access"] == "public"
         assert "presigned_url" not in response_json
-        # public document retrieves should be cached
+        # public document retrieves should be cached, at the tier this
+        # document's age maps to - see the tier tests below
         assert "public" in response["Cache-Control"]
-        assert f"max-age={settings.CACHE_CONTROL_MAX_AGE}" in response["Cache-Control"]
+        assert response["Cache-Control"] == tiered_cache_control(document.updated_at)
         assert "private" not in response["Cache-Control"]
         assert "no-cache" not in response["Cache-Control"]
         # anonymous reads don't vary on cookie - the cookie value doesn't
@@ -469,6 +473,253 @@ class TestDocumentAPI:
         response = client.get(f"/api/documents/{document.pk}/", {"expand": "~all"})
         assert response.status_code == status.HTTP_200_OK
         assert "Last-Modified" not in response
+
+    # --- age-based TTL tiers, see `documents.cache.CACHE_TIERS` ---
+
+    @staticmethod
+    def _backdate(document, age):
+        """Age a document's `updated_at` by `age` without touching any other
+        field.
+
+        A queryset `.update()` rather than `.save()` deliberately:
+        `AutoLastModifiedField` would overwrite `updated_at` with now on save,
+        which is exactly what we're trying to move.
+        """
+        Document.objects.filter(pk=document.pk).update(updated_at=timezone.now() - age)
+        document.refresh_from_db()
+        return document
+
+    @staticmethod
+    def _ancient():
+        """An age comfortably past the last configured boundary.
+
+        Derived from `CACHE_TIERS` rather than written as a fixed number of
+        years, so these tests keep landing in the oldest tier when the table
+        is retuned - which is the only thing they need from the age.
+        """
+        return CACHE_TIERS[-1][0] * 2
+
+    @staticmethod
+    def _lower_edge(tier_index):
+        """Smallest age belonging to tier `tier_index`."""
+        return timedelta(0) if tier_index == 0 else CACHE_TIERS[tier_index - 1][0]
+
+    @classmethod
+    def _directives_of(cls, value):
+        """Cache-Control string as a dict."""
+        directives = {}
+        for part in value.split(","):
+            key, _, val = part.strip().partition("=")
+            directives[key.lower()] = val or True
+        return directives
+
+    @staticmethod
+    def _backdate_note(note, age):
+        """Age a note's `updated_at`, as `_backdate` does for documents."""
+        Note.objects.filter(pk=note.pk).update(updated_at=timezone.now() - age)
+        note.refresh_from_db()
+        return note
+
+    @staticmethod
+    def _directives(response):
+        """Cache-Control as a dict, so assertions don't depend on ordering."""
+        directives = {}
+        for part in response["Cache-Control"].split(","):
+            key, _, value = part.strip().partition("=")
+            directives[key.lower()] = value or True
+        return directives
+
+    @pytest.mark.parametrize("tier_index", range(len(CACHE_TIERS) + 1))
+    def test_retrieve_cache_control_matches_tier(self, client, document, tier_index):
+        """The response carries exactly the tier its age maps to, checked once
+        per configured band.
+
+        Compared against `tiered_cache_control` rather than fixed seconds: the
+        table is policy and expected to be retuned, while the view's job - ask
+        for the tier and emit it verbatim - does not change when it is. The
+        tier values themselves are pinned in `TestTieredCacheControl`.
+        """
+        self._backdate(document, self._lower_edge(tier_index))
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response["Cache-Control"] == tiered_cache_control(document.updated_at)
+
+    def test_retrieve_cache_control_tiers_increase_with_age(self, client, document):
+        """The point of the whole exercise: older documents get longer edge
+        TTLs. Walks one age from each configured band, so it keeps working
+        across a retune and fails if one ever inverts another."""
+        s_maxages = []
+        for tier_index in range(len(CACHE_TIERS) + 1):
+            self._backdate(document, self._lower_edge(tier_index))
+            response = client.get(f"/api/documents/{document.pk}/")
+            s_maxages.append(int(self._directives(response)["s-maxage"]))
+        assert s_maxages == sorted(s_maxages)
+
+    def test_retrieve_cache_control_auth_still_private(self, client, document):
+        """Tiering must not leak into the authenticated branch: an
+        authenticated read is per-user and must never be publicly cached.
+        This is the branch `anonymous_cache_control` used to own."""
+        self._backdate(document, self._ancient())
+        client.force_authenticate(user=document.user)
+        response = client.get(f"/api/documents/{document.pk}/")
+        directives = self._directives(response)
+        assert directives["private"] is True
+        assert "no-cache" in directives
+        assert "public" not in directives
+        assert "max-age" not in directives
+        assert "s-maxage" not in directives
+
+    def test_retrieve_not_modified_cache_control(self, client, document):
+        """The 304 branch carries the tier too. Without it a conditional hit
+        would fall back to whatever default the dispatch decorator applies,
+        and the edge would re-validate far more often than the tier intends."""
+        self._backdate(document, self._ancient())
+        response = client.get(
+            f"/api/documents/{document.pk}/",
+            HTTP_IF_MODIFIED_SINCE=http_date(document.updated_at.timestamp()),
+        )
+        assert response.status_code == status.HTTP_304_NOT_MODIFIED
+        assert response["Cache-Control"] == tiered_cache_control(document.updated_at)
+
+    def test_retrieve_unhandled_expand_flat_ttl(self, client, document):
+        """`~all` sends no Last-Modified, and the edge fabricates one when the
+        origin omits it - so a long tier there means the edge answers with a
+        bogus 304 for the whole TTL. Those requests stay flat and short."""
+        self._backdate(document, self._ancient())
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "~all"})
+        assert "Last-Modified" not in response
+        directives = self._directives(response)
+        assert directives["public"] is True
+        assert directives["max-age"] == str(settings.CACHE_CONTROL_MAX_AGE)
+        assert "s-maxage" not in directives
+        assert "stale-while-revalidate" not in directives
+
+    def test_retrieve_nested_expand_flat_ttl(self, client, document):
+        """Same reasoning as ~all for a nested expansion."""
+        self._backdate(document, self._ancient())
+        NoteFactory.create(document=document, access=Access.public)
+        response = client.get(
+            f"/api/documents/{document.pk}/", {"expand": "notes.user"}
+        )
+        assert "Last-Modified" not in response
+        directives = self._directives(response)
+        assert directives["max-age"] == str(settings.CACHE_CONTROL_MAX_AGE)
+        assert "s-maxage" not in directives
+
+    def test_retrieve_handled_expand_is_tiered(self, client, document):
+        """A handled expand carries a real Last-Modified, so it is safe to
+        tier - `Cache-Tag` reaches every `?expand=` variant on purge.
+
+        The expanded user has to be aged too: the tier follows the newest of
+        the document and everything expanded alongside it, so a fresh user
+        would hold the whole response in the shortest tier. That is the
+        behavior `test_retrieve_handled_expand_tier_follows_newest_relation`
+        pins from the other direction.
+        """
+        self._backdate(document, self._ancient())
+        User.objects.filter(pk=document.user_id).update(
+            updated_at=timezone.now() - self._ancient()
+        )
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "user"})
+        assert "Last-Modified" in response
+        assert response["Cache-Control"] == tiered_cache_control(document.updated_at)
+        # and specifically not the flat fallback the unhandled expands get
+        assert "s-maxage" in response["Cache-Control"]
+
+    def test_retrieve_handled_expand_tier_follows_newest_relation(
+        self, client, document
+    ):
+        """The tier keys off the same timestamp as Last-Modified, not the
+        document alone. An ancient document with a fresh note, expanded, is
+        not safe to cache for a year."""
+        self._backdate(document, self._ancient())
+        note = NoteFactory.create(document=document, access=Access.public)
+        response = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})
+        assert response["Cache-Control"] == tiered_cache_control(note.updated_at)
+        assert response["Cache-Control"] != tiered_cache_control(document.updated_at)
+
+    def test_retrieve_tiered_response_still_tagged(self, client, document):
+        """Regression: tiering must not displace the Cache-Tag that makes a
+        long s-maxage purgeable in the first place."""
+        self._backdate(document, self._ancient())
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response["Cache-Tag"] == f"doc-{document.pk}"
+
+    def test_editing_a_document_resets_it_to_the_shortest_tier(self, client, document):
+        """An edit has to drop the document back to the shortest tier.
+
+        This is the safety property the long tiers depend on. A document
+        sitting in the oldest tier is telling every CDN it may hold the
+        response for a year; the moment someone edits it, the next response
+        has to say something much more cautious, or a subsequent edit would
+        be invisible for that year. `AutoLastModifiedField` bumps
+        `updated_at` on save, which is what makes this work - so this test
+        fails the moment an edit path starts bypassing `save()`.
+        """
+        self._backdate(document, self._ancient())
+        before = client.get(f"/api/documents/{document.pk}/")["Cache-Control"]
+
+        client.force_authenticate(user=document.user)
+        response = client.patch(
+            f"/api/documents/{document.pk}/", {"title": "Edited"}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        client.force_authenticate(user=None)
+        after = client.get(f"/api/documents/{document.pk}/")["Cache-Control"]
+
+        document.refresh_from_db()
+        assert after == tiered_cache_control(document.updated_at)
+        # specifically the shortest tier, not merely a shorter one
+        shortest = CACHE_TIERS[0]
+        assert self._directives_of(after)["max-age"] == str(shortest[1])
+        assert self._directives_of(after)["s-maxage"] == str(shortest[2])
+        assert after != before
+        assert int(self._directives_of(after)["s-maxage"]) < int(
+            self._directives_of(before)["s-maxage"]
+        )
+
+    def test_editing_a_note_resets_the_expanded_tier(self, client, document):
+        """Editing a note does not touch the document's own `updated_at`, but
+        a response that *includes* that note has to re-tier all the same -
+        otherwise `?expand=notes` would serve the edited note from a
+        year-long edge copy."""
+        self._backdate(document, self._ancient())
+        note = NoteFactory.create(document=document, access=Access.public)
+        self._backdate_note(note, self._ancient())
+        before = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})[
+            "Cache-Control"
+        ]
+
+        note.title = "Edited note"
+        note.save()
+
+        after = client.get(f"/api/documents/{document.pk}/", {"expand": "notes"})[
+            "Cache-Control"
+        ]
+        assert after != before
+        assert int(self._directives_of(after)["s-maxage"]) < int(
+            self._directives_of(before)["s-maxage"]
+        )
+
+    def test_access_flip_does_not_reset_the_tier_on_its_own(self, client, document):
+        """A known gap, pinned so it cannot regress silently.
+
+        `update_access` applies the final public flip with a queryset
+        `.update()`, which bypasses `save()` and therefore does not fire
+        `AutoLastModifiedField`. The tier does not move. It is not a live bug
+        today because `_update_access` calls `document.save()` moments
+        earlier - so a real access change through the API does re-tier, which
+        `test_editing_a_document_resets_it_to_the_shortest_tier` covers - but
+        anything that reaches this queryset update without that save would
+        leave a stale tier behind.
+        """
+        self._backdate(document, self._ancient())
+        before = client.get(f"/api/documents/{document.pk}/")["Cache-Control"]
+
+        Document.objects.filter(pk=document.pk).update(access=Access.public)
+
+        after = client.get(f"/api/documents/{document.pk}/")["Cache-Control"]
+        assert after == before
 
     def test_conditional_expands_cover_expandable_fields(self):
         """CONDITIONAL_EXPANDS must stay in sync with the serializer's

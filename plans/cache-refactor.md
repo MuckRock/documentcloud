@@ -360,7 +360,42 @@ Covered by `test_retrieve_expand_notes_last_modified`,
 `test_retrieve_expand_all_no_conditional`, and
 `test_conditional_expands_cover_expandable_fields`.
 
-### 4. Age-based TTL tiers (the headline change)
+### 4. ✅ IMPLEMENTED — Age-based TTL tiers (the headline change)
+
+**Implemented 2026-09-17, test-first.** What shipped, and the four decisions
+taken along the way:
+
+1. **The tier keys off `_retrieve_last_modified`, not `instance.updated_at`.**
+   The original note here said `updated_at`, but section 3 already computes the
+   max across expanded relations. Keying off `updated_at` alone would give
+   `?expand=notes` on a six-year-old document with a note edited a minute ago a
+   **year-long edge TTL on a response containing that fresh note**. The tier
+   now follows the same timestamp the `Last-Modified` header carries.
+2. **`anonymous_cache_control` came off `retrieve` entirely.** It could not
+   simply be stacked: Django's `patch_cache_control` takes the *minimum* of an
+   existing and an incoming `max-age` (`django/utils/cache.py`), so leaving the
+   decorator on would have clamped every tier to
+   `min(tier, CACHE_CONTROL_MAX_AGE)` and made the whole table a silent no-op
+   above the base. `retrieve` now owns all three branches in
+   `_set_retrieve_cache_control`. The decorator still serves `NoteViewSet`, and
+   the dispatch-level `conditional_cache_control(no_cache=True)` still covers
+   every other action.
+3. **`NoteViewSet` left flat** at `CACHE_CONTROL_MAX_AGE`, as its own PR. No
+   TTL is extended there, so nothing gets less safe; bringing notes into
+   tiering needs their own `Last-Modified` and `Cache-Tag` work first.
+4. **The `last_modified is None` fallback is `CACHE_CONTROL_MAX_AGE`** — the
+   status quo for those requests, so `~all` and nested expands are no worse
+   off than before, and the bogus-`304` window stays the 5 minutes it already
+   was.
+
+The table itself is `CACHE_TIERS` in `documents/cache.py`, a module-level
+tuple rather than settings: five tiers of three values do not map onto env
+vars, and the table is a design decision worth reviewing in a diff.
+
+19 new tests — 8 on the pure `tiered_cache_control` function, 11 through the
+view, covering every tier, both boundary directions, the authenticated branch,
+the `304` branch, handled vs. unhandled expands, and `Cache-Tag` survival.
+Suite green at 715 passed, pylint 10.00/10.
 
 **Touch point:** `documentcloud/documents/decorators.py:28-43`,
 `config/settings/base.py:583` (`CACHE_CONTROL_MAX_AGE`, default 300).
@@ -823,6 +858,476 @@ just a staleness one. Two ways out, pick before shipping:
   correctness, and needs no key changes. Recommended unless the assets get
   versioned keys.
 
+#### Live re-verification 2026-09-15 — wider scope, and two blockers
+
+Re-probed with `curl -A "DocumentCloud-cache-audit/1.0 (+chris@muckrock.com)"`
+against a fresh public document (`28606342`, `status: success`,
+`revision_control: false`, `updated_at: 2026-09-15T14:57:18.524645Z`).
+
+**Still undone, and broader than the three types sampled above** — _nothing_
+under `/documents/` sends `Cache-Control` or `Expires`:
+
+| asset                             | size   | `Cache-Control` | `ETag` | `Last-Modified` | `cf-cache-status` |
+| --------------------------------- | ------ | --------------- | ------ | --------------- | ----------------- |
+| `…/{slug}.pdf`                    | 3.4 MB | _absent_        | yes    | yes             | HIT               |
+| `…/pages/{slug}-p1-normal.gif`    | 111 KB | _absent_        | yes    | yes             | MISS → HIT        |
+| `…/pages/{slug}-p1-large.gif`     | 178 KB | _absent_        | yes    | yes             | MISS → HIT        |
+| `…/pages/{slug}-p1.txt`           | 2 KB   | _absent_        | yes    | yes             | MISS → HIT        |
+| `…/pages/{slug}-p1.position.json` | 24 KB  | _absent_        | yes    | yes             | MISS → HIT        |
+| `…/{slug}.txt`                    | 129 KB | _absent_        | yes    | yes             | MISS → HIT        |
+| `…/{slug}.txt.json`               | 139 KB | _absent_        | yes    | yes             | MISS → HIT        |
+
+Two new facts:
+
+- **`.txt` and `.json` are already edge-cached** although neither is in
+  Cloudflare's default cacheable-extension list — both went MISS → HIT on a
+  repeat request. **Cause found in the dashboard the same day:** a single
+  **Page Rule** matching `s3.documentcloud.org/*` sets **Cache Everything**.
+  That is what makes every extension eligible; it sets eligibility only, no
+  Edge Cache TTL.
+- **The 2026-07-30 probe document has since aged out of the edge.**
+  `28191058`'s 8.67 MB PDF, unchanged since `Thu, 04 Jun 2026`, now returns
+  `cf-cache-status: MISS` — a full re-pull from S3 for a static object.
+
+**Which pins down the number this section has been missing.** With the Page
+Rule making everything eligible but no `Cache-Control` from S3 and no Edge
+Cache TTL on the rule, Cloudflare falls back to its
+[default edge TTL](https://developers.cloudflare.com/cache/concepts/default-cache-behavior/)
+for a `200`: **120 minutes.** So every asset is re-pulled from S3 roughly
+every two hours, forever, no matter how long ago the document was processed —
+which is exactly why the June PDF MISSed. The proposal below raises that to
+30 days, a ~360× increase in edge retention, and it is the whole of the byte
+win in this section.
+
+Note also that **Page Rules are deprecated** and Cloudflare intends to
+auto-migrate them; this section's change is a chance to retire this one
+deliberately rather than have it converted for us.
+
+#### Mechanism: a Cache Response Rule, not a Transform Rule
+
+Correction to the touch point at the top of this section. A **response-header
+Transform Rule runs after the cache lookup**, so it would hand browsers a
+`Cache-Control` while leaving Cloudflare's own edge TTL exactly where it is.
+Wrong tool.
+
+The right one is a
+[**Cache Response Rule**](https://developers.cloudflare.com/cache/how-to/cache-response-rules/)
+with the `set_cache_control` action. It runs in the
+`http_response_cache_settings` phase — on the origin response, **before** the
+response is stored — so the directives it writes govern the edge TTL _and_
+reach the browser, from a single string. Available on Business (50 rules).
+`set_cache_control` supports the full directive set this section needs:
+`max-age`, `s-maxage`, `stale-while-revalidate`, `stale-if-error`, `public`,
+`immutable`, `must-revalidate`, `no-store`, `no-cache`, `private`. Each
+directive also takes a `cloudflare_only` flag, so the edge value and the
+visitor-facing value can differ where that's wanted.
+
+This supersedes an earlier draft of this subsection that proposed a plain
+**Cache Rule** with _Edge TTL_ + _Browser TTL_ overrides. That would work, but
+it splits one concept across two settings and its Browser TTL emits a bare
+`max-age` — no `stale-while-revalidate`. The Cache Response Rule expresses the
+whole policy as the exact `Cache-Control` string we eventually want S3 itself
+to send, which makes the later origin-header change a copy of a string already
+proven in production rather than a fresh design.
+
+Precedence, for the record: **Cache Rules and Cache Response Rules both
+override Page Rules** ("if both define caching settings for the same path,
+Cache Rules will override Page Rules"), and where a Cache Response Rule and a
+Cache Rule conflict, the Response Rule wins. So the new rule can ship without
+touching the existing Page Rule first — but see the blocker below, because
+what the Page Rule still governs is precisely what the new rule excludes.
+
+Setting `CacheControl` on the objects instead is **not** config-only, contrary
+to the PR-sequence note. Document assets bypass django-storages entirely: the
+`AWS_S3_OBJECT_PARAMETERS` at `config/settings/production.py:68-70` covers only
+the static bucket, while document assets go through raw boto3 in
+`documentcloud/common/environment/aws/storage.py` — `open` (`:60-84`),
+`simple_upload` (`:88-102`) and `async_upload` (`:104-141`) each build their
+write kwargs from `ACL` and `ContentType` only, with no `CacheControl`. Doing
+it at the origin means editing all three (plus the lambda copies) and an S3
+Batch backfill over existing objects. Worth doing eventually — it is
+origin-authoritative, and it is the only form that would survive a CDN change
+or reach any path that bypasses Cloudflare — but it
+is a later PR, not this one.
+
+#### Two blockers on scoping the rule
+
+- **⚠️ Private documents ride the same hostname — and are already being
+  cached.** `_presign_url_custom` (`storage.py:157`) signs against
+  `settings.PUBLIC_ASSET_URL`, so private and organization assets are served
+  from `s3.documentcloud.org` as `…?X-Amz-Signature=…` with a 300 s expiry.
+  The existing `s3.documentcloud.org/*` **Cache Everything** Page Rule makes
+  no distinction, so those responses are cacheable _today_ — the edge holds
+  them for the default 120 minutes, i.e. well past the 5-minute signature
+  expiry, keyed by the signed URL. Exposure is limited (the key is the
+  unguessable signature, so this is "the link outlives its expiry for whoever
+  holds it", not "private docs are publicly listable") and it predates this
+  plan. But it means **excluding signed requests from the new rule does not
+  fix it** — the Page Rule still governs them. Ship an explicit bypass for
+  signed requests alongside, and raise the exposure window as its own
+  question rather than letting a long TTL quietly extend it from 2 hours to
+  30 days.
+
+  Bypassing cache for signed requests costs essentially nothing, which settles
+  the obvious objection to (a) below. `FileServer` (`core/views.py:43-69`)
+  presigns _per request_ — private and organization assets, plus revisions of
+  any document including public ones — and `presign_url` (`storage.py:142`)
+  calls `generate_presigned_url(..., ExpiresIn=300)`, so every call yields a
+  fresh `X-Amz-Date`/`X-Amz-Signature` and therefore a distinct cache key. The
+  hit rate on signed URLs is near zero by construction: today they are not
+  accelerating anything, just filling the edge with single-use entries.
+  Bypassing them is a straight win on both correctness and cache pollution.
+
+- **⚠️ Purge only covers the PDF.** `invalidate_cache_batch`
+  (`documents/cache.py:101-117`) purges `document.doc_path` from CloudFront and
+  `PUBLIC_ASSET_URL + doc_path` from Cloudflare — the PDF and nothing else.
+  Page images, page text, `position.json` and the full-text files are **not
+  purge-backed**, and page modifications rewrite those exact keys in place.
+  "Split the directives" above justifies a long `s-maxage` by pointing at (5);
+  for every asset except the PDF, (5) does not reach it. Either extend the
+  purge set (a Cloudflare prefix purge, or `Cache-Tag` if S3/Workers can be
+  made to emit one) or hold the non-PDF keys at a short edge TTL.
+
+#### Runbook
+
+Take **"Split the directives"**, not `immutable` — the keys are mutable and a
+browser holding `immutable` will not revalidate after a redaction. Every asset
+already carries a strong `ETag`, so browser revalidation is a cheap `304`.
+
+Four rules on the `documentcloud.org` zone, plus the Page Rule retirement.
+**Apply in this order.** Eligibility and TTL live in different Cloudflare
+products, so the sequence matters: deleting the Page Rule before step 2 drops
+page text, `position.json` and the full-text files out of cache entirely
+(`.txt` and `.json` are not
+[default cached extensions](https://developers.cloudflare.com/cache/concepts/default-cache-behavior/);
+`.pdf` and `.gif` are).
+
+- [x] **1. Cache Rule — bypass signed (private) requests.** Closes the
+      private-asset blocker above. (Steps are numbered independently of the
+      plan's `(n)` section references.)
+
+      ```
+      (http.host eq "s3.documentcloud.org"
+       and http.request.uri.query contains "X-Amz-Signature")
+      ```
+
+      → Cache eligibility: **Bypass cache**
+
+      Costs nothing: every presign is per-request with a fresh `X-Amz-Date`,
+      so these are single-use cache keys with a near-zero hit rate. Covers
+      private docs, organization docs, and revisions of public docs.
+
+- [x] **2. Cache Rule — eligibility for public assets.** Order _after_ step 1.
+      This is the `Cache Everything` Page Rule minus the signed requests.
+
+      ```
+      (http.host eq "s3.documentcloud.org"
+       and starts_with(http.request.uri.path, "/documents/")
+       and not http.request.uri.query contains "X-Amz-Signature")
+      ```
+
+      → Cache eligibility: **Eligible for cache**
+
+      Required, not cleanup: **Cache Response Rules cannot grant cache
+      eligibility.** Per Cloudflare, "Cache Rules remain the only mechanism to
+      decide whether content is eligible for caching"; a Cache Response Rule
+      can only make an already-cacheable asset non-cacheable.
+
+- [x] **3. Delete the `Cache Everything` Page Rule.** Safe once step 2 is
+      live. Worth doing rather than leaving: Page Rules are deprecated and slated
+      for auto-migration, and leaving this one in place is what makes the
+      private-asset exposure hard to reason about.
+
+- [x] **4. Cache Response Rule — broad, everything under `/documents/`.**
+      Create this one **first**; step 5 overrides it for the PDF.
+
+      ```
+      (http.host eq "s3.documentcloud.org"
+       and starts_with(http.request.uri.path, "/documents/")
+       and not http.request.uri.query contains "X-Amz-Signature"
+       and http.response.code in {200 206})
+      ```
+
+      → `set_cache_control`: `public`, `max-age=3600`, `s-maxage=86400`
+      (24 h), `stale-while-revalidate=86400`
+
+- [x] **5. Cache Response Rule — the canonical PDF.** Must be ordered
+      **after** step 4, which is what makes it win.
+
+      ```
+      (http.host eq "s3.documentcloud.org"
+       and starts_with(http.request.uri.path, "/documents/")
+       and ends_with(http.request.uri.path, ".pdf")
+       and not http.request.uri.path contains "/original/"
+       and not http.request.uri.path contains "/revisions/"
+       and not http.request.uri.query contains "X-Amz-Signature"
+       and http.response.code in {200 206})
+      ```
+
+      → `set_cache_control`: `public`, `max-age=3600`, `s-maxage=2592000`
+      (30 d), `stale-while-revalidate=86400`
+
+      **Order matters, and an earlier draft of this runbook had it backwards.**
+      Cloudflare stacks these rules: "when multiple rules specify the same
+      setting, the last matching rule wins." A broad rule created *after* a
+      narrow one silently overrides it — so building the PDF rule first and
+      the catch-all second would have quietly pinned PDFs to 24 h and made the
+      whole 30-day tier a no-op. Broad first, narrow last.
+
+      **Why both rules exclude signed requests.** Step 1 stops Cloudflare from
+      caching them, but a Cache Response Rule still rewrites the header the
+      *browser* receives — so without this clause a private document would be
+      handed `public, max-age=3600` and cached on disk by the viewer's
+      browser. Excluding them preserves today's behavior (S3 sends no
+      `Cache-Control`; browsers fall back to heuristic freshness). A stronger
+      option, worth taking if you want it in the same sitting: a third
+      response rule matching signed requests that sets `private` and
+      `no-store`, which would be a real improvement over the status quo rather
+      than a preservation of it.
+
+      **Why step 5 excludes `/original/` and `/revisions/`.** The 30-day tier
+      is justified by (5)'s purge, and that purge covers exactly
+      `/documents/{id}/{slug}.pdf` — `invalidate_cache_batch` derives its path
+      from `document.doc_path`, nothing else. An uploaded original that
+      happens to be a PDF, or a revision PDF, would otherwise match
+      `ends_with(".pdf")` and inherit a 30-day edge copy with no invalidation
+      path. They fall through to step 4's 24 h instead.
+
+      The step 4 / step 5 split exists only because of the purge blocker: the
+      purge built in section (5) of this plan reaches the canonical PDF and
+      nothing else, so page images, page text, `position.json` and the
+      full-text files cannot safely hold a 30-day edge copy yet. Collapse
+      step 5 into step 4 once the purge set covers every key, and at that
+      point raise 30 days to a year, since a purgeable key with a long
+      `s-maxage` is the whole point. Even 24 h is 12× today's 120-minute
+      default, so the blocker costs far less than it looks.
+
+- [x] **6. Verify.** ✅ run 2026-09-17; results in the verification notes below.
+
+      ```bash
+      UA="DocumentCloud-cache-audit/1.0 (+chris@muckrock.com)"
+      B=https://s3.documentcloud.org/documents/28606342
+      S=capital-without-labor-data-centers-and-the-local-economy
+      for u in "$B/$S.pdf" "$B/pages/$S-p1-normal.gif" \
+               "$B/pages/$S-p1.txt" "$B/pages/$S-p1.position.json"; do
+        curl -sSI -A "$UA" "$u" | grep -iE '^(cache-control|cf-cache-status|age)'
+        echo
+      done
+      ```
+
+      **Bust the cache key when verifying.** A Cache Response Rule rewrites
+      the header as the origin response is stored, so entries cached *before*
+      the rule deployed keep serving without it — a plain re-fetch shows a HIT
+      with no `Cache-Control` and looks like the rule failed. Append a unique
+      `?cb=<random>` to force a fresh key (it still matches the rules, since
+      only `X-Amz-Signature` is excluded), or purge the prefix and re-fetch.
+
+      Expect `public, max-age=3600, s-maxage=2592000,
+      stale-while-revalidate=86400` on the PDF, `s-maxage=86400` on the rest,
+      and `HIT` on a repeat. The `.txt` and `.position.json` rows are the ones
+      that prove step 2 actually replaced the Page Rule's eligibility — if
+      either goes `DYNAMIC` or `BYPASS`, step 3 ran without step 2 taking
+      effect.
+      [Cloudflare Trace](https://developers.cloudflare.com/rules/trace-request/)
+      shows which rule matched.
+
+      Also confirm a signed request is not cached. Appending a synthetic
+      `?X-Amz-Signature=probe0000` to a public asset exercises the step 1 rule
+      without needing credentials — S3 ignores the stray param on a public
+      object and still returns `200`. Expect `cf-cache-status: DYNAMIC`: that
+      is what Cloudflare reports for an asset that is not eligible for cache,
+      so a bypass rule shows `DYNAMIC`, not `BYPASS`.
+
+##### ✅ Steps 1-3 verified in production, 2026-09-17
+
+Probed each asset type twice, same UA as above. All six public types reach
+HIT — including `.txt`, `.position.json` and `.txt.json`, none of which are
+default-cached extensions. That is the proof that step 2's eligibility rule
+fully replaced what the deleted Page Rule provided: no regression from step 3.
+
+| asset                           | HTTP | `Cache-Control` | pass 1  | pass 2  |
+| ------------------------------- | ---- | --------------- | ------- | ------- |
+| `{slug}.pdf`                    | 200  | _absent_        | HIT     | HIT     |
+| `…-p1-normal.gif`               | 200  | _absent_        | MISS    | HIT     |
+| `…-p1.txt`                      | 200  | _absent_        | MISS    | HIT     |
+| `…-p1.position.json`            | 200  | _absent_        | MISS    | HIT     |
+| `{slug}.txt`                    | 200  | _absent_        | MISS    | HIT     |
+| `{slug}.txt.json`               | 200  | _absent_        | MISS    | HIT     |
+| same PDF + `?X-Amz-Signature=…` | 200  | _absent_        | DYNAMIC | DYNAMIC |
+
+The last row confirms step 1: the signed-request bypass fires, and it does not
+touch the unsigned public requests above it.
+
+`Cache-Control` is still absent everywhere and the edge is still on the
+120-minute default — expected, since that is what steps 4 and 5 add. The byte
+win has not landed yet; what has landed is that it is now safe to land.
+
+Step 3's scope narrowing strands nothing. The deleted Page Rule matched
+`s3.documentcloud.org/*` while step 2 matches only `/documents/`, but
+`documents/` and `sidekick/` are the only prefixes `common/path.py` builds on
+`DOCUMENT_BUCKET`, and the `sidekick_path` helpers have no callers anywhere in
+the tree.
+
+##### ✅ Steps 4-5 verified, 2026-09-17 — and one defect they introduced
+
+On fresh cache keys, the tiers land exactly as specified:
+
+| asset                           | `Cache-Control`                                                        |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| canonical `{slug}.pdf`          | `max-age=3600, s-maxage=2592000, stale-while-revalidate=86400, public` |
+| page gif / txt / position.json  | `max-age=3600, s-maxage=86400, stale-while-revalidate=86400, public`   |
+| full `{slug}.txt` / `.txt.json` | `max-age=3600, s-maxage=86400, stale-while-revalidate=86400, public`   |
+| `original/{slug}.pdf`           | `…s-maxage=86400…` — the step 5 exclusion works, no 30-day tier        |
+| signed `?X-Amz-Signature=…`     | _absent_, `cf-cache-status: DYNAMIC`                                   |
+
+A warmed key re-fetches as `HIT` with the headers intact, and rule ordering is
+right (the PDF gets 2592000, not the broad rule's 86400).
+
+- [x] **7. Restrict both response rules to successful responses.** ✅ verified 2026-09-17. The probe
+      of `original/{slug}.pdf` returned **`403`** — those objects are not
+      public — carrying
+      `cache-control: public, max-age=3600, s-maxage=86400`. The rules match
+      on request properties only, so **they are stamping cache headers onto
+      error responses.** A `403` is not heuristically cacheable, but explicit
+      freshness makes it cacheable, so a browser will hold the denial for an
+      hour: a private → public flip, or a user signing in, leaves them seeing
+      a stale `403` for up to 60 minutes. Same for any `404`.
+
+      Fix: add a response-status test to **both** rules. The expressions in
+      steps 4 and 5 above already show the final form including this clause —
+      what remains is editing the two rules already deployed.
+      `http.response.code` is available in the `http_response_cache_settings`
+      phase — Cloudflare's own Terraform example pairs
+      `expression = "http.response.code eq 200"` with `set_cache_control`,
+      described as "set cache-control for successful responses."
+
+      ```
+      and http.response.code in {200 206}
+      ```
+
+      `206` is included deliberately: the assets send `accept-ranges: bytes`
+      and PDF viewers range-request them, so restricting to `200` alone would
+      drop the headers on partial responses. If the set syntax gives trouble
+      in the editor, `(http.response.code eq 200 or http.response.code eq 206)`
+      is equivalent.
+
+- [x] **8. ~~One-time purge of the `/documents/` prefix.~~ Skipped
+      deliberately, 2026-09-17 — let it roll out slowly.** Entries cached
+      before the rules deployed keep serving without the new headers until
+      they age out, but the old default is only 120 minutes, so the
+      changeover completes on its own within two hours of each object's last
+      fetch. Confirmed live: canonical URLs were still returning un-stamped
+      `HIT`s at `age` 1342-2694 s right after deploy. A prefix purge would
+      have made it immediate; nothing depends on immediacy here, and a
+      gradual rollover means any problem with the new headers surfaces on a
+      fraction of traffic rather than all of it at once.
+
+##### ✅ Full re-verification after step 7, 2026-09-17
+
+| probe                          | HTTP | `cf-cache-status` | `Cache-Control`              |
+| ------------------------------ | ---- | ----------------- | ---------------------------- |
+| canonical `{slug}.pdf`         | 200  | MISS              | `…s-maxage=2592000…, public` |
+| page gif                       | 200  | MISS              | `…s-maxage=86400…, public`   |
+| page txt                       | 200  | MISS              | `…s-maxage=86400…, public`   |
+| `position.json`                | 200  | MISS              | `…s-maxage=86400…, public`   |
+| full `{slug}.txt`              | 200  | MISS              | `…s-maxage=86400…, public`   |
+| `{slug}.txt.json`              | 200  | MISS              | `…s-maxage=86400…, public`   |
+| `original/{slug}.pdf`          | 403  | BYPASS            | _absent_                     |
+| nonexistent key                | 403  | BYPASS            | _absent_                     |
+| signed `?X-Amz-Signature=…`    | 200  | DYNAMIC           | _absent_                     |
+| `Range: bytes=0-99` on the PDF | 206  | —                 | `…s-maxage=2592000…, public` |
+
+Step 7 holds: error responses no longer carry cache headers. **Including `206`
+in the status set earned its place** — the range request does get the
+directives, and an `eq 200` test would have stripped them from exactly the
+partial responses PDF viewers issue most.
+
+(S3 answers a nonexistent key with `403` rather than `404` when the caller
+lacks `ListBucket`; either way it is excluded.)
+
+Canonical URLs were still serving pre-rule entries with no `Cache-Control` at
+`age` 1342-2694 s at the time of this probe. **Step 8 (the purge) was skipped
+by decision** — see below; they age out on the old 120-minute default, so
+section 7 is complete without it.
+
+##### Follow-ups, after the above is verified
+
+- [ ] **Normalize the `Origin` cache key** — see the `Vary: Origin`
+      subsection below. Transform Rule setting
+      `access-control-allow-origin: *` and `access-control-allow-methods: GET`
+      unconditionally, _then_ a custom cache key on step 2 that ignores
+      `Origin`. Optimization, not a prerequisite.
+- [ ] **Settle the CloudFront distribution** — check its CNAMEs and request
+      count in the console; if idle, drop `_invalidate_cloudfront`. See the
+      CloudFront subsection below.
+- [ ] **Extend the purge set** beyond the PDF, then collapse step 5 into
+      step 4 and raise the edge TTL to a year.
+- [ ] **Move the directives to S3 object metadata** as the durable form — the
+      same `Cache-Control` string, set at the origin. See the mechanism
+      subsection above for why this is a code change plus a backfill, not
+      config.
+
+#### ✅ CloudFront is not in the public asset path (resolved 2026-09-15)
+
+The open question here — whether a Cloudflare-side rule is enough, or whether
+CloudFront sits in front of the assets and forces the origin-header change to
+become a prerequisite — is answered: **it is enough.**
+
+A distribution does exist (it routes to an S3 bucket and has a cache policy),
+but `s3.documentcloud.org` does not traverse it. Probed 2026-09-15: the
+response carries raw S3 headers (`x-amz-id-2`, `x-amz-request-id`,
+`x-amz-server-side-encryption`) behind `server: cloudflare`, and **zero**
+CloudFront markers — no `x-cache: … from cloudfront`, no `via:`, no
+`x-amz-cf-id`, no `x-amz-cf-pop`. The path is browser → Cloudflare → S3. The
+API confirms the hostname it advertises: `asset_url` is
+`https://s3.documentcloud.org/`. (`assets.documentcloud.org` also resolves to
+Cloudflare IPs, not CloudFront.)
+
+The CORS headers are S3's own bucket CORS configuration, not CloudFront's —
+`access-control-allow-origin: *`, `access-control-allow-methods: GET`,
+`access-control-max-age: 3000` plus S3's characteristic
+`vary: Origin, Access-Control-Request-Headers, Access-Control-Request-Method`.
+
+So the rules in this section cover the live path. What remains is a **loose
+end, not a blocker**: `_invalidate_cloudfront` (`documents/cache.py:32-43`)
+purges `CLOUDFRONT_DISTRIBUTION_ID` on every document change, and nothing
+found so far shows that distribution serving live traffic. Check its CNAMEs
+and request count in the console: if it is idle, the purge call is dead weight
+on every edit (and a CloudFront invalidation is billable past the free tier);
+if it has traffic, find its hostname and bring it into this section.
+
+#### ⚠️ `Vary: Origin` dilutes these TTLs too — and here it is provably free to fix
+
+Separate from the API's `Vary: Origin` problem (see the risk bullet at the end
+of this plan), the S3 assets have their own, and it is the easier case.
+
+Confirmed 2026-09-15 — Cloudflare keys a separate entry per distinct `Origin`:
+
+| request                                 | `access-control-allow-origin` | `cf-cache-status` |
+| --------------------------------------- | ----------------------------- | ----------------- |
+| no `Origin`                             | _absent_                      | HIT               |
+| `Origin: https://www.documentcloud.org` | `*`                           | HIT               |
+| `Origin: https://evil.example.com`      | `*`                           | MISS              |
+
+**The critical difference from the API case: `Access-Control-Allow-Origin`
+(ACAO below, and in the risk bullet at the end of this plan) is the constant
+`*` here, not a reflection of the requesting origin.** Every with-`Origin`
+variant is
+byte-identical, so the fragmentation buys exactly nothing — unlike the API,
+where normalizing the key would change what each caller receives. Any third
+party can still mint fresh cold entries at will, and each one dilutes the
+30-day `s-maxage` this section is buying.
+
+The one wrinkle: S3 emits the CORS headers _only_ when `Origin` is present, so
+the no-`Origin` variant genuinely differs and the key cannot simply ignore
+`Origin`. The fix is to make the response unconditional first — have Cloudflare
+always set `access-control-allow-origin: *` and `access-control-allow-methods:
+GET` — and only then normalize the cache key to ignore `Origin`. Safe precisely
+because ACAO is already a constant.
+
+Worth doing, but it is an optimization on top of the change below, not a
+prerequisite: sequence it after the TTLs are verified working.
+
 ### 8. Don't cache list / search endpoints
 
 Today's behavior on `/api/documents/?…` and the search endpoint is
@@ -854,11 +1359,18 @@ Numbers in parentheses refer to the sections above.
    batched, and the `updated_at`-bump-on-purge bug fixed. The third defect
    (slug change) was ruled unreachable — no slug mutation path exists. Also
    emits the `Cache-Tag` header (part of 6), since (5) shipped first.
-4. **S3 `Cache-Control: immutable` (7).** Moved up from 5th: the
+4. **S3 long-TTL via a Cloudflare Cache Rule (7).** Moved up from 5th: the
    2026-07-30 probe found the assets send no `Cache-Control` at all, and
    at 8.67 MB for a single PDF this is the biggest byte win in the plan.
-   Config-only, no code dependency, independent of everything above.
-5. **Age-based TTL tiers (4)** in the retrieve view. Ships on its own —
+   Re-titled 2026-09-15 — **not `immutable`** (the keys are mutable; see
+   "Split the directives"), and **a Cache Rule, not a Transform Rule** (a
+   response-header transform runs after the cache lookup and would not move
+   edge TTL). Config-only in that form; doing it as S3 object metadata
+   instead is a code change plus a backfill, not config. Still independent
+   of everything above, with one caveat: (5)'s purge reaches only the PDF,
+   so the non-PDF keys get a short edge TTL until the purge set is extended.
+5. ✅ **Age-based TTL tiers (4)** in the retrieve view. Implemented
+   2026-09-17. Ships on its own —
    no frontend coordination required (see Scope). After (3) so it's safe.
    Also needs: `Cache-Tag: doc-{id}` on the response (6), the tiering rule
    from "Only cache what we can purge" (full table for the bare URL and

@@ -2,16 +2,87 @@
 
 # Django
 from django.conf import settings
+from django.utils import timezone
 
 # Standard Library
 import logging
 import uuid
+from datetime import timedelta
 
 # Third Party
 import boto3
 import requests
 
 logger = logging.getLogger(__name__)
+
+# Age-based TTL tiers for the document retrieve endpoint. Documents are edited
+# heavily just after upload and then, overwhelmingly, never again - so how long
+# ago a document was last modified is a good predictor of how long the next
+# edit is away, and therefore of how long a cached copy stays correct.
+#
+# Each entry is `(age_bound, max_age, s_maxage, stale_while_revalidate)`:
+#
+#   age_bound               Upper bound on "how long ago was this modified".
+#                           The first tier the age falls under wins; anything
+#                           older falls through to `OLDEST_CACHE_TIER`.
+#   max_age                 The `max-age` directive: how long a *browser* may
+#                           reuse its copy without revalidating. Deliberately
+#                           modest at every tier, because a purge clears the
+#                           CDN but cannot reach a browser that already holds
+#                           the response.
+#   s_maxage                The `s-maxage` directive: how long the *CDN* may
+#                           hold it. Safe to make long because
+#                           `invalidate_cache_batch` purges the document's
+#                           `doc-{id}` Cache-Tag on every edit, so the edge
+#                           copy never outlives the content.
+#   stale_while_revalidate  The `stale-while-revalidate` directive: how long
+#                           the CDN may keep serving a stale copy while it
+#                           refreshes in the background. `None` omits the
+#                           directive entirely.
+#
+# Kept in code rather than settings deliberately: a table of bands and TTLs
+# does not map onto env vars, and the tiering is a design decision worth
+# reviewing in a diff rather than retuning live.
+CACHE_TIERS = (
+    # under an hour old: 1 min browser, 5 min CDN.
+    (timedelta(hours=1), 60, 300, None),
+    # under a day: 5 min browser, 1 hour CDN.
+    (timedelta(days=1), 300, 3600, None),
+    # under 7 days: 1 hour browser, 1 day CDN, 1 hour stale window
+    (timedelta(days=7), 3600, 86400, 3600),
+    # under a year: 1 day browser, 30 days CDN, 1 day stale window
+    (timedelta(days=365), 86400, 2592000, 86400),
+)
+# 1 year or older: 1 day browser, 1 year CDN, 1 day stale window
+OLDEST_CACHE_TIER = (86400, 31536000, 86400)
+
+
+def tiered_cache_control(updated_at, now=None):
+    """`Cache-Control` for a public document last modified at `updated_at`.
+
+    Aggressive for documents nobody has touched in years, cautious for ones
+    edited minutes ago. The long end is only safe because an edit purges the
+    document's `doc-{id}` Cache-Tag - see `invalidate_cache_batch` - so a
+    30-day or 1-year edge copy never outlives the content it holds.
+
+    `now` is injectable for tests. A future `updated_at` (clock skew between
+    the app and the database) gives a negative age, which falls into the first
+    tier - the shortest - rather than through to the longest.
+    """
+    if now is None:
+        now = timezone.now()
+    age = now - updated_at
+
+    for bound, max_age, s_maxage, stale_while_revalidate in CACHE_TIERS:
+        if age < bound:
+            break
+    else:
+        max_age, s_maxage, stale_while_revalidate = OLDEST_CACHE_TIER
+
+    directives = ["public", f"max-age={max_age}", f"s-maxage={s_maxage}"]
+    if stale_while_revalidate is not None:
+        directives.append(f"stale-while-revalidate={stale_while_revalidate}")
+    return ", ".join(directives)
 
 
 class CloudflarePurgeError(requests.RequestException):
