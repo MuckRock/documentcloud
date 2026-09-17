@@ -62,6 +62,16 @@ class UserStatsViewSet(
             help_text="Return users who used AI credits within the last N days.",
         )
 
+        user_id = django_filters.NumberFilter(
+            field_name="user__id",
+            label="User ID (exact)",
+        )
+        username = django_filters.CharFilter(
+            field_name="user__username",
+            lookup_expr="iexact",
+            label="Username (exact, case-insensitive)",
+        )
+
         def filter_active_within_days(self, queryset, _name, value):
             days = int(value)
             if days < 0:
