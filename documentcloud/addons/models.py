@@ -411,6 +411,11 @@ class AddOnRun(models.Model):
         null=True,
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "-id"], name="addonrun_user_id_idx"),
+        ]
+
     def __str__(self):
         return f"Run: {self.addon_id} - {self.created_at}"
 
