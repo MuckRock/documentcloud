@@ -735,7 +735,10 @@ def process_pdf(data, _context=None):
         # delete it from storage
         # and raise PageCountError
         storage.delete(path.path(doc_id))
-        raise PageCountError()
+        raise PageCountError(
+            f"This document has {page_count} pages, which exceeds the "
+            f"{PAGE_COUNT_LIMIT}-page limit."
+        )
 
     initialize_redis_page_data(doc_id, page_count)
 
