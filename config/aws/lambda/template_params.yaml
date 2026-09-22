@@ -38,6 +38,7 @@ Globals:
         SIDEKICK_PREPROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
         RETRY_ERROR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/retry_errors/topic:latest}}"
         PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
+        PAGE_COUNT_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/page_count_limit:latest}}"
         BLOCK_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/block_size:latest}}"
         IMPORT_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_dir:latest}}"
         IMPORT_BUCKET: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_bucket:latest}}"
