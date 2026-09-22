@@ -91,7 +91,12 @@ OCR_BATCH = env.int("OCR_BATCH", 1)  # Number of pages to OCR with each function
 TEXT_POSITION_BATCH = env.int(
     "TEXT_POSITION_BATCH", 3
 )  # Number of pages to pull text positions from with each function
+
+# PDF upload size limit is 500MB
 PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
+# PDF page count limit
+PAGE_COUNT_LIMIT = env.int("PAGE_COUNT_LIMIT", 2000)
+
 BLOCK_SIZE = env.int(
     "BLOCK_SIZE", 8 * 1024 * 1024
 )  # Block size to use for reading chunks of the PDF
@@ -167,6 +172,10 @@ def millis():
 
 
 class PdfSizeError(Exception):
+    pass
+
+
+class PageCountError(Exception):
     pass
 
 
@@ -719,6 +728,15 @@ def process_pdf(data, _context=None):
 
     # Extract the page count and store it in Redis
     page_count = extract_pagecount(doc_id, slug)
+
+    # Ensure page count is within the limit
+    if page_count > PAGE_COUNT_LIMIT:
+        # If it is beyond the limit
+        # delete it from storage
+        # and raise PageCountError
+        storage.delete(path.path(doc_id))
+        raise PageCountError()
+
     initialize_redis_page_data(doc_id, page_count)
 
     # Update the model with the page count
