@@ -413,8 +413,8 @@ class AddOnRun(models.Model):
 
     class Meta:
         indexes = [
-            # CursorPagination defaults to pk, but the AddOnRunViewSet actually overrides to
-            # use -created_at.
+            # CursorPagination defaults to pk, but the AddOnRunViewSet
+            # actually overrides to use -created_at.
             models.Index(
                 fields=["user", "-created_at"], name="addonrun_user_created_idx"
             ),
