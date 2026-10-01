@@ -261,7 +261,12 @@ class Document(models.Model):
                 fields=["id"],
                 condition=Q(solr_dirty=True) & ~Q(status=Status.deleted),
                 name="solr_dirty",
-            )
+            ),
+            models.Index(
+                fields=["user"],
+                condition=Q(access=Access.public),
+                name="documents_user_public_idx",
+            ),
         ]
 
     def __str__(self):
