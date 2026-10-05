@@ -57,7 +57,7 @@ def fetch_file_url(file_url, document_pk, force_ocr, ocr_engine, auth=None):
         storage.fetch_url(file_url, document.original_path, document.access, auth)
     except RequestException as exc:
         if (
-            exc.response
+            exc.response is not None
             and exc.response.status_code >= 500
             and fetch_file_url.request.retries < fetch_file_url.max_retries
         ):

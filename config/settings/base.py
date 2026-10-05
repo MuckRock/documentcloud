@@ -718,3 +718,9 @@ GRAFT_DEBUG = env.bool("GRAFT_DEBUG", default=False)
 
 # STATS API
 UPLOAD_WINDOW_DAYS = env.int("UPLOAD_WINDOW_DAYS", default=90)
+
+# User agent for when DocumentCloud fetches documents by URL
+DOCUMENTCLOUD_FETCH_USER_AGENT = env(
+    "DOCUMENTCLOUD_FETCH_USER_AGENT",
+    default="DocumentCloud https://www.documentcloud.org/home/ info@documentcloud.org",
+)
