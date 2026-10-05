@@ -87,6 +87,7 @@ class TestFetchFileUrlTask:
         mocker.patch(
             "documentcloud.documents.tasks.storage.fetch_url",
             side_effect=_http_error(503),
+            create=True,
         )
         document = DocumentFactory()
 
@@ -102,6 +103,7 @@ class TestFetchFileUrlTask:
         mocker.patch(
             "documentcloud.documents.tasks.storage.fetch_url",
             side_effect=_http_error(503),
+            create=True,
         )
         mocker.patch.object(fetch_file_url, "max_retries", 0)
         document = DocumentFactory()
@@ -117,6 +119,7 @@ class TestFetchFileUrlTask:
         mocker.patch(
             "documentcloud.documents.tasks.storage.fetch_url",
             side_effect=_http_error(404),
+            create=True,
         )
         document = DocumentFactory()
 
