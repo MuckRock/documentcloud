@@ -201,8 +201,17 @@ class AwsStorage:
         return False
 
     def fetch_url(self, url, file_name, access, auth=None):
+        # Import django locally here instead of at the top because
+        # methods in this module are called from outside of Django as well.
+        # Django
+        from django.conf import settings
+
         with self.open(file_name, "wb", access=access) as out_file, requests.get(
-            url, stream=True, auth=auth, timeout=(10, 60)
+            url,
+            stream=True,
+            auth=auth,
+            headers={"User-Agent": settings.DOCUMENTCLOUD_FETCH_USER_AGENT},
+            timeout=(10, 60),
         ) as response:
             response.raise_for_status()
             for chunk in response.iter_content(chunk_size=10 * 1024 * 1024):

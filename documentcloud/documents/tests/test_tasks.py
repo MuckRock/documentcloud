@@ -3,11 +3,17 @@ from unittest.mock import patch
 
 # Third Party
 import pytest
+from requests import Response
+from requests.exceptions import HTTPError
 
 # DocumentCloud
 from documentcloud.documents.choices import Status
 from documentcloud.documents.models import Document
-from documentcloud.documents.tasks import invalidate_cache, set_page_text
+from documentcloud.documents.tasks import (
+    fetch_file_url,
+    invalidate_cache,
+    set_page_text,
+)
 from documentcloud.documents.tests.factories import DocumentFactory
 
 
@@ -63,6 +69,65 @@ class TestInvalidateCacheTask:
         document.refresh_from_db()
         assert document.cache_dirty is False
         assert document.updated_at == original_updated_at
+
+
+def _http_error(status_code):
+    """Build an HTTPError carrying a response with the given status code"""
+    response = Response()
+    response.status_code = status_code
+    return HTTPError(f"{status_code} Error", response=response)
+
+
+@pytest.mark.django_db()
+class TestFetchFileUrlTask:
+    """The `fetch_file_url` task retries 5xx errors and logs everything else."""
+
+    def test_5xx_is_retried(self, mocker):
+        """A 5xx response re-raises so celery's autoretry can retry it."""
+        mocker.patch(
+            "documentcloud.documents.tasks.storage.fetch_url",
+            side_effect=_http_error(503),
+            create=True,
+        )
+        document = DocumentFactory()
+
+        with pytest.raises(HTTPError):
+            fetch_file_url("https://example.com/doc.pdf", document.pk, False, "tess4")
+
+        document.refresh_from_db()
+        assert document.status != Status.error
+        assert not document.errors.exists()
+
+    def test_5xx_past_max_retries_is_logged(self, mocker):
+        """A 5xx response after the final retry marks the document as errored."""
+        mocker.patch(
+            "documentcloud.documents.tasks.storage.fetch_url",
+            side_effect=_http_error(503),
+            create=True,
+        )
+        mocker.patch.object(fetch_file_url, "max_retries", 0)
+        document = DocumentFactory()
+
+        fetch_file_url("https://example.com/doc.pdf", document.pk, False, "tess4")
+
+        document.refresh_from_db()
+        assert document.status == Status.error
+        assert document.errors.count() == 1
+
+    def test_4xx_is_not_retried(self, mocker):
+        """A 4xx response is logged immediately without retrying."""
+        mocker.patch(
+            "documentcloud.documents.tasks.storage.fetch_url",
+            side_effect=_http_error(404),
+            create=True,
+        )
+        document = DocumentFactory()
+
+        fetch_file_url("https://example.com/doc.pdf", document.pk, False, "tess4")
+
+        document.refresh_from_db()
+        assert document.status == Status.error
+        assert document.errors.count() == 1
 
 
 @pytest.mark.django_db
