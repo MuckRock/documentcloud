@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.urls import include, path
 from django.views import defaults as default_views
 from django.views.generic.base import RedirectView
@@ -140,6 +141,12 @@ urlpatterns = [
     path("mailgun/", mailgun, name="mailgun"),
     path("pages/", include("django.contrib.flatpages.urls")),
     path("robots.txt", include("robots.urls")),
+    path(
+        "favicon.ico",
+        RedirectView.as_view(
+            url=staticfiles_storage.url("images/favicons/favicon.ico")
+        ),
+    ),
     path("addons/dashboard/", dashboard, name="addon-dashboard"),
     path(
         "addons/dashboard/scraper/", scraper_dashboard, name="addon-scraper-dashboard"
