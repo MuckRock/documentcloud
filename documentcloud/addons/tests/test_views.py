@@ -1,4 +1,6 @@
 # Django
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 
@@ -18,6 +20,16 @@ from documentcloud.addons.tests.factories import (
 )
 from documentcloud.documents.choices import Access
 from documentcloud.users.tests.factories import UserFactory
+
+SCRATCH = {"seen": ["a", "b", "c"]}
+
+
+def selects_scratch(queries):
+    """Whether any captured query read the add-on event scratch column"""
+    for query in queries:
+        if '"addons_addonevent"."scratch"' in query["sql"]:
+            return True
+    return False
 
 
 @pytest.mark.django_db()
@@ -371,6 +383,33 @@ class TestAddOnRunAPI:
             assert response.status_code == status.HTTP_200_OK
             assert len(response.json()["results"]) == expected_count
 
+    @pytest.mark.parametrize("expand", ["event", "addon,event", "~all"])
+    def test_list_expand_event_omits_scratch(self, client, expand):
+        """Expanded events on listed runs neither return nor load scratch"""
+        user = UserFactory()
+        event = AddOnEventFactory(user=user, scratch=SCRATCH)
+        AddOnRunFactory(user=user, event=event)
+        client.force_authenticate(user=user)
+        with CaptureQueriesContext(connection) as context:
+            response = client.get("/api/addon_runs/", {"expand": expand})
+        assert response.status_code == status.HTTP_200_OK
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert "scratch" not in results[0]["event"]
+        assert not selects_scratch(context.captured_queries)
+
+    def test_retrieve_expand_event_omits_scratch(self, client):
+        """An expanded event on a single run neither returns nor loads scratch"""
+        user = UserFactory()
+        event = AddOnEventFactory(user=user, scratch=SCRATCH)
+        run = AddOnRunFactory(user=user, event=event)
+        client.force_authenticate(user=user)
+        with CaptureQueriesContext(connection) as context:
+            response = client.get(f"/api/addon_runs/{run.uuid}/", {"expand": "event"})
+        assert response.status_code == status.HTTP_200_OK
+        assert "scratch" not in response.json()["event"]
+        assert not selects_scratch(context.captured_queries)
+
 
 @pytest.mark.django_db()
 class TestAddOnEventAPI:
@@ -538,3 +577,41 @@ class TestAddOnEventAPI:
         response = client.get("/api/addon_events/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.json()["results"]) == 2
+
+    def test_list_omits_scratch(self, client):
+        """The events list neither returns nor loads scratch"""
+        user = UserFactory()
+        AddOnEventFactory(user=user, scratch=SCRATCH)
+        client.force_authenticate(user=user)
+        with CaptureQueriesContext(connection) as context:
+            response = client.get("/api/addon_events/")
+        assert response.status_code == status.HTTP_200_OK
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert "scratch" not in results[0]
+        assert not selects_scratch(context.captured_queries)
+
+    def test_retrieve_returns_scratch(self, client):
+        """The event detail endpoint is the only one that returns and loads scratch"""
+        event = AddOnEventFactory(scratch=SCRATCH)
+        client.force_authenticate(user=event.user)
+        with CaptureQueriesContext(connection) as context:
+            response = client.get(f"/api/addon_events/{event.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["scratch"] == SCRATCH
+        assert selects_scratch(context.captured_queries)
+
+    def test_list_query_count(self, client):
+        """Listing events must not run a query per event to load scratch"""
+        user = UserFactory()
+        client.force_authenticate(user=user)
+        AddOnEventFactory(user=user, scratch=SCRATCH)
+        client.get("/api/addon_events/")  # Warm up cache
+        with CaptureQueriesContext(connection) as context:
+            client.get("/api/addon_events/")
+        baseline = len(context.captured_queries)
+        AddOnEventFactory.create_batch(4, user=user, scratch=SCRATCH)
+        with CaptureQueriesContext(connection) as context:
+            response = client.get("/api/addon_events/")
+        assert len(response.json()["results"]) == 5
+        assert len(context.captured_queries) == baseline
