@@ -172,7 +172,10 @@ class AddOnRunSerializer(FlexFieldsModelSerializer):
         }
         expandable_fields = {
             "addon": ("documentcloud.addons.AddOnSerializer", {}),
-            "event": ("documentcloud.addons.AddOnEventSerializer", {}),
+            "event": (
+                "documentcloud.addons.AddOnEventSerializer",
+                {"omit": ["scratch"]},
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -244,7 +247,6 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
             "user",
             "parameters",
             "event",
-            "parameters",
             "scratch",
             "created_at",
             "updated_at",
@@ -262,5 +264,8 @@ class AddOnEventSerializer(FlexFieldsModelSerializer):
         super().__init__(*args, **kwargs)
         context = kwargs.get("context", {})
         request = context.get("request")
+        view = self.context.get("view")
         if request and request.user:
             self.fields["addon"].queryset = AddOn.objects.get_viewable(request.user)
+        if view and view.action == "list":
+            self.fields.pop("scratch", None)

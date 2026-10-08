@@ -737,7 +737,7 @@ class AddOnRunViewSet(FlexFieldsModelViewSet):
         if is_expanded(self.request, "addon"):
             queryset = queryset.select_related("addon", "addon__github_account")
         if is_expanded(self.request, "event"):
-            queryset = queryset.select_related("event")
+            queryset = queryset.select_related("event").defer("event__scratch")
         return queryset
 
     def perform_create(self, serializer):
@@ -849,7 +849,6 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                             "selector": "*",
                         },
                         "event": 0,
-                        "scratch": {"timestamp": "20230703130357"},
                         "created_at": "2023-07-03T01:02:09.025856Z",
                         "updated_at": "2023-07-15T06:20:35.502166Z",
                     },
@@ -862,7 +861,6 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
                             "selector": "*",
                         },
                         "event": 0,
-                        "scratch": {},
                         "created_at": "2023-07-03T02:14:13.954076Z",
                         "updated_at": "2023-07-03T04:02:16.471265Z",
                     },
@@ -1024,6 +1022,8 @@ class AddOnEventViewSet(FlexFieldsModelViewSet):
         queryset = AddOnEvent.objects.get_viewable(self.request.user).order_by("-pk")
         if is_expanded(self.request, "addon"):
             queryset = queryset.select_related("addon")
+        if self.action == "list":
+            queryset = queryset.defer("scratch")
         return queryset
 
     def perform_create(self, serializer):
