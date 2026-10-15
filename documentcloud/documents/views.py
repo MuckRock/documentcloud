@@ -1218,9 +1218,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document.index_on_commit(**kwargs)
 
     def _update_cache(self, document, old_processing):
-        """Invalidate the cache when finished processing a detructive operation"""
+        """Invalidate the cache when a dirty or public document finishes processing"""
         logger.info("[DOC UPDATE] update cache %s", document.pk)
-        if old_processing and not document.processing and document.cache_dirty:
+        if (
+            old_processing
+            and not document.processing
+            and (document.cache_dirty or document.public)
+        ):
             transaction.on_commit(lambda pk=document.pk: invalidate_cache.delay(pk))
 
     def _invalidate_edited_cache(self, instances, old_processings):

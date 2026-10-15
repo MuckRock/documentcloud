@@ -270,6 +270,8 @@ def update_access(document_pk, status, access, marker=None):
             # update the document status and re-index into solr
             Document.objects.filter(pk=document_pk).update(status=status, **kwargs)
             document.index_on_commit(field_updates=field_updates)
+            # otherwise an anonymous 404 cached since the request hides it
+            transaction.on_commit(lambda: invalidate_cache.delay(document_pk))
 
 
 @shared_task(
@@ -302,6 +304,9 @@ def set_page_text(document_pk, page_text_infos):
             document.save(update_fields=["status", "solr_dirty"])
             kwargs["field_updates"]["status"] = "set"
             document.index_on_commit(**kwargs)
+            # otherwise an anonymous 404 cached while pending hides it
+            if document.cache_dirty or document.public:
+                transaction.on_commit(lambda: invalidate_cache.delay(document_pk))
 
 
 # new solr
@@ -439,6 +444,9 @@ def invalidate_cache(*document_pks):
 def post_process(document_pk, modification_data):
     document = Document.objects.get(pk=document_pk)
     modifications.post_process(document, modification_data)
+    # otherwise an anonymous 404 cached while pending hides it
+    if document.cache_dirty or document.public:
+        transaction.on_commit(lambda: invalidate_cache.delay(document_pk))
 
 
 # notes

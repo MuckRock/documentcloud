@@ -1295,6 +1295,51 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.cache_dirty is True
 
+    def _finish_processing(self, client, document):
+        """Send the processing callback that marks a document as done"""
+        client.force_authenticate(user=None)
+        return client.patch(
+            f"/api/documents/{document.pk}/",
+            {"status": "success"},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+
+    def test_finish_processing_public_upload_purges(self, client, mocker):
+        """A public upload purges on completion without `cache_dirty`."""
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.tasks.invalidate_cache.delay"
+        )
+        document = DocumentFactory(access=Access.public, status=Status.pending)
+        assert document.cache_dirty is False
+
+        response = self._finish_processing(client, document)
+        run_commit_hooks()
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_finish_reprocessing_public_purges(self, client, mocker):
+        """Reprocessing hides a public document until it finishes."""
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.tasks.invalidate_cache.delay"
+        )
+        document = DocumentFactory(access=Access.public)
+        client.force_authenticate(user=document.user)
+        response = client.post(f"/api/documents/{document.pk}/process/")
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.status == Status.pending
+        assert document.cache_dirty is False
+
+        response = self._finish_processing(client, document)
+        run_commit_hooks()
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once_with(document.pk)
+
     def test_process(self, client, document, mocker):
         """Test processing a document"""
         # pretend the file exists
