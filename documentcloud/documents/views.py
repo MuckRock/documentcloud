@@ -44,7 +44,10 @@ from documentcloud.core.utils import (  # pylint:disable=unused-import
     ProcessingTokenAuthenticationScheme,
     record_uploads,
 )
-from documentcloud.documents.cache import tiered_cache_control
+from documentcloud.documents.cache import (
+    set_not_found_cache_control,
+    tiered_cache_control,
+)
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
@@ -678,6 +681,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         # `?expand=`/`Origin` variant at once - see `invalidate_cache_batch`
         response["Cache-Tag"] = instance.cache_tag
         self._set_retrieve_cache_control(request, response, last_modified)
+        return response
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if self.action == "retrieve":
+            set_not_found_cache_control(self.request, response, self.kwargs.get("pk"))
         return response
 
     def _set_retrieve_cache_control(self, request, response, last_modified):
@@ -1510,6 +1519,14 @@ class NoteViewSet(FlexFieldsModelViewSet):
     @extend_schema(tags=["document_notes"])
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if self.action == "list":
+            set_not_found_cache_control(
+                self.request, response, self.kwargs.get("document_pk")
+            )
+        return response
 
     @extend_schema(tags=["document_notes"])
     def create(self, request, *args, **kwargs):
