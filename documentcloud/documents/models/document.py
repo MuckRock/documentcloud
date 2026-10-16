@@ -267,6 +267,10 @@ class Document(models.Model):
                 condition=Q(access=Access.public),
                 name="documents_user_public_idx",
             ),
+            models.Index(
+                fields=["organization", "id"],
+                name="documents_org_id_idx",
+            ),
         ]
 
     def __str__(self):
