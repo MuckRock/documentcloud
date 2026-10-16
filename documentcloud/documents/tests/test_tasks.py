@@ -1,4 +1,9 @@
+# Django
+from django.test.utils import override_settings
+from django.utils import timezone
+
 # Standard Library
+from datetime import timedelta
 from unittest.mock import patch
 
 # Third Party
@@ -7,12 +12,16 @@ from requests import Response
 from requests.exceptions import HTTPError
 
 # DocumentCloud
-from documentcloud.documents.choices import Status
+from documentcloud.core.tests import run_commit_hooks
+from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.models import Document
 from documentcloud.documents.tasks import (
     fetch_file_url,
     invalidate_cache,
+    post_process,
+    publish_scheduled_documents,
     set_page_text,
+    update_access,
 )
 from documentcloud.documents.tests.factories import DocumentFactory
 
@@ -146,3 +155,73 @@ def test_set_page_text_does_not_clobber_data():
     doc.refresh_from_db()
     assert doc.data == {"_tag": "applied"}  # survives with the fix
     assert doc.status == Status.success
+
+
+@pytest.mark.django_db()
+class TestPurgeOnBecomingVisible:
+    """Becoming visible to anonymous users purges any cached 404."""
+
+    @pytest.fixture(autouse=True)
+    def mock_invalidate(self, mocker):
+        return mocker.patch("documentcloud.documents.tasks.invalidate_cache.delay")
+
+    @pytest.fixture()
+    def mock_storage(self, mocker):
+        return mocker.patch("documentcloud.documents.tasks.storage")
+
+    @override_settings(UPDATE_ACCESS_CHUNK_SIZE=2)
+    def test_update_access_final_chunk_purges(self, mock_storage, mock_invalidate):
+        """The final chunk is when `access` actually flips to public."""
+        document = DocumentFactory(access=Access.private, status=Status.readable)
+        mock_storage.list.return_value = ["a"]
+
+        update_access(document.pk, Status.success, Access.public)
+        run_commit_hooks()
+
+        document.refresh_from_db()
+        assert document.access == Access.public
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    @override_settings(UPDATE_ACCESS_CHUNK_SIZE=2)
+    def test_publish_scheduled_documents_purges(
+        self, mocker, mock_storage, mock_invalidate
+    ):
+        """Scheduled publishing purges once `update_access` finishes."""
+        mock_update_access = mocker.patch(
+            "documentcloud.documents.tasks.update_access.delay"
+        )
+        document = DocumentFactory(
+            access=Access.private,
+            status=Status.success,
+            publish_at=timezone.now() - timedelta(minutes=1),
+        )
+        mock_storage.list.return_value = ["a"]
+
+        publish_scheduled_documents()
+        run_commit_hooks()
+        mock_update_access.assert_called_once()
+        update_access(*mock_update_access.call_args[0])
+        run_commit_hooks()
+
+        document.refresh_from_db()
+        assert document.access == Access.public
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_set_page_text_public_purges(self, mock_invalidate):
+        """`set_page_text` moves a public upload out of `pending`."""
+        document = DocumentFactory(access=Access.public, status=Status.pending)
+
+        with patch.object(Document, "set_page_text", return_value={}):
+            set_page_text(document.pk, [{"page_number": 0, "text": "hi"}])
+        run_commit_hooks()
+
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_post_process_public_purges(self, mock_invalidate):
+        """Modifications finish here, outside the view's completion path."""
+        document = DocumentFactory(access=Access.public, status=Status.pending)
+
+        post_process(document.pk, {"modifications": [], "pagespec": ""})
+        run_commit_hooks()
+
+        mock_invalidate.assert_called_once_with(document.pk)

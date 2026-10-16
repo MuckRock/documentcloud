@@ -44,7 +44,10 @@ from documentcloud.core.utils import (  # pylint:disable=unused-import
     ProcessingTokenAuthenticationScheme,
     record_uploads,
 )
-from documentcloud.documents.cache import tiered_cache_control
+from documentcloud.documents.cache import (
+    set_not_found_cache_control,
+    tiered_cache_control,
+)
 from documentcloud.documents.choices import Access, EntityKind, OccurrenceKind, Status
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.decorators import (
@@ -680,6 +683,12 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         self._set_retrieve_cache_control(request, response, last_modified)
         return response
 
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if self.action == "retrieve":
+            set_not_found_cache_control(self.request, response, self.kwargs.get("pk"))
+        return response
+
     def _set_retrieve_cache_control(self, request, response, last_modified):
         """Set `Cache-Control` on a retrieve response, tiered by age.
 
@@ -1218,9 +1227,13 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         document.index_on_commit(**kwargs)
 
     def _update_cache(self, document, old_processing):
-        """Invalidate the cache when finished processing a detructive operation"""
+        """Invalidate the cache when a dirty or public document finishes processing"""
         logger.info("[DOC UPDATE] update cache %s", document.pk)
-        if old_processing and not document.processing and document.cache_dirty:
+        if (
+            old_processing
+            and not document.processing
+            and (document.cache_dirty or document.public)
+        ):
             transaction.on_commit(lambda pk=document.pk: invalidate_cache.delay(pk))
 
     def _invalidate_edited_cache(self, instances, old_processings):
@@ -1506,6 +1519,14 @@ class NoteViewSet(FlexFieldsModelViewSet):
     @extend_schema(tags=["document_notes"])
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if self.action == "list":
+            set_not_found_cache_control(
+                self.request, response, self.kwargs.get("document_pk")
+            )
+        return response
 
     @extend_schema(tags=["document_notes"])
     def create(self, request, *args, **kwargs):

@@ -568,6 +568,48 @@ class TestDocumentAPI:
         assert "max-age" not in directives
         assert "s-maxage" not in directives
 
+    @pytest.mark.parametrize(
+        "hidden",
+        [
+            {"access": Access.private},
+            {"access": Access.public, "status": Status.pending},
+            "missing",
+        ],
+        ids=["private", "processing", "missing"],
+    )
+    def test_retrieve_anonymous_not_found_is_cacheable(self, client, hidden):
+        """The CDN may hold an anonymous 404, tagged so a purge clears it."""
+        if hidden == "missing":
+            pk = DocumentFactory().pk + 1
+        else:
+            pk = DocumentFactory(**hidden).pk
+        response = client.get(f"/api/documents/{pk}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        directives = self._directives(response)
+        assert directives["public"] is True
+        assert directives["max-age"] == "0"
+        assert directives["s-maxage"] == str(settings.CACHE_CONTROL_NOT_FOUND_MAX_AGE)
+        assert response["Cache-Tag"] == f"doc-{pk}"
+
+    @pytest.mark.parametrize(
+        "token", [None, {"permissions": []}], ids=["session", "token"]
+    )
+    def test_retrieve_authenticated_not_found_stays_private(self, client, token):
+        """A cached 404 must never reach a user who could see the document."""
+        document = DocumentFactory(access=Access.private)
+        client.force_authenticate(user=UserFactory(), token=token)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert "public" not in self._directives(response)
+        assert "Cache-Tag" not in response
+
+    @override_settings(CACHE_CONTROL_NOT_FOUND_MAX_AGE=42)
+    def test_retrieve_anonymous_not_found_uses_setting(self, client):
+        """The 404 TTL is tunable without a deploy."""
+        document = DocumentFactory(access=Access.private)
+        response = client.get(f"/api/documents/{document.pk}/")
+        assert self._directives(response)["s-maxage"] == "42"
+
     def test_retrieve_not_modified_cache_control(self, client, document):
         """The 304 branch carries the tier too. Without it a conditional hit
         would fall back to whatever default the dispatch decorator applies,
@@ -1295,6 +1337,51 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.cache_dirty is True
 
+    def _finish_processing(self, client, document):
+        """Send the processing callback that marks a document as done"""
+        client.force_authenticate(user=None)
+        return client.patch(
+            f"/api/documents/{document.pk}/",
+            {"status": "success"},
+            HTTP_AUTHORIZATION=f"processing-token {settings.PROCESSING_TOKEN}",
+        )
+
+    def test_finish_processing_public_upload_purges(self, client, mocker):
+        """A public upload purges on completion without `cache_dirty`."""
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.tasks.invalidate_cache.delay"
+        )
+        document = DocumentFactory(access=Access.public, status=Status.pending)
+        assert document.cache_dirty is False
+
+        response = self._finish_processing(client, document)
+        run_commit_hooks()
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once_with(document.pk)
+
+    def test_finish_reprocessing_public_purges(self, client, mocker):
+        """Reprocessing hides a public document until it finishes."""
+        mocker.patch(
+            "documentcloud.common.environment.storage.exists", return_value=True
+        )
+        mock_invalidate = mocker.patch(
+            "documentcloud.documents.tasks.invalidate_cache.delay"
+        )
+        document = DocumentFactory(access=Access.public)
+        client.force_authenticate(user=document.user)
+        response = client.post(f"/api/documents/{document.pk}/process/")
+        assert response.status_code == status.HTTP_200_OK
+        document.refresh_from_db()
+        assert document.status == Status.pending
+        assert document.cache_dirty is False
+
+        response = self._finish_processing(client, document)
+        run_commit_hooks()
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_invalidate.assert_called_once_with(document.pk)
+
     def test_process(self, client, document, mocker):
         """Test processing a document"""
         # pretend the file exists
@@ -1652,6 +1739,27 @@ class TestNoteAPI:
         assert response.status_code == status.HTTP_200_OK
         response_json = response.json()
         assert len(response_json["results"]) == size
+
+    def test_list_anonymous_not_found_is_cacheable(self, client):
+        """The CDN may hold an anonymous 404, tagged with the document's id."""
+        document = DocumentFactory(access=Access.private)
+        response = client.get(f"/api/documents/{document.pk}/notes/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert "public" in response["Cache-Control"]
+        assert "max-age=0" in response["Cache-Control"]
+        assert response["Cache-Tag"] == f"doc-{document.pk}"
+
+    @pytest.mark.parametrize(
+        "token", [None, {"permissions": []}], ids=["session", "token"]
+    )
+    def test_list_authenticated_not_found_stays_private(self, client, token):
+        """A cached 404 must never reach a user who could see the document."""
+        document = DocumentFactory(access=Access.private)
+        client.force_authenticate(user=UserFactory(), token=token)
+        response = client.get(f"/api/documents/{document.pk}/notes/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert "public" not in response["Cache-Control"]
+        assert "Cache-Tag" not in response
 
     @pytest.mark.parametrize("expand", ["", "~all", "user.organization,organization"])
     @override_settings(DEBUG=True)
