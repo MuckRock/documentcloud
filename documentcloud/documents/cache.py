@@ -85,6 +85,35 @@ def tiered_cache_control(updated_at, now=None):
     return ", ".join(directives)
 
 
+def cache_tag(document_pk):
+    """The Cloudflare Cache-Tag for a document's cached API responses."""
+    return f"doc-{document_pk}"
+
+
+def set_not_found_cache_control(request, response, document_pk):
+    """Let the CDN briefly hold an anonymous 404 for a document.
+
+    Leaves anything other than an anonymous GET/HEAD 404 for an integer id
+    untouched. `max-age=0` because a purge cannot reach a browser's copy.
+    """
+    has_auth_token = getattr(request, "auth", None) is not None
+    if (
+        response.status_code != 404
+        or request.method not in ("GET", "HEAD")
+        or has_auth_token
+        or request.user.is_authenticated
+    ):
+        return
+    try:
+        document_pk = int(document_pk)
+    except (TypeError, ValueError):
+        return
+    response["Cache-Control"] = (
+        f"public, max-age=0, s-maxage={settings.CACHE_CONTROL_NOT_FOUND_MAX_AGE}"
+    )
+    response["Cache-Tag"] = cache_tag(document_pk)
+
+
 class CloudflarePurgeError(requests.RequestException):
     """A Cloudflare purge request was rejected.
 

@@ -5,6 +5,7 @@ from django.db import transaction
 # DocumentCloud
 from documentcloud.core.pagination import LargeTablePaginator
 from documentcloud.documents.models import Document
+from documentcloud.documents.tasks import invalidate_cache
 
 
 @admin.register(Document)
@@ -65,6 +66,8 @@ class DocumentAdmin(admin.ModelAdmin):
             field_updates.pop("admin_noindex")
             field_updates["noindex"] = "set"
         obj.index_on_commit(field_updates=field_updates)
+        # admin can change `access` directly, bypassing `update_access`
+        transaction.on_commit(lambda: invalidate_cache.delay(obj.pk))
 
     def delete_model(self, request, obj):
         obj.destroy()

@@ -25,6 +25,7 @@ from documentcloud.common.utils import graft_page
 from documentcloud.core.choices import Language
 from documentcloud.core.fields import AutoCreatedField, AutoLastModifiedField
 from documentcloud.core.utils import format_date, slugify
+from documentcloud.documents.cache import cache_tag
 from documentcloud.documents.choices import Access, Status
 from documentcloud.documents.querysets import DocumentQuerySet
 
@@ -726,7 +727,7 @@ class Document(models.Model):
         every `?expand=…` / per-`Origin` variant at once - the key spaces a
         URL purge can't enumerate.
         """
-        return f"doc-{self.pk}"
+        return cache_tag(self.pk)
 
     def index_on_commit(self, **kwargs):
         """Index the document in Solr on tranasction commit"""

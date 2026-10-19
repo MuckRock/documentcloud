@@ -592,6 +592,10 @@ OEMBED_PROVIDER_URL = env("OEMBED_PROVIDER_URL", default=DOCCLOUD_URL)
 OEMBED_CACHE_AGE = env.int("OEMBED_CACHE_AGE", default=300)
 
 CACHE_CONTROL_MAX_AGE = env.int("CACHE_CONTROL_MAX_AGE", default=300)
+# CDN TTL for anonymous document 404s; 0 disables caching them
+CACHE_CONTROL_NOT_FOUND_MAX_AGE = env.int(
+    "CACHE_CONTROL_NOT_FOUND_MAX_AGE", default=300
+)
 
 OEMBED_URL_REGEX = env("OEMBED_URL_REGEX", default="")
 
