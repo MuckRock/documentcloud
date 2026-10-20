@@ -53,7 +53,7 @@ celery==5.4.0
     # via
     #   -r requirements/base.in
     #   squarelet-auth
-certifi==2026.2.25
+certifi==2026.10.19
     # via requests
 cffi==2.0.0
     # via
@@ -274,7 +274,6 @@ luqum==0.8.1
     # via -r requirements/base.in
 lxml==6.1.1
     # via
-    #   -r requirements/base.in
     #   pikepdf
     #   premailer
 markdown==3.8.1

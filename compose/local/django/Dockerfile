@@ -13,7 +13,8 @@ RUN apt-get -qq -y update && \
   # LibreOffice dependencies
   libnss3-dev libcurl4-openssl-dev libxslt1-dev libpixman-1-0 libxcb-render0-dev \
   # Utilities
-  curl git
+  curl git ca-certificates
+
 
 # set up makecert root CA
 RUN curl http://localhost/rootCA.pem > /usr/local/share/ca-certificates/rootCA.crt && update-ca-certificates
@@ -21,7 +22,7 @@ RUN curl http://localhost/rootCA.pem > /usr/local/share/ca-certificates/rootCA.c
 # Requirements are installed here to ensure they will be cached.
 COPY ./requirements /requirements
 
-RUN pip install --upgrade "pip>=26,<27" && pip install -r /requirements/local.txt
+RUN python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" && pip install -r /requirements/local.txt
 
 COPY ./compose/production/django/entrypoint /entrypoint
 RUN sed -i 's/\r//' /entrypoint && chmod +x /entrypoint
