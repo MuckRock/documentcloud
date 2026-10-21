@@ -10,8 +10,22 @@ events {
 
 http {
 
-    map_hash_bucket_size <%= ENV.fetch("NGINX_HASH_BUCKET_SIZE", 64) %>;
+    <% cors_preflight = <<~'NGINX'
+         # Answer CORS preflights directly from nginx
+         if ($request_method = 'OPTIONS' ) {
+             add_header "Access-Control-Allow-Origin" $cors_origin_header always;
+             add_header "Access-Control-Allow-Credentials" $cors_cred;
+             add_header "Access-Control-Allow-Methods" $cors_methods;
+             add_header "Access-Control-Allow-Headers" $cors_headers;
+             add_header 'Access-Control-Max-Age' $cors_max_age;
+             add_header Content-Length 0;
+             add_header Content-Type text/plain;
+             return 204;
+         }
+    NGINX
+    %>
 
+    map_hash_bucket_size <%= ENV.fetch("NGINX_HASH_BUCKET_SIZE", 64) %>;
     gzip on;
     gzip_http_version 1.0;
     gzip_comp_level 5;
@@ -81,7 +95,7 @@ http {
     }
 
     limit_req_zone $limit_key zone=one:10m rate=10r/s;
-
+    limit_req_status 429;
     log_format l2met 'measure#nginx.service=$request_time request_id=$http_x_request_id';
     log_format compression '$remote_addr - $remote_user [$time_local] '
                            '"$request" $status $bytes_sent '
@@ -192,18 +206,17 @@ http {
             rewrite ^(.*) $scheme://$host$1 permanent;
         }
 
+        location /api/addon_events/ {
+            client_max_body_size <%= ENV.fetch("ADDON_EVENT_MAX_BODY_MB", 25) %>m;
+            <%= cors_preflight %>
+
+            proxy_redirect off;
+            proxy_pass http://app_server;
+        }
+
         location / {
 
-            if ($request_method = 'OPTIONS' ) {
-                add_header "Access-Control-Allow-Origin" $cors_origin_header always;
-                add_header "Access-Control-Allow-Credentials" $cors_cred;
-                add_header "Access-Control-Allow-Methods" $cors_methods;
-                add_header "Access-Control-Allow-Headers" $cors_headers;
-                add_header 'Access-Control-Max-Age' $cors_max_age;
-                add_header Content-Length 0;
-                add_header Content-Type text/plain;
-                return 204;
-            }
+            <%= cors_preflight %>
 
             proxy_redirect off;
             proxy_pass http://app_server;
