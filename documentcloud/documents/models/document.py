@@ -272,6 +272,10 @@ class Document(models.Model):
                 fields=["organization", "id"],
                 name="documents_org_id_idx",
             ),
+            models.Index(
+                fields=["user", "id"],
+                name="documents_user_id_idx",
+            ),
         ]
 
     def __str__(self):
