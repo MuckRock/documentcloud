@@ -85,17 +85,14 @@ returned by the API, as random access is not available.  This system also
 restricts arbitrary ordering of the results, except for the document search
 route, which will still allow re-ordering with cursor based pagination.
 
-If the cursor based pagination breaks your workflow, you may continue to use
-the old page-offset based pagination system for now.  In the future, this will
-be disabled completely, and you will be forced to use the cursor based
-pagination.  To use the page-offset based pagination, which also has a top
-level `count` key with a total count of the objects returned for all list
-queries, add a `version=1.0` query parameter to your API queries.  Be aware
-that this will make your queries less performant, possibly to the point of them
-being unusable.  This should only be used as a stop-gap solution while you
-update your workflow to use the new cursor based pagination.  Please reach out
-to [info@documentcloud.org](mailto:info@documentcloud.org) if you need
-assistance moving to the new version.
+The page-offset based pagination system, previously available by adding a
+`version=1.0` query parameter, has been removed. Requests that include
+`version=1.0` will now return a 404. All list routes use cursor based
+pagination; use the `next` and `previous` links returned by the API to page
+through results. Please reach out to
+[info@documentcloud.org](mailto:info@documentcloud.org) if you need assistance
+moving to cursor based pagination.
+
 
 ### Sub Resources
 

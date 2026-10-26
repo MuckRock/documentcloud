@@ -1334,8 +1334,10 @@ class DocumentViewSet(BulkModelMixin, FlexFieldsModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except ValueError as exc:
+            # luqum's ParseError subclasses ValueError
+            # so malformed filter values land here
             return Response(
-                {"error": exc.args[0], "code": "max_page"},
+                {"error": exc.args[0], "code": "invalid_query"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         else:

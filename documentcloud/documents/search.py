@@ -3,7 +3,6 @@ from django.conf import settings
 from django.http.request import QueryDict
 
 # Standard Library
-import math
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -15,7 +14,7 @@ from luqum.tree import BaseOperation, Boost, Group, Not, Prohibit, Range, Unary,
 from luqum.utils import LuceneTreeTransformer, LuceneTreeVisitor
 
 # DocumentCloud
-from documentcloud.core.pagination import CursorPagination, PageNumberPagination
+from documentcloud.core.pagination import CursorPagination
 from documentcloud.documents.constants import DATA_KEY_REGEX
 from documentcloud.documents.models import Document
 from documentcloud.documents.search_escape import escape
@@ -118,7 +117,7 @@ def search(user, query_params):
     else:
         sort = SORT_MAP.get(sort_param, SORT_MAP["score"])
 
-    page_query_data, page_response_data = _paginate(query_params, user)
+    page_query_data = _paginate_cursor(query_params, user)
 
     # allow explicit enabling of highlighting
     if query_params.get("hl", "").lower() == "true" and settings.SOLR_USE_HL:
@@ -167,9 +166,7 @@ def search(user, query_params):
         )
 
     results = SOLR.search(text_query, **kwargs)
-    response = _format_response(
-        results, query_params, user, escaped, page_response_data
-    )
+    response = _format_response(results, query_params, user, escaped)
     if use_hl and query_notes:
         response = _highlight_notes(response, original_text_query)
 
@@ -549,19 +546,6 @@ def _access_filter(user):
         return ["filter(access:public AND status:(success readable) AND !noindex:true)"]
 
 
-def _paginate(query_params, user):  # pylint: disable=inconsistent-return-statements
-    """Emulate the Django Rest Framework pagination style"""
-    version = query_params.get("version", settings.REST_FRAMEWORK["DEFAULT_VERSION"])
-
-    if version not in ["1.0", "2.0"]:
-        version = settings.REST_FRAMEWORK["DEFAULT_VERSION"]
-
-    if version == "1.0":
-        return _paginate_page(query_params, user)
-    elif version == "2.0":
-        return _paginate_cursor(query_params, user)
-
-
 def _get_int(query_params, field, default, max_value=None, min_value=None):
     """Helper function to convert a parameter to an integer"""
     try:
@@ -573,31 +557,6 @@ def _get_int(query_params, field, default, max_value=None, min_value=None):
         return value
     except ValueError:
         return default
-
-
-def _paginate_page(query_params, user):
-    """Emulate the Django Rest Framework page number pagination style"""
-
-    if user.is_authenticated:
-        max_page_size = PageNumberPagination.max_page_size
-        max_page = PageNumberPagination.auth_page_limit
-    else:
-        max_page_size = settings.SOLR_ANON_MAX_ROWS
-        max_page = PageNumberPagination.anon_page_limit
-
-    rows = _get_int(
-        query_params,
-        PageNumberPagination.page_size_query_param,
-        PageNumberPagination.page_size,
-        max_value=max_page_size,
-    )
-    page = _get_int(query_params, PageNumberPagination.page_query_param, 1, min_value=1)
-    if page > max_page:
-        raise ValueError(
-            f"The selected `page` value of {page} is over the limit of {max_page}"
-        )
-    start = (page - 1) * rows
-    return {"rows": rows, "start": start}, {"page": page, "rows": rows}
 
 
 def _paginate_cursor(query_params, user):
@@ -616,36 +575,20 @@ def _paginate_cursor(query_params, user):
         CursorPagination.page_size,
         max_value=max_page_size,
     )
-    return {"rows": rows, "cursorMark": cursor}, {}
+    return {"rows": rows, "cursorMark": cursor}
 
 
-def _format_response(results, query_params, user, escaped, page_data):
+def _format_response(results, query_params, user, escaped):
     """Emulate the Django Rest Framework response format"""
     base_url = f"{settings.DOCCLOUD_API_URL}/api/documents/search/"
     query_params = query_params.copy()
 
-    if "page" in page_data:
-        page = page_data["page"]
-        per_page = page_data["rows"]
-        max_page = math.ceil(results.hits / per_page)
-        if page < max_page:
-            query_params["page"] = page + 1
-            next_url = f"{base_url}?{query_params.urlencode()}"
-        else:
-            next_url = None
-
-        if page > 1:
-            query_params["page"] = page - 1
-            previous_url = f"{base_url}?{query_params.urlencode()}"
-        else:
-            previous_url = None
+    if query_params.get("cursor", "*") == results.nextCursorMark:
+        next_url = None
     else:
-        if query_params.get("cursor", "*") == results.nextCursorMark:
-            next_url = None
-        else:
-            query_params["cursor"] = results.nextCursorMark
-            next_url = f"{base_url}?{query_params.urlencode()}"
-        previous_url = None
+        query_params["cursor"] = results.nextCursorMark
+        next_url = f"{base_url}?{query_params.urlencode()}"
+    previous_url = None
 
     expands = query_params.get("expand", "").split(",")
     count = results.hits
