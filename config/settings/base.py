@@ -446,6 +446,7 @@ SPECTACULAR_SETTINGS = {
         "drf_spectacular.hooks.postprocess_schema_enums",
         "documentcloud.core.utils.hide_processing_token",
     ],
+    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2",
 }
 
 AUTH_PAGE_LIMIT = env.int("AUTH_PAGE_LIMIT", default=1000)
