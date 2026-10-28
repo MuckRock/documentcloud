@@ -278,7 +278,7 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
         if not self.instance and project.collaborators.filter(pk=user.pk).exists():
             raise serializers.ValidationError(
                 {
-                    "user": f"You may not add user {user.pk} as a collaborator "
+                    "user": f"You may not add user {user.name} as a collaborator "
                     "more than once"
                 }
             )
