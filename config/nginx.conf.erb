@@ -11,7 +11,6 @@ events {
 http {
 
     map_hash_bucket_size <%= ENV.fetch("NGINX_HASH_BUCKET_SIZE", 64) %>;
-
     gzip on;
     gzip_http_version 1.0;
     gzip_comp_level 5;
@@ -81,7 +80,7 @@ http {
     }
 
     limit_req_zone $limit_key zone=one:10m rate=10r/s;
-
+    limit_req_status 429;
     log_format l2met 'measure#nginx.service=$request_time request_id=$http_x_request_id';
     log_format compression '$remote_addr - $remote_user [$time_local] '
                            '"$request" $status $bytes_sent '
@@ -95,7 +94,8 @@ http {
 
     #Must read the body in 5 seconds.
     client_body_timeout 5;
-    client_max_body_size 4G;
+    # Uploads go direct to S3 and Mailgun attachments are fetched by URL; 25MB covers GitHub webhooks
+    client_max_body_size <%= ENV.fetch("NGINX_MAX_BODY_MB", 25) %>m;
 
     upstream app_server {
         server unix:/tmp/nginx.socket fail_timeout=0;
@@ -182,18 +182,46 @@ http {
         <% end %>
     }
 
+    # Headers for nginx's own 429s only; responses from Django set their own
+    map "$upstream_status:$status" $retry_after {
+        default "";
+        ":429" 1;
+    }
+
+    map "$upstream_status:$status" $limit_cors_origin {
+        default "";
+        ":429" $cors_origin_header;
+    }
+
+    map "$upstream_status:$status" $limit_cors_cred {
+        default "";
+        ":429" $cors_cred;
+    }
+
+    map "$upstream_status:$status" $limit_cors_expose {
+        default "";
+        ":429" "Retry-After";
+    }
+
     server {
 
         listen <%= ENV["PORT"] %>;
         server_name _;
-        keepalive_timeout 5;
+        keepalive_timeout 95;
         limit_req zone=one burst=20 nodelay;
+
+        add_header Retry-After $retry_after always;
+        add_header Access-Control-Allow-Origin $limit_cors_origin always;
+        add_header Access-Control-Allow-Credentials $limit_cors_cred always;
+        add_header Access-Control-Expose-Headers $limit_cors_expose always;
+
         if ($http_host ~ "\.$" ){
             rewrite ^(.*) $scheme://$host$1 permanent;
         }
 
         location / {
 
+            # Answer CORS preflights directly from nginx
             if ($request_method = 'OPTIONS' ) {
                 add_header "Access-Control-Allow-Origin" $cors_origin_header always;
                 add_header "Access-Control-Allow-Credentials" $cors_cred;
