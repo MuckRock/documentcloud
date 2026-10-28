@@ -673,14 +673,43 @@ class TestCollaborationAPI:
         assert num_queries == len(connection.queries)
         assert len(response.json()["results"]) == size + small_size + 1
 
-    def test_create(self, client, project, user):
-        """Add a user to a project"""
+    def test_create_user(self, client, project, user):
+        """Add a user to a project by id"""
+        client.force_authenticate(user=project.user)
+        response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert project.collaborators.filter(pk=user.pk).exists()
+
+    def test_create_email(self, client, project, user):
+        """Add a user to a project by email"""
         client.force_authenticate(user=project.user)
         response = client.post(
             f"/api/projects/{project.pk}/users/", {"email": user.email}
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert project.collaborators.filter(pk=user.pk).exists()
+
+    def test_create_bad_user(self, client, project):
+        """Trying adding a user ID that does not exist"""
+        client.force_authenticate(user=project.user)
+        response = client.post(f"/api/projects/{project.pk}/users/", {"user": 0})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_mismatch(self, client, project, user):
+        """User ID and email must match if both are given"""
+        other_user = UserFactory()
+        client.force_authenticate(user=project.user)
+        response = client.post(
+            f"/api/projects/{project.pk}/users/",
+            {"user": user.pk, "email": other_user.email},
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_bad_missing(self, client, project):
+        """Must specify a user ID or email"""
+        client.force_authenticate(user=project.user)
+        response = client.post(f"/api/projects/{project.pk}/users/", {"access": "view"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_create_bad_collaborator(self, client, project, user):
         """You may not add a collaborator to a project you are not a collaborator on"""

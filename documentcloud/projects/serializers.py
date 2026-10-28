@@ -189,13 +189,25 @@ class ProjectMembershipSerializer(FlexFieldsModelSerializer):
 
 
 class CollaborationSerializer(FlexFieldsModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        label=_("User"),
+        queryset=User.objects.all(),
+        required=False,
+        help_text=_(
+            "The ID of the user you wish to add as a collaborator. "
+            "Either this or `email` is required on creation."
+        ),
+    )
     email = serializers.SlugRelatedField(
         label=_("Email"),
-        source="user",
         slug_field="email",
         write_only=True,
+        required=False,
         queryset=User.objects.all(),
-        help_text=_("The email address of the user you wish to add as a collaborator"),
+        help_text=_(
+            "The email address of the user you wish to add as a collaborator. "
+            "Either this or `user` is required on creation."
+        ),
         error_messages={
             **serializers.SlugRelatedField.default_error_messages,
             "does_not_exist": _(
@@ -217,7 +229,6 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = Collaboration
         fields = ["user", "email", "access"]
-        extra_kwargs = {"user": {"read_only": True}}
         expandable_fields = {"user": ("documentcloud.users.UserSerializer", {})}
 
     def validate_access(self, value):
@@ -239,20 +250,38 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
 
         return value
 
-    def validate_email(self, value):
+    def validate(self, attrs):
+        """The user may be specified by either ID or email"""
+        email_user = attrs.pop("email", None)
+        user = attrs.get("user")
+        if user and email_user and user != email_user:
+            raise serializers.ValidationError(
+                "`user` and `email` must refer to the same user"
+            )
+        user = user or email_user
+
+        if user is None:
+            if not self.instance:
+                raise serializers.ValidationError(
+                    {"user": "You must specify either `user` or `email`"}
+                )
+            return attrs
+
         view = self.context.get("view")
         project = Project.objects.get(pk=view.kwargs["project_pk"])
 
-        # on updates check that email does not change
-        if self.instance and self.instance.user != value:
-            raise serializers.ValidationError("You may not update `email`")
+        # on updates check that user does not change
+        if self.instance and self.instance.user != user:
+            raise serializers.ValidationError({"user": "You may not update `user`"})
 
         # check for duplicates on creation (instance is none implies creation)
-        if (
-            not self.instance
-            and project.collaborators.filter(email=value.email).exists()
-        ):
+        if not self.instance and project.collaborators.filter(pk=user.pk).exists():
             raise serializers.ValidationError(
-                f"You may not add user {value.email} as a collaborator more than once"
+                {
+                    "user": f"You may not add user {user.pk} as a collaborator "
+                    "more than once"
+                }
             )
-        return value
+
+        attrs["user"] = user
+        return attrs
