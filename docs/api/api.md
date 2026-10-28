@@ -683,7 +683,7 @@ Documents](#sharing-documents)
 | ------ | ------- | --------------- | ----------------------------------------------------------------- |
 | access | String  | Default: `view` | The [access level](#sharing-documents) for this collaborator      |
 | email  | Email   | Create Only     | Email address of user to add as a collaborator to this project    |
-| user   | Integer | Read Only       | The ID for the [user](#user) who is collaborating on this project |
+| user   | Integer | Read and Create | The ID for the [user](#user) who is collaborating on this project |
 
 [Expandable fields](#expandable-fields): user
 
@@ -691,8 +691,8 @@ Documents](#sharing-documents)
 
 - `GET /api/projects/<project_id>/users/` - List collaborators on the project
 - `POST /api/projects/<project_id>/users/` - Add a collaborator to the project
-  &mdash; you must know the email address of a user with a DocumentCloud
-  account in order to add them as a collaborator on your project
+  &mdash; you must know either the ID or the email address of a user with a
+  DocumentCloud account in order to add them as a collaborator on your project
 - `GET /api/projects/<project_id>/users/<user_id>/` - Get a collaborator in the project
 - `PUT /api/projects/<project_id>/users/<user_id>/` - Update collaborator in the project
 - `PATCH /api/projects/<project_id>/users/<user_id>/` - Partial update collaborator in the project
