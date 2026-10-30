@@ -7,6 +7,7 @@ import math
 import re
 from collections import defaultdict
 from datetime import datetime
+from decimal import InvalidOperation
 
 # Third Party
 import pysolr
@@ -454,7 +455,8 @@ def _parse(text_query, query_params, user):
         try:
             tree = _parse_tree(text_query)
             escaped = False
-        except (ParseError, TypeError):
+        except (ParseError, TypeError, InvalidOperation):
+            # InvalidOperation is luqum failing to read a boost or fuzzy number
             tree = parser.parse(escape(text_query))
             escaped = True
 
