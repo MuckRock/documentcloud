@@ -707,6 +707,9 @@ class TestParse:
             ("foo^50", "", "foo^50", "", None, False, False),
             ('"a" AND "b"^100', "", '"a" AND "b"^100', "", None, False, False),
             ("foo~10", "", "foo~10", "", None, False, False),
+            ("foo^1.2.3", "", "foo\\^1.2.3", "", None, True, False),
+            ("foo^.", "", "foo\\^.", "", None, True, False),
+            ("foo~1.2.3", "", "foo\\~1.2.3", "", None, True, False),
         ],
     )
     def test_auth_parse(
