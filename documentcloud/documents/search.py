@@ -393,12 +393,13 @@ class NoteExtractor(LuceneTreeTransformer):
 
     def visit(self, node, parents=None):
         new_node = super().visit(node, parents)
-        if (
-            isinstance(new_node, (Group, BaseOperation, Unary))
-            and not any(node.children)
-            and parents
+        if isinstance(new_node, (Group, BaseOperation, Unary)) and not any(
+            node.children
         ):
-            self.replace_node(new_node, None, parents[-1])
+            # an emptied root must also be dropped, or it serializes to an
+            # empty or "(None)" query which Solr cannot parse
+            if parents:
+                self.replace_node(new_node, None, parents[-1])
             return None
         return new_node
 

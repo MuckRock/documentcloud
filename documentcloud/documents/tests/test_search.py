@@ -466,6 +466,13 @@ class TestSearch:
         response = self.search('q="delta"', user=1)
         assert len(response["results"]) == 1
 
+    def test_search_notes_highlight_only_fields(self):
+        """A boolean query of only search fields leaves no text to search notes for"""
+
+        response = self.search("q=id:1 AND access:public&hl=true", user=2)
+        assert [d["id"] for d in response["results"]] == ["1"]
+        assert response["results"][0]["notes"]
+
 
 class TestBooleanDetector:
     @pytest.mark.parametrize(
@@ -650,6 +657,10 @@ class TestExtractNoteQuery:
         [
             ('"a" AND "b"^50', '"a" AND "b"^50'),
             ("foo~10", "foo~10"),
+            ("user:1 AND tag:a", None),
+            ('user:1 AND +data__tag:"a"', None),
+            ("(user:1 AND tag:a)", None),
+            ("(user:1) OR (tag:a)", None),
         ],
     )
     def test_extract_note_query(self, query, note_query):
