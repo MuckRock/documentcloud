@@ -393,7 +393,7 @@ class NoteExtractor(LuceneTreeTransformer):
 
     def visit(self, node, parents=None):
         new_node = super().visit(node, parents)
-        if isinstance(new_node, (Group, BaseOperation, Unary)) and not any(
+        if isinstance(new_node, (Boost, Group, BaseOperation, Unary)) and not any(
             node.children
         ):
             # an emptied root must also be dropped, or it serializes to an
