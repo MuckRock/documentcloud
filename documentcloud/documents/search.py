@@ -777,7 +777,7 @@ def _highlight_notes(response, text_query):
     note_query = _extract_note_query(text_query)
     if note_query is None:
         return response
-    query = f"title:{note_query} description:{note_query}"
+    query = f"title:({note_query}) description:({note_query})"
 
     kwargs = {
         "fq": fq_,
