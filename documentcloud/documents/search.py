@@ -6,6 +6,7 @@ from django.http.request import QueryDict
 import math
 import re
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime
 from decimal import InvalidOperation
 
@@ -103,7 +104,7 @@ def search(user, query_params):
     # pylint: disable=too-many-locals
     text_query = query_params.get("q", "")
 
-    text_query, filter_params, sort_order, escaped, use_hl = _parse(
+    text_query, filter_params, sort_order, escaped, use_hl, note_query = _parse(
         text_query, query_params, user
     )
 
@@ -146,7 +147,7 @@ def search(user, query_params):
     ):
         # turn note queries on for all pro users
         # *:* returns all documents, do not enable note queries
-        text_query, note_params = _add_note_query(text_query, user)
+        text_query, note_params = _add_note_query(text_query, note_query, user)
         kwargs.update(note_params)
         kwargs["uf"] = "* _query_ -projects_edit_access"
         kwargs["hl.q"] = original_text_query
@@ -177,7 +178,7 @@ def search(user, query_params):
         results, query_params, user, escaped, page_response_data
     )
     if use_hl and query_notes:
-        response = _highlight_notes(response, original_text_query)
+        response = _highlight_notes(response, note_query)
 
     if settings.DEBUG or user.is_staff:
         response["debug"] = {"text_query": text_query, "qtime": results.qtime, **kwargs}
@@ -450,11 +451,12 @@ def _parse(text_query, query_params, user):
     """Parse the text query and pull out filters and sorts
 
     Accepts a text query
-    Returns a tuple of (text_query, filters, sort)
+    Returns a tuple of (text_query, filters, sort, escaped, use_hl, note_query)
         text_query - new text query with filters and sorts removed
         filters - a list of filters to be passed in to solr as field queries
             (`fq` field)
         sort - a string from the SORT_MAP to sort on
+        note_query - the text query to search notes for, or None
     """
     if text_query.strip():
         try:
@@ -476,6 +478,7 @@ def _parse(text_query, query_params, user):
             tree = AnonymousTransformer().visit(tree)
 
         new_query = str(tree) if tree is not None else ""
+        note_query = _extract_note_query(tree)
         filters = filter_extractor.filters
         sort = filter_extractor.sort
         # only use highilighting for queries with no fuzzy searches and
@@ -488,11 +491,10 @@ def _parse(text_query, query_params, user):
         sort = None
         escaped = False
         use_hl = False
+        note_query = None
 
     # pull text queries from the parameters into the text query
-    additional_text = _handle_params(
-        query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS, escape_invalid=True
-    )
+    additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
     if additional_text:
         # pylint: disable=consider-using-f-string
         new_query = "{} {}".format(new_query, " ".join(additional_text))
@@ -502,7 +504,7 @@ def _parse(text_query, query_params, user):
     if not new_query:
         new_query = "*:*"
 
-    return new_query, filters, sort, escaped, use_hl
+    return new_query, filters, sort, escaped, use_hl, note_query
 
 
 def _filter_queries(user, query_params):
@@ -528,16 +530,7 @@ def _validate_range(value, validator):
     return all(validator.visit(node)) and isinstance(node, (Word, Range))
 
 
-def _escape_invalid(value):
-    """Escape a value which would not parse, as the note query re-parses it"""
-    try:
-        parser.parse(value)
-        return value
-    except PARSE_ERRORS:
-        return escape(value)
-
-
-def _handle_params(query_params, fields, dynamic_fields, escape_invalid=False):
+def _handle_params(query_params, fields, dynamic_fields):
     """Convert query params to a list of Solr field queries"""
     return_list = []
     items = list(fields.items())
@@ -547,8 +540,6 @@ def _handle_params(query_params, fields, dynamic_fields, escape_invalid=False):
         if param in query_params:
             # joining with whitespace will default to OR
             values = query_params.getlist(param)
-            if escape_invalid:
-                values = [_escape_invalid(v) for v in values]
             if field in NUMERIC_FIELDS:
                 values = [v for v in values if _validate_range(v, NumberValidator())]
             if field in DATE_FIELDS:
@@ -566,10 +557,7 @@ def _handle_params(query_params, fields, dynamic_fields, escape_invalid=False):
         # allow for negated dynamic fields
         dynamic_params = [p for p in query_params if re.match(rf"^-?{pattern}$", p)]
         for param in dynamic_params:
-            values = query_params.getlist(param)
-            if escape_invalid:
-                values = [_escape_invalid(v) for v in values]
-            values = " ".join(values)
+            values = " ".join(query_params.getlist(param))
             return_list.append(f"{param}:({values})")
 
     return return_list
@@ -787,7 +775,7 @@ def _format_notes(results):
     return [format_note(r) for r in results]
 
 
-def _highlight_notes(response, text_query):
+def _highlight_notes(response, note_query):
     """Do a second query to highlight notes if necessary"""
     notes = [n for d in response["results"] for n in d["notes"]]
     note_ids = [n["id"] for n in notes]
@@ -796,7 +784,6 @@ def _highlight_notes(response, text_query):
     parents = {n["id"]: d["id"] for d in response["results"] for n in d["notes"]}
     fq_ = [f"id:({' '.join(note_ids)})"]
 
-    note_query = _extract_note_query(text_query)
     if note_query is None:
         return response
     query = f"title:({note_query}) description:({note_query})"
@@ -908,17 +895,18 @@ def _expand_list(results, key, queryset, serializer):
     return results
 
 
-def _extract_note_query(text_query):
+def _extract_note_query(tree):
     """Filter out all search fields"""
-    tree = _parse_tree(text_query)
-    note_extractor = NoteExtractor()
-    tree = note_extractor.visit(tree)
+    if tree is None:
+        return None
+    # copy, as the extractor removes nodes in place
+    tree = NoteExtractor().visit(deepcopy(tree))
     if tree is None:
         return None
     return str(tree)
 
 
-def _add_note_query(text_query, user):
+def _add_note_query(text_query, note_query, user):
     """Add note searches to the text query, returning the new query and the
     request params it references
     """
@@ -933,7 +921,6 @@ def _add_note_query(text_query, user):
         )
     )
 
-    note_query = _extract_note_query(text_query)
     if note_query is None:
         return text_query, {}
     # the note queries are sent as separate params and dereferenced, as any
