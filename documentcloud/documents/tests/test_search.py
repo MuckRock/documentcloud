@@ -25,6 +25,7 @@ from documentcloud.documents.search import (
     NumberValidator,
     _extract_note_query,
     _parse,
+    _parse_tree,
     _validate_range,
     search,
 )
@@ -488,10 +489,11 @@ class TestSearch:
         highlight = str(document["note_highlights"]["1"][field]).lower()
         assert f"<em>{term}</em>" in highlight
 
-    def test_search_notes_invalid_text_param(self):
+    @pytest.mark.parametrize("param", ["title=bar)", "title=foo\\", "page_no_1="])
+    def test_search_notes_invalid_text_param(self, param):
         """An unparseable text param must not break the note query"""
 
-        response = self.search("q=alice&title=bar)", user=2)
+        response = self.search(f"q=alice&{param}", user=2)
         assert [d["id"] for d in response["results"]] == ["1"]
 
     def test_search_notes_highlight_only_fields(self):
@@ -709,7 +711,12 @@ class TestExtractNoteQuery:
         ],
     )
     def test_extract_note_query(self, query, note_query):
-        assert _extract_note_query(query) == note_query
+        assert _extract_note_query(_parse_tree(query)) == note_query
+
+    def test_tree_unchanged(self):
+        tree = _parse_tree("a AND user:1")
+        _extract_note_query(tree)
+        assert str(tree) == "a AND user:1"
 
 
 class TestParse:
@@ -754,10 +761,6 @@ class TestParse:
             ("foo~1.2.3", "", "foo\\~1.2.3", "", None, True, False),
             ('"a b"~1.5', "", '"a b" \\~1.5', "", None, True, False),
             ('"a b"~.', "", '"a b" \\~.', "", None, True, False),
-            ("foo", "title=bar)", "foo title:(bar\\))", "", None, False, False),
-            ("foo", "-title=(bar", "foo -title:(\\(bar)", "", None, False, False),
-            ("foo", "text=x^1.2.3", "foo doctext:(x\\^1.2.3)", "", None, False, False),
-            ("foo", "page_no_1=bar)", "foo page_no_1:(bar\\))", "", None, False, False),
         ],
     )
     def test_auth_parse(
@@ -766,7 +769,7 @@ class TestParse:
         # pylint: disable=too-many-arguments
         user = Mock()
         user.is_authenticated = True
-        assert _parse(query, QueryDict(query_params, mutable=True), user) == (
+        assert _parse(query, QueryDict(query_params, mutable=True), user)[:5] == (
             new_query,
             QueryDict(filters),
             sort,
@@ -787,9 +790,29 @@ class TestParse:
         self, query, query_params, new_query, filters, sort, escaped, use_hl
     ):
         # pylint: disable=too-many-arguments
-        assert _parse(
-            query, QueryDict(query_params, mutable=True), AnonymousUser()
-        ) == (new_query, QueryDict(filters), sort, escaped, use_hl)
+        assert _parse(query, QueryDict(query_params, mutable=True), AnonymousUser())[
+            :5
+        ] == (new_query, QueryDict(filters), sort, escaped, use_hl)
+
+    @pytest.mark.parametrize(
+        "query,query_params,note_query",
+        [
+            ("", "", None),
+            ("", "title=bar", None),
+            ("user:1 AND tag:a", "", None),
+            ("a user:1", "", "a"),
+            ("a", "title=bar)", "a"),
+            ("a", "title=foo\\", "a"),
+            ("a", "page_no_1=", "a"),
+            ('"a" AND "b"^50', "", '"a" AND "b"^50'),
+        ],
+    )
+    def test_note_query(self, query, query_params, note_query):
+        user = Mock()
+        user.is_authenticated = True
+        assert (
+            _parse(query, QueryDict(query_params, mutable=True), user)[5] == note_query
+        )
 
 
 class TestEscape:
