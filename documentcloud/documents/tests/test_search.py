@@ -486,6 +486,12 @@ class TestSearch:
         highlight = str(document["note_highlights"]["1"][field]).lower()
         assert f"<em>{term}</em>" in highlight
 
+    def test_search_notes_invalid_text_param(self):
+        """An unparseable text param must not break the note query"""
+
+        response = self.search("q=alice&title=bar)", user=2)
+        assert [d["id"] for d in response["results"]] == ["1"]
+
     def test_search_notes_highlight_only_fields(self):
         """A boolean query of only search fields leaves no text to search notes for"""
 
@@ -730,6 +736,10 @@ class TestParse:
             ("foo^1.2.3", "", "foo\\^1.2.3", "", None, True, False),
             ("foo^.", "", "foo\\^.", "", None, True, False),
             ("foo~1.2.3", "", "foo\\~1.2.3", "", None, True, False),
+            ("foo", "title=bar)", "foo title:(bar\\))", "", None, False, False),
+            ("foo", "-title=(bar", "foo -title:(\\(bar)", "", None, False, False),
+            ("foo", "text=x^1.2.3", "foo doctext:(x\\^1.2.3)", "", None, False, False),
+            ("foo", "page_no_1=bar)", "foo page_no_1:(bar\\))", "", None, False, False),
         ],
     )
     def test_auth_parse(

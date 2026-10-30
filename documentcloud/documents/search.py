@@ -62,6 +62,9 @@ TEXT_FIELDS = {
 }
 DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 
+# InvalidOperation is luqum failing to read a boost or fuzzy number
+PARSE_ERRORS = (ParseError, TypeError, InvalidOperation)
+
 SORT_MAP = {
     "score": "score desc, created_at desc, id desc",
     "created_at": "created_at desc, id desc",
@@ -456,8 +459,7 @@ def _parse(text_query, query_params, user):
         try:
             tree = _parse_tree(text_query)
             escaped = False
-        except (ParseError, TypeError, InvalidOperation):
-            # InvalidOperation is luqum failing to read a boost or fuzzy number
+        except PARSE_ERRORS:
             tree = parser.parse(escape(text_query))
             escaped = True
 
@@ -487,7 +489,9 @@ def _parse(text_query, query_params, user):
         use_hl = False
 
     # pull text queries from the parameters into the text query
-    additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
+    additional_text = _handle_params(
+        query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS, escape_invalid=True
+    )
     if additional_text:
         # pylint: disable=consider-using-f-string
         new_query = "{} {}".format(new_query, " ".join(additional_text))
@@ -520,7 +524,16 @@ def _validate_range(value, validator):
     return all(validator.visit(node)) and isinstance(node, (Word, Range))
 
 
-def _handle_params(query_params, fields, dynamic_fields):
+def _escape_invalid(value):
+    """Escape a value which would not parse, as the note query re-parses it"""
+    try:
+        parser.parse(value)
+        return value
+    except PARSE_ERRORS:
+        return escape(value)
+
+
+def _handle_params(query_params, fields, dynamic_fields, escape_invalid=False):
     """Convert query params to a list of Solr field queries"""
     return_list = []
     items = list(fields.items())
@@ -530,6 +543,8 @@ def _handle_params(query_params, fields, dynamic_fields):
         if param in query_params:
             # joining with whitespace will default to OR
             values = query_params.getlist(param)
+            if escape_invalid:
+                values = [_escape_invalid(v) for v in values]
             if field in NUMERIC_FIELDS:
                 values = [v for v in values if _validate_range(v, NumberValidator())]
             if field in DATE_FIELDS:
@@ -547,7 +562,10 @@ def _handle_params(query_params, fields, dynamic_fields):
         # allow for negated dynamic fields
         dynamic_params = [p for p in query_params if re.match(rf"^-?{pattern}$", p)]
         for param in dynamic_params:
-            values = " ".join(query_params.getlist(param))
+            values = query_params.getlist(param)
+            if escape_invalid:
+                values = [_escape_invalid(v) for v in values]
+            values = " ".join(values)
             return_list.append(f"{param}:({values})")
 
     return return_list
