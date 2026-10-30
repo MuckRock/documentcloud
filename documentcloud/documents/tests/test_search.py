@@ -736,6 +736,8 @@ class TestParse:
             ("foo^1.2.3", "", "foo\\^1.2.3", "", None, True, False),
             ("foo^.", "", "foo\\^.", "", None, True, False),
             ("foo~1.2.3", "", "foo\\~1.2.3", "", None, True, False),
+            ('"a b"~1.5', "", '"a b" \\~1.5', "", None, True, False),
+            ('"a b"~.', "", '"a b" \\~.', "", None, True, False),
             ("foo", "title=bar)", "foo title:(bar\\))", "", None, False, False),
             ("foo", "-title=(bar", "foo -title:(\\(bar)", "", None, False, False),
             ("foo", "text=x^1.2.3", "foo doctext:(x\\^1.2.3)", "", None, False, False),

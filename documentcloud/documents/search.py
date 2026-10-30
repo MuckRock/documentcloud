@@ -62,8 +62,9 @@ TEXT_FIELDS = {
 }
 DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 
-# InvalidOperation is luqum failing to read a boost or fuzzy number
-PARSE_ERRORS = (ParseError, TypeError, InvalidOperation)
+# luqum raises InvalidOperation or ValueError when it fails to read the number in
+# a boost, fuzzy or proximity search
+PARSE_ERRORS = (ParseError, TypeError, InvalidOperation, ValueError)
 
 SORT_MAP = {
     "score": "score desc, created_at desc, id desc",
