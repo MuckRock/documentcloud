@@ -661,6 +661,9 @@ class TestExtractNoteQuery:
             ('user:1 AND +data__tag:"a"', None),
             ("(user:1 AND tag:a)", None),
             ("(user:1) OR (tag:a)", None),
+            ("user:1^2 AND tag:a", None),
+            ("foo OR (user:1)^2", "foo"),
+            ("(user:1 AND tag:a)^2 foo", "foo"),
         ],
     )
     def test_extract_note_query(self, query, note_query):
