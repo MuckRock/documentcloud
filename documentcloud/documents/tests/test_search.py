@@ -466,6 +466,15 @@ class TestSearch:
         response = self.search('q="delta"', user=1)
         assert len(response["results"]) == 1
 
+    @pytest.mark.parametrize(
+        "query", ["alice OR don't", '"alice" OR "don\'t"', "alice OR don\\'t"]
+    )
+    def test_search_notes_apostrophe(self, query):
+        """Apostrophes must not break out of the note subqueries"""
+
+        response = self.search(f"q={query}", user=2)
+        assert [d["id"] for d in response["results"]] == ["1"]
+
     def test_search_notes_highlight_only_fields(self):
         """A boolean query of only search fields leaves no text to search notes for"""
 
