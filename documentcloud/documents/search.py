@@ -406,6 +406,20 @@ class NoteExtractor(LuceneTreeTransformer):
         return None
 
 
+class NumberFormatter(LuceneTreeTransformer):
+    """Write boosts and fuzzy degrees in plain notation, as luqum normalizes them
+    to exponents (^50 becomes ^5E+1), which Solr reads as ^5 plus the term E+1
+    """
+
+    def visit_boost(self, node, _parents):
+        node.force = format(node.force, "f")
+        return node
+
+    def visit_fuzzy(self, node, _parents):
+        node.degree = format(node.degree, "f")
+        return node
+
+
 class AnonymousTransformer(LuceneTreeTransformer):
     """Remove computational expesnive searches from anonymous queries"""
 
@@ -420,6 +434,11 @@ class AnonymousTransformer(LuceneTreeTransformer):
         return node
 
 
+def _parse_tree(text_query):
+    """Parse a text query into a tree that serializes back to valid Solr syntax"""
+    return NumberFormatter().visit(parser.parse(text_query))
+
+
 def _parse(text_query, query_params, user):
     """Parse the text query and pull out filters and sorts
 
@@ -432,7 +451,7 @@ def _parse(text_query, query_params, user):
     """
     if text_query.strip():
         try:
-            tree = parser.parse(text_query)
+            tree = _parse_tree(text_query)
             escaped = False
         except (ParseError, TypeError):
             tree = parser.parse(escape(text_query))
@@ -865,7 +884,7 @@ def _expand_list(results, key, queryset, serializer):
 
 def _extract_note_query(text_query):
     """Filter out all search fields"""
-    tree = parser.parse(text_query)
+    tree = _parse_tree(text_query)
     note_extractor = NoteExtractor()
     tree = note_extractor.visit(tree)
     if tree is None:
