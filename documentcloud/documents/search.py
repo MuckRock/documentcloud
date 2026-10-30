@@ -521,7 +521,10 @@ def _validate_range(value, validator):
     """Validate using the validator as well as ensuring the top level node
     is either a word or range
     """
-    node = parser.parse(value)
+    try:
+        node = parser.parse(value)
+    except PARSE_ERRORS:
+        return False
     return all(validator.visit(node)) and isinstance(node, (Word, Range))
 
 
