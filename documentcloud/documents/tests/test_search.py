@@ -475,6 +475,17 @@ class TestSearch:
         response = self.search(f"q={query}", user=2)
         assert [d["id"] for d in response["results"]] == ["1"]
 
+    @pytest.mark.parametrize(
+        "term,field", [("alice", "description"), ("note", "title")]
+    )
+    def test_search_notes_highlight_multiple_terms(self, term, field):
+        """Every term of the note query is highlighted in each note field"""
+
+        response = self.search(f"q=zzz OR {term}&hl=true", user=2)
+        document = next(d for d in response["results"] if d["id"] == "1")
+        highlight = str(document["note_highlights"]["1"][field]).lower()
+        assert f"<em>{term}</em>" in highlight
+
     def test_search_notes_highlight_only_fields(self):
         """A boolean query of only search fields leaves no text to search notes for"""
 
