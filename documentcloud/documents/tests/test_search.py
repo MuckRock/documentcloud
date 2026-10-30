@@ -22,6 +22,7 @@ from documentcloud.documents.search import (
     DateValidator,
     FilterExtractor,
     NoteExtractor,
+    _extract_note_query,
     _parse,
     search,
 )
@@ -643,6 +644,18 @@ class TestNoteExtractor:
         assert new_query == (str(tree) if tree else "")
 
 
+class TestExtractNoteQuery:
+    @pytest.mark.parametrize(
+        "query,note_query",
+        [
+            ('"a" AND "b"^50', '"a" AND "b"^50'),
+            ("foo~10", "foo~10"),
+        ],
+    )
+    def test_extract_note_query(self, query, note_query):
+        assert _extract_note_query(query) == note_query
+
+
 class TestParse:
     @pytest.mark.parametrize(
         "query,query_params,new_query,filters,sort,escaped,use_hl",
@@ -677,6 +690,9 @@ class TestParse:
             ("foo~1", "", "foo~1", "", None, False, False),
             ("foo hl:true", "", "foo", "", None, False, True),
             ("foo~1 hl:true", "", "foo~1", "", None, False, False),
+            ("foo^50", "", "foo^50", "", None, False, False),
+            ('"a" AND "b"^100', "", '"a" AND "b"^100', "", None, False, False),
+            ("foo~10", "", "foo~10", "", None, False, False),
         ],
     )
     def test_auth_parse(
