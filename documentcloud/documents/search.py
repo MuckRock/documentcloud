@@ -142,7 +142,8 @@ def search(user, query_params):
     ):
         # turn note queries on for all pro users
         # *:* returns all documents, do not enable note queries
-        text_query = _add_note_query(text_query, user)
+        text_query, note_params = _add_note_query(text_query, user)
+        kwargs.update(note_params)
         kwargs["uf"] = "* _query_ -projects_edit_access"
         kwargs["hl.q"] = original_text_query
         query_notes = True
@@ -896,6 +897,9 @@ def _extract_note_query(text_query):
 
 
 def _add_note_query(text_query, user):
+    """Add note searches to the text query, returning the new query and the
+    request params it references
+    """
     organizations = " ".join(str(o.pk) for o in user.organizations.all())
     projects = " ".join(
         str(p.pk)
@@ -909,8 +913,15 @@ def _add_note_query(text_query, user):
 
     note_query = _extract_note_query(text_query)
     if note_query is None:
-        return text_query
-    escaped_note_query = note_query.replace('"', '\\"')
+        return text_query, {}
+    # the note queries are sent as separate params and dereferenced, as any
+    # quoting needed to inline them in local params is mangled by the user's
+    # own quotes and backslashes
+    note_match = f"+(title:({note_query}) description:({note_query}))"
+    note_params = {
+        "note_q_public": f"+type:note +(access:public OR user:{user.pk}) {note_match}",
+        "note_q_organization": f"+type:note +(access:organization) {note_match}",
+    }
 
     return_query = (
         # the original query to search for in documents
@@ -919,9 +930,7 @@ def _add_note_query(text_query, user):
         # on all documents you can view
         f"""
         _query_:"{{!join from=document_s fromIndex=notes to=id score=total
-            v='+type:note +(access:public OR user:{user.pk})
-               +(title:({escaped_note_query}) description:({escaped_note_query}))'
-        }}"
+            v=$note_q_public}}"
         """
         # search through notes which are organization access
         # on all documents you can edit
@@ -936,11 +945,10 @@ def _add_note_query(text_query, user):
                 (access:(public organization) AND organization:({organizations}))
             )
             +{{!join from=document_s fromIndex=notes to=id score=total
-                v='+type:note +(access:organization)
-                   +(title:({escaped_note_query}) description:({escaped_note_query}))'}}
+                v=$note_q_organization}}
             "
         """
     )
     # replace runs of white space with a single space - keeps the template readable
     # without incurring overhead of sending extra white space to solr
-    return re.sub(r"\s+", " ", return_query)
+    return re.sub(r"\s+", " ", return_query), note_params
