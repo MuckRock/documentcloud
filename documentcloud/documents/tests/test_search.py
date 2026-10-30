@@ -22,8 +22,10 @@ from documentcloud.documents.search import (
     DateValidator,
     FilterExtractor,
     NoteExtractor,
+    NumberValidator,
     _extract_note_query,
     _parse,
+    _validate_range,
     search,
 )
 from documentcloud.documents.search_escape import escape
@@ -551,6 +553,20 @@ class TestDateValidator:
     def test_validator(self, query, valid):
         tree = parser.parse(query)
         assert all(DateValidator().visit(tree)) is valid
+
+
+class TestValidateRange:
+    @pytest.mark.parametrize(
+        "value,validator",
+        [
+            ("1^", NumberValidator()),
+            ("1^1.2.3", NumberValidator()),
+            ('"1 2"~1.5', NumberValidator()),
+            ('"NOW 2"~1.5', DateValidator()),
+        ],
+    )
+    def test_unparseable(self, value, validator):
+        assert _validate_range(value, validator) is False
 
 
 class TestFilterExtractor:
