@@ -673,12 +673,21 @@ class TestCollaborationAPI:
         assert num_queries == len(connection.queries)
         assert len(response.json()["results"]) == size + small_size + 1
 
-    def test_create_user(self, client, project, user):
+    def test_create_user(self, client, project):
         """Add a user to a project by id"""
+        user = UserFactory()
+        DocumentFactory(user=user, access=Access.public)
         client.force_authenticate(user=project.user)
         response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
         assert response.status_code == status.HTTP_201_CREATED
         assert project.collaborators.filter(pk=user.pk).exists()
+
+    def test_create_bad_user_not_viewable(self, client, project, user):
+        """May not add a user by id whom you cannot view"""
+        client.force_authenticate(user=project.user)
+        response = client.post(f"/api/projects/{project.pk}/users/", {"user": user.pk})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not project.collaborators.filter(pk=user.pk).exists()
 
     def test_create_email(self, client, project, user):
         """Add a user to a project by email"""

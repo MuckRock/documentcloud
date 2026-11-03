@@ -231,6 +231,12 @@ class CollaborationSerializer(FlexFieldsModelSerializer):
         fields = ["user", "email", "access"]
         expandable_fields = {"user": ("documentcloud.users.UserSerializer", {})}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user and "user" in self.fields:
+            self.fields["user"].queryset = User.objects.get_viewable(request.user)
+
     def validate_access(self, value):
         """Disallow demoting the last admin"""
         view = self.context.get("view")
