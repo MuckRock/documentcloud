@@ -19,7 +19,7 @@ from rest_flex_fields.views import FlexFieldsModelViewSet
 
 # DocumentCloud
 from documentcloud.core.filters import ModelMultipleChoiceFilter
-from documentcloud.core.pagination import VersionedCountPagination
+from documentcloud.core.pagination import CursorCountPagination
 from documentcloud.core.permissions import (
     DjangoObjectPermissionsOrAnonReadOnly,
     ProjectPermissions,
@@ -441,7 +441,7 @@ class ProjectMembershipViewSet(BulkModelMixin, FlexFieldsModelViewSet):
         f"document.{e}" for e in DocumentViewSet.permit_list_expands
     ]
     permission_classes = (DjangoObjectPermissionsOrAnonReadOnly | ProjectPermissions,)
-    pagination_class = VersionedCountPagination
+    pagination_class = CursorCountPagination
     filter_backends = [OrderingFilter, DjangoFilterBackend]
     ordering_fields = ["created_at"]
     ordering = ["-document__pk"]
