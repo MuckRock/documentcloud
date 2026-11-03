@@ -717,6 +717,7 @@ ANON_RL_MESSAGE = env(
 # ------------------------------------------------------------------------------
 MAX_PAGES = env.int("MAX_PAGES", default=50)
 GRAFT_DEBUG = env.bool("GRAFT_DEBUG", default=False)
+DISABLE_GRAFTING = env.bool("DISABLE_GRAFTING", default=False)
 
 # STATS API
 UPLOAD_WINDOW_DAYS = env.int("UPLOAD_WINDOW_DAYS", default=90)
