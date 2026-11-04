@@ -25,6 +25,12 @@ DATABASES["default"] = env.db("DATABASE_URL")  # noqa F405
 DATABASES["default"]["ATOMIC_REQUESTS"] = True  # noqa F405
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # noqa F405
 
+# Only the web dyno sets this; workers and migrations need to run long.
+if statement_timeout := env.int("DB_STATEMENT_TIMEOUT", default=0):
+    DATABASES["default"]["OPTIONS"] = {  # noqa F405
+        "options": f"-c statement_timeout={statement_timeout}"
+    }
+
 # SECURITY
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
