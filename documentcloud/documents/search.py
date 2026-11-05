@@ -899,18 +899,18 @@ def _add_note_query(text_query, note_query, user):
 
     if note_query is None:
         return text_query, {}
-    # the note queries are sent as separate params and dereferenced, as any
-    # quoting needed to inline them in local params is mangled by the user's
-    # own quotes and backslashes
+    # dereferenced params keep user input from mangling local params quoting, or
+    # unbalancing the parens of the clauses around it
     note_match = f"+(title:({note_query}) description:({note_query}))"
     note_params = {
+        "text_q": text_query,
         "note_q_public": f"+type:note +(access:public OR user:{user.pk}) {note_match}",
         "note_q_organization": f"+type:note +(access:organization) {note_match}",
     }
 
     return_query = (
         # the original query to search for in documents
-        f"({text_query}) "
+        '_query_:"{!edismax v=$text_q}" '
         # search through notes which are public or that you own
         # on all documents you can view
         f"""
