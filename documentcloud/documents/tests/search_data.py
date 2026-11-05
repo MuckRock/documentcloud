@@ -101,6 +101,7 @@ DOCUMENTS = [
         "status": Status.success,
         "created_at": datetime(2011, 6, 1, tzinfo=pytz.utc),
         "data": {"edition": "first"},
+        "pages": ["A quorx arrived with the first edition, and none since"],
     },
     {
         "id": 9,

@@ -23,7 +23,7 @@ from documentcloud.documents.search import (
     FilterExtractor,
     NoteExtractor,
     NumberValidator,
-    _extract_note_query,
+    _extract_query,
     _parse,
     _parse_tree,
     _validate_range,
@@ -57,7 +57,7 @@ def setup_solr(django_db_setup, django_db_blocker):
 
     `django_db_setup` causes pytest to initiate the test database
     """
-    # pylint: disable=unused-argument
+    # pylint: disable=unused-argument, too-many-locals
     solr = pysolr.Solr(settings.SOLR_URL, auth=settings.SOLR_AUTH)
     solr_notes = pysolr.Solr(settings.SOLR_NOTES_URL, auth=settings.SOLR_AUTH)
     with django_db_blocker.unblock():
@@ -65,6 +65,7 @@ def setup_solr(django_db_setup, django_db_blocker):
             organizations = {}
             users = {}
             documents = {}
+            pages = {}
             notes = {}
             # this enables searching through notes for users in that org
             entitlement = OrganizationEntitlementFactory()
@@ -82,6 +83,7 @@ def setup_solr(django_db_setup, django_db_blocker):
                 doc = doc.copy()
                 user = doc.pop("user")
                 org = doc.pop("organization")
+                pages[doc["id"]] = doc.pop("pages", [])
                 documents[doc["id"]] = DocumentFactory(
                     user=users[user], organization=organizations[org], **doc
                 )
@@ -106,7 +108,8 @@ def setup_solr(django_db_setup, django_db_blocker):
                     edit_collaborators=[users[a] for a in proj["edit_collaborators"]],
                 )
             for doc in documents.values():
-                solr.add([doc.solr()])
+                page_text = {"pages": [{"contents": c} for c in pages[doc.pk]]}
+                solr.add([doc.solr(index_text=page_text)])
             for note in notes.values():
                 solr_notes.add([note.solr()])
             solr.commit()
@@ -496,6 +499,26 @@ class TestSearch:
         response = self.search(f"q=alice&{param}", user=2)
         assert [d["id"] for d in response["results"]] == ["1"]
 
+    @pytest.mark.parametrize("user", [None, 2])
+    def test_search_highlight_skips_filters(self, user):
+        """Values of filter fields are not highlighted in the page text"""
+
+        response = self.search(
+            "q=quorx AND (data_edition:first OR user:99)&hl=true", user=user
+        )
+        assert [d["id"] for d in response["results"]] == ["8"]
+        highlights = str(response["results"][0]["highlights"])
+        assert "<em>quorx</em>" in highlights
+        assert "<em>first</em>" not in highlights
+
+    @pytest.mark.parametrize("user", [None, 2])
+    def test_search_highlight_only_filters(self, user):
+        """A query of only filters has nothing to highlight"""
+
+        response = self.search("q=user:3 AND data_edition:first&hl=true", user=user)
+        assert [d["id"] for d in response["results"]] == ["8"]
+        assert "<em>" not in str(response["results"][0]["highlights"])
+
     def test_search_notes_highlight_only_fields(self):
         """A boolean query of only search fields leaves no text to search notes for"""
 
@@ -711,11 +734,11 @@ class TestExtractNoteQuery:
         ],
     )
     def test_extract_note_query(self, query, note_query):
-        assert _extract_note_query(_parse_tree(query)) == note_query
+        assert _extract_query(_parse_tree(query), NoteExtractor) == note_query
 
     def test_tree_unchanged(self):
         tree = _parse_tree("a AND user:1")
-        _extract_note_query(tree)
+        _extract_query(tree, NoteExtractor)
         assert str(tree) == "a AND user:1"
 
 
@@ -797,6 +820,25 @@ class TestParse:
         assert _parse(query, QueryDict(query_params, mutable=True), AnonymousUser())[
             :5
         ] == (new_query, QueryDict(filters), sort, escaped, use_hl)
+
+    @pytest.mark.parametrize(
+        "query,query_params,hl_query",
+        [
+            ("", "", None),
+            ("user:1 AND tag:a", "", None),
+            ("foo AND (user:1 OR tag:email)", "", "foo"),
+            ("foo AND data_edition:first", "", "foo"),
+            ("foo AND user:bar", "", "foo"),
+            ("foo AND title:bar", "", "foo AND title:bar"),
+            ("text:foo AND user:1", "", "doctext:foo"),
+            ("", "title=bar", "title:(bar)"),
+            ("foo AND user:1", "title=bar", "foo title:(bar)"),
+        ],
+    )
+    def test_highlight_query(self, query, query_params, hl_query):
+        user = Mock()
+        user.is_authenticated = True
+        assert _parse(query, QueryDict(query_params, mutable=True), user)[6] == hl_query
 
     @pytest.mark.parametrize(
         "query,query_params,note_query",
