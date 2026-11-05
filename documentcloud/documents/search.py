@@ -66,6 +66,10 @@ DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 # a boost, fuzzy or proximity search
 PARSE_ERRORS = (ParseError, TypeError, InvalidOperation, ValueError)
 
+# matches escapes and phrases, so a quote inside a phrase is never mistaken for one
+# which ends it, capturing any fractional proximity slop after a phrase
+PHRASE_SLOP_RE = re.compile(r'\\.|("(?:[^"\\]|\\.)*")(?:~(\d*)\.[\d.]*)?')
+
 SORT_MAP = {
     "score": "score desc, created_at desc, id desc",
     "created_at": "created_at desc, id desc",
@@ -103,8 +107,8 @@ def search(user, query_params):
     # pylint: disable=too-many-locals
     text_query = query_params.get("q", "")
 
-    text_query, filter_params, sort_order, escaped, use_hl, note_query = _parse(
-        text_query, query_params, user
+    text_query, filter_params, sort_order, escaped, use_hl, note_query, hl_query = (
+        _parse(text_query, query_params, user)
     )
 
     filter_params.update(query_params)
@@ -128,6 +132,9 @@ def search(user, query_params):
     # allow explicit enabling of highlighting
     if query_params.get("hl", "").lower() == "true" and settings.SOLR_USE_HL:
         use_hl = True
+    if hl_query is None:
+        # nothing but filters, which should not be highlighted
+        use_hl = False
 
     kwargs = {
         "fq": filter_queries,
@@ -137,7 +144,8 @@ def search(user, query_params):
         "hl.weightMatches": settings.SOLR_HL_WEIGHT_MATCHES,
         **page_query_data,
     }
-    original_text_query = text_query
+    if use_hl:
+        kwargs["hl.q"] = hl_query
     if (
         settings.SOLR_QUERY_NOTES
         and user.is_authenticated
@@ -149,7 +157,6 @@ def search(user, query_params):
         text_query, note_params = _add_note_query(text_query, note_query, user)
         kwargs.update(note_params)
         kwargs["uf"] = "* _query_ -projects_edit_access"
-        kwargs["hl.q"] = original_text_query
         query_notes = True
     else:
         query_notes = False
@@ -425,6 +432,17 @@ class NumberFormatter(LuceneTreeTransformer):
         return node
 
 
+class HighlightExtractor(NoteExtractor):
+    """Remove filter fields from a query, leaving the text to highlight"""
+
+    def visit_search_field(self, node, _parents):
+        if node.name in FILTER_FIELDS.values() or any(
+            re.match(rf"^{p}$", node.name) for p in DYNAMIC_FILTER_FIELDS
+        ):
+            return None
+        return node
+
+
 class AnonymousTransformer(LuceneTreeTransformer):
     """Remove computational expesnive searches from anonymous queries"""
 
@@ -439,8 +457,18 @@ class AnonymousTransformer(LuceneTreeTransformer):
         return node
 
 
+def _truncate_slop(match):
+    phrase, slop = match.groups()
+    if slop is None:
+        return match.group(0)
+    return f"{phrase}~{slop}" if slop else phrase
+
+
 def _parse_tree(text_query):
     """Parse a text query into a tree that serializes back to valid Solr syntax"""
+    # Solr truncates a fractional phrase slop to a whole number, but luqum fails
+    # to parse one
+    text_query = PHRASE_SLOP_RE.sub(_truncate_slop, text_query)
     return NumberFormatter().visit(parser.parse(text_query))
 
 
@@ -448,12 +476,14 @@ def _parse(text_query, query_params, user):
     """Parse the text query and pull out filters and sorts
 
     Accepts a text query
-    Returns a tuple of (text_query, filters, sort, escaped, use_hl, note_query)
+    Returns a tuple of
+    (text_query, filters, sort, escaped, use_hl, note_query, hl_query)
         text_query - new text query with filters and sorts removed
         filters - a list of filters to be passed in to solr as field queries
             (`fq` field)
         sort - a string from the SORT_MAP to sort on
         note_query - the text query to search notes for, or None
+        hl_query - the text query to highlight, or None
     """
     if text_query.strip():
         try:
@@ -475,7 +505,8 @@ def _parse(text_query, query_params, user):
             tree = AnonymousTransformer().visit(tree)
 
         new_query = str(tree) if tree is not None else ""
-        note_query = _extract_note_query(tree)
+        note_query = _extract_query(tree, NoteExtractor)
+        hl_query = _extract_query(tree, HighlightExtractor)
         filters = filter_extractor.filters
         sort = filter_extractor.sort
         # only use highilighting for queries with no fuzzy searches and
@@ -489,19 +520,21 @@ def _parse(text_query, query_params, user):
         escaped = False
         use_hl = False
         note_query = None
+        hl_query = None
 
     # pull text queries from the parameters into the text query
     additional_text = _handle_params(query_params, TEXT_FIELDS, DYNAMIC_TEXT_FIELDS)
     if additional_text:
         # pylint: disable=consider-using-f-string
         new_query = "{} {}".format(new_query, " ".join(additional_text))
+        hl_query = " ".join(([hl_query] if hl_query else []) + additional_text)
 
     # if nothing is left in the query after pulling out filters, default to *:*
     # which matches everything, otherwise convert the parse tree back to a text query
     if not new_query:
         new_query = "*:*"
 
-    return new_query, filters, sort, escaped, use_hl, note_query
+    return new_query, filters, sort, escaped, use_hl, note_query, hl_query
 
 
 def _filter_queries(user, query_params):
@@ -838,12 +871,12 @@ def _expand_list(results, key, queryset, serializer):
     return results
 
 
-def _extract_note_query(tree):
-    """Filter out all search fields"""
+def _extract_query(tree, extractor):
+    """Remove nodes from a copy of the tree, returning what is left as a query"""
     if tree is None:
         return None
     # copy, as the extractor removes nodes in place
-    tree = NoteExtractor().visit(deepcopy(tree))
+    tree = extractor().visit(deepcopy(tree))
     if tree is None:
         return None
     return str(tree)
@@ -863,21 +896,25 @@ def _add_note_query(text_query, note_query, user):
             )
         )
     )
+    # an empty projects_edit_access:() is invalid and drops the org note search
+    edit_access = f"user:{user.pk}"
+    if projects:
+        edit_access += f" OR projects_edit_access:({projects})"
 
     if note_query is None:
         return text_query, {}
-    # the note queries are sent as separate params and dereferenced, as any
-    # quoting needed to inline them in local params is mangled by the user's
-    # own quotes and backslashes
+    # dereferenced params keep user input from mangling local params quoting, or
+    # unbalancing the parens of the clauses around it
     note_match = f"+(title:({note_query}) description:({note_query}))"
     note_params = {
+        "text_q": text_query,
         "note_q_public": f"+type:note +(access:public OR user:{user.pk}) {note_match}",
         "note_q_organization": f"+type:note +(access:organization) {note_match}",
     }
 
     return_query = (
         # the original query to search for in documents
-        f"({text_query}) "
+        '_query_:"{!edismax v=$text_q}" '
         # search through notes which are public or that you own
         # on all documents you can view
         f"""
@@ -890,7 +927,7 @@ def _add_note_query(text_query, note_query, user):
         _query_:"
             +(
                 (
-                    (user:{user.pk} OR projects_edit_access:({projects}))
+                    ({edit_access})
                     AND access:(private organization)
                 )
                 OR
