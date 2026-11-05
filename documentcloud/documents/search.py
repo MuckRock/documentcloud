@@ -66,6 +66,10 @@ DYNAMIC_TEXT_FIELDS = [r"page_no_[0-9]+"]
 # a boost, fuzzy or proximity search
 PARSE_ERRORS = (ParseError, TypeError, InvalidOperation, ValueError)
 
+# matches escapes and phrases, so a quote inside a phrase is never mistaken for one
+# which ends it, capturing any fractional proximity slop after a phrase
+PHRASE_SLOP_RE = re.compile(r'\\.|("(?:[^"\\]|\\.)*")(?:~(\d*)\.[\d.]*)?')
+
 SORT_MAP = {
     "score": "score desc, created_at desc, id desc",
     "created_at": "created_at desc, id desc",
@@ -439,8 +443,18 @@ class AnonymousTransformer(LuceneTreeTransformer):
         return node
 
 
+def _truncate_slop(match):
+    phrase, slop = match.groups()
+    if slop is None:
+        return match.group(0)
+    return f"{phrase}~{slop}" if slop else phrase
+
+
 def _parse_tree(text_query):
     """Parse a text query into a tree that serializes back to valid Solr syntax"""
+    # Solr truncates a fractional phrase slop to a whole number, but luqum fails
+    # to parse one
+    text_query = PHRASE_SLOP_RE.sub(_truncate_slop, text_query)
     return NumberFormatter().visit(parser.parse(text_query))
 
 
