@@ -450,6 +450,9 @@ class TestSearch:
             (7, 3, True),
             (7, 4, False),
             (7, 5, True),
+            # org member without edit projects may search org notes
+            (2, 6, True),
+            (3, 6, False),
         ],
     )
     def test_search_notes_content(self, user, note, viewable):
