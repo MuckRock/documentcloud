@@ -80,7 +80,7 @@ class ProfessionalEntitlementFactory(EntitlementFactory):
     resources = {
         "minimum_users": 1,
         "base_ai_credits": 2000,
-        "ai_credits_per_user": 0,
+        "ai_credits_per_user": 2000,
         "feature_level": 1,
     }
 
@@ -90,8 +90,19 @@ class OrganizationEntitlementFactory(EntitlementFactory):
 
     name = "Organization"
     resources = {
-        "minimum_users": 5,
+        "minimum_users": 1,
         "base_ai_credits": 5000,
-        "ai_credits_per_user": 500,
+        "ai_credits_per_user": 5000,
         "feature_level": 2,
+    }
+
+
+class CreditPackEntitlementFactory(EntitlementFactory):
+    """Extra AI credits, sold by quantity alongside a plan"""
+
+    name = "DocumentCloud Credit Pack"
+    resources = {
+        "minimum_users": 1,
+        "base_ai_credits": 500,
+        "ai_credits_per_user": 500,
     }

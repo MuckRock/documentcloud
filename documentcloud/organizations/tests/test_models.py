@@ -8,6 +8,7 @@ import pytest
 from documentcloud.organizations.exceptions import InsufficientAICreditsError
 from documentcloud.organizations.models import Organization
 from documentcloud.organizations.tests.factories import (
+    CreditPackEntitlementFactory,
     EntitlementFactory,
     OrganizationEntitlementFactory,
     OrganizationFactory,
@@ -103,7 +104,7 @@ class TestSquareletUpdateDataMultiEntitlement:
     def test_two_paid_entitlements_sums_ai_credits(self):
         """Two paid entitlements: ai_credits_per_month = sum of both"""
         ent1 = ProfessionalEntitlementFactory()  # base_ai_credits=2000, min=1
-        ent2 = OrganizationEntitlementFactory()  # base_ai_credits=5000, min=5
+        ent2 = OrganizationEntitlementFactory()  # base_ai_credits=5000, quantity 1
         organization = OrganizationFactory()
         date_update = date(2024, 3, 1)
 
@@ -112,7 +113,7 @@ class TestSquareletUpdateDataMultiEntitlement:
                 organization,
                 [
                     ent_json(ent1, date_update, quantity=1),
-                    ent_json(ent2, date_update, quantity=5),
+                    ent_json(ent2, date_update, quantity=1),
                 ],
             )
         )
@@ -142,7 +143,7 @@ class TestSquareletUpdateDataMultiEntitlement:
             self._org_data(
                 organization,
                 [
-                    ent_json(paid, date_update, quantity=5),
+                    ent_json(paid, date_update, quantity=1),
                     ent_json(grant, date_update, quantity=1),
                 ],
             )
@@ -165,7 +166,7 @@ class TestSquareletUpdateDataMultiEntitlement:
                 organization,
                 [
                     ent_json(low, date_update, quantity=1),
-                    ent_json(high, date_update, quantity=5),
+                    ent_json(high, date_update, quantity=1),
                 ],
             )
         )
@@ -200,29 +201,34 @@ class TestSquareletUpdateDataMultiEntitlement:
         assert organization.ai_credits_per_month == 300
 
     @pytest.mark.django_db()
-    def test_quantity_below_minimum_does_not_reduce_base(self):
-        """quantity < minimum_users: base AI credits are not reduced"""
-        ent = OrganizationEntitlementFactory()  # min=5, base=5000, per_user=500
+    def test_the_quota_is_base_times_quantity(self):
+        """Squarelet's entitlements are shaped so this is the whole formula."""
+        ent = EntitlementFactory(name="Flat", resources={"base_ai_credits": 500})
         organization = OrganizationFactory()
 
         organization.update_data(
-            self._org_data(organization, [ent_json(ent, date(2024, 3, 1), quantity=2)])
+            self._org_data(organization, [ent_json(ent, date(2024, 3, 1), quantity=3)])
         )
         organization.refresh_from_db()
-        # max(0, 2-5) = 0, so just base=5000
-        assert organization.ai_credits_per_month == 5000
+        assert organization.ai_credits_per_month == 1500
 
     @pytest.mark.django_db()
-    def test_quantity_above_minimum_adds_per_user_credits(self):
-        """quantity > minimum_users: extra quantity adds per-user AI credits"""
-        ent = OrganizationEntitlementFactory()  # min=5, base=5000, per_user=500
+    def test_a_pack_s_quantity_multiplies_its_credits(self):
+        """A plan is quantity 1; extra credits are a pack line's quantity."""
+        ent = OrganizationEntitlementFactory()
+        pack = CreditPackEntitlementFactory()
         organization = OrganizationFactory()
 
         organization.update_data(
-            self._org_data(organization, [ent_json(ent, date(2024, 3, 1), quantity=8)])
+            self._org_data(
+                organization,
+                [
+                    ent_json(ent, date(2024, 3, 1), quantity=1),
+                    ent_json(pack, date(2024, 3, 1), quantity=3),
+                ],
+            )
         )
         organization.refresh_from_db()
-        # 5000 + max(0, 8-5)*500 = 5000 + 1500 = 6500
         assert organization.ai_credits_per_month == 6500
 
     @pytest.mark.django_db()
@@ -242,7 +248,7 @@ class TestSquareletUpdateDataMultiEntitlement:
                 organization,
                 [
                     ent_json(ent1, date(2024, 3, 1), quantity=1),
-                    ent_json(ent2, date(2024, 3, 1), quantity=5),
+                    ent_json(ent2, date(2024, 3, 1), quantity=1),
                 ],
             )
         )

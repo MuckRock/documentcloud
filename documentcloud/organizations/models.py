@@ -122,17 +122,14 @@ class Organization(AbstractOrganization):
 
     @staticmethod
     def _calc_ent_ai_credits(ent_data):
-        """Compute the AI credit quota for one entitlement entry.
+        """The AI credit quota one entitlement entry grants: base × quantity.
 
-        Uses ent_data["quantity"] (the per-subscription billing quantity sent
-        by Squarelet) rather than the stale org-level max_users field.
+        Squarelet shapes its entitlements so this matches the old
+        `base + extra users × per user` for every quantity; a plan is quantity 1
+        and extra credits are a pack line, whose quantity is how many it holds.
         """
-        r = ent_data["resources"]
-        base = r.get("base_ai_credits", 0)
-        per_user = r.get("ai_credits_per_user", 0)
-        minimum = r.get("minimum_users", 1)
-        quantity = ent_data.get("quantity", 1)
-        return base + max(0, quantity - minimum) * per_user
+        base = ent_data["resources"].get("base_ai_credits", 0)
+        return base * ent_data.get("quantity", 1)
 
     @transaction.atomic
     def merge(self, uuid):
