@@ -493,10 +493,11 @@ class TestSearch:
         assert f"<em>{term}</em>" in highlight
 
     @pytest.mark.parametrize("param", ["title=bar)", "title=foo\\", "page_no_1="])
-    def test_search_notes_invalid_text_param(self, param):
+    @pytest.mark.parametrize("user", [1, 2])
+    def test_search_notes_invalid_text_param(self, param, user):
         """An unparseable text param must not break the note query"""
 
-        response = self.search(f"q=alice&{param}", user=2)
+        response = self.search(f"q=alice&{param}", user=user)
         assert [d["id"] for d in response["results"]] == ["1"]
 
     @pytest.mark.parametrize("user", [None, 2])
