@@ -896,6 +896,10 @@ def _add_note_query(text_query, note_query, user):
             )
         )
     )
+    # an empty projects_edit_access:() is invalid and drops the org note search
+    edit_access = f"user:{user.pk}"
+    if projects:
+        edit_access += f" OR projects_edit_access:({projects})"
 
     if note_query is None:
         return text_query, {}
@@ -923,7 +927,7 @@ def _add_note_query(text_query, note_query, user):
         _query_:"
             +(
                 (
-                    (user:{user.pk} OR projects_edit_access:({projects}))
+                    ({edit_access})
                     AND access:(private organization)
                 )
                 OR
