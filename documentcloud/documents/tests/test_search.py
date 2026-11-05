@@ -759,8 +759,12 @@ class TestParse:
             ("foo^1.2.3", "", "foo\\^1.2.3", "", None, True, False),
             ("foo^.", "", "foo\\^.", "", None, True, False),
             ("foo~1.2.3", "", "foo\\~1.2.3", "", None, True, False),
-            ('"a b"~1.5', "", '"a b" \\~1.5', "", None, True, False),
-            ('"a b"~.', "", '"a b" \\~.', "", None, True, False),
+            ('"a b"~1.5', "", '"a b"~1', "", None, False, False),
+            ('"a b"~.', "", '"a b"', "", None, False, False),
+            ('"a b"~0.5 c', "", '"a b"~0 c', "", None, False, False),
+            ('"x" c "~2.5"~3.5', "", '"x" c "~2.5"~3', "", None, False, False),
+            ('"x \\" y"~1.5', "", '"x \\" y"~1', "", None, False, False),
+            ('\\" "a b"~1.5', "", '\\" "a b"~1', "", None, False, False),
         ],
     )
     def test_auth_parse(
