@@ -503,13 +503,19 @@ class Document(models.Model):
 
     def _set_page_positions(self, pages, file_names, file_contents):
         """Handle grafting page positions back into the document"""
-        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
-        start_page = pages[0]["page_number"]
-        stop_page = pages[-1]["page_number"]
 
         # always write the position JSON - this is cheap and does not cause the
         # memory issues that gating below guards against
         self._write_position_json(pages, file_names, file_contents)
+
+        # If this flag is set, skip grafting entirely.
+        if settings.DISABLE_GRAFTING:
+            logger.info("[SET PAGE TEXT] %d - grafting disabled, skipping", self.pk)
+            return None
+
+        current_pdf = pymupdf.open(stream=storage.open(self.doc_path, "rb").read())
+        start_page = pages[0]["page_number"]
+        stop_page = pages[-1]["page_number"]
 
         visible_text = self._check_visible_text(current_pdf, start_page, stop_page)
         logger.info(
