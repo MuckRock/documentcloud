@@ -101,6 +101,7 @@ DOCUMENTS = [
         "status": Status.success,
         "created_at": datetime(2011, 6, 1, tzinfo=pytz.utc),
         "data": {"edition": "first"},
+        "pages": ["A quorx arrived with the first edition, and none since"],
     },
     {
         "id": 9,
@@ -231,6 +232,15 @@ NOTES = [
         "document": 3,
         "page_number": 0,
         "content": "foxtrot",
+        "access": Access.organization,
+    },
+    {
+        "id": 7,
+        "user": 1,
+        "organization": 1,
+        "document": 4,
+        "page_number": 0,
+        "content": "golf",
         "access": Access.organization,
     },
 ]
