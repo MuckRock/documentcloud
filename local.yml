@@ -45,10 +45,10 @@ services:
       - ./.envs/.local/.postgres
 
   documentcloud_redis:
-    image: redis:5.0
+    image: valkey/valkey:9.1
 
   documentcloud_processing_redis:
-    image: redis:5.0
+    image: valkey/valkey:9.1
 
   documentcloud_minio:
     image: minio/minio:RELEASE.2024-12-18T13-15-44Z

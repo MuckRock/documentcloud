@@ -233,7 +233,7 @@ django-parler-rest==2.2
     # via -r requirements/base.txt
 django-premailer==0.2.0
     # via -r requirements/base.txt
-django-redis==5.0.0
+django-redis==7.0.0
     # via
     #   -r requirements/base.txt
     #   python-redis-lock
@@ -273,7 +273,7 @@ factory-boy==2.12.0
     # via -r requirements/local.in
 faker==2.0.1
     # via factory-boy
-fakeredis==1.0.5
+fakeredis==2.40.0
     # via -r requirements/local.in
 filelock==3.25.2
     # via cachecontrol
@@ -691,7 +691,7 @@ rcssmin==1.2.2
     # via
     #   -r requirements/base.txt
     #   django-compressor
-redis==3.4.1
+redis==8.1.0
     # via
     #   -r requirements/base.txt
     #   django-redis
@@ -741,7 +741,6 @@ six==1.17.0
     #   django-appconf
     #   django-coverage-plugin
     #   faker
-    #   fakeredis
     #   furl
     #   html5lib
     #   jsonschema
@@ -814,6 +813,7 @@ typing-extensions==4.15.0
     #   -r requirements/base.txt
     #   aiohttp
     #   aiosignal
+    #   django-redis
     #   grpcio
     #   opentelemetry-api
     #   opentelemetry-sdk

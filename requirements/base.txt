@@ -151,7 +151,7 @@ django-parler-rest==2.2
     # via -r requirements/base.in
 django-premailer==0.2.0
     # via -r requirements/base.in
-django-redis==5.0.0
+django-redis==7.0.0
     # via
     #   -r requirements/base.in
     #   python-redis-lock
@@ -399,7 +399,7 @@ rcssmin==1.2.2
     # via
     #   -r requirements/base.in
     #   django-compressor
-redis==3.4.1
+redis==8.1.0
     # via
     #   -r requirements/base.in
     #   django-redis
@@ -465,6 +465,7 @@ typing-extensions==4.15.0
     #   -r requirements/base.in
     #   aiohttp
     #   aiosignal
+    #   django-redis
     #   grpcio
     #   opentelemetry-api
     #   opentelemetry-sdk
