@@ -1337,6 +1337,23 @@ class TestDocumentAPI:
         document.refresh_from_db()
         assert document.cache_dirty is True
 
+    def test_modification_queued_after_commit(self, client, mocker):
+        """The modify job must not start before `pending` is committed - its first
+        processing PATCH would otherwise read the stale status and save it back
+        over `pending`"""
+        document = DocumentFactory(page_count=2)
+        mock_modify = mocker.patch("documentcloud.documents.views.modify.delay")
+        client.force_authenticate(user=document.user)
+        response = client.post(
+            f"/api/documents/{document.pk}/modifications/",
+            [{"page": "0"}],
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        mock_modify.assert_not_called()
+        run_commit_hooks()
+        mock_modify.assert_called_once()
+
     def _finish_processing(self, client, document):
         """Send the processing callback that marks a document as done"""
         client.force_authenticate(user=None)

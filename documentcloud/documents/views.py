@@ -1971,11 +1971,9 @@ class ModificationViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             document.save()
             document.index_on_commit(field_updates={"status": "set"})
 
-        modify.delay(
-            document.pk,
-            self.request.user.pk,
-            serializer.data,
-        )
+            transaction.on_commit(
+                lambda: modify.delay(document.pk, self.request.user.pk, serializer.data)
+            )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @extend_schema(tags=["document_modifications"])
