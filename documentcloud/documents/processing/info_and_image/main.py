@@ -96,7 +96,6 @@ TEXT_POSITION_BATCH = env.int(
 PDF_SIZE_LIMIT = env.int("PDF_SIZE_LIMIT", 501 * 1024 * 1024)
 # PDF page count limit, default 2000
 PAGE_COUNT_LIMIT = env.int("PAGE_COUNT_LIMIT", 2000)
-# Disable grafting for textract, for debugging
 DISABLE_TEXTRACT_GRAFTING = env.bool("DISABLE_TEXTRACT_GRAFTING", default=False)
 
 BLOCK_SIZE = env.int(

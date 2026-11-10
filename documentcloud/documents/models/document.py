@@ -508,7 +508,6 @@ class Document(models.Model):
         # memory issues that gating below guards against
         self._write_position_json(pages, file_names, file_contents)
 
-        # If this flag is set, skip grafting entirely.
         if settings.DISABLE_GRAFTING:
             logger.info("[SET PAGE TEXT] %d - grafting disabled, skipping", self.pk)
             return None
