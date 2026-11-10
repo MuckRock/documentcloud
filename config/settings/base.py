@@ -727,3 +727,6 @@ DOCUMENTCLOUD_FETCH_USER_AGENT = env(
     "DOCUMENTCLOUD_FETCH_USER_AGENT",
     default="DocumentCloud https://www.documentcloud.org/home/ info@documentcloud.org",
 )
+
+SQUARELET_SERVICE_USER_AGENT = env("SQUARELET_SERVICE_USER_AGENT", default="DocumentCloud")
+SOCIAL_AUTH_SQUARELET_USER_AGENT = SQUARELET_SERVICE_USER_AGENT
