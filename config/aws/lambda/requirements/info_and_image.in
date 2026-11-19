@@ -1,0 +1,6 @@
+-c pdf.txt
+
+-r pdf.in
+pdfplumber
+pikepdf
+listcrunch

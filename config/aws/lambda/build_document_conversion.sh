@@ -16,4 +16,4 @@ cp -Lr ../../../documentcloud/documents/processing/document_conversion/* $CODE_D
 cp libreoffice/lo.tar.gz $CODE_DIR/libreoffice/lo.tar.gz
 
 # Set AWS requirements
-cp cloud-requirements.txt $CODE_DIR/cloud-requirements.txt
+cp requirements/processing.txt $CODE_DIR/requirements.txt

@@ -26,7 +26,6 @@ aiohttp==3.14.4
     # via
     #   -r requirements/base.txt
     #   aiobotocore
-    #   gcsfs
 aioitertools==0.10.0
     # via
     #   -r requirements/base.txt
@@ -139,8 +138,6 @@ coverage==4.5.4
     # via
     #   -r requirements/local.in
     #   django-coverage-plugin
-cpuprofile==1.0.1
-    # via -r requirements/base.txt
 cryptography==50.0.2
     # via
     #   -r requirements/base.txt
@@ -162,7 +159,6 @@ daily-active-users==0.1.2
 decorator==4.4.0
     # via
     #   -r requirements/base.txt
-    #   gcsfs
     #   ipdb
     #   ipython
 defusedxml==0.7.1
@@ -284,86 +280,34 @@ frozenlist==1.8.0
     #   -r requirements/base.txt
     #   aiohttp
     #   aiosignal
-fsspec==2026.3.0
-    # via
-    #   -r requirements/base.txt
-    #   gcsfs
 furl==2.1.0
-    # via -r requirements/base.txt
-gcsfs==2026.3.0
     # via -r requirements/base.txt
 google-api-core[grpc]==2.29.0
     # via
     #   -r requirements/base.txt
-    #   google-cloud-core
     #   google-cloud-language
-    #   google-cloud-pubsub
-    #   google-cloud-storage
-    #   google-cloud-storage-control
 google-auth==2.49.1
     # via
     #   -r requirements/base.txt
-    #   gcsfs
     #   google-api-core
-    #   google-auth-oauthlib
-    #   google-cloud-core
     #   google-cloud-language
-    #   google-cloud-pubsub
-    #   google-cloud-storage
-    #   google-cloud-storage-control
-google-auth-oauthlib==1.3.1
-    # via
-    #   -r requirements/base.txt
-    #   gcsfs
-google-cloud-core==2.5.1
-    # via
-    #   -r requirements/base.txt
-    #   google-cloud-storage
 google-cloud-language==2.19.0
     # via -r requirements/base.txt
-google-cloud-pubsub==2.36.0
-    # via -r requirements/base.txt
-google-cloud-storage==3.10.1
-    # via
-    #   -r requirements/base.txt
-    #   gcsfs
-google-cloud-storage-control==1.6.1
-    # via
-    #   -r requirements/base.txt
-    #   gcsfs
-google-crc32c==1.8.0
-    # via
-    #   -r requirements/base.txt
-    #   google-cloud-storage
-    #   google-resumable-media
-google-resumable-media==2.8.2
-    # via
-    #   -r requirements/base.txt
-    #   google-cloud-storage
-googleapis-common-protos[grpc]==1.73.0
+googleapis-common-protos==1.73.0
     # via
     #   -r requirements/base.txt
     #   google-api-core
-    #   grpc-google-iam-v1
     #   grpcio-status
-grpc-google-iam-v1==0.14.4
-    # via
-    #   -r requirements/base.txt
-    #   google-cloud-pubsub
 grpcio==1.80.0
     # via
     #   -r requirements/base.txt
     #   google-api-core
     #   google-cloud-language
-    #   google-cloud-pubsub
-    #   googleapis-common-protos
-    #   grpc-google-iam-v1
     #   grpcio-status
 grpcio-status==1.63.0rc1
     # via
     #   -r requirements/base.txt
     #   google-api-core
-    #   google-cloud-pubsub
 html2text==2020.1.16
     # via -r requirements/base.txt
 html5lib==1.1
@@ -375,10 +319,6 @@ idna==3.7
     #   yarl
 imagesize==2.0.0
     # via sphinx
-importlib-metadata==8.4.0
-    # via
-    #   -r requirements/base.txt
-    #   opentelemetry-api
 inflection==0.5.1
     # via
     #   -r requirements/base.txt
@@ -467,20 +407,6 @@ oauthlib==4.0.0
     #   social-auth-core
 opencv-python-headless==4.13.0.92
     # via -r requirements/base.txt
-opentelemetry-api==1.40.0
-    # via
-    #   -r requirements/base.txt
-    #   google-cloud-pubsub
-    #   opentelemetry-sdk
-    #   opentelemetry-semantic-conventions
-opentelemetry-sdk==1.40.0
-    # via
-    #   -r requirements/base.txt
-    #   google-cloud-pubsub
-opentelemetry-semantic-conventions==0.61b0
-    # via
-    #   -r requirements/base.txt
-    #   opentelemetry-sdk
 orderedmultidict==1.0.1
     # via
     #   -r requirements/base.txt
@@ -564,17 +490,12 @@ proto-plus==1.27.1
     #   -r requirements/base.txt
     #   google-api-core
     #   google-cloud-language
-    #   google-cloud-pubsub
-    #   google-cloud-storage-control
 protobuf==5.29.6
     # via
     #   -r requirements/base.txt
     #   google-api-core
     #   google-cloud-language
-    #   google-cloud-pubsub
-    #   google-cloud-storage-control
     #   googleapis-common-protos
-    #   grpc-google-iam-v1
     #   grpcio-status
     #   logzio-python-handler
     #   proto-plus
@@ -701,9 +622,7 @@ requests==2.33.0
     # via
     #   -r requirements/base.txt
     #   cachecontrol
-    #   gcsfs
     #   google-api-core
-    #   google-cloud-storage
     #   logzio-python-handler
     #   pip-audit
     #   premailer
@@ -718,7 +637,6 @@ requests-mock==1.9.3
 requests-oauthlib==1.2.0
     # via
     #   -r requirements/base.txt
-    #   google-auth-oauthlib
     #   social-auth-core
 rest-social-auth==9.0.0
     # via -r requirements/base.txt
@@ -784,7 +702,7 @@ sqlparse==0.6.0
     #   -r requirements/base.txt
     #   django
     #   django-debug-toolbar
-squarelet-auth==0.1.16
+squarelet-auth==0.1.17
     # via -r requirements/base.txt
 stack-data==0.3.0
     # via
@@ -815,9 +733,6 @@ typing-extensions==4.15.0
     #   aiosignal
     #   django-redis
     #   grpcio
-    #   opentelemetry-api
-    #   opentelemetry-sdk
-    #   opentelemetry-semantic-conventions
 tzdata==2024.2
     # via
     #   -r requirements/base.txt
@@ -867,10 +782,6 @@ yarl==1.25.1
     # via
     #   -r requirements/base.txt
     #   aiohttp
-zipp==3.19.1
-    # via
-    #   -r requirements/base.txt
-    #   importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

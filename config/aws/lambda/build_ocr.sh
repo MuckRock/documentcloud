@@ -19,4 +19,4 @@ cp -r ocr_libraries/ $CODE_DIR/tesseract 2>/dev/null || :
 mkdir $CODE_DIR/tesseract/tessdata
 
 # Set AWS requirements
-cp cloud-requirements.txt $CODE_DIR/cloud-requirements.txt
+cp requirements/pdf.txt $CODE_DIR/requirements.txt

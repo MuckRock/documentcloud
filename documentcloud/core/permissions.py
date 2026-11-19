@@ -56,13 +56,6 @@ class ProjectPermissions(TokenPermissions):
     token_methods = ["GET"]
 
 
-class SidekickPermissions(TokenPermissions):
-    """Allow the processing functions to update sidekick"""
-
-    token_permissions = {"processing"}
-    token_methods = ["PUT", "PATCH"]
-
-
 class OrganizationAICreditsPermissions(TokenPermissions):
     """Alow the processing functions to reach organization AI credit routes"""
 
