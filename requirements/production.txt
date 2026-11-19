@@ -118,8 +118,6 @@ click-repl==0.3.0
     # via
     #   -r requirements/base.txt
     #   celery
-cpuprofile==1.0.1
-    # via -r requirements/base.txt
 cryptography==50.0.2
     # via
     #   -r requirements/base.txt

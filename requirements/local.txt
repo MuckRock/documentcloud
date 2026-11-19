@@ -139,8 +139,6 @@ coverage==4.5.4
     # via
     #   -r requirements/local.in
     #   django-coverage-plugin
-cpuprofile==1.0.1
-    # via -r requirements/base.txt
 cryptography==50.0.2
     # via
     #   -r requirements/base.txt

@@ -11,7 +11,6 @@ import boto3
 import environ
 import pymupdf
 from botocore.client import Config
-from cpuprofile import profile_cpu
 from PIL import Image
 
 env = environ.Env()
@@ -79,11 +78,6 @@ TMP_DIRECTORY = env.str("TMP_DIRECTORY", "/tmp/ocrtmp")
 TMP_SIZE_LIMIT = env.str(
     "TMP_SIZE_LIMIT", 400
 )  # size in megabytes (best be under lambda just to be safe)
-
-# Ensures running on roughly 2Ghz+ machine
-PROFILE_CPU = env.bool("PROFILE_CPU", default=False)
-SPEED_THRESHOLD = env.float("SPEED_THRESHOLD", default=0.0039)
-CPU_DIFFICULTY = env.int("CPU_DIFFICULTY", default=20)
 
 # Width of images to use with OCR (aspect ratio is preserved)
 DESIRED_WIDTH = env.int("OCR_WIDTH", default=700)
@@ -316,35 +310,11 @@ def run_tesseract(data, _context=None):
 
     result = {}
 
-    if PROFILE_CPU:
-        # Perform speed thresholding to prevent running OCR on a slow CPU
-        speed = profile_cpu(CPU_DIFFICULTY)
-        if speed > SPEED_THRESHOLD:
-            # Resubmit to queue
-            publisher.publish(
-                OCR_TOPIC,
-                data=encode_pubsub_data(
-                    {
-                        "paths_and_numbers": paths_and_numbers,
-                        "doc_id": doc_id,
-                        "slug": slug,
-                        "access": access,
-                        "ocr_code": ocr_code,
-                        "partial": partial,
-                        "force_ocr": force_ocr,
-                    }
-                ),
-            )
-            logging.warning("Too slow (speed: %f)", speed)
-            return "Too slow, retrying"
-
-        result["speed"] = speed
-
     # Keep track of how long OCR takes (useful for profiling)
     elapsed_times = []
 
     if not paths_and_numbers:
-        logging.warning("No paths/numbers")
+        logger.warning("No paths/numbers")
         return "Ok"
 
     # Queue up text position extraction tasks
@@ -458,6 +428,4 @@ def run_tesseract(data, _context=None):
     result["elapsed"] = elapsed_times
     result["status"] = "Ok"
     result["overall_elapsed"] = time.time() - overall_start
-    if PROFILE_CPU:
-        result["speed_after"] = profile_cpu()
     return json.dumps(result)

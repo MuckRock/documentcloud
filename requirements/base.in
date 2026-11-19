@@ -58,7 +58,6 @@ boto3
 wrapt>=1.14.0,<2
 
 # Processing
-cpuprofile
 listcrunch
 numpy
 opencv-python-headless
