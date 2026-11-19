@@ -48,8 +48,6 @@ drf-flex-fields
 django-parler-rest
 
 # Cloud providers
-gcsfs
-google-cloud-pubsub
 smart-open
 aioboto3>=15
 boto3
@@ -58,7 +56,6 @@ boto3
 wrapt>=1.14.0,<2
 
 # Processing
-cpuprofile
 listcrunch
 numpy
 opencv-python-headless

@@ -67,19 +67,5 @@ elif environment == "aws":
     from .aws.pubsub import publisher
     from .aws.storage import storage
 
-elif environment == "gcp":
-    # Local
-    from .gcp.data import (
-        encode_pubsub_data,
-        encode_response,
-        get_http_data,
-        get_pubsub_data,
-    )
-    from .gcp.httpsub import httpsub
-    from .gcp.processing_token import processing_auth
-    from .gcp.pubsub import publisher
-    from .gcp.storage import storage
-
-    raise RuntimeError("GCP environment is not currently supported")
 else:
     raise RuntimeError(f"Invalid environment: {environment}")

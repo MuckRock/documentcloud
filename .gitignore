@@ -296,6 +296,8 @@ template.yaml
 packaged.yaml
 *.traineddata
 embedding/
+.aws-sam/
+
 
 # solr
 !config/solr/lib/*

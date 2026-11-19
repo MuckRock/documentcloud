@@ -35,7 +35,6 @@ Globals:
         IMPORT_DOCUMENT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/import_document/topic:latest}}"
         FINISH_IMPORT_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/finish_import/topic:latest}}"
         MODIFY_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/modify_document/topic:latest}}"
-        SIDEKICK_PREPROCESS_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
         RETRY_ERROR_TOPIC: "{{resolve:ssm:/dc/{$ENV$}/lambdas/retry_errors/topic:latest}}"
         PDF_SIZE_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/pdf_size_limit:latest}}"
         PAGE_COUNT_LIMIT: "{{resolve:ssm:/dc/{$ENV$}/params/page_count_limit:latest}}"
@@ -45,8 +44,6 @@ Globals:
         IMPORT_BUCKET: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/import_bucket:latest}}"
         SENTRY_DSN: "{{resolve:ssm:/dc/{$ENV$}/params/sentry_dsn:latest}}"
         AWS_ARN_PREFIX: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}"
-        VOCAB_SIZE: "{{resolve:ssm:/dc/{$ENV$}/params/vocab_size:latest}}"
-        EMBEDDING_DIR: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/embedding_dir:latest}}"
     Timeout: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/timeout:latest}}"
     MemorySize: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/memory_size:latest}}"
     VpcConfig:
@@ -106,24 +103,6 @@ Resources:
           Type: Api
           Properties:
             Path: /import_documents
-            Method: POST
-      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
-
-  SidekickFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.12
-      Handler: main.sidekick
-      CodeUri: ./awsbin/utils
-      # Trigger function via HTTP
-      Environment:
-        Variables:
-          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick/timeout:latest}}"
-      Events:
-        ProcessPdfApi:
-          Type: Api
-          Properties:
-            Path: /sidekick
             Method: POST
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
@@ -331,25 +310,6 @@ Resources:
           Type: SNS
           Properties:
             Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/modify_document/topic:latest}}"
-      Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
-      
-  SidekickPreprocessFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Runtime: python3.12
-      Handler: main.preprocess
-      # https://github.com/model-zoo/scikit-learn-lambda/blob/master/layers.csv
-      Layers: ["arn:aws:lambda:us-east-1:446751924810:layer:python-3-7-scikit-learn-0-23-1:2"]
-      CodeUri: ./awsbin/sidekick
-      # Trigger function via SNS
-      Environment:
-        Variables:
-          TIMEOUTS: "{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/timeout:latest}}"
-      Events:
-        ExtractImageApi:
-          Type: SNS
-          Properties:
-            Topic: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/aws_arn_prefix:latest}}":"{{resolve:ssm:/dc/{$ENV$}/lambdas/sidekick_preprocess/topic:latest}}"
       Role: "{{resolve:ssm:/dc/{$ENV$}/lambdas/config/role:latest}}"
 
   RetryErrorsFunction:

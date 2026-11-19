@@ -1,0 +1,9 @@
+aioboto3
+boto3
+smart-open
+redis
+requests
+furl
+pebble
+django-environ
+sentry-sdk
