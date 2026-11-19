@@ -86,6 +86,7 @@ def page_text_position_path(doc_id, slug, page_number):
     """The path to the text file for a single page"""
     return pages_path(doc_id) + f"{slug}-p{page_number + 1}.{SELECTABLE_TEXT_SUFFIX}"
 
+
 def import_org_csv(org_id):
     import_dir = env.str("IMPORT_DIR")
     import_bucket = env.str("IMPORT_BUCKET")
