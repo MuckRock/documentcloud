@@ -651,6 +651,32 @@ class TestCollaborationAPI:
         # add one for the projects owner
         assert len(response_json["results"]) == size + 1
 
+    @pytest.mark.parametrize("access", ["edit_collaborators", "collaborators"])
+    def test_list_non_admin_collaborator(self, client, user, access):
+        """Edit and view collaborators can see who else is on the project"""
+        other = UserFactory()
+        project = ProjectFactory(**{access: [user, other]})
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/projects/{project.pk}/users/")
+        assert response.status_code == status.HTTP_200_OK
+        user_ids = {c["user"] for c in response.json()["results"]}
+        assert user_ids == {project.user.pk, user.pk, other.pk}
+
+    def test_list_non_collaborator_public(self, client, user):
+        """Non-collaborators cannot see collaborators on a public project"""
+        project = ProjectFactory(private=False, collaborators=[UserFactory()])
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/projects/{project.pk}/users/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["results"] == []
+
+    def test_list_anonymous_public(self, client):
+        """Anonymous users cannot see collaborators on a public project"""
+        project = ProjectFactory(private=False, collaborators=[UserFactory()])
+        response = client.get(f"/api/projects/{project.pk}/users/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["results"] == []
+
     @pytest.mark.parametrize("expand", ["", "~all", "user.organization"])
     @override_settings(DEBUG=True)
     def test_list_queries(self, client, expand):
@@ -744,6 +770,43 @@ class TestCollaborationAPI:
         assert response.status_code == status.HTTP_200_OK
         collaborator = project.collaboration_set.get(user=user)
         assert collaborator.access == CollaboratorAccess.admin
+
+    def test_retrieve_view_collaborator(self, client, user):
+        """View collaborators can retrieve another collaborator"""
+        project = ProjectFactory(collaborators=[user])
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/projects/{project.pk}/users/{project.user.pk}/")
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_retrieve_non_collaborator_public(self, client, user):
+        """Non-collaborators cannot retrieve a collaborator on a public project"""
+        project = ProjectFactory(private=False)
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/projects/{project.pk}/users/{project.user.pk}/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("access", ["edit_collaborators", "collaborators"])
+    def test_update_non_admin_collaborator(self, client, user, access):
+        """Seeing collaborators does not let a non-admin change their access"""
+        other = UserFactory()
+        project = ProjectFactory(**{access: [user, other]})
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/projects/{project.pk}/users/{other.pk}/", {"access": "admin"}
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert (
+            project.collaboration_set.get(user=other).access != CollaboratorAccess.admin
+        )
+
+    @pytest.mark.parametrize("access", ["edit_collaborators", "collaborators"])
+    def test_delete_non_admin_collaborator(self, client, user, access):
+        """Seeing collaborators does not let a non-admin remove them"""
+        project = ProjectFactory(**{access: [user]})
+        client.force_authenticate(user=user)
+        response = client.delete(f"/api/projects/{project.pk}/users/{project.user.pk}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert project.collaborators.filter(pk=project.user.pk).exists()
 
     def test_update_bad_user(self, client, user):
         """You may not change a user on a Collaboration"""

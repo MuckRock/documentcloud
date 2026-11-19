@@ -672,7 +672,7 @@ class CollaborationViewSet(FlexFieldsModelViewSet):
             Project.objects.get_viewable(self.request.user),
             pk=self.kwargs["project_pk"],
         )
-        if self.request.user.has_perm("projects.change_project_all", project):
+        if self.request.user.has_perm("projects.view_collaborators", project):
             queryset = project.collaboration_set.all()
         else:
             queryset = project.collaboration_set.none()
