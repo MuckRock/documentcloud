@@ -221,6 +221,24 @@ def pip_compile(c, upgrade=False, package=None):
         )
     )
 
+@task(name="pip-compile-lambdas")
+def pip_compile_lambdas(c, upgrade=False, package=None):
+    """Run pip compile for the lambda processing requirements"""
+    if package:
+        upgrade_flag = f"--upgrade-package {package}"
+    elif upgrade:
+        upgrade_flag = "--upgrade"
+    else:
+        upgrade_flag = ""
+    c.run(
+        COMPOSE_RUN_OPT_USER.format(
+            opt="-e PIP_TOOLS_CACHE_DIR=/tmp/pip-tools-cache",
+            service="documentcloud_django",
+            cmd=f"sh -c 'pip-compile {upgrade_flag} config/aws/lambda/requirements/processing.in && "
+            f"pip-compile {upgrade_flag} config/aws/lambda/requirements/pdf.in && "
+            f"pip-compile {upgrade_flag} config/aws/lambda/requirements/info_and_image.in'",
+        )
+    )
 
 @task
 def build(c, opt="", service=""):
@@ -288,3 +306,4 @@ def update_solr_config(c):
                     collection=collection,
                 )
             )
+

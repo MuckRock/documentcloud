@@ -13,4 +13,4 @@ CODE_DIR=awsbin/utils
 cp -Lr ../../../documentcloud/documents/processing/utils/* $CODE_DIR 2>/dev/null || :
 
 # Set AWS requirements
-cp cloud-requirements.txt $CODE_DIR/cloud-requirements.txt
+cp requirements/processing.txt $CODE_DIR/requirements.txt

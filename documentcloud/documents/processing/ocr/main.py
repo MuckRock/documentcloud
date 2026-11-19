@@ -282,7 +282,7 @@ def ocr_page_textract(doc_id, tmp_files, upload_text_path, access, slug, page_nu
 @pubsub_function(REDIS, OCR_TOPIC)
 def run_tesseract(data, _context=None):
     """Runs OCR on the images passed in, storing the extracted text."""
-    # pylint: disable=too-many-locals, too-many-statements
+    # pylint: disable=too-many-locals
     overall_start = time.time()
 
     data = get_pubsub_data(data)

@@ -66,10 +66,6 @@ MODIFY_TOPIC = publisher.topic_path(
 START_IMPORT_TOPIC = publisher.topic_path(
     "documentcloud", env.str("START_IMPORT_TOPIC", default="start-import")
 )
-SIDEKICK_PREPROCESS_TOPIC = publisher.topic_path(
-    "documentcloud",
-    env.str("SIDEKICK_PREPROCESS_TOPIC", default="sidekick-preprocess-topic"),
-)
 RETRY_ERROR_TOPIC = publisher.topic_path(
     "documentcloud", env.str("RETRY_ERROR_TOPIC", default="retry-error-topic")
 )
@@ -164,14 +160,6 @@ def import_documents(request, _context=None):
     """Command to start the import process on an organization"""
     data = get_http_data(request)
     publisher.publish(START_IMPORT_TOPIC, data=encode_pubsub_data(data))
-
-
-@processing_auth
-def sidekick(request, _context=None):
-    """Kick off sidekick processing lambda"""
-    data = get_http_data(request)
-    publisher.publish(SIDEKICK_PREPROCESS_TOPIC, data=encode_pubsub_data(data))
-    return encode_response("Ok")
 
 
 @pubsub_function(REDIS, RETRY_ERROR_TOPIC)

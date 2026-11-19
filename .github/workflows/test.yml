@@ -28,7 +28,6 @@ env:
   PROGRESS_URL: http://localhost/progress
   TIMEOUTS: 15,30,60,120
   IMPORT_URL: http://localhost/import
-  SIDEKICK_PROCESSING_URL: http://localhost/process
   REDIS_URL: redis://localhost:6379
   JWT_VERIFYING_KEY: ${{ secrets.JWT_VERIFYING_KEY }}
   SQUARELET_KEY: ${{secrets.SQUARELET_SECRET}}

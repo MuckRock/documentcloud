@@ -48,8 +48,6 @@ drf-flex-fields
 django-parler-rest
 
 # Cloud providers
-gcsfs
-google-cloud-pubsub
 smart-open
 aioboto3>=15
 boto3

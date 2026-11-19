@@ -13,4 +13,4 @@ CODE_DIR=awsbin/info_and_image
 cp -Lr ../../../documentcloud/documents/processing/info_and_image/* $CODE_DIR 2>/dev/null || :
 
 # Set AWS requirements
-cp info-and-image-requirements.txt $CODE_DIR/cloud-requirements.txt
+cp requirements/info_and_image.txt $CODE_DIR/requirements.txt
