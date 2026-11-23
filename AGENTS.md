@@ -164,6 +164,7 @@ inv celerybeat                     # Start celery scheduler
 inv pip-compile                    # Compile requirements files
 inv pip-compile --upgrade          # Upgrade all packages
 inv pip-compile --package "name"   # Upgrade specific package
+inv pip-compile-lambdas            # Compile lambda requirements (same --upgrade/--package flags)
 
 # Build
 inv build                          # Build docker images
@@ -329,7 +330,7 @@ Main URL configuration in `config/urls.py`. Uses `drf-nested-routers` for nested
 - Solr (pysolr) for search
 - PDF processing: pdfplumber, pikepdf, pymupdf
 - ML/AI: numpy, google-cloud-language
-- Cloud: boto3, gcsfs, smart-open
+- Cloud: boto3, aioboto3, smart-open
 - Authentication: squarelet-auth, social-auth-core
 
 ## Deployment
@@ -340,6 +341,8 @@ Production deployment on Heroku with AWS Lambda for document processing. Lambda 
 inv deploy_lambdas            # Production
 inv deploy_lambdas --staging  # Staging
 ```
+
+Lambda Python dependencies are pinned separately from Django's, in `config/aws/lambda/requirements/` (see its README). Packages used by `documentcloud/common/` run in both, so keep their versions in step with `requirements/base.txt`.
 
 ## Local Development URLs
 
