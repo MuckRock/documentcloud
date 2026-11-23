@@ -230,13 +230,15 @@ def pip_compile_lambdas(c, upgrade=False, package=None):
         upgrade_flag = "--upgrade"
     else:
         upgrade_flag = ""
+    req_dir = "config/aws/lambda/requirements"
     c.run(
         COMPOSE_RUN_OPT_USER.format(
             opt="-e PIP_TOOLS_CACHE_DIR=/tmp/pip-tools-cache",
             service="documentcloud_django",
-            cmd=f"sh -c 'pip-compile {upgrade_flag} config/aws/lambda/requirements/processing.in && "
-            f"pip-compile {upgrade_flag} config/aws/lambda/requirements/pdf.in && "
-            f"pip-compile {upgrade_flag} config/aws/lambda/requirements/info_and_image.in'",
+            cmd=f"sh -c 'pip-compile {upgrade_flag} {req_dir}/all.in && "
+            f"pip-compile --upgrade {req_dir}/processing.in && "
+            f"pip-compile --upgrade {req_dir}/pdf.in && "
+            f"pip-compile --upgrade {req_dir}/info_and_image.in'",
         )
     )
 

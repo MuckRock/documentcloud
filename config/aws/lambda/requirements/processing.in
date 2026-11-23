@@ -1,4 +1,5 @@
-aioboto3
+-c all.txt
+
 boto3
 smart-open
 redis

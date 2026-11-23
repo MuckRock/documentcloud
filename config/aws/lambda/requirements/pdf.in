@@ -1,4 +1,4 @@
--c processing.txt
+-c all.txt
 
 -r processing.in
 Pillow
