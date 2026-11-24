@@ -1,0 +1,7 @@
+-c all.txt
+
+-r pdf.in
+aioboto3
+pdfplumber
+pikepdf
+listcrunch

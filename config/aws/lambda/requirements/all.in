@@ -1,0 +1,3 @@
+-r processing.in
+-r pdf.in
+-r info_and_image.in

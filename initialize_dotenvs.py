@@ -53,10 +53,6 @@ CONFIG = [
                     ("ENVIRONMENT", "local-minio"),
                     ("SERVERLESS", "False"),
                     ("DOC_PROCESSING_URL", "mock://process.dev.documentcloud.org"),
-                    (
-                        "SIDEKICK_PROCESSING_URL",
-                        "mock://sidekick.dev.documentcloud.org",
-                    ),
                     ("PROGRESS_URL", "mock://progress.dev.documentcloud.org"),
                     ("IMPORT_URL", "mock://import.dev.documentcloud.org"),
                     ("API_CALLBACK", "https://api.dev.documentcloud.org/api/"),

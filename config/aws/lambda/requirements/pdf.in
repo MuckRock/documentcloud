@@ -1,0 +1,5 @@
+-c all.txt
+
+-r processing.in
+Pillow
+pymupdf
