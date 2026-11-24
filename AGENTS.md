@@ -1,6 +1,6 @@
 # AGENTS.md
 
-<!-- AGENTS.md shared standard v1 — canonical copy: https://github.com/MuckRock/gps/blob/main/AGENTS.md -->
+<!-- AGENTS.md shared standard v2 — canonical copy: https://github.com/MuckRock/gps/blob/main/AGENTS.md -->
 
 ## Code comments
 
@@ -31,15 +31,12 @@ Comments say **why**, not what. If the code already says it, delete the comment.
 
 ## Docstrings / doc comments
 
-One line on what it does. Add more only for a contract a caller needs:
-what it rejects/throws, what it returns in the edge case, ordering it
-requires, side effects it has, a cost worth avoiding.
+One line on what it does. Add more only for a contract a caller needs: what it rejects/throws, what it returns in the edge case, ordering it requires, side effects it has, a cost worth avoiding.
 
 Two tests before you keep a second paragraph:
 
 - Does it restate the first line in more words? Delete it.
-- Would a caller behave differently for knowing it? Keep it, in one or two
-  sentences.
+- Would a caller behave differently for knowing it? Keep it, in one or two sentences.
 
 ```typescript
 // Good - the whole contract, one line
@@ -62,14 +59,39 @@ Open with one sentence on what changes. Then:
 - **Migrations** — what they do, whether they reverse.
 - **What to check** — the QA steps, as a checklist.
 
-Bullets, not prose. Don't recount how the change came about or what was
-tried first.
+Bullets, not prose. Don't recount how the change came about or what was tried first.
 
 ## Tests
 
-Name the behaviour, not the mechanism: `renders the error state when
-OCR fails`, not `test handle error`. A test whose assertion would pass
-against the unfixed code is not a test.
+Name the behaviour, not the mechanism: `renders the error state when OCR fails`, not `test handle error`. A test whose assertion would pass against the unfixed code is not a test.
+
+## Pull request size
+
+Aim for 300–600 lines of diff. Split bigger work into a stack of PRs that each make sense on their own, and say in each description where it sits in the stack.
+
+## Before writing code
+
+- **Read the documentation.** Before relying on how a library's attribute
+  is accessed, what it returns or which exceptions it raises, check its
+  documentation for the version we pin. If the docs site blocks you, read
+  the installed source (`site-packages`, `node_modules`) instead. Don't
+  guess.
+- **Look for how we already do it.** Search this repo for the same problem
+  solved elsewhere and follow that pattern. Check our other repos too
+  (github.com/MuckRock): muckrock, documentcloud, squarelet and the client
+  libraries may already have a simple fix.
+- **Use the library instead of rewriting it.** If a dependency or one of
+  our client libraries (python-muckrock, python-documentcloud,
+  python-squarelet) already does the job, use it rather than hand-rolling
+  HTTP calls, token handling or retries. Ask before adding a new
+  dependency.
+- **Stay at the level you're working at.** If our code uses `requests`,
+  debug at `requests`, not in `urllib3`. A mismatch between a library and
+  its own dependencies is usually fixed by upgrading the library we use,
+  not by patching around it.
+- **Check before you disagree.** When someone says code or a claim is
+  wrong, read the source or docs that settle it before answering, and say
+  what you checked. If you were wrong, say so.
 
 <!-- /AGENTS.md shared standard -->
 
